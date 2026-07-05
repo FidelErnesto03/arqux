@@ -410,6 +410,25 @@ _register(_spec(
 ))
 
 
+# --- identity handlers ---
+
+_register(_spec(
+    "identity.record", cortex.record_lesson_handler,
+    "Record a behavioral lesson into the agent's identity file.",
+    {
+        "type": "object",
+        "properties": {
+            "lesson": {"type": "string", "description": "Lesson text"},
+            "kind": {"type": "string", "description": "Lesson kind: behavioral/process/format/rule/infrastructure", "default": "behavioral"},
+            "cause": {"type": "string", "description": "What caused this lesson", "default": ""},
+            "agent_id": {"type": "string", "description": "Agent identifier (default: current agent)"},
+            "path": {"type": "string", "description": "Path to search up from for .arqux/identities/"},
+        },
+        "required": ["lesson"],
+    },
+))
+
+
 # --- Surface for tests / introspection ------------------------------------
 
 def list_handlers() -> list[str]:
