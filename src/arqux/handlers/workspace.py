@@ -53,6 +53,7 @@ def init_workspace(
     target = Path(path or os.getcwd()).resolve()
     gov_dir = target / ARQUX_DIR
     gov_dir.mkdir(parents=True, exist_ok=True)
+    (gov_dir / "packages").mkdir(exist_ok=True)
 
     # Bootstrap: first caller becomes governor.
     if ctx is None:
