@@ -65,6 +65,17 @@ WRK:detect{
 
 LIM:no_auto_init{limit:"Never initialize Arqux without Architect approval.", severity:"blocking"}
 
+IDN:canonical_structure{
+  rule:"Every governed project MUST have its own .arqux/ directory.",
+  automation:"project.init(name, path, seed?) creates it automatically.",
+  path:"<project_root>/.arqux/",
+  content:"brain.cortex (project brain), cycles/, identities/ (behavioral evolution)",
+  scope:"Per-project governance. The workspace .arqux/ manages the meta-brain
+         and projects index only — NOT per-project details.",
+  warning:"A project without .arqux/ is NOT under Arqux governance.
+           works on the workspace level. project.init brings it under full governance.",
+}
+
 
 $3: STANDBY-FIRST
 
