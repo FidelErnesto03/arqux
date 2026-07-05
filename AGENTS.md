@@ -77,6 +77,7 @@ WRK:available_skills{
   skill:"mcp.skill.md", purpose:"MCP server configuration and testing",
   skill:"format.skill.md", purpose:"File conventions: .cortex vs .md, attrs single-line, cuerpo multiline",
   skill:"memory.skill.md", purpose:"Native agent memory in CORTEX format (ultra-dense)",
+  skill:"workflows.skill.md", purpose:"Canonical workflows with PlantUML diagrams: init, govern, daily, task lifecycle, identity evolution, adoption",
 }
 
 
