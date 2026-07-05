@@ -292,6 +292,28 @@ AXM:extension_rule{
   HCORTEX .md twins are NOT auto-generated. Request via cortex.render.
 }
 
+$9.1: NATIVE AGENT MEMORY
+
+AXM:memory_format{
+  While operating under Arqux governance, the agent's native memory
+  (memory.md, user.md, or equivalent) MUST use CODEC-CORTEX content
+  instead of prose.
+  
+  Rationale: extreme information density. A LNG entry in 30 tokens
+  replaces 250 tokens of prose. Sigils are natural indices the LLM
+  understands without a parser.
+  
+  Rules:
+  1. The memory file keeps its original name and extension (.md).
+  2. Content uses CORTEX sigil format with $0 glossary.
+  3. The agent writes LNG (lessons), KNW (knowledge), FCS (focus),
+     SES (sessions) directly in its memory.
+  4. On session start, the agent scans LNG and KNW as priority
+     context load — these are the most information-dense sections.
+  5. Under Arqux governance, this rule replaces any previous
+     memory format convention.
+}
+
 
 $10: CODEC-CORTEX INTEGRATION
 
