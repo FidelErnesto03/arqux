@@ -224,24 +224,13 @@ def _render_governance_cortex(
     frontmatter: dict[str, Any],
     body: str | dict,
 ) -> str:
-    """Render a governance file in canonical CODEC-CORTEX format."""
-    if stem == "brain":
-        sections = parse_brain_sections(body if isinstance(body, str) else str(body))
-        return formats.brain_from_model(frontmatter, sections)
-    elif stem == "manifest":
-        return formats.manifest_to_cortex(frontmatter)
-    elif stem == "meta-brain":
-        return formats.meta_brain_to_cortex(frontmatter)
-    elif stem == "projects":
-        projects_list = frontmatter.get("projects", [])
-        return formats.projects_to_cortex(
-            [{"name": p, "path": frontmatter.get("path", "")} for p in projects_list]
-            if isinstance(projects_list, list)
-            else []
-        )
-    elif stem == "cycle":
-        return formats.cycle_to_cortex(frontmatter)
-    return _render_cortex(frontmatter, body if isinstance(body, str) else str(body))
+    """Render a governance file in canonical CODEC-CORTEX format.
+
+    Delegates to ``formats.render_governance_cortex()`` which uses
+    CODEC-CORTEX's ``write_cortex()`` when available, falling back to
+    the string-based builders otherwise.
+    """
+    return formats.render_governance_cortex(stem, frontmatter, body)
 
 
 def _write_md_twin(
@@ -651,8 +640,7 @@ def write_brain_sections(
     sections: dict[str, str],
 ) -> tuple[Path, Path]:
     """Write the project brain from frontmatter + sections dict."""
-    body = rebuild_brain_body(sections)
-    return write_cortex_pair(project_root, "brain", frontmatter, body)
+    return write_cortex_pair(project_root, "brain", frontmatter, sections)
 
 
 def ensure_brain_section(sections: dict[str, str], name: str) -> str:
