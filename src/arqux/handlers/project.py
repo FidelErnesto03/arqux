@@ -53,8 +53,10 @@ def init_project(
     """
     target = Path(path or os.getcwd()).resolve()
     gov_dir = target / ARQUX_DIR
+    # Create .arqux/ skeleton.
     gov_dir.mkdir(parents=True, exist_ok=True)
     (gov_dir / CYCLES_DIR).mkdir(exist_ok=True)
+    (gov_dir / "packages").mkdir(exist_ok=True)  # Supplemental .cortex packages
 
     # Register in workspace projects index.
     ws_root = find_workspace_root(start=target)
@@ -205,7 +207,14 @@ def _detect_project_context(project_root: Path) -> list[str]:
     notes.append('')
     notes.append("    $11: CONCURRENCY")
     notes.append('      ERR:concurrency{version, last_writer, updated}')
-    notes.append("      Start at version 1.")
+    notes.append("      Start at version 1.",)
+    notes.append('')
+    notes.append('    $12: PACKAGES')
+    notes.append('      DOM:package_name{path, purpose}')
+    notes.append('      DOM:inventory{path:".arqux/packages/inventory.cortex", purpose:"..."}')
+    notes.append('      Reference to supplemental .cortex packages stored in')
+    notes.append('      .arqux/packages/. Each entry points to a package file')
+    notes.append('      that can be loaded on-demand for additional context.')
     notes.append('')
     notes.append('  step:"3 - CALL project.init with the built content",')
     notes.append('  action:"project.init(name=..., path=..., seed=<built_content>)",')

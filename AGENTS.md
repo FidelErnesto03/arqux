@@ -303,6 +303,19 @@ IDN:codec{
   fallback:"YAML frontmatter parser preserved for legacy file reading."
 }
 
+IDN:packages{
+  path:".arqux/packages/",
+  purpose:"Supplemental .cortex packages with additional contextual information.
+           Created on-demand by the Architect or by the agent when requested.
+           Each package is a .cortex file referenced in brain.cortex §12 PACKAGES.",
+  format:"Canonical CODEC-CORTEX sigil with $0 glossary, like any .cortex file.",
+  discovery:"Listed in brain.cortex $12: PACKAGES section via DOM: entries.
+             An agent reads the PACKAGES section to discover what packages exist,
+             then reads individual packages on-demand via cortex.read.",
+  example:"DOM:inventory{path:\".arqux/packages/inventory.cortex\",
+           purpose:\"Inventory of database objects for ENVX_OPER\"}",
+}
+
 KNW:persistence{
   Files are written in canonical CODEC-CORTEX sigil format with $0 glossary.
   write_cortex_pair() in state.py detects stem (brain/manifest/projects/cycle/T-NNN)
