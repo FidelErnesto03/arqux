@@ -79,6 +79,16 @@ def init_workspace(
 
     write_projects_index(gov_dir, [])
 
+    # Copy identity templates to .arqux/identities/ for behavioral evolution.
+    identities_src = Path(__file__).resolve().parent.parent / "identities"
+    if identities_src.exists():
+        identities_dst = gov_dir / "identities"
+        identities_dst.mkdir(exist_ok=True)
+        for src in identities_src.glob("*.cortex"):
+            dst = identities_dst / src.name
+            if not dst.exists():
+                dst.write_text(src.read_text(encoding="utf-8"), encoding="utf-8")
+
     profile = OUT_AUDIT if verbose else OUT_MIN
     return CortexOUT.profile(
         profile,

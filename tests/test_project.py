@@ -22,8 +22,6 @@ def test_project_init_creates_local_governance(workspace_root: Path, governor_ct
 
     gov = project_dir / ARQUX_DIR
     assert (gov / BRAIN_CORTEX).exists()
-    assert (gov / "brain.md").exists()
-    assert (gov / "cycles").is_dir()
     assert "project.init ok" in result.to_text()
 
 

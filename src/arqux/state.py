@@ -25,7 +25,6 @@ from typing import Any, Iterable
 
 from .constants import (
     BRAIN_CORTEX,
-    BRAIN_HCORTEX,
     BRAIN_SECTION_ACTIVE_CONTEXT,
     BRAIN_SECTION_CONCURRENCY,
     BRAIN_SECTION_FOCUS,
@@ -37,13 +36,10 @@ from .constants import (
     BRAIN_SECTION_SESSIONS,
     CYCLES_DIR,
     MANIFEST_CORTEX,
-    MANIFEST_HCORTEX,
     META_BRAIN_CORTEX,
-    META_BRAIN_HCORTEX,
     PRODUCT_NAME,
     PRODUCT_NAME_UPPER,
     PROJECTS_CORTEX,
-    PROJECTS_HCORTEX,
     TASKS_DIR,
     ARQUX_DIR,
 )
@@ -197,21 +193,19 @@ def write_cortex_pair(
     frontmatter: dict[str, Any],
     body: str,
 ) -> tuple[Path, Path]:
-    """Write a `.cortex` + `.md` pair.
+    """Write a `.cortex` file.
 
     Governance files (brain, manifest, meta-brain, projects, cycle, T-NNN)
     are written in canonical CODEC-CORTEX sigil format when the library is
-    available. Other files (.md-only, learning_adoption, etc.) use the
-    legacy YAML frontmatter format.
+    available. Other files use the legacy YAML frontmatter format.
 
-    The .md twin is generated via CODEC-CORTEX's renderer when available,
-    otherwise via the built-in HCORTEX fallback.
+    HCORTEX .md twins are NOT automatically generated. Request them on demand
+    via `cortex.render` MCP handler when the Architect needs human review.
     """
     directory = Path(directory)
     directory.mkdir(parents=True, exist_ok=True)
 
     cortex_path = directory / f"{stem}.cortex"
-    hcortex_path = directory / f"{stem}.md"
 
     # Determine format based on stem.
     if _HAS_CODEC_CORTEX and stem in ("brain", "manifest", "meta-brain", "projects", "cycle"):
@@ -222,11 +216,7 @@ def write_cortex_pair(
         cortex_content = _render_cortex(frontmatter, body)
 
     cortex_path.write_text(cortex_content, encoding="utf-8")
-
-    # Generate .md twin.
-    md_written = _write_md_twin(cortex_path, hcortex_path, frontmatter, body)
-
-    return cortex_path, hcortex_path
+    return cortex_path, cortex_path  # Backward compat: returns (cortex, cortex)
 
 
 def _render_governance_cortex(

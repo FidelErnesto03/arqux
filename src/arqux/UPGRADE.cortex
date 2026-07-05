@@ -1,0 +1,135 @@
+$0
+
+# -- $0: ARQUX UPGRADE GLOSSARY --
+# IDN | identity   | attrs      | B | Semantic       | Procedure identity
+# STP | step       | attrs      | M | Working        | Upgrade step
+# WRK | work       | attrs      | B | Working        | Current upgrade state
+# RSK | risk       | attrs      | M | Prefrontal     | Upgrade risk
+# LNG | lesson     | attrs      | M | Episodic       | Post-upgrade learning
+#
+# Types: attrs, cuerpo
+
+
+$1: UPGRADE PROCEDURE
+
+IDN:upgrade{
+  name:"Arqux Version Upgrade",
+  applies_to:"Any workspace with existing .arqux/ governance",
+  frequency:"Per Arquitecto decision, typically per release"
+}
+
+
+$2: STEP 1 — UPDATE THE PACKAGE
+
+STP:pip_upgrade{
+  action:"pip install --upgrade arqux",
+  what:"Updates CLI, MCP server, identity templates, and AGENTS.md template",
+  verify:"arqux --version"
+}
+
+STP:uv_tool_upgrade{
+  alt_action:"uv tool upgrade arqux",
+  when:"If installed via uv (uv tool install)",
+  verify:"arqux --version"
+}
+
+STP:mcp_restart{
+  action:"Restart or reload the MCP server",
+  detail:"hermes mcp test arqux — must show correct handler count and no errors",
+  risk:"If new handlers were added or signatures changed, MCP must reconnect"
+}
+
+
+$3: STEP 2 — UPDATE IDENTITY TEMPLATES
+
+WRK:identity_update{
+  The package ships updated identity templates in src/arqux/identities/.
+  The workspace has EVOLVED COPIES in .arqux/identities/.
+  These evolved copies should NOT be overwritten.
+}
+
+STP:new_identities{
+  action:"Copy only NEW identity files (not present in .arqux/identities/)",
+  cmd:"for f in $(find <pkg_identities> -name '*.cortex' -newer .arqux/identities/); do
+         name=$(basename $f);
+         [ ! -f .arqux/identities/$name ] && cp $f .arqux/identities/$name;
+       done",
+  risk:"An existing identity with the same filename but different content represents
+        behavioral evolution — never overwrite it."
+}
+
+STP:identity_review{
+  action:"Review what changed in existing identity templates",
+  detail:"diff <pkg_identities>/alfred.cortex .arqux/identities/alfred.cortex
+          — see if new axioms or limits should be manually merged",
+  outcome:"The Architect decides what to merge"
+}
+
+
+$4: STEP 3 — UPDATE AGENTS.md
+
+STP:agents_md{
+  action:"Compare new AGENTS.md template with workspace copy",
+  detail:"The package ships an AGENTS.md template. If the workspace copy
+          was customized by the Architect, merge manually.
+          If not, replace with the new version.",
+  verify:"An agent reading AGENTS.md should understand all available handlers
+          and current protocol"
+}
+
+
+$5: STEP 4 — STATE FILE MIGRATION (if needed)
+
+WRK:migration{
+  trigger:"New version changes .cortex format, handler signatures, or brain sections",
+  detail:"Check CHANGELOG for migration notes",
+  action:"Run migration script if provided (arqux migrate)",
+  risk:"State files (brain.cortex, manifest.cortex, tasks) may need re-encoding
+        if the CODEC-CORTEX format changed between versions"
+}
+
+
+$6: STEP 5 — VERIFY
+
+STP:verify_handlers{
+  action:"Test all handler groups return expected responses",
+  commands:"workspace.status(path=.) -> OK
+            project.status(path=.) -> OK
+            cortex.verify(path=.) -> valid=True"
+}
+
+STP:verify_identity{
+  action:"Confirm agent loads correct identity",
+  detail:"Check ARQUX_AGENT_ID and ARQUX_AGENT_ROLE env vars.
+          Verify identity file exists in .arqux/identities/"
+}
+
+
+$7: RISKS
+
+RSK:overwrite_identities{
+  risk:"Overwriting evolved identity files with package templates loses behavioral lessons",
+  mitigation:"Always use 'copy only new files' policy. Never force-overwrite."
+}
+
+RSK:format_migration{
+  risk:"State files written in old format may not be parseable by new codec-cortex version",
+  mitigation:"Run arqux migrate or cortex recover before upgrading. The fallback
+              YAML parser in state.py provides backward compat."
+}
+
+RSK:handler_signature_change{
+  risk:"A handler added or removed parameters. Existing agent calls may fail.",
+  mitigation:"AGENTS.md is the contract. Update it before the agent session starts."
+}
+
+
+$8: LESSONS
+
+LNG:identities_evolve_separately{
+  type:"process",
+  cause:"Package templates vs workspace copies diverge over time",
+  lesson:"Identity files in .arqux/identities/ are the LIVE behavioral memory.
+          Package templates are SEED data. Never overwrite evolved identities.
+          New identities from the package should be offered, not imposed."
+}
