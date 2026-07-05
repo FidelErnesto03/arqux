@@ -136,13 +136,11 @@ HDL:protocol_handlers{ 4 handlers: adopt(agent_id, role, path?), release(agent_i
 
 HDL:cortex_handlers{ 4 utility handlers: read(path), write(path, content, force?), verify(path), render(path) }
 
-AXM:handlers_only{
-  Governance state is mutated exclusively via MCP handlers.
-  No direct file editing of .cortex governance files.
-  The handler is the interface. The file is the storage.
-}
+AXM:handlers_only{ Governance state is mutated exclusively via MCP handlers. No direct file editing of .cortex governance files. The handler is the interface. The file is the storage. }
 
-LIM:no_direct_edit{ limit:"Never edit brain.cortex, manifest.cortex, or task files directly. Use the MCP handlers.", severity:"blocking"}
+LIM:no_direct_edit{ limit:"Never edit brain.cortex, manifest.cortex, or task files directly. Use the MCP handlers.", severity:"blocking" }
+
+HDL:meta_brain_feed{ trigger:"project.init with seed", action:"Extracts cross-project knowledge (domain, tech stack) from the seed and appends a DOM entry to meta-brain.cortex.", scope:"Workspace-wide. Each governed project leaves its footprint in the meta-brain." }
 
 
 $5: ROLES
