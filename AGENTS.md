@@ -69,6 +69,10 @@ $4: SKILL REFERENCE
 
 IDN:skill_system{ purpose:"Skills are specialized .md files (CORTEX content) that provide detailed guidance on specific aspects of Arqux. Load them via skill_view() or equivalent only when needed. Do NOT load all skills upfront.", location:".arqux/skills/", format:"CODEC-CORTEX sigil with $0 glossary" }
 
+AXM:workflows_govern_operations{ The workflows.skill.md is the SOURCE OF TRUTH for all canonical workflows. Before executing any multi-step operation (govern project, task lifecycle, session startup), the agent MUST load workflows.skill.md and follow the current diagram and steps. If the Architect adjusts a workflow, the skill file is updated — the agent reads the updated version on next load. The skill governs the flow, not the agent's memory. }
+
+STP:before_any_workflow{ 1:"Load workflows.skill.md via skill_view('workflows')", 2:"Identify the relevant workflow (w01-w06)", 3:"Read the DIAG diagram and STP steps", 4:"Execute each step in order", 5:"If something differs from the skill, the skill wins — update your approach." }
+
 WRK:available_skills{
   skill:"handlers.skill.md", purpose:"Full list of 30 MCP handlers with signatures",
   skill:"roles.skill.md", purpose:"Role definitions: governor, executor, auditor permissions",
