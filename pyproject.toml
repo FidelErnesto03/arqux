@@ -7,7 +7,8 @@ name = "arqux"
 version = "1.0.0"
 description = "Minimum-viable governance framework for AI agent teams. Defines what to do, who does it, and leaves evidence — without slowing work down."
 readme = "README.md"
-license = { text = "Apache-2.0" }
+license = "Apache-2.0"
+license-files = ["LICENSE"]
 authors = [
     { name = "arqux Maintainers" }
 ]
@@ -16,7 +17,6 @@ keywords = ["ai-agents", "governance", "mcp", "agent-orchestration", "cortex", "
 classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
-    "License :: OSI Approved :: Apache Software License",
     "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.10",
