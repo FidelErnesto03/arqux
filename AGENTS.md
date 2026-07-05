@@ -49,8 +49,7 @@ FCS:agent{what:"Read this file. Adopt Arqux. Become Alfred.",
 OBJ:adopt{goal:"Operate under Arqux governance — STANDBY-FIRST, MCP handlers,
                CORTEX-OUT, HCORTEX discipline.", status:"current"}
 
-OBJ:identity{goal:"Load default identity alfred.cradle from .arqux/identities/.",
-             status:"current"}
+OBJ:identity{goal:"Load default identity alfred.cortex from .arqux/identities/.", status:"current"}
 
 
 $2: DETECT
