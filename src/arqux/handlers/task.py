@@ -198,7 +198,7 @@ def complete_task(
     write_cortex_pair(path.parent, task_id, fm, new_body)
 
     # Record in the brain's PULSE section (not a separate file).
-    from ..state import append_pulse_to_brain, next_pulse_event_id
+    from ..pulse import append_pulse_to_brain, next_pulse_event_id
     agent = (ctx or PermissionContext.from_env()).agent_id
     event_id = next_pulse_event_id(root)
     append_pulse_to_brain(
@@ -239,7 +239,7 @@ def fail_task(
     new_body = body.rstrip() + f"\n\n# BLOCK ({_now_iso()})\n{reason}\n"
     write_cortex_pair(path.parent, task_id, fm, new_body)
 
-    from ..state import append_pulse_to_brain, next_pulse_event_id
+    from ..pulse import append_pulse_to_brain, next_pulse_event_id
     agent = (ctx or PermissionContext.from_env()).agent_id
     event_id = next_pulse_event_id(root)
     append_pulse_to_brain(
