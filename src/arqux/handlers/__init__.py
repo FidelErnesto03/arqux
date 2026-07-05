@@ -79,12 +79,13 @@ _register(_spec(
 # Project module (5 handlers)
 _register(_spec(
     "project.init", project.init_project,
-    "Initialize .arqux/ in a project directory and register it in the workspace.",
+    "Initialize .arqux/ in a project directory and register it in the\nworkspace.",
     {
         "type": "object",
         "properties": {
-            "name": {"type": "string"},
-            "path": {"type": "string"},
+            "name": {"type": "string", "description": "Project name"},
+            "path": {"type": "string", "description": "Path to project root. Defaults to cwd."},
+            "seed": {"type": "string", "description": "Optional pre-prepared brain.cortex CORTEX content.\nWhen provided, writes it directly as brain.cortex in one step.\nUse when the agent has already studied the project context\nand can provide FCS, OBJ, RSK, KNW, etc. directly."},
         },
         "required": ["name"],
     },
