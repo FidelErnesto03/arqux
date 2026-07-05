@@ -136,6 +136,8 @@ HDL:protocol_handlers{ 4 handlers: adopt(agent_id, role, path?), release(agent_i
 
 HDL:cortex_handlers{ 4 utility handlers: read(path), write(path, content, force?), verify(path), render(path) }
 
+HDL:identity_record{ 1 handler: record(lesson, kind?, cause?, agent_id?, path?). Appends a behavioral lesson to the agent's identity file at .arqux/identities/<agent>.cortex. This is how identities evolve — each significant behavioral lesson becomes permanent. }
+
 AXM:handlers_only{ Governance state is mutated exclusively via MCP handlers. No direct file editing of .cortex governance files. The handler is the interface. The file is the storage. }
 
 LIM:no_direct_edit{ limit:"Never edit brain.cortex, manifest.cortex, or task files directly. Use the MCP handlers.", severity:"blocking" }
