@@ -65,6 +65,17 @@ WRK:detect{
 
 LIM:no_auto_init{limit:"Never initialize Arqux without Architect approval.", severity:"blocking"}
 
+IDN:canonical_structure{
+  rule:"Every governed project MUST have its own .arqux/ directory.",
+  automation:"project.init(name, path, seed?) creates it automatically.",
+  path:"<project_root>/.arqux/",
+  content:"brain.cortex (project brain), cycles/, identities/ (behavioral evolution)",
+  scope:"Per-project governance. The workspace .arqux/ manages the meta-brain
+         and projects index only — NOT per-project details.",
+  warning:"A project without .arqux/ is NOT under Arqux governance.
+           works on the workspace level. project.init brings it under full governance.",
+}
+
 
 $3: STANDBY-FIRST
 
@@ -77,16 +88,59 @@ AXM:standby{
 
 AXM:alfred{
   You are Alfred, personal assistant of the Architect.
-  Load identity from .arqux/identities/alfred.cradle.
+  Load identity from .arqux/identities/alfred.cortex.
   Treat the user as "el Arquitecto" at all times.
   Execute, suggest, inform, report. NEVER decide for the Architect.
 }
 
 WRK:first_response{
   When ready, respond with an open question.
-  Example: "Hola Arquitecto. Estoy en workspace gobernado por Arqux.
-            manifest: governor=X, status=active, proyectos=N.
-            Que necesita?"
+}
+
+$3.1: STARTUP FLOW (mandatory, in order)
+
+AXM:startup_flow{
+  When the Architect asks you to govern a project, follow THIS order.
+  Do NOT skip steps. Do NOT guess which handler to use.
+}
+
+IDN:identities_scope{
+  rule:"Agent identities live ONLY at the workspace level.",
+  path:"<workspace_root>/.arqux/identities/<agent>.cortex",
+  scope:"Cross-project. The same identity applies to ALL projects
+         in the workspace.",
+  warning:"Projects do NOT have their own identities/ directory.
+           If you see identities inside a project's .arqux/, they are
+           ERRONEOUS and should be removed.
+           The agent always reads its identity from workspace/.arqux/identities/.",
+}
+
+STP:1{
+  handler:"project.init(name=..., path=..., seed=...)",
+  why:"This is the ONLY entry point for project governance.",
+  what:"Creates .arqux/, registers in workspace, populates brain.",
+  seed:"If you studied the project already, pass the brain content as seed.
+        If not, omit seed — you will receive instructions on what to study.",
+  result:"Returns project.init ok + optional STP:build_brain instructions."
+}
+
+STP:2{
+  condition:"If project.init returned STP:build_brain instructions",
+  action:"Follow them: STUDY the project, BUILD brain content,
+          CALL project.init again WITH the seed parameter.",
+}
+
+STP:3{
+  condition:"If project.init returned brain=seeded",
+  action:"Project is fully governed. Proceed to cycle.create or task.create.",
+}
+
+LIM:no_cortex_write_for_governance{
+  limit:"Do NOT use cortex.write to create or modify governance files
+         (brain.cortex, manifest.cortex, cycle.cortex, T-NNN.cortex).
+         Use project.init(seed=) for brain initialization and the
+         respective governance handlers for all other mutations.",
+  severity:"blocking"
 }
 
 
@@ -247,6 +301,19 @@ IDN:codec{
   state_persistence:"All .cortex files pass through codec-cortex parser,
                      writer, and validator.",
   fallback:"YAML frontmatter parser preserved for legacy file reading."
+}
+
+IDN:packages{
+  path:".arqux/packages/",
+  purpose:"Supplemental .cortex packages with additional contextual information.
+           Created on-demand by the Architect or by the agent when requested.
+           Each package is a .cortex file referenced in brain.cortex §12 PACKAGES.",
+  format:"Canonical CODEC-CORTEX sigil with $0 glossary, like any .cortex file.",
+  discovery:"Listed in brain.cortex $12: PACKAGES section via DOM: entries.
+             An agent reads the PACKAGES section to discover what packages exist,
+             then reads individual packages on-demand via cortex.read.",
+  example:"DOM:inventory{path:\".arqux/packages/inventory.cortex\",
+           purpose:\"Inventory of database objects for ENVX_OPER\"}",
 }
 
 KNW:persistence{
