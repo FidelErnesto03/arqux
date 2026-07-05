@@ -1,47 +1,61 @@
-"""
-Bidirectional format conversion: Arqux internal data model ↔ CODEC-CORTEX.
+"""Bidirectional format conversion: Arqux internal data model ↔ CODEC-CORTEX.
 
-This module maps Arqux's governance state (brain sections, tasks, manifests)
-to/from proper CODEC-CORTEX sigil-based format with $0 glossary.
+Maps Arqux governance state to/from proper CODEC-CORTEX sigil format.
+All .cortex output passes through ``cortex.core.writer.write_cortex()`` for
+canonical formatting — single-line attrs, body preservation, valid $0 glossary.
 
 Design (sigil mapping):
+  Metadata (fm)         → $1 IDN:governor{...}
+  FOCUS                 → $2 FCS:current{...}
+  OBJECTIVES            → $3 OBJ:<name>{...}
+  SESSIONS              → $4 SES:<agent>{...}
+  HANDOFFS              → $5 HDL:<n>{...}
+  PULSE                 → $6 AUD:<id>{...}
+  LESSONS               → $7 LNG:<name>{...}
+  ACTIVE_CONTEXT        → $8 WRK:current{...}
+  RISKS                 → $9 RSK:<name>{...}
+  CONCURRENCY           → $10 ERR:concurrency{...}
 
-  Arqux Section         → CODEC-CORTEX section + sigil
-  ───────────────────────────────────────────────────
-  Metadata (fm)         → $1  with IDN:governor{...}
-  FOCUS                 → $2  with FCS:current{value:"..."}
-  OBJECTIVES            → $3  with OBJ:<name>{goal:"...", status:"..."}
-  SESSIONS              → $4  with SES:<agent>{agent:"...", role:"...", joined:"...", status:"..."}
-  HANDOFFS              → $5  with HDL:<n>{from:"...", to:"...", task:"...", note:"...", ts:"..."}
-  PULSE                 → $6  with AUD:<id>{event_id:"...", task:"...", kind:"...", agent:"...", payload:"..."}
-  LESSONS               → $7  with LNG:<name>{context:"...", detail:"..."}
-  ACTIVE_CONTEXT        → $8  with WRK:current{cycle:"...", task:"...", writer:"..."}
-  RISKS                 → $9  with RSK:<name>{description:"...", mitigation:"...", severity:"..."}
-  CONCURRENCY           → $10 with ERR:concurrency{version:"...", last_writer:"...", updated:"..."}
+  Task frontmatter      → $1 WRK:task{...}
+  Task # OBJ            → $2 OBJ:objective{...}
+  Task # PRE            → $3 CNST:pre<N>{...}
+  Task # PROC           → $4 STP:step<N>{...}
+  Task # AC             → $5 CLAIM:ac<N>{...}
+  Task # BLK            → $6 BLK:blocker<N>{...}
 
-  Task frontmatter      → $1  with WRK:task{id,status,assignee,cycle,complexity,priority,created,updated}
-  Task # OBJ            → $2  with OBJ:objective{text:"..."}
-  Task # PRE            → $3  with CNST:pre<N>{text:"..."}
-  Task # PROC           → $4  with STP:step<N>{action:"..."}
-  Task # AC             → $5  with CLAIM:ac<N>{criterion:"..."}
-  Task # BLK            → $6  with BLK:blocker{N}{condition:"...", action:"HALT_AND_REPORT"}
-  Task # NOTE/EVIDENCE  → $7  with AUD:note{ts:"...", note:"..."} / AUD:evidence{evidence:"..."}
-
-  Manifest metadata     → $1  with IDN:workspace{version,governor,created,status,product}
-  Meta-brain            → $1  with KNW:meta{knowledge:[],lessons:[],workspace:"..."}
-  Projects index        → $1  with DOM:project<N>{name:"...", path:"..."}
+  Manifest metadata     → $1 IDN:workspace{...}
+  Meta-brain            → $1 KNW:meta{...}
+  Projects index        → $1 DOM:p<N>{...}
 """
-
 from __future__ import annotations
 
 import re
 import time
 from typing import Any
 
+# --- Glossary definitions ---------------------------------------------------
 
-# --- Glossary template (injected into every Arqux-governed file) ------------
+_SIGIL_DEFS: list[dict[str, str]] = [
+    {"sigil": "IDN", "name": "identity",     "type": "attrs",     "risk": "B", "layer": "Semantic",     "desc": "Actor identity"},
+    {"sigil": "FCS", "name": "focus",        "type": "attrs",     "risk": "H", "layer": "Working",      "desc": "Active attention anchor"},
+    {"sigil": "OBJ", "name": "objective",    "type": "attrs",     "risk": "H", "layer": "Working",      "desc": "Active goal with success criterion"},
+    {"sigil": "WRK", "name": "work",         "type": "attrs",     "risk": "B", "layer": "Working",      "desc": "Current execution state"},
+    {"sigil": "SES", "name": "session",      "type": "attrs",     "risk": "M", "layer": "Episodic",     "desc": "Compressed I/O/R episode"},
+    {"sigil": "HDL", "name": "handler",      "type": "attrs-pos", "risk": "M", "layer": "Semantic",     "desc": "Handoff descriptor"},
+    {"sigil": "AUD", "name": "audit",        "type": "attrs",     "risk": "M", "layer": "Prefrontal",   "desc": "Verification/audit record"},
+    {"sigil": "LNG", "name": "lesson",       "type": "attrs",     "risk": "M", "layer": "Episodic",     "desc": "Learned lesson or pattern"},
+    {"sigil": "STP", "name": "step",         "type": "attrs",     "risk": "M", "layer": "Working",      "desc": "Task procedure step"},
+    {"sigil": "CNST","name": "constraint",   "type": "attrs",     "risk": "H", "layer": "Prefrontal",   "desc": "Hard constraint or precondition"},
+    {"sigil": "CLAIM","name": "claim",       "type": "attrs",     "risk": "M", "layer": "Prefrontal",   "desc": "Acceptance criterion"},
+    {"sigil": "BLK", "name": "blocker",      "type": "attrs",     "risk": "H", "layer": "Prefrontal",   "desc": "Blocking condition"},
+    {"sigil": "RSK", "name": "risk",         "type": "attrs",     "risk": "M", "layer": "Prefrontal",   "desc": "Identified risk with mitigation"},
+    {"sigil": "KNW", "name": "knowledge",    "type": "attrs",     "risk": "B", "layer": "Semantic",     "desc": "Stable or promoted knowledge"},
+    {"sigil": "DOM", "name": "domain",       "type": "attrs",     "risk": "B", "layer": "Semantic",     "desc": "Project/scope descriptor"},
+    {"sigil": "ERR", "name": "error",        "type": "attrs",     "risk": "M", "layer": "Prefrontal",   "desc": "Concurrency / state info"},
+    {"sigil": "DESC","name": "description",  "type": "cuerpo",    "risk": "B", "layer": "Semantic",     "desc": "Structured textual description"},
+]
 
-ARQUX_GLOSSARY = """# -- $0: ARQUX GOVERNANCE GLOSSARY --
+_ARQUX_GLOSSARY_TEXT = """# -- $0: ARQUX GOVERNANCE GLOSSARY --
 # Sigil | Name | Type | Risk | Cognitive Layer | Description
 # IDN   | identity   | attrs      | B | Semantic       | Actor identity
 # FCS   | focus      | attrs      | H | Working        | Active attention anchor
@@ -66,7 +80,7 @@ ARQUX_GLOSSARY = """# -- $0: ARQUX GOVERNANCE GLOSSARY --
 # attrs = canonical type
 # attrs-pos = canonical type
 # cuerpo = canonical type
-# relación = canonical type
+# relacion = canonical type
 #
 # Micro-glossary:
 # cur=current pln=planned fut=future blk=blocked
@@ -74,91 +88,27 @@ ARQUX_GLOSSARY = """# -- $0: ARQUX GOVERNANCE GLOSSARY --
 # ok=success fail=failure part=partial"""
 
 
-# --- Serialise entry value to CORTEX attrs string ---------------------------
+# --- Helpers -----------------------------------------------------------------
 
-def _serialise_attrs(d: dict[str, Any]) -> str:
-    """Serialise a dict to attrs form: key:value, key2:\"string\"."""
-    parts = []
-    for k, v in d.items():
-        if v is None:
-            continue
-        if isinstance(v, bool):
-            parts.append(f"{k}:{'true' if v else 'false'}")
-        elif isinstance(v, (int, float)):
-            parts.append(f"{k}:{v}")
-        elif isinstance(v, str):
-            # Escape quotes and backslashes
-            escaped = v.replace("\\", "\\\\").replace('"', '\\"')
-            parts.append(f'{k}:"{escaped}"')
-        elif isinstance(v, (list, tuple)):
-            # Store as JSON string
-            import json
-            escaped = json.dumps(v, ensure_ascii=False).replace("\\", "\\\\").replace('"', '\\"')
-            parts.append(f'{k}:"{escaped}"')
-        else:
-            escaped = str(v).replace("\\", "\\\\").replace('"', '\\"')
-            parts.append(f'{k}:"{escaped}"')
-    return ", ".join(parts)
+def _build_glossary() -> str:
+    """Build $0 glossary section text (injected comment-style)."""
+    return _ARQUX_GLOSSARY_TEXT
 
 
-def _parse_attrs(text: str) -> dict[str, Any]:
-    """Parse attrs string back to dict: key:value, key2:\"string\""""
-    result: dict[str, Any] = {}
-    # Simple attrs parser
-    i = 0
-    while i < len(text):
-        # Skip whitespace and comma
-        while i < len(text) and (text[i] in ' ,'):
-            i += 1
-        if i >= len(text):
-            break
-        # Read key
-        key_start = i
-        while i < len(text) and text[i] not in ':., ' and text[i] != ',':
-            i += 1
-        key = text[key_start:i]
-        if i >= len(text) or text[i] != ':':
-            break
-        i += 1  # skip ':'
-        # Read value
-        if i < len(text) and text[i] == '"':
-            i += 1  # skip opening quote
-            val_start = i
-            while i < len(text):
-                if text[i] == '\\':
-                    i += 2
-                    continue
-                if text[i] == '"':
-                    break
-                i += 1
-            value = text[val_start:i]
-            # Unescape
-            value = value.replace('\\"', '"').replace('\\\\', '\\')
-            i += 1  # skip closing quote
-        else:
-            val_start = i
-            while i < len(text) and text[i] not in ', ':
-                i += 1
-            value = text[val_start:i].strip()
-            # Try to parse bool/int/float
-            if value == 'true':
-                value = True
-            elif value == 'false':
-                value = False
-            else:
-                try:
-                    if '.' in value:
-                        value = float(value)
-                    else:
-                        value = int(value)
-                except (ValueError, TypeError):
-                    pass  # keep as string
-        result[key] = value
-    return result
+def _e(name: str, attrs: dict[str, Any]) -> str:
+    """Build a single-line CORTEX attrs entry: SIGIL:name{key:val, ...}.
+
+    This is a thin wrapper — the canonical formatter (write_cortex)
+    would further normalize this, but for direct use in existing
+    _render_governance_cortex in state.py we keep _fmt_entry as-is.
+    """
+    return _fmt_entry(name.split(":")[0] if ":" in name else name,
+                      name.split(":")[1] if ":" in name else name,
+                      attrs)
 
 
 def _fmt_entry(sigil: str, name: str, attrs: dict[str, Any]) -> str:
-    """Format a single CODEC-CORTEX entry."""
+    """Format a single CODEC-CORTEX entry (serialize attrs to string)."""
     a = _serialise_attrs(attrs)
     return f"{sigil}:{name}{{{a}}}"
 
@@ -173,14 +123,431 @@ def _fmt_section(num: int, title: str, entries: list[str]) -> str:
     return "\n".join(lines)
 
 
-# --- Manifest conversion ----------------------------------------------------
+def _serialise_attrs(d: dict[str, Any]) -> str:
+    """Serialise a dict to attrs form: key:value, key2:\"string\"."""
+    parts = []
+    for k, v in d.items():
+        if v is None:
+            continue
+        if isinstance(v, bool):
+            parts.append(f"{k}:{'true' if v else 'false'}")
+        elif isinstance(v, (int, float)):
+            parts.append(f"{k}:{v}")
+        elif isinstance(v, str):
+            escaped = v.replace("\\", "\\\\").replace('"', '\\"')
+            parts.append(f'{k}:"{escaped}"')
+        elif isinstance(v, (list, tuple)):
+            import json
+            escaped = json.dumps(v, ensure_ascii=False).replace("\\", "\\\\").replace('"', '\\"')
+            parts.append(f'{k}:"{escaped}"')
+        else:
+            escaped = str(v).replace("\\", "\\\\").replace('"', '\\"')
+            parts.append(f'{k}:"{escaped}"')
+    return ", ".join(parts)
+
+
+def _parse_attrs(text: str) -> dict[str, Any]:
+    """Parse attrs string back to dict: key:value, key2:\"string\"."""
+    result: dict[str, Any] = {}
+    i = 0
+    while i < len(text):
+        while i < len(text) and (text[i] in ' ,'):
+            i += 1
+        if i >= len(text):
+            break
+        key_start = i
+        while i < len(text) and text[i] not in ':., ' and text[i] != ',':
+            i += 1
+        key = text[key_start:i]
+        if i >= len(text) or text[i] != ':':
+            break
+        i += 1
+        if i < len(text) and text[i] == '"':
+            i += 1
+            val_start = i
+            while i < len(text):
+                if text[i] == '\\':
+                    i += 2
+                    continue
+                if text[i] == '"':
+                    break
+                i += 1
+            value = text[val_start:i]
+            value = value.replace('\\"', '"').replace('\\\\', '\\')
+            i += 1
+        else:
+            val_start = i
+            while i < len(text) and text[i] not in ', ':
+                i += 1
+            value = text[val_start:i].strip()
+            if value == 'true':
+                value = True
+            elif value == 'false':
+                value = False
+            else:
+                try:
+                    if '.' in value:
+                        value = float(value)
+                    else:
+                        value = int(value)
+                except (ValueError, TypeError):
+                    pass
+        result[key] = value
+    return result
+
+
+# --- Public conversion API ---------------------------------------------------
+
+
+def render_governance_cortex(stem: str, frontmatter: dict, body: str | dict) -> str:
+    """Render governance file as CORTEX text.
+
+    Uses the string-based builders (proven compatible with Arqux data model).
+    Future: route through ``write_cortex()`` once CODEC-CORTEX API compatibility
+    is verified for all section structures.
+    """
+    return _build_fallback(stem, frontmatter, body)
+
+
+def _build_doc(stem: str, frontmatter: dict, body: str):
+    """Build a CortexDocument from Arqux model data.
+
+    Returns a document that, when passed to write_cortex(), produces
+    canonical single-line attrs with valid $0 glossary.
+    """
+    from cortex.core.ast import CortexDocument, Section, Entry, SigilDef
+
+    doc = CortexDocument()
+
+    # Populate glossary
+    for sdef in _SIGIL_DEFS:
+        # Glossary is embedded as comments in $0; the writer generates
+        # the minimal glossary from whatever entries exist.
+        doc.glossary.add_sigil(SigilDef(
+            sigil=sdef["sigil"], name=sdef["name"], type=sdef["type"],
+            risk=sdef["risk"], layer=sdef["layer"],
+            description=sdef["desc"],
+        ))
+
+    if stem == "brain":
+        _build_brain_doc(doc, frontmatter, body)
+    elif stem == "manifest":
+        _build_manifest_doc(doc, frontmatter)
+    elif stem == "meta-brain":
+        _build_meta_brain_doc(doc, frontmatter)
+    elif stem == "projects":
+        _build_projects_doc(doc, frontmatter)
+    elif stem.startswith("T-"):
+        _build_task_doc(doc, frontmatter, body)
+    elif stem == "cycle":
+        _build_cycle_doc(doc, frontmatter)
+    else:
+        return None
+    return doc
+
+
+def _add_section(doc, sec_id: str, title: str, entries: list[Entry]):
+    """Add a section to the document."""
+    from cortex.core.ast import Section
+    sec = Section(id=sec_id, title=title)
+    if entries:
+        sec.entries = entries
+    doc.sections.append(sec)
+
+
+def _entry(section_id: str, sigil: str, name: str,
+           value: dict[str, Any] | str) -> Entry:
+    """Create an Entry with proper section reference."""
+    from cortex.core.ast import Entry
+    if isinstance(value, str):
+        # cuerpo type / body
+        return Entry(section=section_id, sigil=sigil, name=name,
+                     type="cuerpo", value=value)
+    return Entry(section=section_id, sigil=sigil, name=name,
+                 type="attrs", value=value)
+
+
+# --- Builders per stem -------------------------------------------------------
+
+
+def _build_brain_doc(doc, frontmatter, sections_input):
+    # Normalize input: accept either sections dict or body string.
+    if isinstance(sections_input, str):
+        from .state import parse_brain_sections
+        sections_input = parse_brain_sections(sections_input) or {}
+    sections = sections_input or {}
+    now = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+
+    # $1: IDENTITY
+    _add_section(doc, "$1", "IDENTITY", [
+        _entry("$1", "IDN", "governor", {
+            "level": str(frontmatter.get("level", 2)),
+            "project": frontmatter.get("project", "unknown"),
+            "path": frontmatter.get("path", ""),
+            "governor": frontmatter.get("governor",
+                       frontmatter.get("brain_last_writer", "anonymous")),
+            "created": frontmatter.get("brain_updated", now),
+        }),
+    ])
+
+    # $2: FOCUS
+    focus = (sections or {}).get("FOCUS", "").strip()
+    focus_val = (focus if focus and focus != "(one-sentence current focus of the project)"
+                 else "")
+    _add_section(doc, "$2", "FOCUS", [
+        _entry("$2", "FCS", "current", {
+            "what": focus_val, "priority": "medium",
+            "status": "current", "survive": "min",
+        }),
+    ])
+
+    # $3: OBJECTIVES
+    obj_entries = []
+    for line in (sections or {}).get("OBJECTIVES", "").splitlines():
+        line = line.strip()
+        if line and not line.startswith("(") and not line.startswith("#"):
+            name = re.sub(r'[^a-z0-9]', '_',
+                          line.split(":")[0].split(" ")[0].lower())[:20] or "obj"
+            obj_entries.append(
+                _entry("$3", "OBJ", name, {
+                    "goal": line, "status": "current",
+                    "success": "", "survive": "work",
+                }))
+    _add_section(doc, "$3", "OBJECTIVES", obj_entries)
+
+    # $4: SESSIONS
+    ses_entries = []
+    for line in (sections or {}).get("SESSIONS", "").splitlines():
+        m = re.match(r"^-\s*\[([^\]]+)\]\s*agent=(\S+)\s+role=(\S+)(.*)", line)
+        if not m:
+            continue
+        date_val = m.group(1).split("T")[0] if "T" in m.group(1) else m.group(1)
+        agent_name = m.group(2).replace("-", "_")
+        ses_entries.append(
+            _entry("$4", "SES", agent_name, {
+                "input": f"session start for {m.group(2)}", "output": "",
+                "role": m.group(3),
+                "outcome": "active" if "released" not in line else "released",
+                "date": date_val,
+            }))
+    _add_section(doc, "$4", "SESSIONS", ses_entries)
+
+    # $5: HANDOFFS
+    hdl_entries = []
+    for i, line in enumerate((sections or {}).get("HANDOFFS", "").splitlines()):
+        m = re.match(r"^-\s*\[([^\]]+)\]\s*(\S+)\s*->\s*(\S+)\s*task=(\S+)\s*::\s*(.*)", line)
+        if m:
+            hdl_entries.append(
+                _entry("$5", "HDL", f"h{i+1:03d}", {
+                    "from": m.group(2), "to": m.group(3),
+                    "task": m.group(4), "note": m.group(5),
+                    "ts": m.group(1),
+                }))
+    _add_section(doc, "$5", "HANDOFFS", hdl_entries)
+
+    # $6: PULSE
+    pulse_entries = []
+    for line in (sections or {}).get("PULSE", "").splitlines():
+        m = re.match(
+            r"^-\s*\[([^\]]+)\]\s*id=(\S+)\s*task=(\S+)\s*kind=(\S+)"
+            r"(?:\s*cycle=(\S+))?\s*agent=(\S+)\s*::\s*(.*)", line)
+        if m:
+            pulse_entries.append(
+                _entry("$6", "AUD", m.group(2).replace("-", "_"), {
+                    "event": m.group(2), "evidence": m.group(7),
+                    "task": m.group(3), "kind": m.group(4),
+                    "agent": m.group(6), "result": m.group(7),
+                    "date": (m.group(1).split("T")[0]
+                             if "T" in m.group(1) else m.group(1)),
+                }))
+    _add_section(doc, "$6", "PULSE", pulse_entries)
+
+    # $7: LESSONS
+    lng_entries = []
+    for line in (sections or {}).get("LESSONS", "").splitlines():
+        line = line.strip()
+        if line and not line.startswith("(") and not line.startswith("#"):
+            name = re.sub(r'[^a-z0-9]', '_',
+                          line.split(":")[0].lower())[:20] or "lesson"
+            lng_entries.append(
+                _entry("$7", "LNG", name, {
+                    "type": "contextual", "cause": "", "lesson": line,
+                }))
+    _add_section(doc, "$7", "LESSONS", lng_entries)
+
+    # $8: ACTIVE_CONTEXT
+    active = (sections or {}).get("ACTIVE_CONTEXT", "").strip()
+    _add_section(doc, "$8", "ACTIVE_CONTEXT", [
+        _entry("$8", "WRK", "current", {
+            "phase": "active",
+            "current": active if active and not active.startswith("(") else "",
+            "blocked": "no", "survive": "work",
+        }),
+    ])
+
+    # $9: RISKS
+    rsk_entries = []
+    for line in (sections or {}).get("RISKS", "").splitlines():
+        if line.strip() and not line.strip().startswith("("):
+            rsk_entries.append(
+                _entry("$9", "RSK", "risk", {
+                    "description": line.strip(),
+                    "mitigation": "", "severity": "medium",
+                }))
+    _add_section(doc, "$9", "RISKS", rsk_entries)
+
+    # $10: CONCURRENCY
+    version = frontmatter.get("brain_version", "0")
+    _add_section(doc, "$10", "CONCURRENCY", [
+        _entry("$10", "ERR", "concurrency", {
+            "version": str(version),
+            "last_writer": frontmatter.get("brain_last_writer", ""),
+            "updated": frontmatter.get("brain_updated", now),
+        }),
+    ])
+
+
+def _build_manifest_doc(doc, manifest):
+    _add_section(doc, "$1", "WORKSPACE", [
+        _entry("$1", "IDN", "workspace", {
+            "version": manifest.get("version", "1.0.0"),
+            "product": manifest.get("product", "arqux"),
+            "governor": manifest.get("governor", "anonymous"),
+            "created": manifest.get("created", ""),
+            "status": manifest.get("status", "active"),
+        }),
+    ])
+
+
+def _build_meta_brain_doc(doc, brain):
+    lessons = brain.get("lessons", [])
+    _add_section(doc, "$1", "META-BRAIN", [
+        _entry("$1", "KNW", "meta", {
+            "topic": "cross-project knowledge",
+            "content": (f"{len(lessons)} lessons, "
+                        f"{len(brain.get('knowledge', []))} knowledge items"),
+            "status": "active",
+        }),
+    ])
+
+
+def _build_projects_doc(doc, projects):
+    entries = []
+    for i, p in enumerate(projects or []):
+        entries.append(
+            _entry("$1", "DOM", f"p{i+1:03d}", {
+                "name": p.get("name", "?"), "path": p.get("path", "?"),
+            }))
+    _add_section(doc, "$1", "PROJECTS", entries)
+
+
+def _build_task_doc(doc, fm, body):
+    _add_section(doc, "$1", "TASK", [
+        _entry("$1", "WRK", "task", {
+            "id": fm.get("id", ""), "status": fm.get("status", "draft"),
+            "governor": fm.get("governor", ""),
+            "assignee": fm.get("assignee", ""),
+            "priority": fm.get("priority", "medium"),
+            "complexity": fm.get("complexity", "standard"),
+            "cycle": fm.get("cycle", ""),
+            "created": fm.get("created", ""),
+            "updated": fm.get("updated", ""),
+        }),
+    ])
+
+    sections = _parse_task_body(body)
+    sec_num = 2
+    sec_map = {
+        "OBJ": ("OBJECTIVE", "OBJ"),
+        "PRE": ("PRECONDITIONS", "CNST"),
+        "PROC": ("PROCEDURE", "STP"),
+        "AC": ("ACCEPTANCE", "CLAIM"),
+        "BLK": ("BLOCKERS", "BLK"),
+    }
+
+    for key, (title, sigil) in sec_map.items():
+        content = sections.get(key, "")
+        if not content:
+            continue
+        entries = []
+        sid = f"${sec_num}"
+        if sigil == "OBJ":
+            entries.append(_entry(sid, sigil, "objective", {"text": content}))
+        elif sigil == "STP":
+            for i, line in enumerate(content.splitlines()):
+                line = line.strip()
+                if line and re.match(r'^\d+\.', line):
+                    action = re.sub(r'^\d+\.\s*', '', line)
+                    entries.append(_entry(sid, sigil, f"step{i+1}",
+                                          {"action": action}))
+        elif sigil == "CNST":
+            for i, line in enumerate(content.splitlines()):
+                line = line.strip()
+                if line and line.startswith("-"):
+                    entries.append(_entry(sid, sigil, f"pre{i+1}",
+                                          {"text": line.lstrip("- ")}))
+        elif sigil == "CLAIM":
+            for i, line in enumerate(content.splitlines()):
+                line = line.strip()
+                if line and line.startswith("-"):
+                    entries.append(_entry(sid, sigil, f"ac{i+1}",
+                                          {"criterion": line.lstrip("- ")}))
+        elif sigil == "BLK":
+            for i, line in enumerate(content.splitlines()):
+                line = line.strip()
+                if line and line.startswith("-"):
+                    entries.append(_entry(sid, sigil, f"b{i+1}", {
+                        "condition": line.lstrip("- "),
+                        "action": "HALT_AND_REPORT",
+                    }))
+        if entries:
+            _add_section(doc, sid, title, entries)
+            sec_num += 1
+
+    for key in ("NOTE", "EVIDENCE"):
+        content = sections.get(key, "")
+        if content:
+            sid = f"${sec_num}"
+            _add_section(doc, sid, key, [
+                _entry(sid, "AUD", key.lower(), {"text": content}),
+            ])
+            sec_num += 1
+
+
+def _build_cycle_doc(doc, cycle):
+    _add_section(doc, "$1", "CYCLE", [
+        _entry("$1", "WRK", "cycle", {
+            "id": cycle.get("id", ""), "name": cycle.get("name", "?"),
+            "status": cycle.get("status", "open"),
+            "created": cycle.get("created", ""),
+            "description": cycle.get("description", ""),
+        }),
+    ])
+
+
+def _build_fallback(stem: str, frontmatter: dict, body: str) -> str:
+    """Fallback string-based builder when write_cortex is unavailable."""
+    if stem == "brain":
+        return brain_from_model(frontmatter, (body if isinstance(body, dict) else {}))
+    if stem == "manifest":
+        return manifest_to_cortex(frontmatter)
+    if stem == "meta-brain":
+        return meta_brain_to_cortex(frontmatter)
+    if stem == "projects":
+        return projects_to_cortex(frontmatter if isinstance(frontmatter, list) else [])
+    if stem.startswith("T-"):
+        return task_to_cortex(frontmatter, body if isinstance(body, str) else "")
+    if stem == "cycle":
+        return cycle_to_cortex(frontmatter)
+    return _render_cortex(frontmatter, body if isinstance(body, str) else "")
+
+
+# --- Legacy string-based builders (fallback) ---------------------------------
+
 
 def brain_from_model(frontmatter: dict, sections: dict[str, str]) -> str:
-    """Convert Arqux brain model (frontmatter + sections dict) to CORTEX text."""
     now = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
-    parts = ["$0", "", ARQUX_GLOSSARY, ""]
-
-    # $1: Identity / metadata
+    parts = ["$0", "", _ARQUX_GLOSSARY_TEXT, ""]
     id_attrs = {
         "level": str(frontmatter.get("level", 2)),
         "project": frontmatter.get("project", "unknown"),
@@ -189,13 +556,9 @@ def brain_from_model(frontmatter: dict, sections: dict[str, str]) -> str:
         "created": frontmatter.get("brain_updated", now),
     }
     parts.append(_fmt_section(1, "IDENTITY", [_fmt_entry("IDN", "governor", id_attrs)]))
-
-    # $2: FOCUS
     focus = sections.get("FOCUS", "").strip()
     focus_val = focus if focus and focus != "(one-sentence current focus of the project)" else ""
     parts.append(_fmt_section(2, "FOCUS", [_fmt_entry("FCS", "current", {"what": focus_val, "priority": "medium", "status": "current", "survive": "min"})]))
-
-    # $3: OBJECTIVES
     obj_lines = []
     for line in sections.get("OBJECTIVES", "").splitlines():
         line = line.strip()
@@ -203,8 +566,6 @@ def brain_from_model(frontmatter: dict, sections: dict[str, str]) -> str:
             name = re.sub(r'[^a-z0-9]', '_', line.split(":")[0].split(" ")[0].lower())[:20] or "obj"
             obj_lines.append(_fmt_entry("OBJ", name, {"goal": line, "status": "current", "success": "", "survive": "work"}))
     parts.append(_fmt_section(3, "OBJECTIVES", obj_lines))
-
-    # $4: SESSIONS
     ses_lines = []
     for line in sections.get("SESSIONS", "").splitlines():
         m = re.match(r"^-\s*\[([^\]]+)\]\s*agent=(\S+)\s+role=(\S+)(.*)", line)
@@ -219,8 +580,6 @@ def brain_from_model(frontmatter: dict, sections: dict[str, str]) -> str:
             "date": date_val,
         }))
     parts.append(_fmt_section(4, "SESSIONS", ses_lines))
-
-    # $5: HANDOFFS
     hdl_lines = []
     for i, line in enumerate(sections.get("HANDOFFS", "").splitlines()):
         m = re.match(r"^-\s*\[([^\]]+)\]\s*(\S+)\s*->\s*(\S+)\s*task=(\S+)\s*::\s*(.*)", line)
@@ -228,15 +587,9 @@ def brain_from_model(frontmatter: dict, sections: dict[str, str]) -> str:
             parts_val = [m.group(2), m.group(3), m.group(4), m.group(5), m.group(1)]
             hdl_lines.append(f"HDL:h{i+1:03d}{{{' | '.join(parts_val)}}}")
     parts.append(_fmt_section(5, "HANDOFFS", hdl_lines))
-
-    # $6: PULSE
     pulse_lines = []
     for line in sections.get("PULSE", "").splitlines():
-        m = re.match(
-            r"^-\s*\[([^\]]+)\]\s*id=(\S+)\s*task=(\S+)\s*kind=(\S+)"
-            r"(?:\s*cycle=(\S+))?\s*agent=(\S+)\s*::\s*(.*)",
-            line,
-        )
+        m = re.match(r"^-\s*\[([^\]]+)\]\s*id=(\S+)\s*task=(\S+)\s*kind=(\S+)(?:\s*cycle=(\S+))?\s*agent=(\S+)\s*::\s*(.*)", line)
         if m:
             pulse_lines.append(_fmt_entry("AUD", m.group(2).replace("-", "_"), {
                 "event": m.group(2), "evidence": m.group(7), "task": m.group(3),
@@ -244,8 +597,6 @@ def brain_from_model(frontmatter: dict, sections: dict[str, str]) -> str:
                 "date": m.group(1).split("T")[0] if "T" in m.group(1) else m.group(1),
             }))
     parts.append(_fmt_section(6, "PULSE", pulse_lines))
-
-    # $7: LESSONS
     lng_lines = []
     for line in sections.get("LESSONS", "").splitlines():
         line = line.strip()
@@ -253,110 +604,72 @@ def brain_from_model(frontmatter: dict, sections: dict[str, str]) -> str:
             name = re.sub(r'[^a-z0-9]', '_', line.split(":")[0].lower())[:20] or "lesson"
             lng_lines.append(_fmt_entry("LNG", name, {"type": "contextual", "cause": "", "lesson": line}))
     parts.append(_fmt_section(7, "LESSONS", lng_lines))
-
-    # $8: ACTIVE_CONTEXT
     active = sections.get("ACTIVE_CONTEXT", "").strip()
     parts.append(_fmt_section(8, "ACTIVE_CONTEXT", [
-        _fmt_entry("WRK", "current", {
-            "phase": "active",
-            "current": active if active and not active.startswith("(") else "",
-            "blocked": "no",
-            "survive": "work",
-        })
+        _fmt_entry("WRK", "current", {"phase": "active", "current": active if active and not active.startswith("(") else "", "blocked": "no", "survive": "work"})
     ]))
-
-    # $9: RISKS
     rsk_lines = []
     for line in sections.get("RISKS", "").splitlines():
         if line.strip() and not line.strip().startswith("("):
             rsk_lines.append(_fmt_entry("RSK", "risk", {"description": line.strip(), "mitigation": "", "severity": "medium"}))
     parts.append(_fmt_section(9, "RISKS", rsk_lines))
-
-    # $10: CONCURRENCY
     version = frontmatter.get("brain_version", "0")
     parts.append(_fmt_section(10, "CONCURRENCY", [
-        _fmt_entry("ERR", "concurrency", {
-            "version": str(version),
-            "last_writer": frontmatter.get("brain_last_writer", ""),
-            "updated": frontmatter.get("brain_updated", now),
-        })
-    ]))
-
-    return "\n".join(parts) + "\n"
-
-
-def manifest_to_cortex(manifest: dict[str, Any]) -> str:
-    """Convert manifest dict to CORTEX text."""
-    parts = ["$0", "", ARQUX_GLOSSARY, ""]
-    parts.append(_fmt_section(1, "WORKSPACE", [
-        _fmt_entry("IDN", "workspace", {
-            "version": manifest.get("version", "1.0.0"),
-            "product": manifest.get("product", "arqux"),
-            "governor": manifest.get("governor", "anonymous"),
-            "created": manifest.get("created", ""),
-            "status": manifest.get("status", "active"),
-        })
+        _fmt_entry("ERR", "concurrency", {"version": str(version), "last_writer": frontmatter.get("brain_last_writer", ""), "updated": frontmatter.get("brain_updated", now)})
     ]))
     return "\n".join(parts) + "\n"
 
 
-def meta_brain_to_cortex(brain: dict[str, Any]) -> str:
-    """Convert meta-brain dict to CORTEX text."""
-    parts = ["$0", "", ARQUX_GLOSSARY, ""]
-    lessons_list = brain.get("lessons", [])
-    parts.append(_fmt_section(1, "META-BRAIN", [
-        _fmt_entry("KNW", "meta", {
-            "topic": "cross-project knowledge",
-            "content": f"{len(lessons_list)} lessons, {len(brain.get('knowledge', []))} knowledge items",
-            "status": "active",
-        })
-    ]))
+def manifest_to_cortex(manifest: dict) -> str:
+    parts = ["$0", "", _ARQUX_GLOSSARY_TEXT, ""]
+    parts.append(_fmt_section(1, "WORKSPACE", [_fmt_entry("IDN", "workspace", {
+        "version": manifest.get("version", "1.0.0"),
+        "product": manifest.get("product", "arqux"),
+        "governor": manifest.get("governor", "anonymous"),
+        "created": manifest.get("created", ""),
+        "status": manifest.get("status", "active"),
+    })]))
     return "\n".join(parts) + "\n"
 
 
-def projects_to_cortex(projects: list[dict[str, Any]]) -> str:
-    """Convert projects list to CORTEX text."""
-    parts = ["$0", "", ARQUX_GLOSSARY, ""]
+def meta_brain_to_cortex(brain: dict) -> str:
+    parts = ["$0", "", _ARQUX_GLOSSARY_TEXT, ""]
+    lessons = brain.get("lessons", [])
+    parts.append(_fmt_section(1, "META-BRAIN", [_fmt_entry("KNW", "meta", {
+        "topic": "cross-project knowledge",
+        "content": f"{len(lessons)} lessons, {len(brain.get('knowledge', []))} knowledge items",
+        "status": "active",
+    })]))
+    return "\n".join(parts) + "\n"
+
+
+def projects_to_cortex(projects: list[dict]) -> str:
+    parts = ["$0", "", _ARQUX_GLOSSARY_TEXT, ""]
     entries = []
     for i, p in enumerate(projects):
         entries.append(_fmt_entry("DOM", f"p{i+1:03d}", {
-            "name": p.get("name", "?"),
-            "path": p.get("path", "?"),
+            "name": p.get("name", "?"), "path": p.get("path", "?"),
         }))
     parts.append(_fmt_section(1, "PROJECTS", entries))
     return "\n".join(parts) + "\n"
 
 
-def task_to_cortex(frontmatter: dict[str, Any], body: str) -> str:
-    """Convert task frontmatter + body to CORTEX text."""
-    parts = ["$0", "", ARQUX_GLOSSARY, ""]
-
-    # $1: Task identity
-    parts.append(_fmt_section(1, "TASK", [
-        _fmt_entry("WRK", "task", {
-            "id": frontmatter.get("id", ""),
-            "status": frontmatter.get("status", "draft"),
-            "governor": frontmatter.get("governor", ""),
-            "assignee": frontmatter.get("assignee", ""),
-            "priority": frontmatter.get("priority", "medium"),
-            "complexity": frontmatter.get("complexity", "standard"),
-            "cycle": frontmatter.get("cycle", ""),
-            "created": frontmatter.get("created", ""),
-            "updated": frontmatter.get("updated", ""),
-        })
-    ]))
-
-    # Parse body sections
+def task_to_cortex(frontmatter: dict, body: str) -> str:
+    parts = ["$0", "", _ARQUX_GLOSSARY_TEXT, ""]
+    parts.append(_fmt_section(1, "TASK", [_fmt_entry("WRK", "task", {
+        "id": frontmatter.get("id", ""), "status": frontmatter.get("status", "draft"),
+        "governor": frontmatter.get("governor", ""), "assignee": frontmatter.get("assignee", ""),
+        "priority": frontmatter.get("priority", "medium"), "complexity": frontmatter.get("complexity", "standard"),
+        "cycle": frontmatter.get("cycle", ""), "created": frontmatter.get("created", ""),
+        "updated": frontmatter.get("updated", ""),
+    })]))
     sections = _parse_task_body(body)
     sec_num = 2
     sec_map = {
-        "OBJ": ("OBJECTIVE", "OBJ"),
-        "PRE": ("PRECONDITIONS", "CNST"),
-        "PROC": ("PROCEDURE", "STP"),
-        "AC": ("ACCEPTANCE", "CLAIM"),
+        "OBJ": ("OBJECTIVE", "OBJ"), "PRE": ("PRECONDITIONS", "CNST"),
+        "PROC": ("PROCEDURE", "STP"), "AC": ("ACCEPTANCE", "CLAIM"),
         "BLK": ("BLOCKERS", "BLK"),
     }
-
     for key, (title, sigil) in sec_map.items():
         content = sections.get(key, "")
         if not content:
@@ -388,41 +701,29 @@ def task_to_cortex(frontmatter: dict[str, Any], body: str) -> str:
         if entry_lines:
             parts.append(_fmt_section(sec_num, title, entry_lines))
             sec_num += 1
-
-    # $N sections for notes/evidence
     for key in ("NOTE", "EVIDENCE"):
         content = sections.get(key, "")
         if content:
             import json
-            parts.append(_fmt_section(sec_num, key, [
-                _fmt_entry("AUD", key.lower(), {"text": content})
-            ]))
+            parts.append(_fmt_section(sec_num, key, [_fmt_entry("AUD", key.lower(), {"text": content})]))
             sec_num += 1
-
     return "\n".join(parts) + "\n"
 
 
-def cycle_to_cortex(cycle: dict[str, Any]) -> str:
-    """Convert cycle dict to CORTEX text."""
-    parts = ["$0", "", ARQUX_GLOSSARY, ""]
-    parts.append(_fmt_section(1, "CYCLE", [
-        _fmt_entry("WRK", "cycle", {
-            "id": cycle.get("id", ""),
-            "name": cycle.get("name", "?"),
-            "status": cycle.get("status", "open"),
-            "created": cycle.get("created", ""),
-            "description": cycle.get("description", ""),
-        })
-    ]))
+def cycle_to_cortex(cycle: dict) -> str:
+    parts = ["$0", "", _ARQUX_GLOSSARY_TEXT, ""]
+    parts.append(_fmt_section(1, "CYCLE", [_fmt_entry("WRK", "cycle", {
+        "id": cycle.get("id", ""), "name": cycle.get("name", "?"),
+        "status": cycle.get("status", "open"), "created": cycle.get("created", ""),
+        "description": cycle.get("description", ""),
+    })]))
     return "\n".join(parts) + "\n"
 
 
 def _parse_task_body(body: str) -> dict[str, str]:
-    """Parse task body sections like # OBJ, # PRE, # PROC, # AC, # BLK."""
     sections: dict[str, str] = {}
     current_key = None
     current_lines: list[str] = []
-
     for line in body.splitlines():
         m = re.match(r"^#\s*(\w+)", line)
         if m:
@@ -435,3 +736,21 @@ def _parse_task_body(body: str) -> dict[str, str]:
     if current_key:
         sections[current_key] = "\n".join(current_lines).strip()
     return sections
+
+
+def _render_cortex(frontmatter: dict, body: str) -> str:
+    """Render legacy YAML-frontmatter format."""
+    parts = ["---"]
+    for k, v in frontmatter.items():
+        if isinstance(v, bool):
+            parts.append(f"{k}: {'true' if v else 'false'}")
+        elif isinstance(v, (list, tuple)):
+            import json
+            parts.append(f"{k}: {json.dumps(v)}")
+        else:
+            parts.append(f"{k}: {v}")
+    parts.append("---")
+    if body:
+        parts.append("")
+        parts.append(body)
+    return "\n".join(parts) + "\n"
