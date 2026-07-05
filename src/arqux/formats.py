@@ -200,16 +200,25 @@ def _parse_attrs(text: str) -> dict[str, Any]:
 
 
 def render_governance_cortex(stem: str, frontmatter: dict, body: str | dict) -> str:
-    """Render governance file as CORTEX text.
+    """Render governance file as CORTEX text using the canonical writer.
 
-    Uses the string-based builders (proven compatible with Arqux data model).
-    Future: route through ``write_cortex()`` once CODEC-CORTEX API compatibility
-    is verified for all section structures.
+    Uses ``write_cortex()`` via CortexDocument AST to produce canonical
+    single-line attrs with valid $0 glossary.
+    Falls back to string-based builders when unavailable.
     """
+    try:
+        from cortex.core.writer import write_cortex as _wc
+        doc = _build_doc(stem, frontmatter, body)
+        if doc is not None:
+            result = _wc(doc)
+            if result:
+                return result
+    except Exception:
+        pass
     return _build_fallback(stem, frontmatter, body)
 
 
-def _build_doc(stem: str, frontmatter: dict, body: str):
+def _build_doc(stem: str, frontmatter: dict, body):
     """Build a CortexDocument from Arqux model data.
 
     Returns a document that, when passed to write_cortex(), produces
@@ -219,10 +228,12 @@ def _build_doc(stem: str, frontmatter: dict, body: str):
 
     doc = CortexDocument()
 
-    # Populate glossary
+    # $0 MUST be the first section — write_cortex requires it.
+    sec0 = Section(id="$0", title="")
+    doc.sections.append(sec0)
+
+    # Populate glossary from Arqux sigil definitions.
     for sdef in _SIGIL_DEFS:
-        # Glossary is embedded as comments in $0; the writer generates
-        # the minimal glossary from whatever entries exist.
         doc.glossary.add_sigil(SigilDef(
             sigil=sdef["sigil"], name=sdef["name"], type=sdef["type"],
             risk=sdef["risk"], layer=sdef["layer"],
