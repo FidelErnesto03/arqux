@@ -97,6 +97,30 @@ WRK:first_response{
   When ready, respond with an open question.
 }
 
+STP:context_load{
+  priority:1,
+  source:"brain.cortex",
+  description:"THE source of truth. Contains FCS (focus), OBJ (objectives),
+               KNW (knowledge), RSK (risks), SES (sessions), PULSE (evidence).
+               Read this FIRST for any status question.",
+  example:"grep 'FCS:|OBJ:|KNW:|RSK:|AUD:E_' .arqux/brain.cortex"
+}
+STP:context_load{
+  priority:2,
+  source:"brain.cortex specific sections",
+  description:"Only if priority 1 is insufficient. §4 SESSIONS for active agents,
+               §6 PULSE for recent evidence, §12 PACKAGES for supplemental context.",
+}
+STP:context_load{
+  priority:3,
+  source:".arqux/ physical files",
+  description:"Only if brain.cortex does not have the answer.
+               Check cycles/ for active cycles, tasks/ for task details.
+               ls/find/cat should be the LAST resort, not the FIRST.",
+  instruction:"If you find yourself reading directories before brain.cortex,
+               you are doing it wrong. The brain exists precisely to avoid this.",
+}
+
 $3.1: STARTUP FLOW (mandatory, in order)
 
 AXM:startup_flow{
