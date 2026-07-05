@@ -1,0 +1,22 @@
+---
+level: 1
+workspace: <workspace-name>
+lessons: []
+knowledge: []
+risks: []
+---
+
+# META-BRAIN
+
+Cross-project knowledge and lessons. Lives at the workspace root in
+`.<product>/meta-brain.cortex`. The meta-brain knows **what projects
+exist** but not their internal details.
+
+## LESSONS
+- (lessons elevated from project brains — added by CODEC-CORTEX learning engine)
+
+## KNOWLEDGE
+- (global patterns, reusable decisions, cross-project insights)
+
+## RISKS
+- (ecosystem-level risks observed across projects)

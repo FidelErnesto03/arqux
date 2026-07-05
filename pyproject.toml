@@ -1,0 +1,92 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "arqux"
+version = "1.0.0"
+description = "Minimum-viable governance framework for AI agent teams. Defines what to do, who does it, and leaves evidence — without slowing work down."
+readme = "README.md"
+license = { text = "Apache-2.0" }
+authors = [
+    { name = "arqux Maintainers" }
+]
+requires-python = ">=3.10"
+keywords = ["ai-agents", "governance", "mcp", "agent-orchestration", "cortex", "llm"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: Apache Software License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+dependencies = [
+    # MCP runtime — Model Context Protocol server primitives.
+    "mcp>=1.0.0",
+    # CODEC-CORTEX — information codec for AI agents (CORTEX/HCORTEX, learning engine).
+    # If codec-cortex is not yet published to PyPI at the required version,
+    # install from source:
+    #   pip install git+https://github.com/FidelErnesto03/codec-cortex.git
+    "codec-cortex>=0.3.0",
+    # Utilities.
+    "pydantic>=2.0.0",
+    "click>=8.1.0",
+    "rich>=13.0.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+    "pytest-asyncio>=0.21.0",
+    "pytest-cov>=4.0.0",
+    "ruff>=0.4.0",
+    "mypy>=1.5.0",
+]
+
+[project.scripts]
+arqux = "arqux.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/FidelErnesto03/arqux"
+Repository = "https://github.com/FidelErnesto03/arqux"
+Issues = "https://github.com/FidelErnesto03/arqux/issues"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+"arqux" = [
+    "templates/*.cortex",
+    "templates/*.md",
+    "templates/*.cortex.tmpl",
+    "templates/*.md.tmpl",
+    "identities/*.cortex",
+    "identities/*.md",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+addopts = "-ra --strict-markers"
+markers = [
+    "slow: marks tests as slow",
+    "integration: marks integration tests",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "N", "UP", "B", "C4", "SIM"]
+ignore = ["E501"]
+
+[tool.mypy]
+python_version = "3.10"
+strict = true
+warn_unused_configs = true
