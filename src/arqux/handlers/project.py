@@ -38,19 +38,44 @@ from ..state import (
 def init_project(
     name: str,
     path: str | None = None,
+    seed: str | None = None,
     verbose: bool = False,
     ctx: PermissionContext | None = None,
 ) -> CortexOUT:
     """Initialize `.<product>/` in a project directory and register it in the workspace.
-    
-    Detects pre-existing project context and instructs the calling agent to
-    populate the brain accordingly via cortex.write (see STP:seed in response).
+
+    One-step initialization:
+    1. Creates .arqux/ skeleton (manifest, cycles dir)
+    2. Registers project in workspace projects index
+    3. If `seed` is provided, writes it directly as brain.cortex
+       (pre-populated with FCS, OBJ, RSK, KNW, etc.)
+    4. Detects pre-existing context and emits seed instructions if no seed given
     """
     target = Path(path or os.getcwd()).resolve()
     gov_dir = target / ARQUX_DIR
     gov_dir.mkdir(parents=True, exist_ok=True)
     (gov_dir / CYCLES_DIR).mkdir(exist_ok=True)
 
+    # Register in workspace projects index.
+    ws_root = find_workspace_root(start=target)
+    if ws_root is not None:
+        projects_path = ws_root / PROJECTS_CORTEX
+        entry = f"- {name} at {target}\n"
+        with projects_path.open("a", encoding="utf-8") as fh:
+            fh.write(entry)
+
+    if seed:
+        # One-step: seed content provided — write directly as brain.cortex.
+        (gov_dir / BRAIN_CORTEX).write_text(seed, encoding="utf-8")
+        return CortexOUT.work(
+            f"project.init ok name={name} path={gov_dir} brain=seeded",
+            project=name,
+            path=str(gov_dir),
+            registered_in_workspace=ws_root is not None,
+            brain="seeded",
+        )
+
+    # No seed: create default brain skeleton and detect context.
     brain = {
         "level": 2,
         "project": name,
@@ -60,14 +85,6 @@ def init_project(
         "brain_updated": _now_iso(),
     }
     write_brain(gov_dir, brain)
-
-    # Register in workspace projects index.
-    ws_root = find_workspace_root(start=target)
-    if ws_root is not None:
-        projects_path = ws_root / PROJECTS_CORTEX
-        entry = f"- {name} at {target}\n"
-        with projects_path.open("a", encoding="utf-8") as fh:
-            fh.write(entry)
 
     # Detect pre-existing project context and build seed instructions.
     seed_notes = _detect_project_context(target)
