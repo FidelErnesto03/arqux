@@ -82,11 +82,21 @@ def init_workspace(
 
     # Copy identity templates to .arqux/identities/ for behavioral evolution.
     identities_src = Path(__file__).resolve().parent.parent / "identities"
-    if identities_src.exists():
+    if identities_src.is_dir():
         identities_dst = gov_dir / "identities"
         identities_dst.mkdir(exist_ok=True)
         for src in identities_src.glob("*.cortex"):
             dst = identities_dst / src.name
+            if not dst.exists():
+                dst.write_text(src.read_text(encoding="utf-8"), encoding="utf-8")
+
+    # Copy skill templates to .arqux/skills/.
+    skills_src = Path(__file__).resolve().parent.parent / "skills"
+    if skills_src.is_dir():
+        skills_dst = gov_dir / "skills"
+        skills_dst.mkdir(exist_ok=True)
+        for src in skills_src.glob("*.skill.md"):
+            dst = skills_dst / src.name
             if not dst.exists():
                 dst.write_text(src.read_text(encoding="utf-8"), encoding="utf-8")
 

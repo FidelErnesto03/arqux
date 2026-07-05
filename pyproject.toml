@@ -67,6 +67,7 @@ where = ["src"]
     "templates/*.md.tmpl",
     "identities/*.cortex",
     "identities/*.md",
+    "skills/*.skill.md",
 ]
 
 [tool.pytest.ini_options]
