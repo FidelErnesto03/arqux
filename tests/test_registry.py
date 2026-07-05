@@ -5,14 +5,9 @@ from __future__ import annotations
 from arqux.handlers import REGISTRY, handler_count, list_handlers
 
 
-def test_handler_count_is_30() -> None:
-    """The full MCP surface: 26 governance handlers + 4 utility handlers
-    (cortex.read, cortex.write, cortex.verify, cortex.render).
-
-    The 26 governance includes 24 state-persisting + 2 session-only
-    (protocol.pause, protocol.resume).
-    """
-    assert handler_count() == 30
+def test_handler_count_is_31() -> None:
+    """The full MCP surface: 26 governance + 4 utility + 1 identity = 31."""
+    assert handler_count() == 31
 
 
 def test_mutating_handler_count_is_24() -> None:
@@ -20,7 +15,7 @@ def test_mutating_handler_count_is_24() -> None:
     Excludes session-only (pause/resume) and utility (cortex.*).
     """
     session_only = {"protocol.pause", "protocol.resume"}
-    utility = {"cortex.read", "cortex.write", "cortex.verify", "cortex.render"}
+    utility = {"cortex.read", "cortex.write", "cortex.verify", "cortex.render", "identity.record"}
     excluded = session_only | utility
     mutating = [name for name in list_handlers() if name not in excluded]
     assert len(mutating) == 24
@@ -28,7 +23,7 @@ def test_mutating_handler_count_is_24() -> None:
 
 def test_handler_names_follow_module_convention() -> None:
     names = list_handlers()
-    modules = {"workspace", "project", "cycle", "task", "evidence", "protocol", "cortex"}
+    modules: set[str] = {"workspace", "project", "cycle", "task", "evidence", "protocol", "cortex", "identity"}
     for name in names:
         module = name.split(".", 1)[0]
         assert module in modules, f"unknown module for handler: {name}"
@@ -51,8 +46,9 @@ def test_module_handler_counts() -> None:
         "cycle": 4,
         "task": 7,
         "evidence": 3,
-        "protocol": 4,  # adopt + release + pause + resume
-        "cortex": 4,    # read + write + verify + render
+        "protocol": 4,
+        "cortex": 4,
+        "identity": 1,
     }
     counts: dict[str, int] = {}
     for name in list_handlers():
