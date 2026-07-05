@@ -108,66 +108,115 @@ def init_project(
 
 
 def _detect_project_context(project_root: Path) -> list[str]:
-    """Scan project for pre-existing context and return seed instructions.
+    """Scan project for pre-existing context and return explicit seed instructions.
 
-    Returns a list of CORTEX-formatted lines for the agent to follow.
-    The agent (LLM) reads these and populates brain.cortex via cortex.write.
+    Returns a list of CORTEX-formatted lines instructing the agent to study the
+    project thoroughly and build a complete brain.cortex with ALL sections
+    populated. The brain replaces the manifest, critical guidelines, lessons,
+    and technical directives for the project.
     """
     notes: list[str] = []
-    has_context = False
+    ctx_items: list[str] = []
 
-    # 1. Check for NOMOS legacy brain (.cortex/brain.cortex).
+    # 1. Detect NOMOS legacy brain.
     nomos_brain = project_root / ".cortex" / "brain.cortex"
     if nomos_brain.exists():
-        has_context = True
-        notes.append("STP:seed{")
-        notes.append(f'  action:"study and migrate NOMOS brain at {nomos_brain}",')
-        notes.append('  instructions:"Read .cortex/brain.cortex content. Extract FCS, OBJ, AXM,')
-        notes.append('               RSK, KNW, LNG sections. Write them to .arqux/brain.cortex')
-        notes.append('               via cortex.write(path=..., content=..., force=true).')
-        notes.append('               Preserve all axioms, risks, objectives, and knowledge.')
-        notes.append('               DO NOT edit .cortex/brain.cortex — leave NOMOS brain intact.',
-        )
-        notes.append("}")
+        ctx_items.append("  - Read .cortex/brain.cortex (NOMOS legacy) for axioms, risks, objectives")
 
-    # 2. Check for documentation files.
-    docs_found = []
+    # 2. Detect documentation files.
     for doc_name in ("AGENTS.md", "README.md", "SKILL.md"):
         if (project_root / doc_name).exists():
-            docs_found.append(doc_name)
-    if docs_found:
-        has_context = True
-        doc_list = ", ".join(docs_found)
-        notes.append("STP:read_docs{")
-        notes.append(f'  files:"{doc_list}",')
-        notes.append('  action:"read each file for project purpose, conventions, active goals",')
-        notes.append('  instructions:"Extract FCS, OBJ, KNW, RSK. Write to .arqux/brain.cortex')
-        notes.append('               via cortex.write after studying project docs."')
-        notes.append("}")
+            ctx_items.append(f"  - Read {doc_name} for project purpose, conventions, protocols")
 
     # 3. Detect tech stack.
-    tech_files = []
     for fname in ("pyproject.toml", "package.json", "Cargo.toml", "go.mod", "composer.json"):
         if (project_root / fname).exists():
-            tech_files.append(fname)
-    if tech_files:
-        has_context = True
-        tech_list = ", ".join(tech_files)
-        notes.append("STP:scan_stack{")
-        notes.append(f'  files:"{tech_list}",')
-        notes.append(f'  action:"read manifest files for language, framework, dependencies",')
-        notes.append(f'  purpose:"populate KNW section with tech stack and architectural patterns"')
-        notes.append("}")
+            ctx_items.append(f"  - Read {fname} for language, framework, dependencies")
 
-    if not has_context:
-        notes.append("STP:seed_empty{")
-        notes.append('  note:"No pre-existing project context detected.',)
-        notes.append('        Brain.cortex remains as scaffold. Agent may study the project')
-        notes.append('        manually and seed via cortex.write at any time.")')
-        notes.append("}")
+    # 4. Detect source structure.
+    for src_dir in ("src", "lib", "app", "backend", "frontend"):
+        if (project_root / src_dir).is_dir():
+            ctx_items.append(f"  - Scan {src_dir}/ for architecture patterns, module structure")
 
-    notes.insert(0, "# -- BRAIN SEEDING INSTRUCTIONS (for the calling agent) --")
-    notes.insert(0, "")
+    notes.append("")
+    notes.append("# -- BRAIN SEEDING: BUILD COMPLETE PROJECT BRAIN --")
+    notes.append("")
+    notes.append("STP:build_brain{")
+    notes.append('  step:"1 - STUDY the project thoroughly",')
+    notes.append('  sources:')
+    if ctx_items:
+        notes.extend(ctx_items)
+    else:
+        notes.append('    "(no pre-existing context found — study project structure)"')
+    notes.append("")
+    notes.append('  step:"2 - BUILD brain.cortex content with ALL sections below",')
+    notes.append('  format:"Canonical CODEC-CORTEX sigil with $0 glossary",')
+    notes.append('  sections:')
+    notes.append('    $1:  IDENTITY')
+    notes.append('      IDN:project{name, product, version, purpose}')
+    notes.append('      IDN:governor{level, project, path, governor}')
+    notes.append('      DOM:scope{area, purpose}')
+    notes.append('')
+    notes.append('    $2:  FOCUS')
+    notes.append('      FCS:current{what, priority, status}')
+    notes.append('      One-sentence active focus for the project.')
+    notes.append('')
+    notes.append('    $3:  OBJECTIVES')
+    notes.append('      OBJ:name{goal, status, success}')
+    notes.append('      Active goals with measurable success criteria.')
+    notes.append('')
+    notes.append('    $4:  SESSIONS')
+    notes.append('      SES:agent{input, output, role, outcome, date}')
+    notes.append('      Initial session: the governor adopting the project.')
+    notes.append('')
+    notes.append('    $5:  HANDOFFS')
+    notes.append('      HDL:handoff{from, to, task, note}')
+    notes.append('      Optional — populate if handoff contracts exist.')
+    notes.append('')
+    notes.append('    $6:  PULSE')
+    notes.append('      AUD:event{event, evidence, task, kind, agent, result}')
+    notes.append('      Initial evidence: project initialization record.')
+    notes.append('')
+    notes.append('    $7:  LESSONS')
+    notes.append('      LNG:name{type, context, detail}')
+    notes.append('      Known lessons from previous work. Extract from NOMOS brain')
+    notes.append('      or leave empty if none exist yet.')
+    notes.append('')
+    notes.append('    $8:  ACTIVE_CONTEXT')
+    notes.append('      WRK:current{phase, current, blocked, survive}')
+    notes.append('      Current execution phase and state.')
+    notes.append('')
+    notes.append('    $9:  RISKS')
+    notes.append('      RSK:risk{risk, impact, mitigation, status}')
+    notes.append('      Known risks from NOMOS brain or discovered during study.')
+    notes.append('      Extract at least: description, impact (high/medium/low),')
+    notes.append('      mitigation strategy. Empty entries ("-") are NOT acceptable.')
+    notes.append('')
+    notes.append('    $10: KNOWLEDGE')
+    notes.append('      KNW:stack{tech, framework, runtime}')
+    notes.append('      KNW:architecture{layers, patterns}')
+    notes.append('      KNW:dependencies{external, internal}')
+    notes.append('      CRITICAL: this section replaces the project manifest.')
+    notes.append('      Populate with:')
+    notes.append('        - Technology stack (languages, frameworks, databases, runtimes)')
+    notes.append('        - Architecture patterns (layers, modules, communication)')
+    notes.append('        - External and internal dependencies')
+    notes.append('        - Conventions, coding standards, and project-specific guidelines')
+    notes.append('')
+    notes.append("    $11: CONCURRENCY")
+    notes.append('      ERR:concurrency{version, last_writer, updated}')
+    notes.append("      Start at version 1.")
+    notes.append('')
+    notes.append('  step:"3 - CALL project.init with the built content",')
+    notes.append('  action:"project.init(name=..., path=..., seed=<built_content>)",')
+    notes.append('  warning:"Do NOT use cortex.write for governance files. Use project.init.',)
+    notes.append('            The seed content is written directly to brain.cortex",')
+    notes.append('  warning:"Do NOT skip sections. Empty sections should have # (empty) placeholder",')
+    notes.append('  warning:"Do NOT edit .cortex/ NOMOS brain — leave it intact",')
+    notes.append("}")
+    notes.append("")
+    notes.append("# -- END BRAIN SEEDING INSTRUCTIONS --")
+
     return notes
 
 
