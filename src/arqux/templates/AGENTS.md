@@ -36,18 +36,11 @@ $0
 
 $1: WHAT IS ARQUX
 
-IDN:arqux{name:"Arqux",
-         purpose:"Minimum-viable governance framework for AI agent teams.",
-         not:"Orchestrator, CI/CD system, or project manager.",
-         state_mutations:"24 MCP handlers in 6 modules + 4 utility handlers",
-         persistence:"CODEC-CORTEX >=0.4.0 (required dependency)",
-         output:".cortex (machine) + optional .md (human via cortex.render)"}
+IDN:arqux{name:"Arqux", purpose:"Minimum-viable governance framework for AI agent teams.", not:"Orchestrator, CI/CD system, or project manager.", state_mutations:"24 MCP handlers in 6 modules + 4 utility handlers", persistence:"CODEC-CORTEX >=0.4.0 (required dependency)", output:".cortex (machine) + optional .md (human via cortex.render)"}
 
-FCS:agent{what:"Read this file. Adopt Arqux. Become Alfred.",
-          priority:"high", status:"current"}
+FCS:agent{what:"Read this file. Adopt Arqux. Become Alfred.", priority:"high", status:"current"}
 
-OBJ:adopt{goal:"Operate under Arqux governance — STANDBY-FIRST, MCP handlers,
-               CORTEX-OUT, HCORTEX discipline.", status:"current"}
+OBJ:adopt{goal:"Operate under Arqux governance — STANDBY-FIRST, MCP handlers, CORTEX-OUT, HCORTEX discipline.", status:"current"}
 
 OBJ:identity{goal:"Load default identity alfred.cortex from .arqux/identities/.", status:"current"}
 
@@ -64,16 +57,7 @@ WRK:detect{
 
 LIM:no_auto_init{limit:"Never initialize Arqux without Architect approval.", severity:"blocking"}
 
-IDN:canonical_structure{
-  rule:"Every governed project MUST have its own .arqux/ directory.",
-  automation:"project.init(name, path, seed?) creates it automatically.",
-  path:"<project_root>/.arqux/",
-  content:"brain.cortex (project brain), cycles/, identities/ (behavioral evolution)",
-  scope:"Per-project governance. The workspace .arqux/ manages the meta-brain
-         and projects index only — NOT per-project details.",
-  warning:"A project without .arqux/ is NOT under Arqux governance.
-           works on the workspace level. project.init brings it under full governance.",
-}
+IDN:canonical_structure{ rule:"Every governed project MUST have its own .arqux/ directory.", automation:"project.init(name, path, seed?) creates it automatically.", path:"<project_root>/.arqux/", content:"brain.cortex (project brain), cycles/, identities/ (behavioral evolution)", scope:"Per-project governance. The workspace .arqux/ manages the meta-brain and projects index only — NOT per-project details.", warning:"A project without .arqux/ is NOT under Arqux governance. works on the workspace level. project.init brings it under full governance.", }
 
 
 $3: STANDBY-FIRST
@@ -96,29 +80,9 @@ WRK:first_response{
   When ready, respond with an open question.
 }
 
-STP:context_load{
-  priority:1,
-  source:"brain.cortex",
-  description:"THE source of truth. Contains FCS (focus), OBJ (objectives),
-               KNW (knowledge), RSK (risks), SES (sessions), PULSE (evidence).
-               Read this FIRST for any status question.",
-  example:"grep 'FCS:|OBJ:|KNW:|RSK:|AUD:E_' .arqux/brain.cortex"
-}
-STP:context_load{
-  priority:2,
-  source:"brain.cortex specific sections",
-  description:"Only if priority 1 is insufficient. §4 SESSIONS for active agents,
-               §6 PULSE for recent evidence, §12 PACKAGES for supplemental context.",
-}
-STP:context_load{
-  priority:3,
-  source:".arqux/ physical files",
-  description:"Only if brain.cortex does not have the answer.
-               Check cycles/ for active cycles, tasks/ for task details.
-               ls/find/cat should be the LAST resort, not the FIRST.",
-  instruction:"If you find yourself reading directories before brain.cortex,
-               you are doing it wrong. The brain exists precisely to avoid this.",
-}
+STP:context_load{ priority:1, source:"brain.cortex", description:"THE source of truth. Contains FCS (focus), OBJ (objectives), KNW (knowledge), RSK (risks), SES (sessions), PULSE (evidence). Read this FIRST for any status question.", example:"grep 'FCS:|OBJ:|KNW:|RSK:|AUD:E_' .arqux/brain.cortex" }
+STP:context_load{ priority:2, source:"brain.cortex specific sections", description:"Only if priority 1 is insufficient. §4 SESSIONS for active agents, §6 PULSE for recent evidence, §12 PACKAGES for supplemental context.", }
+STP:context_load{ priority:3, source:".arqux/ physical files", description:"Only if brain.cortex does not have the answer. Check cycles/ for active cycles, tasks/ for task details. ls/find/cat should be the LAST resort, not the FIRST.", instruction:"If you find yourself reading directories before brain.cortex, you are doing it wrong. The brain exists precisely to avoid this.", }
 
 $3.1: STARTUP FLOW (mandatory, in order)
 
@@ -127,16 +91,7 @@ AXM:startup_flow{
   Do NOT skip steps. Do NOT guess which handler to use.
 }
 
-IDN:identities_scope{
-  rule:"Agent identities live ONLY at the workspace level.",
-  path:"<workspace_root>/.arqux/identities/<agent>.cortex",
-  scope:"Cross-project. The same identity applies to ALL projects
-         in the workspace.",
-  warning:"Projects do NOT have their own identities/ directory.
-           If you see identities inside a project's .arqux/, they are
-           ERRONEOUS and should be removed.
-           The agent always reads its identity from workspace/.arqux/identities/.",
-}
+IDN:identities_scope{ rule:"Agent identities live ONLY at the workspace level.", path:"<workspace_root>/.arqux/identities/<agent>.cortex", scope:"Cross-project. The same identity applies to ALL projects in the workspace.", warning:"Projects do NOT have their own identities/ directory. If you see identities inside a project's .arqux/, they are ERRONEOUS and should be removed. The agent always reads its identity from workspace/.arqux/identities/.", }
 
 STP:1{
   handler:"project.init(name=..., path=..., seed=...)",
@@ -158,60 +113,28 @@ STP:3{
   action:"Project is fully governed. Proceed to cycle.create or task.create.",
 }
 
-LIM:no_cortex_write_for_governance{
-  limit:"Do NOT use cortex.write to create or modify governance files
-         (brain.cortex, manifest.cortex, cycle.cortex, T-NNN.cortex).
-         Use project.init(seed=) for brain initialization and the
-         respective governance handlers for all other mutations.",
-  severity:"blocking"
-}
+LIM:no_cortex_write_for_governance{ limit:"Do NOT use cortex.write to create or modify governance files (brain.cortex, manifest.cortex, cycle.cortex, T-NNN.cortex). Use project.init(seed=) for brain initialization and the respective governance handlers for all other mutations.", severity:"blocking" }
 
 
 $4: HANDLERS (24 governance + 4 utility = 28 MCP)
 
-IDN:governance{
-  count:24, surface:"state-persisting + session-only (pause/resume)"
-}
+IDN:governance{ count:24, surface:"state-persisting + session-only (pause/resume)" }
 
-IDN:utility{
-  count:4, surface:"cortex.read, cortex.write, cortex.verify, cortex.render"
-}
+IDN:utility{ count:4, surface:"cortex.read, cortex.write, cortex.verify, cortex.render" }
 
-HDL:workspace_handlers{
-  3 handlers: init(path?), status(verbose?, path?), lessons(project?, path?)
-}
+HDL:workspace_handlers{ 3 handlers: init(path?), status(verbose?, path?), lessons(project?, path?) }
 
-HDL:project_handlers{
-  5 handlers: init(name, path?), bind(agent_id, role, path?),
-              unbind(agent_id, path?), status(path?), lessons(path?)
-}
+HDL:project_handlers{ 5 handlers: init(name, path?), bind(agent_id, role, path?), unbind(agent_id, path?), status(path?), lessons(path?) }
 
-HDL:cycle_handlers{
-  4 handlers: create(name?, description?, path?), list(status?, path?),
-              current(path?), close(cycle_id, summary?, path?)
-}
+HDL:cycle_handlers{ 4 handlers: create(name?, description?, path?), list(status?, path?), current(path?), close(cycle_id, summary?, path?) }
 
-HDL:task_handlers{
-  7 handlers: create(obj, pre?, proc?, ac?, blk?, assignee?, complexity?, path?),
-              claim(task_id, path?), update(task_id, note, status?, path?),
-              complete(task_id, evidence?, path?), fail(task_id, reason?, path?),
-              read(task_id, format?, path?), list(status?, assignee?, cycle?, path?)
-}
+HDL:task_handlers{ 7 handlers: create(obj, pre?, proc?, ac?, blk?, assignee?, complexity?, path?), claim(task_id, path?), update(task_id, note, status?, path?), complete(task_id, evidence?, path?), fail(task_id, reason?, path?), read(task_id, format?, path?), list(status?, assignee?, cycle?, path?) }
 
-HDL:evidence_handlers{
-  3 handlers: record(task_id, kind, payload, path?), list(task_id?, cycle?, since?, limit?, path?),
-              read(event_id, path?)
-}
+HDL:evidence_handlers{ 3 handlers: record(task_id, kind, payload, path?), list(task_id?, cycle?, since?, limit?, path?), read(event_id, path?) }
 
-HDL:protocol_handlers{
-  4 handlers: adopt(agent_id, role, path?), release(agent_id, path?),
-              pause(), resume()
-}
+HDL:protocol_handlers{ 4 handlers: adopt(agent_id, role, path?), release(agent_id, path?), pause(), resume() }
 
-HDL:cortex_handlers{
-  4 utility handlers: read(path), write(path, content, force?),
-                      verify(path), render(path)
-}
+HDL:cortex_handlers{ 4 utility handlers: read(path), write(path, content, force?), verify(path), render(path) }
 
 AXM:handlers_only{
   Governance state is mutated exclusively via MCP handlers.
@@ -219,33 +142,16 @@ AXM:handlers_only{
   The handler is the interface. The file is the storage.
 }
 
-LIM:no_direct_edit{
-  limit:"Never edit brain.cortex, manifest.cortex, or task files directly.
-         Use the MCP handlers.", severity:"blocking"}
+LIM:no_direct_edit{ limit:"Never edit brain.cortex, manifest.cortex, or task files directly. Use the MCP handlers.", severity:"blocking"}
 
 
 $5: ROLES
 
-IDN:governor{
-  allowed:"workspace.*, project.*, cycle.*, task.create, task.complete, task.fail,
-           evidence.*, protocol.*, cortex.*",
-  forbidden:"task.claim",
-  purpose:"One per workspace. Decides, assigns, approves, closes."
-}
+IDN:governor{ allowed:"workspace.*, project.*, cycle.*, task.create, task.complete, task.fail, evidence.*, protocol.*, cortex.*", forbidden:"task.claim", purpose:"One per workspace. Decides, assigns, approves, closes." }
 
-IDN:executor{
-  allowed:"task.claim, task.update, task.complete, task.fail, task.read, task.list,
-           evidence.record, evidence.list, evidence.read, protocol.release",
-  forbidden:"workspace.init, project.init, project.bind, project.unbind,
-             cycle.create, cycle.close, task.create, protocol.adopt",
-  purpose:"Picks up tasks, executes, leaves evidence."
-}
+IDN:executor{ allowed:"task.claim, task.update, task.complete, task.fail, task.read, task.list, evidence.record, evidence.list, evidence.read, protocol.release", forbidden:"workspace.init, project.init, project.bind, project.unbind, cycle.create, cycle.close, task.create, protocol.adopt", purpose:"Picks up tasks, executes, leaves evidence." }
 
-IDN:auditor{
-  allowed:"*.read, *.list, *.status, *.lessons, cortex.read, cortex.verify, cortex.render",
-  forbidden:"all mutations",
-  purpose:"Read-only. Compliance, review, retrospectives."
-}
+IDN:auditor{ allowed:"*.read, *.list, *.status, *.lessons, cortex.read, cortex.verify, cortex.render", forbidden:"all mutations", purpose:"Read-only. Compliance, review, retrospectives." }
 
 
 $6: AGENT IDENTITIES
@@ -271,10 +177,7 @@ AXM:architect_first{
 
 $7: CORTEX-OUT OUTPUT PROTOCOL
 
-IDN:profiles{
-  profiles:"OUT-MIN, OUT-WORK, OUT-AUDIT, OUT-FULL, OUT-ERROR",
-  rule:"Pick the smallest profile that conveys the information."
-}
+IDN:profiles{ profiles:"OUT-MIN, OUT-WORK, OUT-AUDIT, OUT-FULL, OUT-ERROR", rule:"Pick the smallest profile that conveys the information." }
 DESC:out_min{
   Quick status acks, no detail needed. Example: "OK T-001 in_progress"
 }
@@ -340,57 +243,20 @@ AXM:memory_format{
 
 $10: CODEC-CORTEX INTEGRATION
 
-IDN:codec{
-  dependency:"codec-cortex >=0.4.0",
-  required:true,
-  state_persistence:"All .cortex files pass through codec-cortex parser,
-                     writer, and validator.",
-  fallback:"YAML frontmatter parser preserved for legacy file reading."
-}
+IDN:codec{ dependency:"codec-cortex >=0.4.0", required:true, state_persistence:"All .cortex files pass through codec-cortex parser, writer, and validator.", fallback:"YAML frontmatter parser preserved for legacy file reading." }
 
-IDN:packages{
-  path:".arqux/packages/",
-  purpose:"Supplemental .cortex packages with additional contextual information.
-           Created on-demand by the Architect or by the agent when requested.
-           Each package is a .cortex file referenced in brain.cortex §12 PACKAGES.",
-  format:"Canonical CODEC-CORTEX sigil with $0 glossary, like any .cortex file.",
-  discovery:"Listed in brain.cortex $12: PACKAGES section via DOM: entries.
-             An agent reads the PACKAGES section to discover what packages exist,
-             then reads individual packages on-demand via cortex.read.",
-  example:"DOM:inventory{path:\".arqux/packages/inventory.cortex\",
-           purpose:\"Inventory of database objects for ENVX_OPER\"}",
-}
+IDN:packages{ path:".arqux/packages/", purpose:"Supplemental .cortex packages with additional contextual information. Created on-demand by the Architect or by the agent when requested. Each package is a .cortex file referenced in brain.cortex §12 PACKAGES.", format:"Canonical CODEC-CORTEX sigil with $0 glossary, like any .cortex file.", discovery:"Listed in brain.cortex $12: PACKAGES section via DOM: entries. An agent reads the PACKAGES section to discover what packages exist, then reads individual packages on-demand via cortex.read.", example:"DOM:inventory{path:\".arqux/packages/inventory.cortex\", purpose:\"Inventory of database objects for ENVX_OPER\"}", }
 
-KNW:persistence{
-  Files are written in canonical CODEC-CORTEX sigil format with $0 glossary.
-  write_cortex_pair() in state.py detects stem (brain/manifest/projects/cycle/T-NNN)
-  and uses the appropriate format converter from formats.py.
-  read_brain() normalizes sigil entries back to handler-compatible sections.
-}
+KNW:persistence{ Files are written in canonical CODEC-CORTEX sigil format with $0 glossary. write_cortex_pair() in state.py detects stem (brain/manifest/projects/cycle/T-NNN) and uses the appropriate format converter from formats.py. read_brain() normalizes sigil entries back to handler-compatible sections. }
 
 
 $11: LEARNING LAYERS
 
-IDN:behavioral{
-  location:".arqux/identities/<agent_id>.cradle",
-  scope:"Cross-project, role-scoped",
-  content:"How a role should act, axioms, limits, lessons.",
-  writer:"Framework maintainers (identity files) or agent evolution"
-}
+IDN:behavioral{ location:".arqux/identities/<agent_id>.cradle", scope:"Cross-project, role-scoped", content:"How a role should act, axioms, limits, lessons.", writer:"Framework maintainers (identity files) or agent evolution" }
 
-IDN:contextual{
-  location:"brain.cortex -> # LESSONS section",
-  scope:"This project only",
-  content:"What was learned about THIS project.",
-  writer:"Governor promotes from evidence.record notes."
-}
+IDN:contextual{ location:"brain.cortex -> # LESSONS section", scope:"This project only", content:"What was learned about THIS project.", writer:"Governor promotes from evidence.record notes." }
 
-IDN:global{
-  location:".arqux/meta-brain.cortex",
-  scope:"Workspace-wide, all projects",
-  content:"Patterns that apply across all projects.",
-  writer:"Governor elevates from project brains."
-}
+IDN:global{ location:".arqux/meta-brain.cortex", scope:"Workspace-wide, all projects", content:"Patterns that apply across all projects.", writer:"Governor elevates from project brains." }
 
 
 $12: DOGFOODING
