@@ -34,6 +34,7 @@ from ..state import (
     cycle_dir,
     find_project_root,
     next_task_id,
+    parse_cortex_file as _parse_cortex_file,
     task_path,
     write_cortex_pair,
 )
@@ -48,10 +49,11 @@ def create_task(
     assignee: str | None = None,
     complexity: str = "standard",
     priority: str = "medium",
+    path: str | None = None,
     ctx: PermissionContext | None = None,
 ) -> CortexOUT:
     """Create a governed task in the current cycle."""
-    root = find_project_root()
+    root = find_project_root(start=path)
     if root is None:
         return CortexOUT.error("no project initialized", code="NOT_FOUND")
 
@@ -103,9 +105,9 @@ def create_task(
     )
 
 
-def claim_task(task_id: str, ctx: PermissionContext | None = None) -> CortexOUT:
+def claim_task(task_id: str, path: str | None = None, ctx: PermissionContext | None = None) -> CortexOUT:
     """An executor claims a task → status: in_progress."""
-    root = find_project_root()
+    root = find_project_root(start=path)
     if root is None:
         return CortexOUT.error("no project initialized", code="NOT_FOUND")
 
@@ -137,10 +139,11 @@ def update_task(
     task_id: str,
     note: str,
     status: str | None = None,
+    path: str | None = None,
     ctx: PermissionContext | None = None,
 ) -> CortexOUT:
     """Update task progress, optionally change status."""
-    root = find_project_root()
+    root = find_project_root(start=path)
     if root is None:
         return CortexOUT.error("no project initialized", code="NOT_FOUND")
 
@@ -171,10 +174,11 @@ def update_task(
 def complete_task(
     task_id: str,
     evidence: str | None = None,
+    path: str | None = None,
     ctx: PermissionContext | None = None,
 ) -> CortexOUT:
     """Mark a task done and record evidence in the brain's PULSE section."""
-    root = find_project_root()
+    root = find_project_root(start=path)
     if root is None:
         return CortexOUT.error("no project initialized", code="NOT_FOUND")
 
@@ -218,10 +222,11 @@ def complete_task(
 def fail_task(
     task_id: str,
     reason: str,
+    path: str | None = None,
     ctx: PermissionContext | None = None,
 ) -> CortexOUT:
     """Mark a task blocked and record the cause in the brain's PULSE section."""
-    root = find_project_root()
+    root = find_project_root(start=path)
     if root is None:
         return CortexOUT.error("no project initialized", code="NOT_FOUND")
 
@@ -258,10 +263,11 @@ def fail_task(
 def read_task(
     task_id: str,
     format: str = "cortex",
+    path: str | None = None,
     ctx: PermissionContext | None = None,
 ) -> CortexOUT:
     """Read a task (CORTEX or HCORTEX format)."""
-    root = find_project_root()
+    root = find_project_root(start=path)
     if root is None:
         return CortexOUT.error("no project initialized", code="NOT_FOUND")
 
@@ -307,10 +313,11 @@ def list_tasks(
     status: str | None = None,
     assignee: str | None = None,
     cycle: str | None = None,
+    path: str | None = None,
     ctx: PermissionContext | None = None,
 ) -> CortexOUT:
     """List tasks with filters."""
-    root = find_project_root()
+    root = find_project_root(start=path)
     if root is None:
         return CortexOUT.error("no project initialized", code="NOT_FOUND")
 
@@ -353,28 +360,6 @@ def _load_task(root: Path, task_id: str) -> tuple[Path | None, dict[str, Any], s
             fm, body = _parse_cortex_file(candidate)
             return candidate, fm, body
     return None, {}, ""
-
-
-def _parse_cortex_file(path: Path) -> tuple[dict[str, Any], str]:
-    """Parse a simple YAML frontmatter + body CORTEX file."""
-    text = path.read_text(encoding="utf-8")
-    if not text.startswith("---"):
-        return {}, text
-    parts = text.split("---", 2)
-    if len(parts) < 3:
-        return {}, text
-    fm_text = parts[1].strip()
-    body = parts[2].strip()
-    fm: dict[str, Any] = {}
-    for line in fm_text.splitlines():
-        if ":" not in line:
-            continue
-        key, _, value = line.partition(":")
-        value = value.strip()
-        if value.startswith("[") and value.endswith("]"):
-            value = [v.strip() for v in value[1:-1].split(",") if v.strip()]
-        fm[key.strip()] = value
-    return fm, body
 
 
 def _now_iso() -> str:

@@ -55,6 +55,9 @@ READ_ONLY_PREFIXES: tuple[str, ...] = (
     "task.list",
     "evidence.list",
     "evidence.read",
+    "cortex.read",
+    "cortex.verify",
+    "cortex.render",
 )
 
 # Governor-only handlers — executor cannot call.

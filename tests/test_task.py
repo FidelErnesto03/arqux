@@ -62,7 +62,7 @@ def test_task_complete_records_evidence_in_brain(workspace_root: Path, governor_
         assert "brain PULSE" in result.to_text()
         # The evidence should be in brain.cortex, NOT in pulse.jsonl.
         brain_text = (project_dir / ARQUX_DIR / BRAIN_CORTEX).read_text(encoding="utf-8")
-        assert "# PULSE" in brain_text
+        assert "$6: PULSE" in brain_text
         assert "task_complete" in brain_text
         assert "tests pass" in brain_text
         assert not (project_dir / ARQUX_DIR / "cycles" / "CYCLE-01" / "pulse.jsonl").exists()

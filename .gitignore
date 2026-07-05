@@ -36,3 +36,4 @@ htmlcov/
 # OS
 Thumbs.db
 desktop.ini
+uv.lock

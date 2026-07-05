@@ -31,10 +31,11 @@ def record_evidence(
     task_id: str,
     kind: str,
     payload: str,
+    path: str | None = None,
     ctx: PermissionContext | None = None,
 ) -> CortexOUT:
     """Append an evidence entry to the brain's PULSE section."""
-    root = find_project_root()
+    root = find_project_root(start=path)
     if root is None:
         return CortexOUT.error("no project initialized", code="NOT_FOUND")
 
@@ -77,10 +78,11 @@ def list_evidence(
     cycle: str | None = None,
     since: str | None = None,
     limit: int = 100,
+    path: str | None = None,
     ctx: PermissionContext | None = None,
 ) -> CortexOUT:
     """Query the evidence trail (reads from the brain's PULSE section)."""
-    root = find_project_root()
+    root = find_project_root(start=path)
     if root is None:
         return CortexOUT.error("no project initialized", code="NOT_FOUND")
 
@@ -100,10 +102,11 @@ def list_evidence(
 
 def read_evidence(
     event_id: str,
+    path: str | None = None,
     ctx: PermissionContext | None = None,
 ) -> CortexOUT:
     """Read a single evidence event by ID (from the brain's PULSE section)."""
-    root = find_project_root()
+    root = find_project_root(start=path)
     if root is None:
         return CortexOUT.error("no project initialized", code="NOT_FOUND")
 

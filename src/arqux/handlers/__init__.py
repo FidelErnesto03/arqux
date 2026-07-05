@@ -14,7 +14,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any, Callable
 
-from . import cycle, evidence, project, protocol, task, workspace
+from . import cycle, evidence, project, protocol, task, workspace, cortex
 
 
 @dataclass(frozen=True)
@@ -60,6 +60,7 @@ _register(_spec(
         "type": "object",
         "properties": {
             "verbose": {"type": "boolean", "default": False},
+            "path": {"type": "string", "description": "Path to workspace root. Defaults to cwd."},
         },
     },
 ))
@@ -70,6 +71,7 @@ _register(_spec(
         "type": "object",
         "properties": {
             "project": {"type": "string", "description": "Filter lessons by source project."},
+            "path": {"type": "string", "description": "Path to workspace root. Defaults to cwd."},
         },
     },
 ))
@@ -95,6 +97,7 @@ _register(_spec(
         "properties": {
             "agent_id": {"type": "string"},
             "role": {"type": "string", "enum": ["governor", "executor", "auditor"]},
+            "path": {"type": "string", "description": "Path to project root. Defaults to cwd."},
         },
         "required": ["agent_id", "role"],
     },
@@ -106,6 +109,7 @@ _register(_spec(
         "type": "object",
         "properties": {
             "agent_id": {"type": "string"},
+            "path": {"type": "string", "description": "Path to project root. Defaults to cwd."},
         },
         "required": ["agent_id"],
     },
@@ -113,12 +117,16 @@ _register(_spec(
 _register(_spec(
     "project.status", project.status,
     "Active project status (cycles, tasks, agents).",
-    {"type": "object", "properties": {}},
+    {"type": "object", "properties": {
+        "path": {"type": "string", "description": "Path to project root. Defaults to cwd."},
+    }},
 ))
 _register(_spec(
     "project.lessons", project.lessons,
     "List lessons local to the current project.",
-    {"type": "object", "properties": {}},
+    {"type": "object", "properties": {
+        "path": {"type": "string", "description": "Path to project root. Defaults to cwd."},
+    }},
 ))
 
 # Cycle module (4 handlers)
@@ -130,6 +138,7 @@ _register(_spec(
         "properties": {
             "name": {"type": "string"},
             "description": {"type": "string"},
+            "path": {"type": "string", "description": "Path to project root. Defaults to cwd."},
         },
     },
 ))
@@ -140,13 +149,16 @@ _register(_spec(
         "type": "object",
         "properties": {
             "status": {"type": "string", "enum": ["open", "closed"]},
+            "path": {"type": "string", "description": "Path to project root. Defaults to cwd."},
         },
     },
 ))
 _register(_spec(
     "cycle.current", cycle.current_cycle,
     "Get the currently active cycle.",
-    {"type": "object", "properties": {}},
+    {"type": "object", "properties": {
+        "path": {"type": "string", "description": "Path to project root. Defaults to cwd."},
+    }},
 ))
 _register(_spec(
     "cycle.close", cycle.close_cycle,
@@ -156,6 +168,7 @@ _register(_spec(
         "properties": {
             "cycle_id": {"type": "string"},
             "summary": {"type": "string"},
+            "path": {"type": "string", "description": "Path to project root. Defaults to cwd."},
         },
         "required": ["cycle_id"],
     },
@@ -176,6 +189,7 @@ _register(_spec(
             "assignee": {"type": "string"},
             "complexity": {"type": "string", "enum": ["simple", "standard", "complex"]},
             "priority": {"type": "string", "enum": ["low", "medium", "high"]},
+            "path": {"type": "string", "description": "Path to project root. Defaults to cwd."},
         },
         "required": ["obj"],
     },
@@ -185,7 +199,10 @@ _register(_spec(
     "An executor claims a task → status: in_progress.",
     {
         "type": "object",
-        "properties": {"task_id": {"type": "string"}},
+        "properties": {
+            "task_id": {"type": "string"},
+            "path": {"type": "string", "description": "Path to project root. Defaults to cwd."},
+        },
         "required": ["task_id"],
     },
 ))
@@ -198,6 +215,7 @@ _register(_spec(
             "task_id": {"type": "string"},
             "note": {"type": "string"},
             "status": {"type": "string"},
+            "path": {"type": "string", "description": "Path to project root. Defaults to cwd."},
         },
         "required": ["task_id", "note"],
     },
@@ -210,6 +228,7 @@ _register(_spec(
         "properties": {
             "task_id": {"type": "string"},
             "evidence": {"type": "string"},
+            "path": {"type": "string", "description": "Path to project root. Defaults to cwd."},
         },
         "required": ["task_id"],
     },
@@ -222,6 +241,7 @@ _register(_spec(
         "properties": {
             "task_id": {"type": "string"},
             "reason": {"type": "string"},
+            "path": {"type": "string", "description": "Path to project root. Defaults to cwd."},
         },
         "required": ["task_id", "reason"],
     },
@@ -234,6 +254,7 @@ _register(_spec(
         "properties": {
             "task_id": {"type": "string"},
             "format": {"type": "string", "enum": ["cortex", "hcortex"], "default": "cortex"},
+            "path": {"type": "string", "description": "Path to project root. Defaults to cwd."},
         },
         "required": ["task_id"],
     },
@@ -247,6 +268,7 @@ _register(_spec(
             "status": {"type": "string"},
             "assignee": {"type": "string"},
             "cycle": {"type": "string"},
+            "path": {"type": "string", "description": "Path to project root. Defaults to cwd."},
         },
     },
 ))
@@ -261,6 +283,7 @@ _register(_spec(
             "task_id": {"type": "string"},
             "kind": {"type": "string", "enum": ["note", "artifact", "decision", "metric", "blocker"]},
             "payload": {"type": "string"},
+            "path": {"type": "string", "description": "Path to project root. Defaults to cwd."},
         },
         "required": ["task_id", "kind", "payload"],
     },
@@ -275,6 +298,7 @@ _register(_spec(
             "cycle": {"type": "string"},
             "since": {"type": "string"},
             "limit": {"type": "integer", "default": 100},
+            "path": {"type": "string", "description": "Path to project root. Defaults to cwd."},
         },
     },
 ))
@@ -283,7 +307,10 @@ _register(_spec(
     "Read a single evidence event by ID.",
     {
         "type": "object",
-        "properties": {"event_id": {"type": "string"}},
+        "properties": {
+            "event_id": {"type": "string"},
+            "path": {"type": "string", "description": "Path to project root. Defaults to cwd."},
+        },
         "required": ["event_id"],
     },
 ))
@@ -297,6 +324,7 @@ _register(_spec(
         "properties": {
             "agent_id": {"type": "string"},
             "role": {"type": "string", "enum": ["governor", "executor", "auditor"]},
+            "path": {"type": "string", "description": "Path to workspace root. Defaults to cwd."},
         },
         "required": ["agent_id", "role"],
     },
@@ -306,7 +334,10 @@ _register(_spec(
     "Fully detach an agent (clean exit, no orphans).",
     {
         "type": "object",
-        "properties": {"agent_id": {"type": "string"}},
+        "properties": {
+            "agent_id": {"type": "string"},
+            "path": {"type": "string", "description": "Path to workspace root. Defaults to cwd."},
+        },
         "required": ["agent_id"],
     },
 ))
@@ -319,6 +350,62 @@ _register(_spec(
     "protocol.resume", protocol.resume,
     "Resume governance after a pause.",
     {"type": "object", "properties": {}},
+))
+
+# --- Utility handlers (outside governance budget) ---------------------------
+#
+# These handlers do NOT count toward the 24-handler governance budget.
+# They expose CODEC-CORTEX operations for reading, writing, verifying,
+# and rendering arbitrary .cortex files that are NOT governance state.
+#
+# Governance state (brain.cortex, manifest.cortex, tasks, cycles) must
+# be mutated through the governance handlers only (§13).
+
+_register(_spec(
+    "cortex.read", cortex.read_handler,
+    "Read and parse a .cortex file using CODEC-CORTEX.",
+    {
+        "type": "object",
+        "properties": {
+            "path": {"type": "string"},
+        },
+        "required": ["path"],
+    },
+))
+_register(_spec(
+    "cortex.write", cortex.write_handler,
+    "Write (atomically) a .cortex file from CORTEX source text.",
+    {
+        "type": "object",
+        "properties": {
+            "path": {"type": "string"},
+            "content": {"type": "string"},
+            "force": {"type": "boolean", "default": False},
+        },
+        "required": ["path", "content"],
+    },
+))
+_register(_spec(
+    "cortex.verify", cortex.verify_handler,
+    "Verify a .cortex file's structure using CODEC-CORTEX.",
+    {
+        "type": "object",
+        "properties": {
+            "path": {"type": "string"},
+        },
+        "required": ["path"],
+    },
+))
+_register(_spec(
+    "cortex.render", cortex.render_handler,
+    "Render a .cortex file to HCORTEX READ markdown.",
+    {
+        "type": "object",
+        "properties": {
+            "path": {"type": "string"},
+        },
+        "required": ["path"],
+    },
 ))
 
 
