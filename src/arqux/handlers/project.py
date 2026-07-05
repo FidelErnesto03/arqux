@@ -69,6 +69,11 @@ def init_project(
     if seed:
         # One-step: seed content provided — write directly as brain.cortex.
         (gov_dir / BRAIN_CORTEX).write_text(seed, encoding="utf-8")
+
+        # Update meta-brain with cross-project knowledge.
+        if ws_root is not None:
+            _update_meta_brain(ws_root, name, str(target), seed)
+
         return CortexOUT.work(
             f"project.init ok name={name} path={gov_dir} brain=seeded",
             project=name,
@@ -340,6 +345,32 @@ def lessons(path: str | None = None, ctx: PermissionContext | None = None) -> Co
         kind="contextual",
         brain_path=str(root / BRAIN_CORTEX),
     )
+
+
+def _update_meta_brain(ws_root: Path, name: str, path_str: str, seed: str) -> None:
+    """Update meta-brain with cross-project knowledge from a new project."""
+    from .constants import META_BRAIN_CORTEX
+
+    meta_path = ws_root / META_BRAIN_CORTEX
+    if not meta_path.exists():
+        return
+
+    domain = ""
+    stack = ""
+    for line in seed.splitlines():
+        if "DOM:area" in line or "DOM:scope" in line:
+            m = __import__("re").search(r'purpose:"([^"]+)"', line)
+            if m:
+                domain = m.group(1)[:80]
+        if "KNW:stack" in line:
+            m = __import__("re").search(r'tech:"([^"]+)"', line)
+            if m:
+                stack = m.group(1)[:80]
+
+    key = name.replace("-", "_").replace(" ", "_")
+    entry = f"DOM:{key}{{name:\"{name}\", path:\"{path_str}\", domain:\"{domain}\", stack:\"{stack}\"}}"
+    with meta_path.open("a", encoding="utf-8") as f:
+        f.write(f"\n{entry}\n")
 
 
 def _now_iso() -> str:
