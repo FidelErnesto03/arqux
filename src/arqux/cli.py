@@ -10,6 +10,7 @@ Exposes three commands:
 from __future__ import annotations
 
 import sys
+from pathlib import Path
 from typing import Sequence
 
 import click
@@ -68,9 +69,26 @@ def init(workspace: bool, project_name: str | None) -> None:
         result = init_workspace(path=".", verbose=True)
         click.echo(result.to_text())
 
+        # Write AGENTS.md to workspace root from package template.
+        _write_agents_md(Path(".").resolve())
+
     if project_name is not None:
         result = init_project(name=project_name, path=".", verbose=True)
         click.echo(result.to_text())
+
+
+def _write_agents_md(workspace_root: Path) -> None:
+    """Write AGENTS.md (CORTEX content, .md extension) to workspace root."""
+    template_path = Path(__file__).resolve().parent / "templates" / "AGENTS.md"
+    if not template_path.exists():
+        click.echo(f"WARNING template not found: {template_path}", err=True)
+        return
+    dst = workspace_root / "AGENTS.md"
+    if dst.exists():
+        click.echo(f"AGENTS.md already exists at {dst}, skipping", err=True)
+        return
+    dst.write_text(template_path.read_text(encoding="utf-8"), encoding="utf-8")
+    click.echo(f"OUT-WORK AGENTS.md written to {dst}")
 
 
 @cli.command(help="Print workspace/project/cycle status.")
