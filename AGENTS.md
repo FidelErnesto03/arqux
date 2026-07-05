@@ -104,6 +104,17 @@ AXM:startup_flow{
   Do NOT skip steps. Do NOT guess which handler to use.
 }
 
+IDN:identities_scope{
+  rule:"Agent identities live ONLY at the workspace level.",
+  path:"<workspace_root>/.arqux/identities/<agent>.cortex",
+  scope:"Cross-project. The same identity applies to ALL projects
+         in the workspace.",
+  warning:"Projects do NOT have their own identities/ directory.
+           If you see identities inside a project's .arqux/, they are
+           ERRONEOUS and should be removed.
+           The agent always reads its identity from workspace/.arqux/identities/.",
+}
+
 STP:1{
   handler:"project.init(name=..., path=..., seed=...)",
   why:"This is the ONLY entry point for project governance.",
