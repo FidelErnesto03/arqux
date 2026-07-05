@@ -31,6 +31,7 @@ from ..state import find_workspace_root, write_cortex_pair, parse_cortex_file
 def adopt(
     agent_id: str,
     role: str,
+    path: str | None = None,
     ctx: PermissionContext | None = None,
 ) -> CortexOUT:
     """Onboard an agent with a role.
@@ -52,7 +53,7 @@ def adopt(
     os.environ[f"{PRODUCT_NAME_UPPER}_AGENT_ID"] = agent_id
     os.environ[f"{PRODUCT_NAME_UPPER}_AGENT_ROLE"] = role
 
-    root = find_workspace_root()
+    root = find_workspace_root(start=path)
     if root is not None:
         agents_path = root / "agents.cortex"
         existing = agents_path.read_text(encoding="utf-8") if agents_path.exists() else ""
@@ -66,14 +67,14 @@ def adopt(
     )
 
 
-def release(agent_id: str, ctx: PermissionContext | None = None) -> CortexOUT:
+def release(agent_id: str, path: str | None = None, ctx: PermissionContext | None = None) -> CortexOUT:
     """Fully detach an agent (clean exit, no orphans).
 
     Removes the agent from the workspace's agents index via the handler.
     Other agents continue operating. Does NOT mutate any project state —
     project sessions are released via `project.unbind`.
     """
-    root = find_workspace_root()
+    root = find_workspace_root(start=path)
     if root is None:
         # Still allow release if the workspace was never initialized.
         return CortexOUT.work(f"protocol.release ok agent={agent_id} (no workspace)", agent_id=agent_id)

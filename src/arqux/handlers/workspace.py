@@ -88,9 +88,9 @@ def init_workspace(
     )
 
 
-def status(verbose: bool = False, ctx: PermissionContext | None = None) -> CortexOUT:
+def status(verbose: bool = False, path: str | None = None, ctx: PermissionContext | None = None) -> CortexOUT:
     """Workspace status. Returns projects, cycles count, governor."""
-    root = find_workspace_root()
+    root = find_workspace_root(start=path)
     if root is None:
         return CortexOUT.error("workspace not initialized", code="NOT_FOUND")
 
@@ -110,9 +110,9 @@ def status(verbose: bool = False, ctx: PermissionContext | None = None) -> Corte
     )
 
 
-def lessons(project: str | None = None, ctx: PermissionContext | None = None) -> CortexOUT:
+def lessons(project: str | None = None, path: str | None = None, ctx: PermissionContext | None = None) -> CortexOUT:
     """List lessons elevated to the meta-brain."""
-    root = find_workspace_root()
+    root = find_workspace_root(start=path)
     if root is None:
         return CortexOUT.error("workspace not initialized", code="NOT_FOUND")
 

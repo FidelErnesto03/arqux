@@ -32,10 +32,11 @@ from ..state import (
 def create_cycle(
     name: str | None = None,
     description: str | None = None,
+    path: str | None = None,
     ctx: PermissionContext | None = None,
 ) -> CortexOUT:
     """Open a new cycle in the active project."""
-    root = find_project_root()
+    root = find_project_root(start=path)
     if root is None:
         return CortexOUT.error("no project initialized", code="NOT_FOUND")
 
@@ -65,10 +66,11 @@ def create_cycle(
 
 def list_cycles(
     status: str | None = None,
+    path: str | None = None,
     ctx: PermissionContext | None = None,
 ) -> CortexOUT:
     """List cycles in the active project."""
-    root = find_project_root()
+    root = find_project_root(start=path)
     if root is None:
         return CortexOUT.error("no project initialized", code="NOT_FOUND")
 
@@ -88,9 +90,9 @@ def list_cycles(
     )
 
 
-def current_cycle(ctx: PermissionContext | None = None) -> CortexOUT:
+def current_cycle(path: str | None = None, ctx: PermissionContext | None = None) -> CortexOUT:
     """Get the currently active (most recent open) cycle."""
-    root = find_project_root()
+    root = find_project_root(start=path)
     if root is None:
         return CortexOUT.error("no project initialized", code="NOT_FOUND")
 
@@ -115,10 +117,11 @@ def current_cycle(ctx: PermissionContext | None = None) -> CortexOUT:
 def close_cycle(
     cycle_id: str,
     summary: str | None = None,
+    path: str | None = None,
     ctx: PermissionContext | None = None,
 ) -> CortexOUT:
     """Close a cycle (no new tasks can be added)."""
-    root = find_project_root()
+    root = find_project_root(start=path)
     if root is None:
         return CortexOUT.error("no project initialized", code="NOT_FOUND")
 

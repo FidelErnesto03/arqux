@@ -39,7 +39,7 @@ def test_evidence_record_writes_to_brain_pulse(workspace_root: Path, governor_ct
         # The pulse entry should be in brain.cortex, NOT in pulse.jsonl.
         brain_path = project_dir / ARQUX_DIR / BRAIN_CORTEX
         brain_text = brain_path.read_text(encoding="utf-8")
-        assert "# PULSE" in brain_text
+        assert "$6: PULSE" in brain_text
         assert "halfway done" in brain_text
         # No pulse.jsonl file should exist anymore.
         assert not (project_dir / ARQUX_DIR / "cycles" / "CYCLE-01" / "pulse.jsonl").exists()

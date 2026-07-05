@@ -10,7 +10,7 @@
 
 Arqux is the minimum-viable governance framework for AI agent teams. It is **not** an orchestrator, a CI/CD system, or a project manager. It is a small protocol layer that lets multiple agents work in the same workspace without stepping on each other: a **governor** decides what to do, an **executor** does it and leaves evidence, an **auditor** reads everything but mutates nothing.
 
-Every state mutation flows through a fixed budget of **24 MCP handlers** grouped in **6 modules**. There is no direct file editing of governance state — handlers are the interface, files are the storage. The framework persists state via the [CODEC-CORTEX](https://github.com/FidelErnesto03/codec-cortex) codec, which produces `.cortex` (machine-optimized) and `.md` (human-readable) files in sync.
+Every state mutation flows through a fixed budget of **24 MCP handlers** grouped in **6 modules** (the governance surface), plus **4 utility handlers** (`cortex.*`) that expose CODEC-CORTEX operations for non-governance `.cortex` files. There is no direct file editing of governance state — handlers are the interface, files are the storage. The framework persists state via the [CODEC-CORTEX](https://github.com/FidelErnesto03/codec-cortex) codec (required dependency, `>=0.4.0`), which produces `.cortex` (machine-optimized) and `.md` (human-readable) files in sync.
 
 You should adopt this framework when: you are working in a workspace with more than one agent, you need traceability of decisions, you need clean role separation, or you need cross-project learning. You should **not** adopt it for single-agent throwaway work, for CI/CD pipelines, or as a project manager.
 
@@ -33,39 +33,50 @@ If the human says `@arqux:off`, you must fully detach: forget your identity bind
 | # | Handler | Signature | Purpose |
 |---|---|---|---|
 | 1 | `workspace.init` | `(path?)` | Initialize `.arqux/` at workspace root |
-| 2 | `workspace.status` | `(verbose?)` | Workspace status (OUT-MIN by default) |
-| 3 | `workspace.lessons` | `(project?)` | List lessons elevated to meta-brain |
+| 2 | `workspace.status` | `(verbose?, path?)` | Workspace status (OUT-MIN by default) |
+| 3 | `workspace.lessons` | `(project?, path?)` | List lessons elevated to meta-brain |
 | 4 | `project.init` | `(name, path?)` | Initialize `.arqux/` in a project, register in workspace |
-| 5 | `project.bind` | `(agent_id, role)` | Bind an agent identity to current project |
-| 6 | `project.unbind` | `(agent_id)` | Release an agent binding |
-| 7 | `project.status` | `()` | Active project status (cycles, tasks, agents) |
-| 8 | `project.lessons` | `()` | List lessons local to current project |
-| 9 | `cycle.create` | `(name?, description?)` | Open a new cycle in the active project |
-| 10 | `cycle.list` | `(status?)` | List cycles in active project |
-| 11 | `cycle.current` | `()` | Get the currently active cycle |
-| 12 | `cycle.close` | `(cycle_id, summary?)` | Close a cycle (no new tasks can be added) |
-| 13 | `task.create` | `(obj, pre?, proc?, ac?, blk?, assignee?, complexity?)` | Create a governed task in current cycle |
-| 14 | `task.claim` | `(task_id)` | An executor claims a task → status: in_progress |
-| 15 | `task.update` | `(task_id, note, status?)` | Update task progress, optionally change status |
-| 16 | `task.complete` | `(task_id, evidence?)` | Mark task done, record evidence |
-| 17 | `task.fail` | `(task_id, reason)` | Mark task blocked, record cause |
-| 18 | `task.read` | `(task_id, format?)` | Read a task (CORTEX or HCORTEX) |
-| 19 | `task.list` | `(status?, assignee?, cycle?)` | List tasks with filters |
-| 20 | `evidence.record` | `(task_id, kind, payload)` | Append evidence entry to `pulse.jsonl` |
-| 21 | `evidence.list` | `(task_id?, cycle?, since?, limit?)` | Query evidence trail |
-| 22 | `evidence.read` | `(event_id)` | Read a single evidence event |
-| 23 | `protocol.adopt` | `(agent_id, role)` | Onboard an agent with a role |
-| 24 | `protocol.release` | `(agent_id)` | Fully detach an agent (clean exit, no orphans) |
+| 5 | `project.bind` | `(agent_id, role, path?)` | Bind an agent identity to current project |
+| 6 | `project.unbind` | `(agent_id, path?)` | Release an agent binding |
+| 7 | `project.status` | `(path?)` | Active project status (cycles, tasks, agents) |
+| 8 | `project.lessons` | `(path?)` | List lessons local to current project |
+| 9 | `cycle.create` | `(name?, description?, path?)` | Open a new cycle in the active project |
+| 10 | `cycle.list` | `(status?, path?)` | List cycles in active project |
+| 11 | `cycle.current` | `(path?)` | Get the currently active cycle |
+| 12 | `cycle.close` | `(cycle_id, summary?, path?)` | Close a cycle (no new tasks can be added) |
+| 13 | `task.create` | `(obj, pre?, proc?, ac?, blk?, assignee?, complexity?, path?)` | Create a governed task in current cycle |
+| 14 | `task.claim` | `(task_id, path?)` | An executor claims a task → status: in_progress |
+| 15 | `task.update` | `(task_id, note, status?, path?)` | Update task progress, optionally change status |
+| 16 | `task.complete` | `(task_id, evidence?, path?)` | Mark task done, record evidence |
+| 17 | `task.fail` | `(task_id, reason, path?)` | Mark task blocked, record cause |
+| 18 | `task.read` | `(task_id, format?, path?)` | Read a task (CORTEX or HCORTEX) |
+| 19 | `task.list` | `(status?, assignee?, cycle?, path?)` | List tasks with filters |
+| 20 | `evidence.record` | `(task_id, kind, payload, path?)` | Append evidence entry to `pulse.jsonl` |
+| 21 | `evidence.list` | `(task_id?, cycle?, since?, limit?, path?)` | Query evidence trail |
+| 22 | `evidence.read` | `(event_id, path?)` | Read a single evidence event |
+| 23 | `protocol.adopt` | `(agent_id, role, path?)` | Onboard an agent with a role |
+| 24 | `protocol.release` | `(agent_id, path?)` | Fully detach an agent (clean exit, no orphans) |
 
 (`protocol.pause` / `protocol.resume` are also exposed but counted as one logical surface — they do not mutate persisted state, only in-process session state.)
+
+### Utility handlers (outside governance budget)
+
+These handlers do NOT count toward the 24-handler governance budget. They expose CODEC-CORTEX operations for reading, writing, verifying, and rendering arbitrary `.cortex` files that are NOT governance state. Governance state must still be mutated through the governance handlers only (§13).
+
+| # | Handler | Signature | Purpose |
+|---|---|---|---|
+| 25 | `cortex.read` | `(path)` | Read and parse a `.cortex` file using CODEC-CORTEX |
+| 26 | `cortex.write` | `(path, content, force?)` | Write (atomically) a `.cortex` file from CORTEX source text |
+| 27 | `cortex.verify` | `(path)` | Verify a `.cortex` file's structure using CODEC-CORTEX |
+| 28 | `cortex.render` | `(path)` | Render a `.cortex` file to HCORTEX READ markdown |
 
 ## 5. Roles and permissions
 
 | Role | Allowed handler prefixes | Description |
 |---|---|---|
-| `governor` | `workspace.*`, `project.*`, `cycle.*`, `task.create`, `task.complete`, `task.fail`, `evidence.*`, `protocol.*` | One per workspace. Decides, assigns, approves, closes. |
+| `governor` | `workspace.*`, `project.*`, `cycle.*`, `task.create`, `task.complete`, `task.fail`, `evidence.*`, `protocol.*`, `cortex.*` (full access) | One per workspace. Decides, assigns, approves, closes. |
 | `executor` | `task.claim`, `task.update`, `task.complete`, `task.fail`, `task.read`, `task.list`, `evidence.record`, `evidence.list`, `evidence.read`, `protocol.release` (self) | Picks up tasks and executes them. Cannot create cycles or tasks. |
-| `auditor` | `*.read`, `*.list`, `*.status`, `*.lessons` (read-only handlers) | Read-only. Cannot mutate any state. |
+| `auditor` | `*.read`, `*.list`, `*.status`, `*.lessons`, `cortex.read`, `cortex.verify`, `cortex.render` | Read-only. Cannot mutate any state. |
 
 Enforcement is at the handler level. If you call a handler outside your role, the system rejects with `PERMISSION_DENIED` and **does not** record the attempt as evidence — the rejection itself is the protocol. There are no exceptions, no escape hatches, no "consultative mode".
 
@@ -73,40 +84,52 @@ If you are the first agent to call `workspace.init` on a fresh workspace, you be
 
 ## 6. Task format (CORTEX)
 
-Tasks are the atomic unit of work. Each task lives in `.<product>/>cycles/<CYCLE-NN>/tasks/T-NNN.cortex` (machine) with a synced `.md` (human). The CLI `cortex` (provided by CODEC-CORTEX) maintains bidirectional sync.
+Tasks are the atomic unit of work. Each task lives in `.<product>/cycles/<CYCLE-NN>/tasks/T-NNN.cortex` (machine) with a synced `.md` (human). The CLI `cortex` (provided by CODEC-CORTEX) maintains bidirectional sync.
 
-Minimum CORTEX task:
+Archx writes tasks in canonical CODEC-CORTEX sigil format (see `formats.py` for the full bidirectional mapping). Minimum CORTEX task:
 
 ```
----
-id: T-001
-status: draft
-governor: governor
-assignee: executor
-priority: medium
-complexity: standard
-cycle: CYCLE-01
-created: 2026-07-04T10:00:00Z
-updated: 2026-07-04T10:00:00Z
----
+$0
 
-# OBJ
-One-sentence objective.
+# -- $0: ARQUX GOVERNANCE GLOSSARY --
+# Sigil | Name | Type | Risk | Cognitive Layer | Description
+# WRK   | work       | attrs      | B | Working        | Current execution state
+# OBJ   | objective  | attrs      | H | Working        | Active goal with success criterion
+# STP   | step       | attrs      | M | Working        | Task procedure step
+# CNST  | constraint | attrs      | H | Prefrontal     | Hard constraint or precondition
+# CLAIM | claim      | attrs      | M | Prefrontal     | Acceptance criterion
+# BLK   | blocker    | attrs      | H | Prefrontal     | Blocking condition
+# AUD   | audit      | attrs      | M | Prefrontal     | Verification/audit record
+# (full glossary in ARQUX_GLOSSARY constant in formats.py)
 
-# PRE
-- Precondition 1
-- Precondition 2
+$1: TASK
 
-# PROC
-1. Step one
-2. Step two
+WRK:task{id:"T-001", status:"draft", governor:"governor", assignee:"executor",
+        priority:"medium", complexity:"standard", cycle:"CYCLE-01",
+        created:"2026-07-04T10:00:00Z", updated:"2026-07-04T10:00:00Z"}
 
-# AC
-- Acceptance criterion 1
-- Acceptance criterion 2
+$2: OBJECTIVE
 
-# BLK
-- Blocking condition → HALT_AND_REPORT
+OBJ:objective{goal:"One-sentence project objective.", status:"current", success:"", survive:"work"}
+
+$3: PRECONDITIONS
+
+CNST:pre1{text:"Precondition 1", condition:"must be true before starting"}
+CNST:pre2{text:"Precondition 2"}
+
+$4: PROCEDURE
+
+STP:step1{action:"Step one", owner:"", status:"pending", survive:"work"}
+STP:step2{action:"Step two", owner:"", status:"pending", survive:"work"}
+
+$5: ACCEPTANCE
+
+CLAIM:ac1{criterion:"Acceptance criterion 1"}
+CLAIM:ac2{criterion:"Acceptance criterion 2"}
+
+$6: BLOCKERS
+
+BLK:b1{condition:"Blocking condition", action:"HALT_AND_REPORT"}
 ```
 
 Status transitions: `draft → open → in_progress → review → done`. From any state: `→ blocked` (recoverable) or `→ cancelled` (terminal). No `validation`, no `approved`, no `superseded` — keep it simple.

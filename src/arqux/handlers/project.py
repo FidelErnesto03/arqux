@@ -76,6 +76,7 @@ def init_project(
 def bind(
     agent_id: str,
     role: str,
+    path: str | None = None,
     ctx: PermissionContext | None = None,
 ) -> CortexOUT:
     """Bind an agent identity to the current project with a role.
@@ -84,7 +85,7 @@ def bind(
     shared project mind — every agent bound to the project reads the same
     SESSIONS section to know who else is active.
     """
-    root = find_project_root()
+    root = find_project_root(start=path)
     if root is None:
         return CortexOUT.error("no project initialized", code="NOT_FOUND")
 
@@ -97,13 +98,13 @@ def bind(
     )
 
 
-def unbind(agent_id: str, ctx: PermissionContext | None = None) -> CortexOUT:
+def unbind(agent_id: str, path: str | None = None, ctx: PermissionContext | None = None) -> CortexOUT:
     """Release an agent binding from the current project.
 
     Marks the session as released in the brain's SESSIONS section. The entry
     is preserved for history; only the `status=active` flag changes.
     """
-    root = find_project_root()
+    root = find_project_root(start=path)
     if root is None:
         return CortexOUT.error("no project initialized", code="NOT_FOUND")
 
@@ -120,13 +121,13 @@ def unbind(agent_id: str, ctx: PermissionContext | None = None) -> CortexOUT:
     )
 
 
-def status(ctx: PermissionContext | None = None) -> CortexOUT:
+def status(path: str | None = None, ctx: PermissionContext | None = None) -> CortexOUT:
     """Active project status: cycles, tasks, agents, brain version.
 
     The brain version is the optimistic-lock counter — every mutation bumps
     it. Agents reading the brain should check the version before writing.
     """
-    root = find_project_root()
+    root = find_project_root(start=path)
     if root is None:
         return CortexOUT.error("no project initialized", code="NOT_FOUND")
 
@@ -150,14 +151,14 @@ def status(ctx: PermissionContext | None = None) -> CortexOUT:
     )
 
 
-def lessons(ctx: PermissionContext | None = None) -> CortexOUT:
+def lessons(path: str | None = None, ctx: PermissionContext | None = None) -> CortexOUT:
     """List lessons local to the current project.
 
     Reads from the brain's LESSONS section. These are CONTEXTUAL lessons —
     they apply to this project only. Behavioral lessons (how a role should
     act regardless of project) live in the identity's `.cortex`, not here.
     """
-    root = find_project_root()
+    root = find_project_root(start=path)
     if root is None:
         return CortexOUT.error("no project initialized", code="NOT_FOUND")
 
