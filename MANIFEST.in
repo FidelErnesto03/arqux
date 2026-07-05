@@ -1,0 +1,8 @@
+include README.md
+include AGENTS.md
+include CHANGELOG.md
+include LICENSE
+recursive-include src/arqux/templates *.cortex *.md *.tmpl
+recursive-include src/arqux/identities *.cortex *.md
+recursive-include tests *.py
+recursive-include skills *.md

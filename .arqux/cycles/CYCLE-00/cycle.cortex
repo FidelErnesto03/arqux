@@ -1,0 +1,32 @@
+---
+id: CYCLE-00
+name: Initial Skeleton
+description: Bootstrap the framework structure with placeholder name support and brain-as-shared-mind architecture
+status: open
+created: 2026-07-04T10:00:00Z
+closed: null
+---
+
+# CYCLE CYCLE-00
+
+Bootstrap the framework structure with placeholder name support and the
+brain-as-shared-mind architecture (handoffs and pulse live INSIDE the
+brain, not in separate files).
+
+## SCOPE
+- Create directory layout per the brief's §6 Fase 0
+- Implement all handlers as MCP-callable functions
+- Add the placeholder rename script (scripts/rename-product.py)
+- Wire the dogfooding directory (.arqux/) with manifest + meta-brain + projects
+- Add the test suite covering happy paths
+- Integrate handoffs and pulse into the brain's # HANDOFFS and # PULSE sections
+- Define HCORTEX as a markdown writing discipline (not a separate format)
+- Document learning layers: behavioral (identity) vs. contextual (project) vs. global (workspace)
+
+## EXIT CRITERIA
+- `python scripts/rename-product.py <name> --dry-run` produces a valid diff
+- `pytest` passes for all handler modules
+- `pip install -e .` succeeds (after rename)
+- `arqux --version` prints the version
+- No `pulse.jsonl` file is created by any handler — pulse lives in brain
+- No `bindings.cortex` file is created — sessions live in brain

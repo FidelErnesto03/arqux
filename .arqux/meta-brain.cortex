@@ -1,0 +1,29 @@
+---
+level: 1
+workspace: arqux
+lessons: []
+knowledge:
+  - "CODEC-CORTEX is the persistence layer — never edit .cortex files directly"
+  - "24 handlers is a fixed budget — adding one requires removing one"
+  - "Dogfooding is non-negotiable — every feature is a governed task"
+risks: []
+---
+
+# META-BRAIN
+
+Workspace-level meta-brain for Arqux self-development.
+
+## LESSONS
+(Elevated from project brains as the framework matures. Global lessons —
+apply across all projects in the workspace.)
+
+## KNOWLEDGE
+- CODEC-CORTEX is the persistence layer — never edit .cortex files directly
+- 24 handlers is a fixed budget — adding one requires removing one
+- Dogfooding is non-negotiable — every feature is a governed task
+- AGENTS.md is the single entry point — keep it under 250 lines
+- The project brain is the shared mind — pulse, handoffs, and sessions live inside it
+
+## RISKS
+- Placeholder name (`arqux`) must be swapped before publication
+- CODEC-CORTEX dependency must remain compatible across versions

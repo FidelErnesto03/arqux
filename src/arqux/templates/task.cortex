@@ -1,0 +1,31 @@
+---
+id: T-NNN
+status: draft
+governor: governor
+assignee: executor
+priority: medium
+complexity: standard
+cycle: CYCLE-01
+created: 2026-01-01T00:00:00Z
+updated: 2026-01-01T00:00:00Z
+---
+
+# OBJ
+One-sentence objective describing what this task achieves.
+
+# PRE
+- Precondition that must hold before work begins
+- Required infrastructure, dependencies, or prior tasks completed
+
+# PROC
+1. Step one of the procedure
+2. Step two of the procedure
+3. Step three — include enough detail that an executor can proceed without further context
+
+# AC
+- Acceptance criterion — observable and binary (pass/fail)
+- Acceptance criterion — including test coverage or evidence requirement
+
+# BLK
+- Blocking condition → HALT_AND_REPORT
+- Another blocking condition → HALT_AND_REPORT
