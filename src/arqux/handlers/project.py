@@ -41,7 +41,11 @@ def init_project(
     verbose: bool = False,
     ctx: PermissionContext | None = None,
 ) -> CortexOUT:
-    """Initialize `.<product>/` in a project directory and register it in the workspace."""
+    """Initialize `.<product>/` in a project directory and register it in the workspace.
+    
+    Detects pre-existing project context and instructs the calling agent to
+    populate the brain accordingly via cortex.write (see STP:seed in response).
+    """
     target = Path(path or os.getcwd()).resolve()
     gov_dir = target / ARQUX_DIR
     gov_dir.mkdir(parents=True, exist_ok=True)
@@ -65,12 +69,89 @@ def init_project(
         with projects_path.open("a", encoding="utf-8") as fh:
             fh.write(entry)
 
-    return CortexOUT.work(
+    # Detect pre-existing project context and build seed instructions.
+    seed_notes = _detect_project_context(target)
+
+    response = CortexOUT.work(
         f"project.init ok name={name} path={gov_dir}",
         project=name,
         path=str(gov_dir),
         registered_in_workspace=ws_root is not None,
     )
+
+    if seed_notes:
+        seed_block = "\n".join(seed_notes)
+        response = CortexOUT(
+            profile=response.profile,
+            message=response.message + "\n" + seed_block,
+            fields=response.fields,
+        )
+
+    return response
+
+
+def _detect_project_context(project_root: Path) -> list[str]:
+    """Scan project for pre-existing context and return seed instructions.
+
+    Returns a list of CORTEX-formatted lines for the agent to follow.
+    The agent (LLM) reads these and populates brain.cortex via cortex.write.
+    """
+    notes: list[str] = []
+    has_context = False
+
+    # 1. Check for NOMOS legacy brain (.cortex/brain.cortex).
+    nomos_brain = project_root / ".cortex" / "brain.cortex"
+    if nomos_brain.exists():
+        has_context = True
+        notes.append("STP:seed{")
+        notes.append(f'  action:"study and migrate NOMOS brain at {nomos_brain}",')
+        notes.append('  instructions:"Read .cortex/brain.cortex content. Extract FCS, OBJ, AXM,')
+        notes.append('               RSK, KNW, LNG sections. Write them to .arqux/brain.cortex')
+        notes.append('               via cortex.write(path=..., content=..., force=true).')
+        notes.append('               Preserve all axioms, risks, objectives, and knowledge.')
+        notes.append('               DO NOT edit .cortex/brain.cortex — leave NOMOS brain intact.',
+        )
+        notes.append("}")
+
+    # 2. Check for documentation files.
+    docs_found = []
+    for doc_name in ("AGENTS.md", "README.md", "SKILL.md"):
+        if (project_root / doc_name).exists():
+            docs_found.append(doc_name)
+    if docs_found:
+        has_context = True
+        doc_list = ", ".join(docs_found)
+        notes.append("STP:read_docs{")
+        notes.append(f'  files:"{doc_list}",')
+        notes.append('  action:"read each file for project purpose, conventions, active goals",')
+        notes.append('  instructions:"Extract FCS, OBJ, KNW, RSK. Write to .arqux/brain.cortex')
+        notes.append('               via cortex.write after studying project docs."')
+        notes.append("}")
+
+    # 3. Detect tech stack.
+    tech_files = []
+    for fname in ("pyproject.toml", "package.json", "Cargo.toml", "go.mod", "composer.json"):
+        if (project_root / fname).exists():
+            tech_files.append(fname)
+    if tech_files:
+        has_context = True
+        tech_list = ", ".join(tech_files)
+        notes.append("STP:scan_stack{")
+        notes.append(f'  files:"{tech_list}",')
+        notes.append(f'  action:"read manifest files for language, framework, dependencies",')
+        notes.append(f'  purpose:"populate KNW section with tech stack and architectural patterns"')
+        notes.append("}")
+
+    if not has_context:
+        notes.append("STP:seed_empty{")
+        notes.append('  note:"No pre-existing project context detected.',)
+        notes.append('        Brain.cortex remains as scaffold. Agent may study the project')
+        notes.append('        manually and seed via cortex.write at any time.")')
+        notes.append("}")
+
+    notes.insert(0, "# -- BRAIN SEEDING INSTRUCTIONS (for the calling agent) --")
+    notes.insert(0, "")
+    return notes
 
 
 def bind(
