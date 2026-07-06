@@ -92,6 +92,7 @@ WRK:available_skills{
   skill:"memory.skill.md", purpose:"Native agent memory in CORTEX format (ultra-dense)",
   skill:"workflows.skill.md", purpose:"Canonical workflows with PlantUML diagrams: init, govern, daily, task lifecycle, identity evolution, adoption",
   skill:"cortex-internal.skill.md", purpose:"How to use CORTEX format for agent-native memory, notes, plans, and session management. Ultra-dense, self-indexing, LLM-native.",
+  skill:"learning.skill.md", purpose:"CODEC-CORTEX Learning Engine integration: scan brain for patterns, detect elevation candidates (LNG→KNW), apply knowledge elevation.",
 }
 
 
