@@ -33,25 +33,46 @@ Every state mutation flows through 38 MCP handlers. There is no direct file edit
 ## Quick start
 
 ```bash
-# 1. Install
-uv tool install -e .
+# 1. Clone and install
+git clone https://github.com/FidelErnesto03/arqux.git
+cd arqux
+uv tool install --force -e .
 
-# 2. Initialize a workspace
+# 2. Set agent environment (required for all arqux commands)
 export ARQUX_AGENT_ID=alfred
 export ARQUX_AGENT_ROLE=governor
-arqux init
 
-# 3. Configure MCP (Hermes example)
+# 3. Initialize a governed workspace
+mkdir ~/my-workspace && cd ~/my-workspace
+arqux init
+# Creates: AGENTS.md + .arqux/ (manifest, brain, meta-brain, identities, skills)
+
+# 4. Start the MCP server (in a separate terminal or background)
+arqux serve
+
+# 5. Configure MCP client (Hermes example)
 hermes mcp add arqux \
-  --command arqux \
+  --command $(which arqux) \
   --args serve \
   --env ARQUX_AGENT_ID=alfred \
   --env ARQUX_AGENT_ROLE=governor
 
-# 4. Test
+# 6. Verify connectivity
 hermes mcp test arqux
 # Expected: 38 tools discovered, 0 errors
+
+# 7. Restart the MCP session so tools become available
+#    (in Hermes: /reload-mcp or restart the app)
+
+# 8. Governance a project
+cd ~/my-workspace
+cp -a /path/to/existing-project ./my-project
+# Agent reads AGENTS.md → detects .arqux/ → STANDBY
+# Agent calls: project.init(name="my-project", path="./my-project")
+# Agent studies project → calls project.init again WITH seed=<brain_content>
 ```
+
+> **Note:** If `hermes mcp test` succeeds but tools don't appear in the session, run `/reload-mcp` or restart the application. The MCP process runs the code version that was current when it started — after `uv tool install --force`, restart the MCP server.
 
 ## Core concepts
 
@@ -213,15 +234,15 @@ arqux/
 ## Development
 
 ```bash
-# Install in editable mode
-uv tool install -e .
+# Install in editable mode (after cloning the repo)
+uv tool install --force -e .
 
 # Run tests
-uv pip install pytest pytest-asyncio
+uv pip install pytest pytest-asyncio --python $(which python3)
 PYTHONPATH=src python3 -m pytest tests/
 
-# Run MCP server locally
-ARQUX_AGENT_ID=alfred ARQUX_AGENT_ROLE=governor arqux serve
+# Run MCP server locally for testing
+ARQUX_AGENT_ID=alfred ARQUX_AGENT_ROLE=governor python3 -m arqux serve
 ```
 
 ## License
