@@ -96,6 +96,10 @@ def init_workspace(
         policy_dst = gov_dir / "learn-policies.cortex"
         if not policy_dst.exists():
             policy_dst.write_text(policy_tmpl.read_text(encoding="utf-8"), encoding="utf-8")
+
+    # Create skill management directories.
+    (gov_dir / "skills" / "originals").mkdir(parents=True, exist_ok=True)
+    (gov_dir / "skills" / "adaptations").mkdir(parents=True, exist_ok=True)
     skills_src = Path(__file__).resolve().parent.parent / "skills"
     if skills_src.is_dir():
         skills_dst = gov_dir / "skills"
