@@ -22,26 +22,7 @@ import click
 from . import __version__
 from .constants import PRODUCT_NAME, PRODUCT_NAME_TITLE
 
-#: ASCII art banner with ANSI colors — Arqux brand identity.
-#: Colors: gray (90) → green (32) → cyan (96) gradient.
-BANNER = (
-    "\033[90m       d8888\033[0m                   \033[90m888\033[0m     \033[90m888\033[0m \033[32mY88b\033[0m   \033[90md88P\033[0m\n"
-    "\033[90m      d8\033[0m\033[32m888\033[0m\033[92m8\033[0m                  \033[90m888\033[0m     \033[90m8\033[0m\033[32m88\033[0m  \033[32mY88b\033[0m \033[90md88P\033[0m\n"
-    "\033[90m     d88\033[0m\033[32mP88\033[0m\033[92m8\033[0m                  \033[90m8\033[0m\033[32m88\033[0m     \033[32m88\033[0m\033[92m8\033[0m   \033[32mY88o88P\033[0m\n"
-    "\033[90m    d88\033[0m\033[32mP\033[0m \033[90m8\033[0m\033[32m88\033[0m \033[90m888d888\033[0m \033[32m.d88888\033[0m \033[90m888\033[0m     \033[32m88\033[0m\033[92m8\033[0m    \033[32mY888P\033[0m\n"
-    "\033[90m   d88\033[0m\033[32mP\033[0m  \033[90m8\033[0m\033[32m88\033[0m \033[90m888P\"\033[0m  \033[32md8P\"88\033[0m \033[90m888\033[0m     \033[32m88\033[0m\033[92m8\033[0m    \033[32md888b\033[0m\n"
-    "\033[90m  d88\033[0m\033[32mP\033[0m   \033[90m8\033[0m\033[32m88\033[0m \033[90m888\033[0m    \033[32m888 888\033[0m \033[90m888\033[0m     \033[32m88\033[0m\033[92m8\033[0m   \033[32md88888b\033[0m\n"
-    "\033[90m d8888888888\033[0m \033[90m888\033[0m    \033[32mY88b 888\033[0m \033[32mY88b. .d88P\033[0m \033[90md88P\033[0m \033[32mY88b\033[0m\n"
-    "\033[90md88P\033[0m     \033[90m888\033[0m \033[90m888\033[0m     \033[32m\"Y88888\033[0m \033[32m\"Y88888P\"\033[0m \033[90md88P\033[0m   \033[32mY88b\033[0m\n"
-    "                          \033[32m888\033[0m\n"
-    "                          \033[32m888\033[0m\n"
-    "                          \033[32m888\033[0m"
-)
 
-
-def _is_tty() -> bool:
-    """Check if stdout is a terminal (skip banner when piped)."""
-    return hasattr(sys.stdout, "isatty") and sys.stdout.isatty()
 
 
 def _call_handler(name: str, raw_args: list[str]) -> str:
@@ -98,7 +79,7 @@ def _call_handler(name: str, raw_args: list[str]) -> str:
 
 
 @click.group()
-@click.version_option(version=__version__, prog_name=PRODUCT_NAME, message=f"%(prog)s %(version)s\n{BANNER if _is_tty() else ''}")
+@click.version_option(version=__version__, prog_name=PRODUCT_NAME, message="%(prog)s %(version)s")
 def main():
     """Arqux — governance framework for AI agent teams."""
     pass
@@ -110,12 +91,8 @@ def cmd_init(path: str | None, verbose: bool):
     """Initialize .arqux/ in the current directory."""
     from .handlers.workspace import init_workspace
 
-    if _is_tty():
-        click.echo(BANNER)
-        click.echo()
     result = init_workspace(path=path, verbose=verbose)
     click.echo(result.to_text())
-
 
 @main.command("status")
 @click.option("--path", default=None, help="Path to check.")
@@ -146,8 +123,6 @@ def cmd_status(path: str | None, verbose: bool):
 @click.option("--verbose", is_flag=True, help="Verbose startup.")
 def cmd_serve(verbose: bool):
     """Start the MCP server on stdio."""
-    if verbose and _is_tty():
-        click.echo(BANNER, err=True)
     from .server import run_server
     run_server(verbose=verbose)
 
@@ -210,12 +185,6 @@ def cmd_render_diagram(puml_file: str, fmt: str, output: str | None):
     ok, result = render_puml(source, format=fmt, output_dir=out_dir)
     click.echo(result)
     sys.exit(0 if ok else 1)
-
-
-@main.command("banner")
-def cmd_banner():
-    """Show the Arqux ASCII art banner."""
-    click.echo(BANNER)
 
 
 @main.command("handlers")
