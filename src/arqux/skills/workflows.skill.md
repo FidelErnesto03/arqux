@@ -275,18 +275,18 @@ RV --> CN : 3rd fail
 
 $8.1: CREATION — blueprint.create
 
+AXM:create_not_for_review{ The DRAFT created by blueprint.create is NOT ready for Architect review. It is a skeleton with brain context pre-filled. The agent MUST immediately call blueprint.define() to fill all sections before presenting to the Architect. }
+
 STP:w08_create{
   1:"Architect states a need: 'Implement OAuth2 token endpoint'",
   2:"Governor: blueprint.create(obj='OAuth2 token endpoint', cycle='CYCLE-01')",
   3:"BLP_TEMPLATE.md is copied → BLP-NNN.md in draft state",
   4:"SECTION PRE-FILL (automatic): context from brain.cortex and cycle MANIFEST.md",
-  "   §1 Problem Statement ← brain FOCUS entry",
-  "   §3 Preconditions ← brain KNW entries (known dependencies)",
-  "   §4 Guiding Principle ← brain LNG entries (project lessons)",
-  "   §7 Mandatory Rules ← cycle guidelines from MANIFEST.md",
-  "   §15 Risks ← brain RSK entries",
-  5:"Architect can now READ the pre-filled draft and begin maturation immediately",
-  key_rule:"NO Blueprint can be created until cycle is 'ready' (Architect-approved cycle maturation)."
+  5:"IMMEDIATELY AFTER: call blueprint.define() to fill ALL remaining sections.",
+  "   The draft has brain context but is INCOMPLETE.",
+  "   Architect expects: §3 Preconditions, §6 Scope, §8 PUML, §9 PUML, §11 Procedure, §12 AC, §14 Tasks.",
+  6:"ONLY after define() is complete, proceed to maturation.",
+  key_rule:"NEVER present a draft to the Architect. Always define first, then mature."
 }
 
 
