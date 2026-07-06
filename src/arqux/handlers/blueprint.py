@@ -201,6 +201,9 @@ def create_blueprint(
     body = body.replace("governor: \"\"", f'governor: "{gov}"')
     body = body.replace("created_at: \"\"", f'created_at: "{_now_iso()}"')
 
+    # Pre-fill context from brain.cortex and cycle manifest
+    body = _prefill_from_context(body, root, cycle_id)
+
     bp_path = bp_dir / f"{bp_id}.md"
     bp_path.write_text(body, encoding="utf-8")
 
@@ -766,3 +769,73 @@ def _record_to_brain(root: Path, bp_id: str, outcome: str, evidence: str) -> Non
         write_brain_sections(project_dir, fm, sections)
     except Exception:
         pass
+
+
+def _prefill_from_context(body: str, root: Path, cycle_id: str) -> str:
+    """Pre-fill the Blueprint template with context from brain.cortex and cycle manifest.
+
+    This ensures the draft is immediately readable by the Architect, enabling
+    the cyclic maturation interaction to begin immediately — no empty placeholder phase.
+    """
+    try:
+        project_dir = root.parent
+        fm, sections, _ = read_brain(project_dir)
+
+        # Extract knowledge from brain
+        focus = sections.get("FOCUS", "").strip()
+        knowledge = sections.get("KNOWLEDGE", "").strip()
+        lessons = sections.get("LESSONS", "").strip()
+        risks_section = sections.get("RISKS", "").strip()
+
+        # Pre-fill §1 Problem Statement with project focus
+        if focus:
+            focus_line = focus.splitlines()[0] if focus else focus
+            placeholder = "_Describe the problem this Blueprint addresses. What evidence exists that it's real?_"
+            body = body.replace(placeholder, f"Addresses project focus: {focus_line}\n\n_Describe the specific problem within this scope._")
+
+        # Pre-fill §3 Preconditions with known dependencies from brain knowledge
+        if knowledge:
+            knw_lines = [l.strip() for l in knowledge.splitlines() if l.strip()][:3]
+            pre = "_\n".join(f"- [ ] Dependency identified from project brain: {l}" for l in knw_lines)
+            placeholder = "- [ ] _Precondition 1 — verifiable via command or inspection_"
+            body = body.replace(placeholder, pre, 1)
+
+        # Pre-fill §4 Guiding Principle with relevant lessons
+        if lessons:
+            relevant = [l.strip() for l in lessons.splitlines() if l.strip()][:1]
+            if relevant:
+                placeholder = "_The rule that governs this Blueprint. Executor must follow it without exception._"
+                body = body.replace(placeholder, f"Based on project lesson: {relevant[0]}")
+
+        # Pre-fill §15 Risks with known risks from brain
+        if risks_section:
+            risk_lines = [l.strip() for l in risks_section.splitlines() if l.strip()][:2]
+            placeholder = "| R-01 | _Description_ | _Impact_ | _Mitigation_ |"
+            if risk_lines:
+                body = body.replace(placeholder, f"| R-01 | Inherited from project brain | {risk_lines[0][:60]} | Review |", 1)
+
+    except Exception:
+        pass
+
+    # Pre-fill from cycle manifest
+    try:
+        cycle_mf = root / CYCLES_DIR / cycle_id / "MANIFEST.md"
+        if cycle_mf.exists():
+            mf_text = cycle_mf.read_text(encoding="utf-8")
+            # Extract cycle objectives for §2
+            obj_match = re.search(r"CYC-OBJ-\d+:\s*([^\n]+)", mf_text)
+            if obj_match:
+                placeholder = "_Concrete, verifiable, self-contained. An executor reading only this section should understand what to achieve._"
+                body = body.replace(placeholder, f"Contributes to cycle objective: {obj_match.group(1)}\n\n_Describe the specific Blueprint objective._")
+
+            # Extract cycle guidelines for §7 Mandatory Rules
+            guide_match = re.findall(r"(\d+\.\s+_[^\n]+_)\s*—\s*([^\n]+)", mf_text)
+            if guide_match and len(guide_match) >= 1:
+                guideline_text = guide_match[0][1][:100] if guide_match[0][1] else ""
+                if guideline_text:
+                    placeholder = "1. _Rule 1"
+                    body = body.replace(placeholder, f"1. From cycle guideline: {guideline_text}\n2. _Rule 2", 1)
+    except Exception:
+        pass
+
+    return body
