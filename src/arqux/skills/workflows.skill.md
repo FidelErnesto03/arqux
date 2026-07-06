@@ -240,16 +240,142 @@ STP:w07_s{ 1:"skill.import(source, name) — acquire skill, store original in or
 
 $8: BLUEPRINT WORKFLOW
 
-IDN:workflow_blueprint{ name:"Blueprint Lifecycle", purpose:"Complete lifecycle: cycle maturation → Blueprint creation → maturation → execution → cross-verification → learning.", trigger:"Architect defines a new work item.", skill:"Load blueprint-workflow.skill.md for full detail (11 sections). This is a summary reference." }
+IDN:workflow_blueprint{ name:"Blueprint Lifecycle", purpose:"Complete lifecycle: cycle maturation → Blueprint creation → maturation → execution → cross-verification → learning." }
 
-STP:w08_s{
-  1_cycle_create:"cycle.create(name, description) — MANIFEST.md from template, state=draft",
-  2_cycle_mature:"cycle.define(...) → cycle.mature() → cyclic interaction Architect ↔ Governor → cycle.ready()",
-  3_blueprint_create:"blueprint.create(obj, cycle) — BLP-NNN.md from template, state=draft",
-  4_blueprint_define:"blueprint.define(...) — Governor fills all 18 sections",
-  5_blueprint_mature:"blueprint.mature() → cyclic interaction Architect ↔ Governor → blueprint.ready()",
-  6_execution:"blueprint.assign() → claim → step-by-step execution with self-awareness. Escalate if stuck.",
-  7_cross_verify:"Auditor compares results vs design. Pass → approved. Fail → auto-re-delegate (max 3).",
-  8_closure:"cycle.close() → auto-generates LESSONS from all Blueprints. cortex.learn scans for patterns.",
-  key_rule:"NO Blueprint can be created until cycle is ready (Architect-approved)."
+DIAG:w08{
+@startuml
+title Blueprint Lifecycle — Maturation + Execution
+
+state "draft" as D
+state "defined" as DF
+state "maturing" as M
+state "ready" as R
+state "in_progress" as IP
+state "review" as RV
+state "done" as DN
+state "blocked" as B
+state "cancelled" as CN
+
+[*] --> D : blueprint.create (pre-filled from brain)
+D --> DF : blueprint.define
+DF --> M : blueprint.mature
+M --> M : cyclic interaction (agent ↔ architect)
+M --> R : architect: ready
+R --> IP : claim
+IP --> RV : complete
+IP --> B : fail
+B --> M : re-plan
+B --> CN : cancel
+RV --> DN : approve
+RV --> IP : re-delegate (max 3)
+RV --> CN : 3rd fail
+@enduml
+}
+
+
+$8.1: CREATION — blueprint.create
+
+STP:w08_create{
+  1:"Architect states a need: 'Implement OAuth2 token endpoint'",
+  2:"Governor: blueprint.create(obj='OAuth2 token endpoint', cycle='CYCLE-01')",
+  3:"BLP_TEMPLATE.md is copied → BLP-NNN.md in draft state",
+  4:"SECTION PRE-FILL (automatic): context from brain.cortex and cycle MANIFEST.md",
+  "   §1 Problem Statement ← brain FOCUS entry",
+  "   §3 Preconditions ← brain KNW entries (known dependencies)",
+  "   §4 Guiding Principle ← brain LNG entries (project lessons)",
+  "   §7 Mandatory Rules ← cycle guidelines from MANIFEST.md",
+  "   §15 Risks ← brain RSK entries",
+  5:"Architect can now READ the pre-filled draft and begin maturation immediately",
+  key_rule:"NO Blueprint can be created until cycle is 'ready' (Architect-approved cycle maturation)."
+}
+
+
+$8.2: DEFINITION — blueprint.define
+
+STP:w08_define{
+  1:"Governor fills remaining sections based on Architect's initial feedback:",
+  "   §6 Scope & Exclusions",
+  "   §12 Acceptance Criteria (2+ ACs with verification)",
+  "   §11 Work Procedure (phases + rollback)",
+  "   §13 Required Validations",
+  "   §8 Technical Design (PUML component diagram)",
+  "   §9 Operational Design (PUML sequence diagram)",
+  "   §5 Context (PUML deployment diagram)",
+  "   §14 Tasks (T-1.1, T-1.2... breakdown)",
+  "   §16 Blocking Rule",
+  2:"blueprint.define(BLP-NNN, pre=[...], scope='...', ac=[...], ...)",
+  3:"State → defined"
+}
+
+
+$8.3: MATURATION — Cyclic Architect Interaction
+
+AXM:maturation{ Maturation is a CYCLIC dialogue between agent and Architect. It is NOT automatic. The agent proposes refinements. The Architect reviews, approves, or requests changes. This repeats until the Architect is fully satisfied. }
+
+STP:w08_mature{
+  1:"Governor: blueprint.mature(BLP-NNN) → state = maturing",
+  2:"AGENT reviews the 6 Quality Contract gates (§18):",
+  "   has_clear_objective | has_verifiable_preconditions | has_scope_and_exclusions",
+  "   has_acceptance_criteria | has_work_procedure | has_required_validations",
+  3:"AGENT identifies weak or incomplete gates",
+  4:"AGENT presents to Architect in natural language:",
+  "   'Arquitecto, BLP-001 tiene §11 Procedure débil (falta rollback).",
+  "    También §12 AC-01 no tiene comando de verificación.",
+  "    Propongo: agregar fase de rollback y comando pytest.'",
+  5:"ARCHITECT responds:",
+  "   a) 'Aprobado' → agent applies changes → repeats from step 2",
+  "   b) 'Ajusta X, cambia Y' → agent adjusts per feedback → repeats from step 3",
+  "   c) 'Ready' → agent calls blueprint.ready(BLP-NNN) → state = ready",
+  6:"blueprint.ready() marks the Blueprint as executable. Governor can assign executor.",
+  note:"The maturation loop has NO maximum. It ends only when the Architect declares 'ready'.",
+  key_rule:"The Architect is the final authority on readiness. The 6 gates guide the agent, they do NOT replace human judgment."
+}
+
+
+$8.4: EXECUTION — Step-by-step with self-awareness
+
+STP:w08_execution{
+  1:"Governor: blueprint.assign(BLP-NNN, executor='jarvis')",
+  2:"Executor: blueprint.claim(BLP-NNN) → state = in_progress",
+  3:"Executor reads full BLP-NNN.md: §8 Technical Design, §9 Operational Design, §11 Procedure, §14 Tasks",
+  4:"For EACH task in §14:",
+  "   a) Self-check: 'Can I complete this with my current tools and knowledge?'",
+  "   b) If NO → escalate to governor/architect immediately",
+  "   c) If YES → execute following the procedure",
+  "   d) Record evidence: evidence.record(kind='artifact', payload=...)",
+  "   e) blueprint.update(BLP-NNN, note='T-1.X completed')",
+  5:"On obstacle: blueprint.fail(BLP-NNN, reason='...') → governor re-evaluates",
+  6:"When all tasks complete: blueprint.complete(BLP-NNN, evidence='...') → state = review",
+  key_rule:"Executor NEVER modifies the design. Design change → ask Architect."
+}
+
+
+$8.5: CROSS-VERIFICATION — Max 3 re-delegations
+
+STP:w08_verify{
+  1:"Auditor loads BLP-NNN.md + evidence from execution",
+  2:"Cross-compare results against design:",
+  "   §12 Acceptance Criteria → all ACs pass?",
+  "   §13 Required Validations → all validations pass?",
+  "   §8 Technical Design → implementation matches?",
+  3:"Binary outcome:",
+  "   PASS → blueprint.approve(BLP-NNN) → state = done",
+  "   FAIL → deviations recorded in brain → blueprint.re_delegate()",
+  4:"Re-delegation loop (MAX 3):",
+  "   Attempt 1-2: executor retries based on deviation report",
+  "   Attempt 3: if still fails → blueprint.block_for_architect()",
+  "   → Architect manually reviews and decides: fix, cancel, or new Blueprint",
+  5:"On approve: identity.record(lesson='BLP-NNN design verified', kind='process')",
+  key_rule:"3rd failure is NOT silent — it goes directly to the Architect."
+}
+
+
+$8.6: CLOSURE — Learning synthesis
+
+STP:w08_closure{
+  1:"When all Blueprints in cycle are done or cancelled: cycle.close()",
+  2:"cycle.close auto-generates LESSONS from all Blueprints",
+  3:"cortex.learn scans the cycle for patterns across Blueprints",
+  4:"Elevation candidates (LNG→KNW) proposed for Architect review",
+  key_rule:"Every closed cycle feeds the brain. Knowledge compounds over time."
 }
