@@ -15,7 +15,7 @@ def test_mutating_handler_count_is_36() -> None:
     Excludes session-only (pause/resume) and utility (cortex.*).
     """
     session_only = {"protocol.pause", "protocol.resume"}
-    utility = {"cortex.read", "cortex.write", "cortex.verify", "cortex.render", "cortex.learn", "cortex.learn.elevate", "identity.record", "skill.import", "skill.convert", "skill.record", "skill.evolve", "skill.list", "blueprint.read", "blueprint.list", "setup.plantuml"}
+    utility = {"cortex.read", "cortex.write", "cortex.verify", "cortex.render", "cortex.render.diagram", "cortex.learn", "cortex.learn.elevate", "identity.record", "skill.import", "skill.convert", "skill.record", "skill.evolve", "skill.list", "blueprint.read", "blueprint.list", "setup.plantuml"}
     excluded = session_only | utility
     mutating = [name for name in list_handlers() if name not in excluded]
     assert len(mutating) == 36
@@ -47,7 +47,8 @@ def test_module_handler_counts() -> None:
         "task": 7,
         "evidence": 3,
         "protocol": 4,
-        "cortex": 8,
+        "cortex": 7,
+        "setup": 1,
         "identity": 1,
         "blueprint": 14,
         "setup": 1,
