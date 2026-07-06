@@ -16,8 +16,9 @@ $2: PHASE 0 — DETECT
 
 STP:detect{
   1:"Check if .arqux/ exists in or above cwd.",
-  2_governed:"If YES: Load the SESSION START CONTEXT protocol ($6). Read brain.cortex. Present context.",
+  2_governed:"If YES: verify your ROLE immediately. Run `echo $ARQUX_AGENT_ROLE` or equivalent. If auditor/empty: report to Architect that write handlers are blocked. Do NOT edit files directly — that violates LIM:no_direct_edit. Ask Architect to configure MCP server with ARQUX_AGENT_ROLE=governor.",
   3_ungoverned:"If NO: Enter PHASE 1 — explain Arqux. Do NOT suggest pip install (assumed done).",
+  4_no_bypass:"If handlers return PERMISSION_DENIED, REPORT the error. NEVER work around it with direct file edits. The governor role is required for mutations. Without it, you are a read-only observer.",
 }
 
 
