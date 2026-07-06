@@ -193,3 +193,47 @@ NA -> NA: Asume identidad + rol
 NA --> A: Ready. What does the Architect need?
 @enduml
 }
+
+
+$7: SKILL LIFECYCLE
+
+IDN:workflow_skill{ name:"Skill Lifecycle", purpose:"Acquire, install, convert to CORTEX, use, adapt, and evolve external skills under Arqux governance.", trigger:"Architect wants to use an external skill (marketplace, platform, third-party)" }
+
+DIAG:w07{
+@startuml
+actor "Arquitecto" as A
+participant Agent as G
+participant "originals/" as ORIG
+participant ".arqux/skills/" as SK
+participant ".arqux/adaptations/" as ADP
+
+== ADQUISICION ==
+A -> G: Instala skill Oracle APEX
+G -> G: Obtiene skill del marketplace
+G -> ORIG: Almacena original en skills/originals/
+note right: Canon externo preservado
+
+== CONVERSION ==
+G -> G: Convierte a CORTEX ultra-denso
+G -> SK: Escribe en skills/oracle-apex.skill.md
+note right: Unico formato disponible para agentes
+
+== USO ==
+G -> SK: Carga skill desde .arqux/skills/
+G -> G: Ejecuta siguiendo el skill
+
+== ADAPTACION ==
+G -> G: Detecta desviacion del skill
+G -> ADP: skill.record(deviation)
+note right: ADA registrada para evolucion futura
+
+== EVOLUCION ==
+G -> ADP: Acumula adaptaciones
+G -> G: Escanea patrones de desviacion
+G --> A: Propuesta de mejora
+A -> G: Aprobado
+G -> SK: Actualiza skill con mejora
+@enduml
+}
+
+STP:w07_s{ 1:"skill.import(source, name) — adquiere skill, almacena original en originals/", 2:"skill.convert(name) — convierte a CORTEX ultra-denso, escribe en skills/", 3:"Agent carga desde .arqux/skills/ (directriz: NO desde externo)", 4:"Agent ejecuta y si se desvia: skill.record(name, expected, actual, reason)", 5:"Periodicamente: escanear adaptaciones, proponer mejoras", 6:"Arquitecto aprueba → skill.evolve(name, adaptation_id)" }
