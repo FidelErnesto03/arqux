@@ -8,9 +8,9 @@ $0
 
 $1: MCP CONFIGURATION (PLATFORM AGNOSTIC)
 
-IDN:mcp_config{ purpose:"Arqux MCP server requires two environment variables. Without them, the agent defaults to auditor (read-only) and CANNOT mutate governance state." }
+IDN:mcp_config{ purpose:"Arqux MCP server. Environment variables are optional. Default: governor (full access). Set explicitly for multi-agent setups." }
 
-AXM:env_vars_mandatory{ ARQUX_AGENT_ID and ARQUX_AGENT_ROLE are MANDATORY for write access. Default without them: auditor_read_only. }
+AXM:env_vars_mandatory{ ARQUX_AGENT_ID and ARQUX_AGENT_ROLE are recommended for explicit identity. Default without them: governor (full access). }
 
 STP:env_config{
   ARQUX_AGENT_ID:"Agent identifier. Set to: alfred (steward), jarvis (executor), heimdall (auditor), seshat (scribe). Default: anonymous.",
@@ -34,7 +34,7 @@ STP:mcp_json{
   note:"The env block is REQUIRED. Without it, Arqux starts as auditor (read-only).",
 }
 
-AXM:no_env_no_write{ If handlers return PERMISSION_DENIED, the env vars are missing or wrong. DO NOT bypass with direct file edits. Report to the Architect and ask for MCP configuration. }
+AXM:no_env_no_write{ If handlers return PERMISSION_DENIED, check ARQUX_AGENT_ROLE. Default is governor — but if explicitly set to auditor, mutations are blocked. }
 
 
 $2: VERIFICATION
