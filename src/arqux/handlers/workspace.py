@@ -70,6 +70,13 @@ def init_workspace(
     }
     write_manifest(gov_dir, manifest)
 
+    # Copy AGENTS.md template to workspace root for agent discovery.
+    agents_tmpl = Path(__file__).resolve().parent.parent / "templates" / "AGENTS.md"
+    if agents_tmpl.exists():
+        agents_dst = target / "AGENTS.md"
+        if not agents_dst.exists():
+            agents_dst.write_text(agents_tmpl.read_text(encoding="utf-8"), encoding="utf-8")
+
     meta_brain = {
         "level": 1,
         "workspace": target.name,
