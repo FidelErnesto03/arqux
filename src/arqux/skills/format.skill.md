@@ -16,9 +16,9 @@ AXM:no_auto_hcortex{ HCORTEX .md twins are NOT auto-generated. Request them on d
 
 $2: CANONICAL FORMAT
 
-AXM:attrs_single_line{ Entradas attrs se escriben en UNA linea. LNG:name{type:"process", lesson:"texto"}. NO multilinea con indentacion. Esto maximiza densidad de informacion para el LLM y evita errores de formato. }
+AXM:attrs_single_line{ Attrs entries are written in ONE line. LNG:name{type:"process", lesson:"text"}. NO multiline with indentation. This maximizes information density for the LLM and avoids formatting errors. }
 
-AXM:cuerpo_multiline{ Entradas cuerpo (AXM, DESC) se escriben en multilinea preservando el texto literal. El escritor canónico de CODEC-CORTEX normaliza attrs y preserva cuerpo. }
+AXM:cuerpo_multiline{ Body entries (AXM, DESC) are written in multiline preserving literal text. The canonical CODEC-CORTEX writer normalizes attrs and preserves cuerpo. }
 
 LIM:no_cortex_write_for_governance{ limit:"Do NOT use cortex.write for governance files. Use project.init(seed=) and governance handlers.", severity:"blocking" }
 
