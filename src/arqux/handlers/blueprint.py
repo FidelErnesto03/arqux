@@ -213,6 +213,13 @@ def create_blueprint(
         cycle=cycle_id,
         status=BP_DRAFT,
         path=str(bp_path),
+        instruction=(
+            "IMMEDIATE NEXT STEP: call blueprint.define() to fill ALL 18 sections. "
+            "The draft has basic brain context pre-filled, but the Architect expects "
+            "a complete document with: §3 Preconditions, §6 Scope, §8 Technical Design (PUML), "
+            "§9 Operational Design (PUML), §11 Work Procedure, §12 Acceptance Criteria, §14 Tasks. "
+            "Do NOT present this draft to the Architect — define it FIRST, then enter maturation."
+        ),
     )
 
 
