@@ -85,16 +85,12 @@ AXM:workflows_govern_operations{ The workflows.skill.md is the SOURCE OF TRUTH f
 STP:before_any_workflow{ 1:"Load workflows.skill.md via skill_view('workflows')", 2:"Identify the relevant workflow (w01-w06)", 3:"Read the DIAG diagram and STP steps", 4:"Execute each step in order", 5:"If something differs from the skill, the skill wins — update your approach." }
 
 WRK:available_skills{
-  skill:"handlers.skill.md", purpose:"Full list of 30 MCP handlers with signatures",
-  skill:"roles.skill.md", purpose:"Role definitions: governor, executor, auditor permissions",
-  skill:"identities.skill.md", purpose:"Identity system: alfred, jarvis, seshat, heimdall. identity.record handler.",
-  skill:"cortex-out.skill.md", purpose:"CORTEX-OUT output protocol: OUT-MIN, OUT-WORK, OUT-AUDIT, OUT-FULL, OUT-ERROR",
-  skill:"mcp.skill.md", purpose:"MCP server configuration and testing",
-  skill:"format.skill.md", purpose:"File conventions: .cortex vs .md, attrs single-line, cuerpo multiline",
-  skill:"memory.skill.md", purpose:"Native agent memory in CORTEX format (ultra-dense)",
-  skill:"workflows.skill.md", purpose:"Canonical workflows with PlantUML diagrams: init, govern, daily, task lifecycle, identity evolution, adoption",
-  skill:"cortex-internal.skill.md", purpose:"How to use CORTEX format for agent-native memory, notes, plans, and session management. Ultra-dense, self-indexing, LLM-native.",
-  skill:"learning.skill.md", purpose:"CODEC-CORTEX Learning Engine integration: scan brain for patterns, detect elevation candidates (LNG→KNW), apply knowledge elevation.",
+  skill:"handlers.skill.md", purpose:"Full list of 38 MCP handlers with signatures and examples",
+  skill:"identities.skill.md", purpose:"Identity system: alfred, jarvis, seshat, heimdall. Roles: governor, executor, auditor. identity.record handler.",
+  skill:"cortex.skill.md", purpose:"Everything about CORTEX format: canonical rules, native memory, internal files, CORTEX-OUT output protocol.",
+  skill:"mcp.skill.md", purpose:"MCP server configuration and connectivity testing",
+  skill:"learning.skill.md", purpose:"CODEC-CORTEX Learning Engine: scan brain, detect patterns, elevate candidates (LNG→KNW)",
+  skill:"workflows.skill.md", purpose:"8 canonical workflows with PlantUML diagrams: init, govern, daily, task, identity, adoption, skill lifecycle, blueprint",
 }
 
 
