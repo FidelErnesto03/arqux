@@ -67,39 +67,55 @@ G --> A: Project governed. Open cycle?
 STP:w02_s{ 1:"project.init(name=X, path=./X) — sin seed", 2:"Recibir STP:build_brain", 3:"Estudiar proyecto (README, AGENTS.md, estructura, stack)", 4:"Sintetizar brain.cortex con FCS, OBJ, KNW, RSK, LNG", 5:"project.init(name=X, path=./X, seed=<brain>)", 6:"Brain poblado + meta-brain actualizado + proyecto registrado" }
 
 
-$3: DAILY SESSION
+$3: SESSION START — CONTEXT RESPONSE
 
-IDN:workflow_daily{ name:"Daily Session", purpose:"Standard agent session startup under Arqux.", trigger:"Agent starts in a governed workspace." }
+IDN:workflow_session{ name:"Session Start", purpose:"Agent startup in a governed workspace. Presents context from brain.cortex at the appropriate level. Replaces the old Daily Session workflow.", trigger:"Agent starts in a governed workspace." }
+
+AXM:session_context_first{ The FIRST response in a governed workspace MUST include context from brain.cortex. The response level depends on where the agent is in the workspace tree. }
 
 DIAG:w03{
 @startuml
 actor "Arquitecto" as A
-participant "alfred (Agent)" as G
+participant Agent as G
 database "brain.cortex" as BC
 database "AGENTS.md" as AG
 
-G -> AG: Leer AGENTS.md
-note right: STANDBY-FIRST
+G -> AG: Read AGENTS.md
+note right: PHASE 0: detect .arqux/
 
-G -> BC: Cargar FCS, OBJ, KNW, LNG
-note right: Carga prioritaria de contexto
+G -> G: Verify ARQUX_AGENT_ROLE
+note right: Must be governor for write access
 
-G -> G: Cargar identidad alfred.cortex
+alt Workspace root (no project selected)
+    G -> BC: Read meta-brain.cortex
+    G --> A: List projects with status + description
+else Inside a project
+    G -> BC: Read brain.cortex (FCS, OBJ, LNG)
+    G --> A: Project + cycle + blueprints status
+else Inside a cycle
+    G -> BC: Read cycle MANIFEST.md
+    G --> A: Cycle manifest + all blueprints with status
+end
 
-G --> A: STANDBY — Hello Architect. What do you need?
-A -> G: Continue task T-002
-G -> BC: task.read(T-002)
-G -> G: task.update(T-002, note="...")
-G --> A: Avance reportado
+G --> A: Open question — what to work on?
 @enduml
 }
 
-STP:w03_s{ 1:"Read AGENTS.md (STANDBY-FIRST)", 2:"Load brain.cortex — FCS, OBJ, KNW, LNG as priority", 3:"Load identity from .arqux/identities/", 4:"Open question to the Architect", 5:"Execute assigned task", 6:"Record evidence via task.update or evidence.record" }
+STP:w03_s{
+  1:"Verify ARQUX_AGENT_ROLE — report if auditor/empty",
+  2_workspace_level:"List projects from meta-brain: name, last active, status. Ask which to work on.",
+  3_project_level:"Read brain.cortex: project, active cycle, blueprints (count + status). Present in HCORTEX.",
+  4_cycle_level:"Read MANIFEST.md: objectives, blueprints with status, next control point.",
+  5_format:"HCORTEX vertical layout with one-line summary + open question.",
+  key_rule:"Context before conversation. Never just a greeting.",
+}
 
 
-$4: TASK LIFECYCLE
+$4: TASK LIFECYCLE (LEGACY — PREFER BLUEPRINTS)
 
-IDN:workflow_task{ name:"Task Lifecycle", purpose:"Full lifecycle of a governed task from creation to completion or failure.", trigger:"Governor creates a task." }
+IDN:workflow_task{ name:"Task Lifecycle", purpose:"Legacy task workflow. Tasks are simple work items within a cycle. For complex, design-driven work, use Blueprints (w08) which provide 18-section specifications, quality gates, maturation, and cross-verification. Tasks are still supported for quick, low-complexity items that don't need full Blueprint governance.", trigger:"Governor creates a simple task that doesn't need a Blueprint." }
+
+AXM:tasks_vs_blueprints{ Tasks are for simple work items (quick fixes, notes, minor changes). Blueprints (w08) are for governed work items that require design, maturation, and cross-verification. If in doubt, use a Blueprint. }
 
 DIAG:w04{
 @startuml
@@ -345,7 +361,8 @@ STP:w08_execution{
   "   d) Record evidence: evidence.record(kind='artifact', payload=...)",
   "   e) blueprint.update(BLP-NNN, note='T-1.X completed')",
   5:"On obstacle: blueprint.fail(BLP-NNN, reason='...') → governor re-evaluates",
-  6:"When all tasks complete: blueprint.complete(BLP-NNN, evidence='...') → state = review",
+  6:"To cancel: blueprint.cancel(BLP-NNN, reason='...') → state = cancelled (governor-only)",
+  7:"When all tasks complete: blueprint.complete(BLP-NNN, evidence='...') → state = review",
   key_rule:"Executor NEVER modifies the design. Design change → ask Architect."
 }
 
