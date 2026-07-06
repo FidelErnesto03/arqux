@@ -31,7 +31,53 @@ class PlantUMLHandler(http.server.BaseHTTPRequestHandler):
 
     jar_path: Path | None = None
 
-    def do_GET(self) -> None:
+    def do_POST(self) -> None:
+        """Handle POST requests — some VSCode extensions use POST for rendering."""
+        # kroki.io compatible: POST /plantuml/svg with body = PUML source
+        if self.path.startswith("/plantuml/"):
+            self._handle_kroki_post()
+            return
+        # Generic: POST / with PUML in body
+        if self.path in ("/", "/plantuml", "/render"):
+            self._handle_generic_post()
+            return
+        self.send_error(405, "Method not allowed")
+
+    def _handle_kroki_post(self) -> None:
+        """Handle POST /plantuml/<format> with PUML source in body."""
+        parts = self.path.split("/")
+        if len(parts) < 3:
+            self.send_error(400, "Invalid path")
+            return
+        fmt = parts[2]  # svg or png
+        content_len = int(self.headers.get("Content-Length", 0))
+        body = self.rfile.read(content_len).decode("utf-8", errors="replace")
+        self._render_and_send(body, fmt)
+
+    def _handle_generic_post(self) -> None:
+        """Handle POST / with PUML source in body."""
+        content_len = int(self.headers.get("Content-Length", 0))
+        body = self.rfile.read(content_len).decode("utf-8", errors="replace")
+        self._render_and_send(body, "svg")
+
+    def _render_and_send(self, source: str, fmt: str) -> None:
+        """Render PUML source and send as response."""
+        if not Jar or not Java:
+            self.send_error(500, "plantuml.jar or Java not available")
+            return
+        ok, result = _render(source, fmt)
+        if ok:
+            content_type = "image/svg+xml" if fmt == "svg" else "image/png"
+            if isinstance(result, str):
+                result = result.encode("utf-8")
+            self.send_response(200)
+            self.send_header("Content-Type", content_type)
+            self.send_header("Access-Control-Allow-Origin", "*")
+            self.send_header("Content-Length", str(len(result)))
+            self.end_headers()
+            self.wfile.write(result)
+        else:
+            self._json({"error": result}, 500)
         # Health check
         if self.path == "/" or self.path == "/health":
             self._json({"status": "ok", "server": "Arqux PlantUML Server"})
