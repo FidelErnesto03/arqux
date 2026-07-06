@@ -132,7 +132,7 @@ def _detect_project_context(project_root: Path) -> list[str]:
         ctx_items.append("  - Read .cortex/brain.cortex (NOMOS legacy) for axioms, risks, objectives")
 
     # 2. Detect documentation files.
-    for doc_name in ("AGENTS.md", "README.md", "SKILL.md"):
+    for doc_name in ("AGENTS.md", "README.md"):
         if (project_root / doc_name).exists():
             ctx_items.append(f"  - Read {doc_name} for project purpose, conventions, protocols")
 

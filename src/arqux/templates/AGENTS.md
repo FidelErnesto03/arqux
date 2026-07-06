@@ -105,7 +105,7 @@ AXM:dogfood{ This framework governs its own development. Every feature is implem
 
 $6: FILE CONVENTION
 
-AXM:extension_rule{ .cortex = state files (brain, manifest, tasks, cycles, identities). .md = agent bootstrapping files (AGENTS.md, SKILL.md). Content defines format. cortex CLI parses CORTEX regardless of extension. HCORTEX .md twins are NOT auto-generated. }
+AXM:extension_rule{ .cortex = state files (brain, manifest, tasks, cycles, identities). .md = agent bootstrapping files (AGENTS.md). Content defines format. cortex CLI parses CORTEX regardless of extension. HCORTEX .md twins are NOT auto-generated. }
 
 AXM:memory_format{ While operating under Arqux governance, the agent's native memory MUST use CODEC-CORTEX content instead of prose. LNG in 30 tokens replaces 250 tokens of prose. Sigils are natural indices the LLM understands without a parser. }
 
