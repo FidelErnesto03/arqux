@@ -90,7 +90,12 @@ def init_workspace(
             if not dst.exists():
                 dst.write_text(src.read_text(encoding="utf-8"), encoding="utf-8")
 
-    # Copy skill templates to .arqux/skills/.
+    # Copy learn-policies.cortex template to .arqux/.
+    policy_tmpl = Path(__file__).resolve().parent.parent / "templates" / "learn-policies.cortex"
+    if policy_tmpl.exists():
+        policy_dst = gov_dir / "learn-policies.cortex"
+        if not policy_dst.exists():
+            policy_dst.write_text(policy_tmpl.read_text(encoding="utf-8"), encoding="utf-8")
     skills_src = Path(__file__).resolve().parent.parent / "skills"
     if skills_src.is_dir():
         skills_dst = gov_dir / "skills"
