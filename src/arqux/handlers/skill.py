@@ -31,10 +31,10 @@ def _resolve_arqux_root(path: str | None = None) -> Path | None:
     """Find the .arqux/ root from path (workspace or project)."""
     ws = find_workspace_root(start=path)
     if ws:
-        return ws / ARQUX_DIR
+        return ws  # find_workspace_root already returns .arqux/ path
     pr = find_project_root(start=path)
     if pr:
-        return pr / ARQUX_DIR
+        return pr  # find_project_root already returns .arqux/ path
     return None
 
 
