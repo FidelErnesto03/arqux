@@ -5,9 +5,9 @@ from __future__ import annotations
 from arqux.handlers import REGISTRY, handler_count, list_handlers
 
 
-def test_handler_count_is_31() -> None:
-    """The full MCP surface: 26 governance + 4 utility + 1 identity = 31."""
-    assert handler_count() == 31
+def test_handler_count_is_33() -> None:
+    """The full MCP surface: 26 governance + 4 utility + 1 identity + 2 learning = 33."""
+    assert handler_count() == 33
 
 
 def test_mutating_handler_count_is_24() -> None:
@@ -15,7 +15,7 @@ def test_mutating_handler_count_is_24() -> None:
     Excludes session-only (pause/resume) and utility (cortex.*).
     """
     session_only = {"protocol.pause", "protocol.resume"}
-    utility = {"cortex.read", "cortex.write", "cortex.verify", "cortex.render", "identity.record"}
+    utility = {"cortex.read", "cortex.write", "cortex.verify", "cortex.render", "cortex.learn", "cortex.learn.elevate", "identity.record"}
     excluded = session_only | utility
     mutating = [name for name in list_handlers() if name not in excluded]
     assert len(mutating) == 24
@@ -47,7 +47,7 @@ def test_module_handler_counts() -> None:
         "task": 7,
         "evidence": 3,
         "protocol": 4,
-        "cortex": 4,
+        "cortex": 6,
         "identity": 1,
     }
     counts: dict[str, int] = {}

@@ -215,3 +215,77 @@ def record_lesson_handler(
         lesson=name,
         file=str(identity_file),
     )
+
+
+def learn_scan_handler(
+    scope: str = "project",
+    path: str | None = None,
+    ctx: PermissionContext | None = None,
+) -> CortexOUT:
+    """Scan a project brain through the CODEC-CORTEX Learning Engine.
+
+    Returns scored entries and elevation candidates.
+    """
+    from ..learning import scan_brain, list_candidates, _resolve_project_root
+
+    root = _resolve_project_root(path)
+    if root is None:
+        return CortexOUT.error("no project initialized", code="NOT_FOUND")
+
+    scan = scan_brain(root, verbose=(scope == "workspace"))
+    if scan.get("engine") == "unavailable":
+        return CortexOUT.error(
+            "CODEC-CORTEX Learning Engine not available. "
+            "Requires codec-cortex >=0.4.0 with learning module.",
+            code="ENGINE_UNAVAILABLE",
+        )
+    if "error" in scan:
+        return CortexOUT.error(scan["error"], code="LEARN_ERROR")
+
+    candidates = scan.get("candidates", []) or list_candidates(root)
+
+    return CortexOUT.work(
+        f"learn.scan ok count={scan.get('count', 0)} entries scanned",
+        engine=scan.get("engine", "unknown"),
+        total=scan.get("count", 0),
+        profile=scan.get("profile", {}),
+        candidates=candidates,
+    )
+
+
+def learn_elevate_handler(
+    candidate_id: str,
+    path: str | None = None,
+    *,
+    apply: bool = False,
+    ctx: PermissionContext | None = None,
+) -> CortexOUT:
+    """Elevate a learning candidate (dry-run or apply).
+
+    Default mode is dry-run (returns diff without changing brain).
+    Pass apply=true to actually apply the elevation.
+    """
+    from ..learning import elevate_candidate, _resolve_project_root
+
+    root = _resolve_project_root(path)
+    if root is None:
+        return CortexOUT.error("no project initialized", code="NOT_FOUND")
+
+    result = elevate_candidate(root, candidate_id, dry_run=not apply)
+    if "error" in result:
+        return CortexOUT.error(result["error"], code="ELEVATE_ERROR")
+
+    if result.get("mode") == "dry_run":
+        return CortexOUT.work(
+            f"learn.elevate dry-run candidate={candidate_id}",
+            candidate=candidate_id,
+            mode="dry_run",
+            diff=result.get("diff", ""),
+        )
+
+    return CortexOUT.work(
+        f"learn.elevate applied candidate={candidate_id}",
+        candidate=candidate_id,
+        mode="applied",
+        diff=result.get("diff", ""),
+    )

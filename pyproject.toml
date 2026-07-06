@@ -63,6 +63,7 @@ where = ["src"]
 "arqux" = [
     "templates/*.cortex",
     "templates/*.md",
+    "templates/*.cortex",
     "templates/*.cortex.tmpl",
     "templates/*.md.tmpl",
     "identities/*.cortex",

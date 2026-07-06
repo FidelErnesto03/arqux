@@ -428,6 +428,36 @@ _register(_spec(
     },
 ))
 
+# --- learning engine handlers ---
+_register(_spec(
+    "cortex.learn", cortex.learn_scan_handler,
+    "Scan a project brain through the CODEC-CORTEX Learning Engine.\n"
+    "Returns scored entries and elevation candidates.",
+    {
+        "type": "object",
+        "properties": {
+            "scope": {"type": "string", "enum": ["project", "workspace"], "default": "project"},
+            "path": {"type": "string", "description": "Path to project root. Defaults to cwd."},
+        },
+    },
+))
+
+_register(_spec(
+    "cortex.learn.elevate", cortex.learn_elevate_handler,
+    "Elevate a learning candidate (SES->LNG or LNG->KNW).\n"
+    "Default is dry-run (shows diff without applying).\n"
+    "Pass apply=true to write the elevation to brain.cortex.",
+    {
+        "type": "object",
+        "properties": {
+            "candidate_id": {"type": "string", "description": "Candidate ID from cortex.learn output"},
+            "apply": {"type": "boolean", "default": False, "description": "If true, apply the elevation. Default is dry-run."},
+            "path": {"type": "string", "description": "Path to project root. Defaults to cwd."},
+        },
+        "required": ["candidate_id"],
+    },
+))
+
 
 # --- Surface for tests / introspection ------------------------------------
 

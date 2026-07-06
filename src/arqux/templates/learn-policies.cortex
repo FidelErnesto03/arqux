@@ -1,0 +1,36 @@
+$0
+
+# -- $0: GLOSSARY --
+# Sigil | Name | Type | Risk | Description
+# THR   | threshold  | attrs      | M | Learning thresholds
+# POL   | policy     | attrs      | M | Learning policy
+# PRT   | protected  | attrs      | H | Protected targets
+# GTE   | gate       | attrs      | H | Mutation gate
+
+$1: IDENTITY
+IDN:learn_policies{name:"arqux_default", version:"0.1.0", target:".arqux/brain.cortex"}
+
+$2: SCORING
+THR:golden_fibonacci{observed:1, repeated:2, pattern:3, candidate:5, ask_user:8, strong_candidate:13, critical:21}
+
+$3: PROTECTED TARGETS
+PRT:critical_sigils{items:"IDN|AXM|CNST:blocking|CLAIM|LIM", mutation:"explicit_user_confirmation"}
+
+$4: CANDIDATE-DRIVEN LEARNING
+POL:candidate_detection{source:"brain", scan_sigils:"WRK|SES|LNG|RSK|NXT|CLAIM|LIM", action:"score", algorithm:"golden_fibonacci_v1"}
+POL:candidate_elevation{source:"SES|LNG", target:"LNG|KNW", when:"promotion_score>=8", action:"propose", requires:"user_confirmation"}
+
+$5: POLICY-DRIVEN LEARNING
+POL:auto_ses_to_lng{source:"SES", target:"LNG", when:"promotion_score>=8|user_validated=true", action:"apply", requires:"policy_authorized"}
+POL:auto_lng_to_knw{source:"LNG", target:"KNW", when:"promotion_score>=13|user_validated=true|risk_weight>=8", action:"apply", requires:"admin_policy"}
+
+$6: GATES
+GTE:default_mutation{action:"mutate_brain", default:"dry_run_first"}
+GTE:critical_mutation{targets:"IDN|AXM|CNST:blocking|CLAIM|LIM|KNW", default:"block_unless_admin_policy"}
+
+$7: CONFIGURABLE THRESHOLDS
+KNW:fibonacci_thresholds{ses:1, lng:3, knw:8, auto_knw:13}
+KNW:cooling{half_life_days:7, min_score_to_survive:1}
+KNW:detection{same_sigil_in_window:3, window_hours:72, cross_session:true}
+KNW:feedback{adaptive:true, adjustment_rate:0.1, min_threshold:1, max_threshold:20}
+KNW:protected_patterns{patterns:"CNST:*|!:*|FCS:*|OBJ:*"}

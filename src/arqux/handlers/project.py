@@ -50,7 +50,14 @@ def init_project(
     # Create .arqux/ skeleton.
     gov_dir.mkdir(parents=True, exist_ok=True)
     (gov_dir / CYCLES_DIR).mkdir(exist_ok=True)
-    (gov_dir / "packages").mkdir(exist_ok=True)  # Supplemental .cortex packages
+    (gov_dir / "packages").mkdir(exist_ok=True)
+
+    # Copy learn-policies.cortex template for learning engine.
+    policy_tmpl = Path(__file__).resolve().parent.parent / "templates" / "learn-policies.cortex"
+    if policy_tmpl.exists():
+        dst = gov_dir / "learn-policies.cortex"
+        if not dst.exists():
+            dst.write_text(policy_tmpl.read_text(encoding="utf-8"), encoding="utf-8")
 
     # Register in workspace projects index.
     ws_root = find_workspace_root(start=target)
