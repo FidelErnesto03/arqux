@@ -35,7 +35,7 @@ STP:uv_tool_upgrade{
 
 STP:mcp_restart{
   action:"Restart or reload the MCP server",
-  detail:"hermes mcp test arqux — must show correct handler count and no errors",
+  detail:"Verify MCP tools are registered — correct handler count and no errors",
   risk:"If new handlers were added or signatures changed, MCP must reconnect"
 }
 

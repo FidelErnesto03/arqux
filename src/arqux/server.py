@@ -45,17 +45,21 @@ def _wrap_handler(name: str, handler: Any) -> Any:
             return CortexOUT.profile(
                 OUT_ERROR,
                 f"ERROR code={PERMISSION_DENIED} handler={name} reason={exc.reason}",
-            )
+            ).to_text()
 
         try:
             result = await handler(**kwargs) if _is_coro(handler) else handler(**kwargs)
+            # Convert to plain string — MCP expects text output
+            if hasattr(result, "to_text"):
+                return str(result.to_text())
+            elif hasattr(result, "message"):
+                return str(result.message)
+            return str(result)
         except Exception as exc:  # noqa: BLE001
             return CortexOUT.profile(
                 OUT_ERROR,
                 f"ERROR code={INTERNAL_ERROR} handler={name} message={exc!r}",
-            )
-
-        return result.to_text() if hasattr(result, "to_text") else str(result)
+            ).to_text()
 
     wrapped.__name__ = name
     wrapped.__doc__ = handler.__doc__ or f"{name} handler"

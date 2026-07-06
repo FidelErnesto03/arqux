@@ -4,84 +4,181 @@ $0
 # Sigil | Name | Type | Risk | Cognitive Layer | Description
 # IDN   | identity   | attrs      | B | Semantic       | Concept definition
 # AXM   | axiom      | cuerpo     | H | Prefrontal     | Non-negotiable rule
-# STP   | step       | attrs      | M | Working        | How-to instruction
-# KNW   | knowledge  | attrs      | B | Semantic       | Key knowledge
-# OUT   | output     | attrs      | M | Working        | Output profile definition
-# LNG   | lesson     | attrs      | M | Episodic       | Learned lesson
-# FCS   | focus      | attrs      | H | Working        | Active attention anchor
-# SES   | session    | attrs      | M | Episodic       | Session entry
-# LIM   | limit      | attrs      | M | Prefrontal     | Hard constraint
+# STP   | step       | attrs      | M | Working        | Procedure / instruction
+# OUT   | output     | attrs      | M | Working        | CORTEX-OUT example
+# FMT   | format     | attrs      | B | Semantic       | Formatting rule
+
+# For the full glossary see AGENTS.md §0.
 
 
-$1: CANONICAL FORMAT RULES
+$1: CANONICAL RULES
 
-AXM:attrs_single_line{ Attrs entries are written in ONE line. LNG:name{type:"process", lesson:"text"}. NO multiline with indentation. This maximizes information density for the LLM and avoids formatting errors. }
+AXM:format{ All CORTEX content uses canonical format: attrs on a single line, cuerpo as multi-line blocks. This applies to ALL CORTEX files — brain.cortex, task.cortex, identities, agent memory. }
 
-AXM:cuerpo_multiline{ Body entries (AXM, DESC) are written in multiline preserving literal text. The canonical CODEC-CORTEX writer normalizes attrs and preserves cuerpo. }
+AXM:no_prose_in_state{ Governance state (.cortex files) contains ZERO prose. Everything is sigil-structured. If a thought doesn't fit in sigil form, it doesn't belong in a state file. }
 
-LIM:no_cortex_write_for_governance{ limit:"Do NOT use cortex.write for governance files. Use project.init(seed=) and governance handlers.", severity:"blocking" }
-
-LIM:no_direct_edit{ limit:"Never edit governance files directly. Use MCP handlers.", severity:"blocking" }
-
-AXM:extension_rule{ .cortex = state files (brain, manifest, tasks, cycles, identities). .md = agent bootstrapping files (AGENTS.md). Content defines format. cortex CLI parses CORTEX regardless of extension. No .md twins for .cortex files. }
-
-AXM:memory_format{ While operating under Arqux governance, the agent's native memory MUST use CODEC-CORTEX content instead of prose. LNG in 30 tokens replaces 250 tokens of prose. Sigils are natural indices the LLM understands without a parser. }
+AXM:stable_sigils{ Sigils are stable identifiers. The LLM learns them once and applies them everywhere. New sigils are added at the $0 glossary level. }
 
 
-$2: NATIVE AGENT MEMORY
+$2: NATIVE MEMORY (Agent Memory in CORTEX)
 
-IDN:native_memory{ principle:"If an LLM will read it, write it in CORTEX. Prose is only for direct human communication (AXM:natural_language).", density:"8x more information per token vs prose. Ultra-dense format with sigils that index content naturally for the LLM.", self_indexing:"Each entry has a sigil. scan FCS to know what matters, LNG to find lessons, SES to review history. No parser needed — sigils are natural indices." }
+AXM:memory_format{ While operating under Arqux governance, the agent's native memory MUST use CODEC-CORTEX content instead of prose. LNG entries capture lessons in 30 tokens instead of 250 tokens of prose. }
 
-STP:memory_structure{
-  structure:{
-    FCS:current{ what:"What are we doing right now?", example:"FCS:adoption{what:'Arqux dogfooding', status:'active'}" },
-    LNG:lessons{ what:"What have we learned?", example:"LNG:l001{type:'process', cause:'X', lesson:'Always Y'}" },
-    KNW:knowledge{ what:"What stable knowledge do we have?", example:"KNW:patterns{domain:'auth', patterns:['oauth2','jwt']}" },
-    SES:sessions{ what:"What happened in past sessions?", example:"SES:s01{cycle:'CYCLE-01', outcome:'done', date:'2026-07-06'}" },
-  }
+STP:memory_examples{
+  lng_lesson:"LNG:l004{type:process, cause:direct_file_edit_broke_format, lesson:Only write_cortex_pair for state files, severity:high, date:2026-06-26}",
+  lng_pattern:"LNG:l005{type:infrastructure, cause:test_isolation_failure, lesson:Pytest tmp_path prevents state leakage between handler tests, severity:medium}",
+  knw_entry:"KNW:mcp_tools{count:54, modules:[workspace, project, cycle, task, evidence, protocol, cortex, identity, skill, blueprint, setup], protocol:stdio}",
+  session:"SES:alfred{input:Arquitecto requests new feature, output:Implemented with evidence, outcome:ok, date:2026-07-04}",
 }
 
-STP:memory_example{
-  file:"alfred_memory.md (personal, NOT committed to repo)",
-  content:"
-$0
-FCS:current{what:'Blueprint workflow design for Arqux', status:'active', project:'ARQUX'}
-LNG:conversation{type:'process', lesson:'Architect prefers cyclic maturation before execution'}
-SES:s01{cycle:'CYCLE-01', task:'BLP-001', outcome:'design', date:'2026-07-06'}
-"
+AXM:memory_evolves{ Agent memory is a living document. LNG entries accumulate. cortex.learn scans for patterns and proposes elevations to KNW. The agent's knowledge compounds over sessions. }
+
+AXM:one_format_everywhere{ Governance state (.cortex), agent docs (AGENTS.md), skills (.skill.md), output (CORTEX-OUT), and agent memory (memory.md) — ALL use the same sigil format. The LLM learns the language once and applies it everywhere. }
+
+
+$3: INTERNAL FILES
+
+AXM:internal_cortex{ When the agent creates files for its own use (notes, plans, session records), it SHOULD use CORTEX format. The $0 glossary makes these files self-contained and parseable by any LLM. }
+
+STP:internal_templates{
+  plan:"OBJ:plan_name{goal, status, success} STP:step{action, handler} RSK:risk{risk, mitigation}",
+  session:"SES:agent{input, output, role, outcome, date} LNG:name{type, context, detail}",
+  todo:"WRK:todo{task, status, assignee, cycle, priority} FCS:current{what} OBJ:next{goal}",
 }
 
 
-$3: AGENT INTERNAL FILES
+$4: CORTEX-OUT — OUTPUT PROTOCOL (HCORTEX)
 
-AXM:cortex_for_internals{ Any file the agent writes for its own use (notes, plans, research, task tracking) MUST use CORTEX format. The benefits compound over sessions: what was learned in session N is immediately available to session N+1 via KNW entries. }
+IDN:cortex_out{ purpose:"Token-efficient output protocol for agent responses. Uses HCORTEX formatting: structure over prose, vertical layout, human-readable. The profile is chosen based on interaction TYPE, not which handler was called.", profiles:"MIN (default), WORK, AUDIT, FULL, ERROR" }
 
-STP:internal_usage{
-  notes:"Research notes about a technology → KNW:tech{domain:'OAuth2', patterns:[...]}. In 3 sessions you have a personal knowledge base.",
-  plans:"Implementation plan → FCS:plan + OBJ:goals + STP:steps. Scan the plan in 10 tokens, not 200 words.",
-  sessions:"Start: SES:sNN{status:'started'}. End: SES:sNN{status:'done', outcome:'...'}. Memory becomes a session log without bloat.",
-  tasks:"Task tracking → FCS:current{what:'T-001', status:'in_progress'} + LNG:blockers{...}.",
+AXM:hcortex_output{ CORTEX-OUT uses HCORTEX formatting — human-readable CORTEX. This means: vertical layout with line breaks, indentation for hierarchy, lists, tables, and boxes instead of prose paragraphs, full words (no abbreviations), one-line natural language summary after the structured block. The LLM parses it as efficiently as raw CORTEX. Line breaks are cheap tokens. }
+
+FMT:hcortex_rules{
+  vertical:"Each key-value pair on its own line, indented under the profile header.",
+  tables:"Use markdown tables for multi-field comparisons instead of repeated key=value lines.",
+  lists:"Use bullet lists for sequences of items instead of comma-separated values.",
+  boxes:"Use indented blocks (4 spaces) to group related fields — creates visual hierarchy.",
+  full_words:"No abbreviations. 'workspace' not 'ws', 'agent' not 'id', 'cycles' not 'cyc'.",
+  summary:"ALWAYS end with a one-line natural language summary after ' — '.",
+  diagrams:"When explaining structure or flow, prefer PUML diagram over prose description.",
 }
 
 
-$4: CORTEX-OUT OUTPUT PROTOCOL
+$4.1: PROFILE SELECTION MATRIX
 
-IDN:cortex_out{ purpose:"Token-minimization output protocol. LLM responses contain a compressed sigil block (LLM-to-LLM context) plus optional natural language for the human reader.", profiles:"MIN (default), WORK, AUDIT, FULL, ERROR" }
+AXM:profile_selection{ The agent selects the CORTEX-OUT profile based on WHAT the Architect is asking. This is a decision matrix, not a fixed mapping. }
 
-OUT:MIN{ description:"One-line status. Use as default. ~10-30 tokens.", example:"OUT-MIN cycle=CYCLE-01 task=T-002 status=in_progress", when:"Default response. After every handler call." }
+STP:profile_matrix{
+  status_query:{
+    trigger:"Architect asks: 'contexto?', 'estado?', 'cómo va?', 'qué hay?'",
+    profile:"OUT-MIN",
+    format:"Key fields only, vertical layout, one-line summary.",
+  },
+  work_result:{
+    trigger:"After completing a handler call: task.complete, cycle.create, blueprint.ready, etc.",
+    profile:"OUT-WORK",
+    format:"Result fields in vertical layout, key metrics highlighted.",
+  },
+  analysis_explanation:{
+    trigger:"Architect asks: 'explícame', 'analiza', 'por qué', 'cómo funciona', 'explain this codebase'",
+    profile:"OUT-AUDIT",
+    format:"Structured analysis with sections. Use tables for comparisons, lists for findings, PUML for architecture.",
+  },
+  full_report:{
+    trigger:"Architect asks: 'reporte completo', 'dame todo', 'verbose', 'auditoría'",
+    profile:"OUT-FULL",
+    format:"Complete state snapshot. All relevant fields. Hierarchical layout.",
+  },
+  error:{
+    trigger:"Any error from handler, permission denied, or operation failure",
+    profile:"OUT-ERROR",
+    format:"Error code + resolution hint. Always actionable.",
+  },
+  default:{
+    trigger:"Any response not matching above",
+    profile:"OUT-MIN",
+    format:"Concise vertical layout. Default choice.",
+  },
+}
 
-OUT:WORK{ description:"Operation result with evidence. ~50-100 tokens.", example:"OUT-WORK cycle=CYCLE-01 task=T-002 done=3 open=0", when:"After task.complete, task.fail, cycle.close, evidence.record" }
 
-OUT:AUDIT{ description:"Full audit trail for a specific event. ~200 tokens.", example:"OUT-AUDIT event=E-0042 task=T-002 agent=jarvis kind=task_complete payload='tests pass'", when:"evidence.read with specific event_id. Auditor requests full detail." }
+$4.2: HCORTEX OUTPUT EXAMPLES
 
-OUT:FULL{ description:"Complete state snapshot. ~300-800 tokens.", example:"OUT-FULL project=ARQUX cycle=CYCLE-01 tasks@SHORT agents=2", when:"project.status (verbose=true). workspace.status (verbose=true)." }
+OUT:min_status{
+  profile:"OUT-MIN",
+  example:"""
+OUT-MIN
+  workspace:  /home/vatrox/workspace
+  agent:      alfred
+  role:       governor
+  cycles:     0
+  focus:      none
+  — Workspace gobernado, sin ciclos activos.
+""",
+}
 
-OUT:ERROR{ description:"Error with actionable hint. ~50 tokens.", example:"OUT-ERROR code=INVALID_STATE hint=close open tasks first", when:"Any handler returns an error. Always includes code + hint." }
+OUT:work_blueprint{
+  profile:"OUT-WORK",
+  example:"""
+OUT-WORK
+  blueprint:  BLP-001
+  cycle:      CYCLE-01
+  status:     ready
+  gates:
+    ✅ has_clear_objective
+    ✅ has_verifiable_preconditions
+    ✅ has_scope_and_exclusions
+    ✅ has_acceptance_criteria
+    ✅ has_work_procedure
+    ✅ has_required_validations
+  — Blueprint OAuth2 listo para ejecución. 6/6 gates aprobados.
+""",
+}
 
-STP:output_rules{
-  include:"ALWAYS include the OUT-* sigil block. It IS the handler output. The natural language text that follows is supplementary context for humans.",
-  language:"Natural language after the OUT-* block uses the working context language (AXM:natural_language).",
-  minimal:"OUT-MIN is the default. Don't emit OUT-FULL unless explicitly requested.",
+OUT:audit_analysis{
+  profile:"OUT-AUDIT",
+  example:"""
+OUT-AUDIT
+  topic:      Módulo de pagos
+  modules:    4
+  pattern:    MVC + Service Layer
+
+  | Capa        | Tecnología      | Responsabilidad          |
+  |-------------|-----------------|--------------------------|
+  | Controller  | Spring MVC      | Endpoints REST           |
+  | Service     | Spring Boot     | Lógica de negocio        |
+  | Repository  | JPA/Hibernate   | Acceso a Oracle          |
+  | Client      | Feign/RestTmpl  | Comunicación inter-mod   |
+
+  — Arquitectura en 4 capas con Oracle 12c como persistencia.
+""",
+}
+
+OUT:error_example{
+  profile:"OUT-ERROR",
+  example:"""
+OUT-ERROR
+  handler:    blueprint.ready
+  code:       MATURATION_INCOMPLETE
+  gates:
+    ❌ has_work_procedure
+    ❌ has_required_validations
+  hint:       Completa los 2 gates pendientes antes de llamar ready().
+  — 4/6 gates aprobados. Faltan: procedure, validations.
+""",
+}
+
+
+$4.3: PROFILE RULES
+
+AXM:profile_rules{
+  prefer_min:"OUT-MIN is the DEFAULT. Use it unless the interaction type clearly requires another profile.",
+  hcortex_always:"ALL profiles use HCORTEX formatting: vertical layout, no comma-separated key=value lines, no abbreviations.",
+  summary_always:"Every CORTEX-OUT block ends with ' — ' followed by a one-line natural language summary.",
+  error_always_actionable:"OUT-ERROR must include a hint. Never just 'ERROR' — say what to do next.",
+  tables_over_prose:"When comparing 3+ items, use a markdown table. When listing 3+ items, use bullets. Never use prose paragraphs for structured data.",
+  diagrams_over_prose:"When explaining architecture, flow, or relationships, prefer PUML diagram in a code block over prose description.",
+  upgrade_dont_downgrade:"If in doubt between MIN and AUDIT, use MIN. If in doubt between AUDIT and FULL, use AUDIT. Err on the side of less output.",
 }
 
 
@@ -89,14 +186,14 @@ $5: KEY PRINCIPLES
 
 AXM:density_over_prose{ Every token consumed by prose is a token NOT used for thinking. CORTEX delivers 8x the information per token. Write for the LLM reader, not the human reader. }
 
-AXM:memory_evolves{ Agent memory is a living document. LNG entries accumulate. cortex.learn scans for patterns and proposes elevations to KNW. The agent's knowledge compounds over sessions. }
+AXM:memory_evolves{ Agent memory is a living document. LNG entries accumulate. cortex.learn scans for patterns and proposes elevations to KNW. }
 
-AXM:one_format_everywhere{ Governance state (.cortex), agent docs (AGENTS.md), skills (.skill.md), output (CORTEX-OUT), and agent memory (memory.md) — ALL use the same sigil format. The LLM learns the language once and applies it everywhere. }
+AXM:one_format_everywhere{ Governance state, agent docs, skills, output, and agent memory — ALL use the same sigil format. }
 
 
 $6: PLANTUML IN HCORTEX DOCUMENTS
 
-AXM:puml_mandatory{ Every Blueprint (BLP-NNN.md) MUST include three PUML diagrams: Context (§5), Technical Design (§8), and Operational Design (§9). These diagrams are the PRIMARY mechanism for communicating intent between Architect and Executor. Prose descriptions are supplementary — the diagrams are the contract. }
+AXM:puml_mandatory{ Every Blueprint (BLP-NNN.md) MUST include three PUML diagrams: Context (§5), Technical Design (§8), and Operational Design (§9). These diagrams are the PRIMARY mechanism for communicating intent between Architect and Executor. }
 
 STP:puml_diagrams{
   context:{
