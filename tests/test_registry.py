@@ -5,12 +5,12 @@ from __future__ import annotations
 from arqux.handlers import REGISTRY, handler_count, list_handlers
 
 
-def test_handler_count_is_54() -> None:
+def test_handler_count_is_55() -> None:
     """The full MCP surface: 26 governance + 6 utility + 1 identity + 2 learning + 5 skill + 14 blueprint = 54."""
-    assert handler_count() == 54
+    assert handler_count() == 55
 
 
-def test_mutating_handler_count_is_36() -> None:
+def test_mutating_handler_count_is_37() -> None:
     """The conceptual budget: 24 handlers that mutate or read persisted state.
     Excludes session-only (pause/resume) and utility (cortex.*).
     """
@@ -18,7 +18,7 @@ def test_mutating_handler_count_is_36() -> None:
     utility = {"cortex.read", "cortex.write", "cortex.verify", "cortex.render", "cortex.render.diagram", "cortex.learn", "cortex.learn.elevate", "identity.record", "skill.import", "skill.convert", "skill.record", "skill.evolve", "skill.list", "blueprint.read", "blueprint.list", "setup.plantuml"}
     excluded = session_only | utility
     mutating = [name for name in list_handlers() if name not in excluded]
-    assert len(mutating) == 36
+    assert len(mutating) == 37
 
 
 def test_handler_names_follow_module_convention() -> None:
@@ -50,7 +50,7 @@ def test_module_handler_counts() -> None:
         "cortex": 7,
         "setup": 1,
         "identity": 1,
-        "blueprint": 14,
+        "blueprint": 15,
         "setup": 1,
         "skill": 5,
     }

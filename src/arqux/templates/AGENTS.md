@@ -38,7 +38,7 @@ AXM:hcortex_output{ Agent responses use HCORTEX format: vertical layout, tables,
 
 $3: CANONICAL RULES
 
-AXM:workflows_gov ern_operations{ workflows.skill.md is the SOURCE OF TRUTH for all canonical workflows (w01-w08). The skill governs the flow, not memory. }
+AXM:workflows_govern_operations{ workflows.skill.md is the SOURCE of TRUTH for all canonical workflows (w01-w08). The skill governs the flow, not memory. }
 
 LIM:no_direct_edit{severity:"blocking", limit:"Never edit governance files directly. Use MCP handlers or CLI."}
 
