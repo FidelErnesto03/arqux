@@ -348,42 +348,44 @@ STP:w08_mature{
 }
 
 
-$8.4: EXECUTION — Step-by-step with self-awareness
+$8.4: EXECUTION — Task-by-task usando blueprint.task
 
 STP:w08_execution{
-  1:"Governor: blueprint.assign(BLP-NNN, executor='jarvis')",
-  2:"Executor: blueprint.claim(BLP-NNN) → state = in_progress",
-  3:"Executor reads full BLP-NNN.md: §8 Technical Design, §9 Operational Design, §11 Procedure, §14 Tasks",
-  4:"For EACH task in §14:",
-  "   a) Self-check: 'Can I complete this with my current tools and knowledge?'",
-  "   b) If NO → escalate to governor/architect immediately",
-  "   c) If YES → execute following the procedure",
-  "   d) Record evidence: evidence.record(kind='artifact', payload=...)",
-  "   e) blueprint.update(BLP-NNN, note='T-1.X completed')",
-  5:"On obstacle: blueprint.fail(BLP-NNN, reason='...') → governor re-evaluates",
-  6:"To cancel: blueprint.cancel(BLP-NNN, reason='...') → state = cancelled (governor-only)",
-  7:"When all tasks complete: blueprint.complete(BLP-NNN, evidence='...') → state = review",
-  key_rule:"Executor NEVER modifies the design. Design change → ask Architect."
+   1:"Governor: blueprint.assign(BLP-NNN, executor='jarvis')",
+   2:"Executor: blueprint.claim(BLP-NNN) → state = in_progress",
+   3:"Executor reads full BLP-NNN.md: §8 Technical Design, §9 Operational Design, §11 Procedure, §14 Tasks",
+   4:"For EACH task in §14 (T-1.1, T-1.2...):",
+   "   a) Self-check: 'Can I complete this with my current tools and knowledge?'",
+   "   b) If NO → escalate to governor/architect immediately",
+   "   c) If YES → execute following the procedure",
+   "   d) blueprint.task(bp_id, task_id='T-1.1', status='in_progress', evidence='Started task')",
+   "   e) Execute the work and record evidence: evidence.record(kind='artifact', payload=...)",
+   "   f) blueprint.task(bp_id, task_id='T-1.1', status='completed', evidence='Task done with result X')",
+   5:"On obstacle: blueprint.fail(BLP-NNN, reason='...') → governor re-evaluates",
+   6:"To cancel: blueprint.cancel(BLP-NNN, reason='...') → state = cancelled (governor-only)",
+   7:"When all tasks complete: blueprint.complete(BLP-NNN, evidence='...') → state = review",
+   key_rule:"Executor NEVER modifies the design. Design change → ask Architect."
 }
 
 
-$8.5: CROSS-VERIFICATION — Max 3 re-delegations
+$8.5: CROSS-VERIFICATION — AC por AC con re-delegacion automatica
 
 STP:w08_verify{
-  1:"Auditor loads BLP-NNN.md + evidence from execution",
-  2:"Cross-compare results against design:",
-  "   §12 Acceptance Criteria → all ACs pass?",
-  "   §13 Required Validations → all validations pass?",
-  "   §8 Technical Design → implementation matches?",
-  3:"Binary outcome:",
-  "   PASS → blueprint.approve(BLP-NNN) → state = done",
-  "   FAIL → deviations recorded in brain → blueprint.re_delegate()",
-  4:"Re-delegation loop (MAX 3):",
-  "   Attempt 1-2: executor retries based on deviation report",
-  "   Attempt 3: if still fails → blueprint.block_for_architect()",
-  "   → Architect manually reviews and decides: fix, cancel, or new Blueprint",
-  5:"On approve: identity.record(lesson='BLP-NNN design verified', kind='process')",
-  key_rule:"3rd failure is NOT silent — it goes directly to the Architect."
+   1:"Auditor loads BLP-NNN.md + evidence from execution",
+   2:"Cross-compare results against design using blueprint.ac:",
+   "   For EACH AC in §12 (AC-01, AC-02...):",
+   "   a) blueprint.ac(bp_id, ac_id='AC-01', status='verified', evidence='...') → [x]",
+   "   b) If any AC fails: blueprint.ac(bp_id, ac_id='AC-01', status='failed', reason='...')",
+   "      → AUTO re-delegate: blueprint.re_delegate()",
+   "      → Blueprint returns to in_progress automatically",
+   "   Also verify: §13 Required Validations (commands, tests) and §8 Technical Design match",
+   3:"Re-delegation loop (MAX 3 via MAX_VERIFICATION_LOOPS):",
+   "   Attempt 1-2: blueprint.ac fail → auto re_delegate → executor retries",
+   "   Attempt 3: blueprint.ac fail → max loops → instruction to call blueprint.block_for_architect()",
+   "   → Architect manually reviews and decides: fix, cancel, or new Blueprint",
+   4:"When all ACs pass: blueprint.approve(BLP-NNN) → state = done",
+   5:"On approve: identity.record(lesson='BLP-NNN design verified', kind='process')",
+   key_rule:"3rd failure is NOT silent — it goes directly to the Architect."
 }
 
 

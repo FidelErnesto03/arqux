@@ -518,17 +518,166 @@ def claim_blueprint(
 
 
 # ---------------------------------------------------------------------------
+# blueprint.task
+# ---------------------------------------------------------------------------
+
+
+_TASK_RE = re.compile(r"^(- \[[ ~x]\] \*\*T-\d+\.\d+:\*\* .+)$", re.MULTILINE)
+
+
+def task_blueprint(
+    bp_id: str,
+    task_id: str,
+    status: str,
+    evidence: str | None = None,
+    path: str | None = None,
+    ctx: PermissionContext | None = None,
+) -> CortexOUT:
+    """Update one task's checkbox in §14. Status: in_progress → [~], completed → [x]."""
+    root = _resolve_root(path)
+    if root is None:
+        return CortexOUT.error("no project initialized", code="NOT_FOUND")
+
+    bp_path, fm, body = _find_blueprint(root, bp_id)
+    if bp_path is None:
+        return CortexOUT.error(f"blueprint {bp_id} not found", code="NOT_FOUND")
+
+    if fm.get("status") not in (BP_IN_PROGRESS, BP_REVIEW, BP_DONE):
+        return CortexOUT.error(
+            f"blueprint is {fm.get('status')} — must be in_progress to update tasks",
+            code="INVALID_STATE",
+        )
+
+    if status not in ("in_progress", "completed"):
+        return CortexOUT.error("status must be 'in_progress' or 'completed'", code="INVALID_ARGS")
+
+    marker = "[~]" if status == "in_progress" else "[x]"
+    old_marker_pattern = r"^(- \[[ ~x]\] \*\*" + re.escape(task_id) + r":\*\* .+)$"
+    match = re.search(old_marker_pattern, body, re.MULTILINE)
+    if not match:
+        return CortexOUT.error(f"task {task_id} not found in §14", code="NOT_FOUND")
+
+    old_line = match.group(1)
+    new_line = old_line.replace(old_line[2:5], marker, 1)
+    ts = _now_iso()
+
+    if evidence:
+        new_line += f"\n  > [{ts}] {evidence}"
+
+    body = body.replace(old_line, new_line, 1)
+    fm["updated_at"] = ts
+    _write_blueprint(bp_path, fm, body)
+
+    return CortexOUT.work(
+        f"blueprint.task ok id={bp_id} task={task_id} status={status}",
+        blueprint_id=bp_id,
+        task_id=task_id,
+        status=status,
+    )
+
+
+# ---------------------------------------------------------------------------
+# blueprint.ac
+# ---------------------------------------------------------------------------
+
+
+def ac_blueprint(
+    bp_id: str,
+    ac_id: str,
+    status: str,
+    evidence: str | None = None,
+    reason: str | None = None,
+    path: str | None = None,
+    ctx: PermissionContext | None = None,
+) -> CortexOUT:
+    """Verify one AC in §12. Fail triggers auto re-delegate (max 3)."""
+    root = _resolve_root(path)
+    if root is None:
+        return CortexOUT.error("no project initialized", code="NOT_FOUND")
+
+    bp_path, fm, body = _find_blueprint(root, bp_id)
+    if bp_path is None:
+        return CortexOUT.error(f"blueprint {bp_id} not found", code="NOT_FOUND")
+
+    if fm.get("status") not in (BP_IN_PROGRESS, BP_REVIEW):
+        return CortexOUT.error(
+            f"blueprint is {fm.get('status')} — must be in_progress or review",
+            code="INVALID_STATE",
+        )
+
+    if status not in ("verified", "failed"):
+        return CortexOUT.error("status must be 'verified' or 'failed'", code="INVALID_ARGS")
+
+    pattern = r"^(- \[[ ~x]\] \*\*" + re.escape(ac_id) + r":\*\* .+)$"
+    match = re.search(pattern, body, re.MULTILINE)
+    if not match:
+        return CortexOUT.error(f"ac {ac_id} not found in §12", code="NOT_FOUND")
+
+    old_line = match.group(1)
+    ts = _now_iso()
+
+    if status == "verified":
+        new_line = old_line.replace(old_line[2:5], "[x]", 1)
+        if evidence:
+            new_line += f"\n  > [{ts}] Verified: {evidence}"
+    else:
+        new_line = old_line  # keep unchecked
+        raw_loop = fm.get("verification_loop", 0)
+        current = int(raw_loop) if isinstance(raw_loop, str) else raw_loop
+        reason_text = reason or "AC verification failed"
+        if evidence:
+            new_line += f"\n  > [{ts}] FAIL (attempt {current + 1}): {reason_text} — {evidence}"
+        else:
+            new_line += f"\n  > [{ts}] FAIL (attempt {current + 1}): {reason_text}"
+
+    body = body.replace(old_line, new_line, 1)
+    fm["updated_at"] = ts
+    _write_blueprint(bp_path, fm, body)
+
+    if status == "failed":
+        raw_loop = fm.get("verification_loop", 0)
+        current = int(raw_loop) if isinstance(raw_loop, str) else raw_loop
+        next_attempt = current + 1
+        # Auto re-delegate (max 3 attempts). 3rd fail → block_for_architect.
+        if fm.get("status") == BP_REVIEW and next_attempt < MAX_VERIFICATION_LOOPS:
+            return re_delegate_blueprint(bp_id, path=path, ctx=ctx)
+        elif fm.get("status") == BP_REVIEW:
+            fm["verification_loop"] = next_attempt
+            _write_blueprint(bp_path, fm, body)
+            return CortexOUT.work(
+                f"blueprint.ac ok id={bp_id} ac={ac_id} status=failed "
+                f"attempt={next_attempt}/{MAX_VERIFICATION_LOOPS} — max loops reached",
+                blueprint_id=bp_id,
+                ac_id=ac_id,
+                status="failed",
+                verification_loop=next_attempt,
+                max_loops=MAX_VERIFICATION_LOOPS,
+                instruction="Call blueprint.block_for_architect() for manual review.",
+            )
+
+    return CortexOUT.work(
+        f"blueprint.ac ok id={bp_id} ac={ac_id} status={status}",
+        blueprint_id=bp_id,
+        ac_id=ac_id,
+        status=status,
+    )
+
+
+# ---------------------------------------------------------------------------
 # blueprint.update
 # ---------------------------------------------------------------------------
 
 
 def update_blueprint(
     bp_id: str,
-    note: str,
+    note: str | None = None,
+    section: str | None = None,
+    content: str | None = None,
+    puml: str | None = None,
     path: str | None = None,
     ctx: PermissionContext | None = None,
 ) -> CortexOUT:
-    """Update Blueprint progress."""
+    """Update Blueprint progress (note) or refine a single section."""
     root = _resolve_root(path)
     if root is None:
         return CortexOUT.error("no project initialized", code="NOT_FOUND")
@@ -538,12 +687,51 @@ def update_blueprint(
         return CortexOUT.error(f"blueprint {bp_id} not found", code="NOT_FOUND")
 
     fm["updated_at"] = _now_iso()
-    body += f"\n\n> [{_now_iso()}] {note}"
+
+    # Section refinement takes priority over note
+    if section:
+        sec_num = section.lstrip("§").strip()
+        section_header = f"## §{sec_num}:"
+        # Build replacement content
+        if puml:
+            section_content = f"{section_header}\n\n{content or ''}\n\n```puml\n{puml}\n```\n"
+        elif content:
+            section_content = f"{section_header}\n\n{content}\n"
+        else:
+            return CortexOUT.error(
+                "section requires 'content' or 'puml' parameter",
+                code="INVALID_ARGS",
+            )
+
+        # Replace from section header to next section or end
+        def _replace_section(body: str, header: str, new_content: str) -> str:
+            pattern = re.escape(header) + r".*?(?=\n## §\d+:|$)"
+            repl = new_content.rstrip()
+            result = re.sub(pattern, repl, body, count=1, flags=re.DOTALL)
+            if result == body:
+                return None
+            return result
+
+        new_body = _replace_section(body, section_header, section_content)
+        if new_body is None:
+            return CortexOUT.error(
+                f"section {section} not found in blueprint",
+                code="NOT_FOUND",
+            )
+        body = new_body
+
+    if note:
+        body += f"\n\n> [{_now_iso()}] {note}"
+
+    if not section and not note:
+        return CortexOUT.error("provide 'note', 'section', or both", code="INVALID_ARGS")
+
     _write_blueprint(bp_path, fm, body)
 
     return CortexOUT.work(
         f"blueprint.update ok id={bp_id}",
         blueprint_id=bp_id,
+        section=section,
         note=note,
     )
 
@@ -710,7 +898,8 @@ def re_delegate_blueprint(
     if fm.get("status") != BP_REVIEW:
         return CortexOUT.error(f"Blueprint is {fm.get('status')} — must be in review to re-delegate", code="INVALID_STATE")
 
-    loop_count = fm.get("verification_loop", 0)
+    raw_loop = fm.get("verification_loop", 0)
+    loop_count = int(raw_loop) if isinstance(raw_loop, str) else raw_loop
     if loop_count >= MAX_VERIFICATION_LOOPS:
         return CortexOUT.error(
             f"max re-delegation loops ({MAX_VERIFICATION_LOOPS}) reached. Call blueprint.block_for_architect().",
