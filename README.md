@@ -50,24 +50,40 @@ arqux init
 # 4. Start the MCP server (in a separate terminal or background)
 arqux serve
 
-# 5. Configure MCP client (Hermes example)
-hermes mcp add arqux \
-  --command $(which arqux) \
-  --args serve \
-  --env ARQUX_AGENT_ID=alfred \
-  --env ARQUX_AGENT_ROLE=governor
+# 5. Configure MCP client
+#    Arqux exposes 38 tools via the Model Context Protocol.
+#    Add the following to your MCP client config
+#    (replace <path-to-arqux> with `which arqux`):
+
+```json
+{
+  "mcpServers": {
+    "arqux": {
+      "command": "<path-to-arqux>",
+      "args": ["serve"],
+      "env": {
+        "ARQUX_AGENT_ID": "alfred",
+        "ARQUX_AGENT_ROLE": "governor"
+      }
+    }
+  }
+}
+```
 
 # 6. Verify connectivity
-hermes mcp test arqux
-# Expected: 38 tools discovered, 0 errors
+#    Most MCP clients provide a test command. For example:
+#    - Hermes: hermes mcp test arqux
+#    - Claude Desktop: check the MCP tools panel
+#    - VS Code: check the MCP extension output
+#    Expected: 38 tools discovered, 0 errors
 
 # 7. Restart the MCP session so tools become available
-#    (in Hermes: /reload-mcp or restart the app)
+#    (most MCP clients: reload tools or restart the app)
 ```
 
 > **Development install** (from repo): `git clone ... && cd arqux && uv tool install --force -e .`
 >
-> **Note:** If `hermes mcp test` succeeds but tools don't appear in the session, run `/reload-mcp` or restart the application. The MCP process runs the code version that was current when it started — after reinstalling, restart the MCP server.
+> **Note:** If the MCP client discovers the tools but they don't appear in the session, reload or restart the client. The `arqux serve` process runs the code version that was current when it started — after reinstalling, restart the server.
 
 ## Core concepts
 
