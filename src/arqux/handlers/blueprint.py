@@ -254,54 +254,89 @@ def define_blueprint(
     fm["status"] = BP_DEFINED
     fm["updated_at"] = _now_iso()
 
-    # Apply filled sections to body by replacing template placeholders
+    # Apply filled sections to body by replacing template placeholders.
+    # Use regex-based section replacement for robustness.
+    import re
     new_body = body
-    replacements = []
 
+    # §3 Preconditions — replace the placeholder line(s)
     if pre:
         pre_text = "\n".join(f"- [ ] {p}" for p in pre)
-        replacements.append(("_Precondition 1 — verifiable via command or inspection_", pre_text))
-        replacements.append(("- [ ] _Precondition 1 — verifiable via command or inspection_", pre_text))
+        # Match the preconditions section: from "## §3:" to the next "## §"
+        new_body = re.sub(
+            r"(## §3: Preconditions\n\n).*?(\n## §4:)",
+            rf"\1{pre_text}\n\2",
+            new_body, count=1, flags=re.DOTALL,
+        )
 
+    # §6 Scope — replace in-scope items
     if scope:
-        replacements.append(("- _Item 1_\n- _Item 2_", f"- {scope}"))
-
+        new_body = re.sub(
+            r"(\*\*In scope:\*\*\n)- _Item 1_\n- _Item 2_",
+            f"**In scope:**\n- {scope}",
+            new_body, count=1,
+        )
     if exclusions:
-        replacements.append(("- _Item 1_\n- _Item 2_", f"- {exclusions}"))
+        new_body = re.sub(
+            r"(\*\*Out of scope.*:\*\*\n)- _Item 1_\n- _Item 2_",
+            f"**Out of scope:**\n- {exclusions}",
+            new_body, count=1,
+        )
 
+    # §7 Mandatory Rules
     if mandatory_rules:
         rules_text = "\n".join(f"{i+1}. {r}" for i, r in enumerate(mandatory_rules))
-        replacements.append(("1. _Rule 1_\n2. _Rule 2_", rules_text))
+        new_body = re.sub(
+            r"1\. _Rule 1_\n2\. _Rule 2_",
+            rules_text,
+            new_body, count=1,
+        )
 
+    # §12 Acceptance Criteria
     if acceptance_criteria:
         ac_text = "\n".join(f"- [ ] **AC-{i+1:02d}:** {ac}" for i, ac in enumerate(acceptance_criteria))
-        replacements.append(("- [ ] **AC-01:** _Description — verification: command or procedure_", ac_text))
+        new_body = re.sub(
+            r"- \[ \] \*\*AC-01:\*\* _Description.*_verification: command or procedure_\n- \[ \] \*\*AC-02:.*\n- \[ \] \*\*AC-03:.*",
+            ac_text,
+            new_body, count=1,
+        )
 
+    # §11 Work Procedure — replace phase placeholders
     if procedure:
-        replacements.append(("_Phase 1: Preparation\n1. _Step_\n2. _Step_", procedure))
+        new_body = re.sub(
+            r"(## §11: Work Procedure\n\n).*?(\n## §12:)",
+            rf"\1{procedure}\n\2",
+            new_body, count=1, flags=re.DOTALL,
+        )
 
+    # §13 Required Validations
     if validations:
         val_text = "\n".join(
             f"| {v.get('type', 'test')} | {v.get('desc', '')} | `{v.get('cmd', '')}` | {v.get('expected', '')} |"
             for v in validations
         )
-        replacements.append(("| test | _Description_ | `_command_` | _output_ |", val_text))
+        new_body = re.sub(
+            r"\| test \| _Description_ \| `_command_` \| _output_ \|\n.*?\n.*?\n",
+            val_text + "\n",
+            new_body, count=1,
+        )
 
-    if technical_design:
-        replacements.append(("' Component diagram here\n'", technical_design[:500]))
-
-    if operational_design:
-        replacements.append(("' Sequence diagram showing execution phases.\n'", operational_design[:500]))
-
+    # §15 Risks
     if risks:
         risk_text = "\n".join(f"| R-{i+1:02d} | {r} | _Impact_ | _Mitigation_ |" for i, r in enumerate(risks))
-        replacements.append(("| R-01 | _Description_ | _Impact_ | _Mitigation_ |", risk_text))
+        new_body = re.sub(
+            r"\| R-01 \| _Description_ \| _Impact_ \| _Mitigation_ \|",
+            risk_text,
+            new_body, count=1,
+        )
 
+    # §16 Blocking Rule
     if blocking_rule:
-        replacements.append(("1. _Condition 1_", blocking_rule[:200]))
-
-    for old, new in replacements:
-        new_body = new_body.replace(old, new, 1)
+        new_body = re.sub(
+            r"1\. _Condition 1_",
+            blocking_rule[:200],
+            new_body, count=1,
+        )
 
     _write_blueprint(bp_path, fm, new_body)
 
