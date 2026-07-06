@@ -1,10 +1,10 @@
-# Arqux
+# ArqUX
 
 > Minimum-viable governance framework for AI agent teams.
 > Defines what to do, who does it, and leaves evidence — without slowing work down.
 
 [![Status](https://img.shields.io/badge/status-beta-orange)]()
-[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![License: Apache 2.0](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
 [![Python](https://img.shields.io/badge/python-3.11%2B-blue)]()
 
 ---
@@ -49,11 +49,9 @@ arqux init
 
 # 4. Start the MCP server (in a separate terminal or background)
 arqux serve
+```
 
-# 5. Configure MCP client
-#    Arqux exposes 38 tools via the Model Context Protocol.
-#    Add the following to your MCP client config
-#    (replace <path-to-arqux> with `which arqux`):
+**5. Configure MCP client.** Arqux exposes 38 tools via the Model Context Protocol. Add the following to your MCP client configuration (replace `<path-to-arqux>` with `which arqux`):
 
 ```json
 {
@@ -70,16 +68,15 @@ arqux serve
 }
 ```
 
-# 6. Verify connectivity
-#    Most MCP clients provide a test command. For example:
-#    - Hermes: hermes mcp test arqux
-#    - Claude Desktop: check the MCP tools panel
-#    - VS Code: check the MCP extension output
-#    Expected: 38 tools discovered, 0 errors
+**6. Verify connectivity.** Most MCP clients provide a test mechanism:
 
-# 7. Restart the MCP session so tools become available
-#    (most MCP clients: reload tools or restart the app)
-```
+- **Hermes:** `hermes mcp test arqux`
+- **Claude Desktop:** check the MCP tools panel
+- **VS Code:** check the MCP extension output
+
+Expected: 38 tools discovered, 0 errors.
+
+**7. Restart or reload** the MCP session so tools become available (most clients: reload tools or restart the app).
 
 > **Development install** (from repo): `git clone ... && cd arqux && uv tool install --force -e .`
 >
@@ -258,8 +255,4 @@ ARQUX_AGENT_ID=alfred ARQUX_AGENT_ROLE=governor python3 -m arqux serve
 
 ## License
 
-MIT — see [LICENSE](LICENSE).
-
-## Acknowledgments
-
-Arqux synthesizes lessons from two earlier frameworks (NOMOS, DIALECT) and builds on the [CODEC-CORTEX](https://github.com/FidelErnesto03/codec-cortex) information codec. It is a new product, not a fork of either.
+Apache 2.0 — see [LICENSE](LICENSE).
