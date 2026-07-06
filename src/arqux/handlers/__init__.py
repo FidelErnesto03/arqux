@@ -1,6 +1,6 @@
 """Handler registry.
 
-24 handlers across 6 modules. Each handler is exposed as an MCP tool with:
+55 handlers across 11 modules. Each handler is exposed as an MCP tool with:
     - `fn`: the callable that does the work.
     - `description`: short one-liner for tool listings.
     - `input_schema`: JSON Schema describing the handler's arguments.
