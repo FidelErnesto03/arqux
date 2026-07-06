@@ -66,12 +66,25 @@ _The rule that governs this Blueprint. Executor must follow it without exception
 
 ## §5: Context
 
-_PUML diagram showing the context: actors, systems, flows._
+_PUML diagram showing the environment: actors, external systems, data flows. Must answer: "What does the executor need to understand about the world this Blueprint operates in?"_
 
 ```puml
 @startuml
 title Context — BLP-NNN
-' Context diagram here
+' REQUIRED: Show all actors, systems, and their relationships
+' Use UML notation so both humans and agents understand it unambiguously
+
+actor "User" as U
+actor "Admin" as A
+participant "API Gateway" as GW
+database "PostgreSQL" as DB
+cloud "External IdP" as IDP
+
+' Data flows
+U -> GW: Request
+GW -> DB: Query
+GW -> IDP: Validate
+' Labels must be descriptive enough that an agent can understand what each arrow represents
 @enduml
 ```
 
@@ -97,30 +110,71 @@ _Non-negotiable constraints for the executor._
 
 ## §8: Technical Design
 
-_Expected architecture, components, data flow._
+_Expected architecture: components, data flow, layers. This is what the executor builds. Must be unambiguous — an agent reading this should understand exactly what to create._
 
 ```puml
 @startuml
 title Technical Design — BLP-NNN
-' Component diagram here
+' REQUIRED: Component diagram showing all modules, their responsibilities,
+' and their interfaces. Use standard UML component notation.
+
+package "Auth Module" {
+  [Token Service] as TS
+  [Refresh Handler] as RH
+  [PKCE Validator] as PV
+}
+
+database "Redis" as RC
+database "PostgreSQL" as PG
+interface "REST API" as API
+
+API --> TS : POST /auth/token
+TS --> PG : store session
+TS --> RC : cache token
+RH --> RC : validate refresh
+PV --> TS : PKCE challenge
+
+' Each component must have a clear responsibility.
+' Each arrow must have a clear purpose.
 @enduml
 ```
 
 
 ## §9: Operational Design
 
-_Sequence or activity diagram showing HOW the execution should flow._
+_Sequence diagram showing the EXACT execution flow: step by step, who does what, in what order. An executor agent follows this like a script._
 
 ```puml
 @startuml
 title Operational Design — BLP-NNN
+' REQUIRED: Sequence diagram showing execution phases.
+' Each phase has clear inputs, actions, and expected outputs.
+' The agent follows this as an unambiguous execution plan.
 
-actor "Agent" as A
-participant "System" as S
+actor "Executor" as E
+participant "API" as API
+database "DB" as DB
+participant "Test Runner" as TR
 
-== Phase 1 ==
-A -> S: Action
-S --> A: Result
+== Phase 1: Schema ==
+E -> DB: CREATE TABLE sessions
+E -> DB: CREATE TABLE tokens
+DB --> E: schema ready
+
+== Phase 2: Implementation ==
+E -> API: Implement POST /auth/token
+E -> API: Implement POST /auth/refresh
+E -> API: Implement GET /auth/validate
+API --> E: endpoints ready
+
+== Phase 3: Validation ==
+E -> TR: pytest tests/auth/
+TR --> E: 42 passed, 0 failed
+E -> TR: bandit -r src/
+TR --> E: 0 HIGH/MEDIUM issues
+
+' Every step must be unambiguous.
+' The agent does NOT guess — it follows exactly what is drawn.
 @enduml
 ```
 
