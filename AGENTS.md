@@ -91,6 +91,7 @@ WRK:available_skills{
   skill:"format.skill.md", purpose:"File conventions: .cortex vs .md, attrs single-line, cuerpo multiline",
   skill:"memory.skill.md", purpose:"Native agent memory in CORTEX format (ultra-dense)",
   skill:"workflows.skill.md", purpose:"Canonical workflows with PlantUML diagrams: init, govern, daily, task lifecycle, identity evolution, adoption",
+  skill:"cortex-internal.skill.md", purpose:"How to use CORTEX format for agent-native memory, notes, plans, and session management. Ultra-dense, self-indexing, LLM-native.",
 }
 
 
