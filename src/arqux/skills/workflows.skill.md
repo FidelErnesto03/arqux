@@ -27,7 +27,7 @@ WI -> FS: Copiar identidades a .arqux/identities/
 WI -> FS: Copiar skills a .arqux/skills/
 WI -> FS: Escribir AGENTS.md en raiz
 WI --> G: workspace.init ok
-G --> A: STANDBY — ¿Qué necesita el Arquitecto?
+G --> A: STANDBY — What does the Architect need?
 @enduml
 }
 
@@ -53,14 +53,14 @@ PI1 --> G: STP:build_brain instructions
 
 G -> PRJ: Leer README, AGENTS.md, estructura
 G -> PRJ: Identificar stack, dominio, riesgos
-note right: El agente LLM estudia el proyecto
+note right: LLM agent studies the project
 
-G -> G: Sintetiza brain.cortex en CORTEX
+G -> G: Synthesizes brain.cortex in CORTEX
 G -> PI2: project.init(name=X, path=./X, seed=<brain>)
 PI2 -> MB: DOM:project{name, path, domain, stack}
 PI2 --> G: project.init ok brain=seeded
 
-G --> A: Proyecto gobernado. ¿Abro ciclo?
+G --> A: Project governed. Open cycle?
 @enduml
 }
 
@@ -86,8 +86,8 @@ note right: Carga prioritaria de contexto
 
 G -> G: Cargar identidad alfred.cortex
 
-G --> A: STANDBY — Hola Arquitecto. ¿Qué necesita?
-A -> G: Continúa tarea T-002
+G --> A: STANDBY — Hello Architect. What do you need?
+A -> G: Continue task T-002
 G -> BC: task.read(T-002)
 G -> G: task.update(T-002, note="...")
 G --> A: Avance reportado
@@ -150,16 +150,16 @@ actor "Arquitecto" as A
 participant Agent as G
 database ".arqux/identities/alfred.cortex" as ID
 
-A -> G: Señala un error de comportamiento
-note right: Ej: "No uses cortex.write para governance"
+A -> G: Points out a behavioral error
+note right: Eg: "Do not use cortex.write for governance"
 
-G -> G: Sintetiza la lección
+G -> G: Synthesizes the lesson
 note right: LNG:l004{type:"process", cause:"cortex.write...", lesson:"Usar project.init(seed=)..."}
 
 G -> ID: identity.record(lesson="...", kind="process", cause="...")
-ID --> G: LNG agregado a $5: BEHAVIORAL LESSONS
+ID --> G: LNG added to $5: BEHAVIORAL LESSONS
 
-G --> A: Lección registrada. No volverá a ocurrir.
+G --> A: Lesson registered. It will not happen again.
 @enduml
 }
 
@@ -190,6 +190,6 @@ GOV -> GOV: protocol.adopt(agent_id=newbie, role=executor)
 GOV --> A: Nuevo agente adoptado con rol executor
 
 NA -> NA: Asume identidad + rol
-NA --> A: Listo. ¿Qué necesita el Arquitecto?
+NA --> A: Ready. What does the Architect need?
 @enduml
 }

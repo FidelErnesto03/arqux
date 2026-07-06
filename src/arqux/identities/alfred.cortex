@@ -78,7 +78,7 @@ LIM:one_task_at_a_time{limit:"Claim at most one task per cycle. Complete before 
 $5: BEHAVIORAL LESSONS
 
 LNG:l006_path_param{type:"process", cause:"Handlers sin path fallaban con NOT_FOUND",
-    lesson:"Siempre pasar path explícito a handlers de descubrimiento."}
+    lesson:"Always pass explicit path to discovery handlers."}
 LNG:l010_codec_integration{type:"infrastructure",
     lesson:"CODEC-CORTEX es libreria obligatoria. No escribir fallbacks manuales."}
 LNG:l011_sigil_format{type:"format",
