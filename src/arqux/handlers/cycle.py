@@ -13,6 +13,7 @@ from pathlib import Path
 from typing import Any
 
 from ..constants import (
+    ARQUX_DIR,
     CYCLES_DIR,
     CYCLE_CLOSED,
     CYCLE_OPEN,
@@ -58,16 +59,25 @@ def create_cycle(
     cycle_id = next_cycle_id(root)
     cdir = cycle_dir(root, cycle_id)
     cdir.mkdir(parents=True, exist_ok=True)
-    (cdir / TASKS_DIR).mkdir(exist_ok=True)
-    # No pulse.jsonl — pulse events live in the project brain's # PULSE section.
 
+    # Use CYCLE_MANIFEST_TEMPLATE.md from package templates (always available after install).
+    template_path = Path(__file__).resolve().parent.parent / "templates" / "CYCLE_MANIFEST_TEMPLATE.md"
+
+    if template_path and template_path.exists():
+        raw = template_path.read_text(encoding="utf-8")
+        raw = raw.replace('cycle_id: ""', f'cycle_id: "{cycle_id}"')
+        raw = raw.replace('name: ""', f'name: "{name or cycle_id}"')
+        raw = raw.replace('governor: ""', f'governor: "{(ctx or PermissionContext.from_env()).agent_id}"')
+        raw = raw.replace('created_at: ""', f'created_at: "{_now_iso()}"')
+        (cdir / "MANIFEST.md").write_text(raw, encoding="utf-8")
+
+    # Also create the legacy cycle.cortex for backward compat
     fm = {
         "id": cycle_id,
         "name": name or cycle_id,
         "description": description or "",
         "status": CYCLE_OPEN,
         "created": _now_iso(),
-        "closed": None,
     }
     body = f"# CYCLE {cycle_id}\n\n{description or ''}\n"
     write_cortex_pair(cdir, "cycle", fm, body)

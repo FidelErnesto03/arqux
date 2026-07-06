@@ -14,7 +14,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any, Callable
 
-from . import cycle, evidence, project, protocol, task, workspace, cortex, skill
+from . import cycle, evidence, project, protocol, task, workspace, cortex, skill, blueprint
 
 
 @dataclass(frozen=True)
@@ -454,6 +454,195 @@ _register(_spec(
         "required": ["candidate_id"],
     },
 ))
+
+
+# --- blueprint handlers ---
+_register(_spec(
+    "blueprint.create", blueprint.create_blueprint,
+    "Create a new Blueprint from BLP_TEMPLATE.md in draft state.",
+    {
+        "type": "object",
+        "properties": {
+            "obj": {"type": "string", "description": "Blueprint objective"},
+            "cycle": {"type": "string", "description": "Cycle ID. Uses most recent if omitted."},
+            "path": {"type": "string"},
+        },
+        "required": ["obj"],
+    },
+))
+_register(_spec(
+    "blueprint.define", blueprint.define_blueprint,
+    "Fill the Blueprint's definition sections. State → defined.",
+    {
+        "type": "object",
+        "properties": {
+            "bp_id": {"type": "string"},
+            "pre": {"type": "array", "items": {"type": "string"}},
+            "scope": {"type": "string"},
+            "exclusions": {"type": "string"},
+            "mandatory_rules": {"type": "array", "items": {"type": "string"}},
+            "acceptance_criteria": {"type": "array", "items": {"type": "string"}},
+            "procedure": {"type": "string"},
+            "validations": {"type": "array", "items": {"type": "object"}},
+            "technical_design": {"type": "string"},
+            "operational_design": {"type": "string"},
+            "risks": {"type": "array", "items": {"type": "string"}},
+            "blocking_rule": {"type": "string"},
+            "path": {"type": "string"},
+        },
+        "required": ["bp_id"],
+    },
+))
+_register(_spec(
+    "blueprint.mature", blueprint.mature_blueprint,
+    "Enter maturation phase. Cyclic Architect interaction begins.",
+    {
+        "type": "object",
+        "properties": {
+            "bp_id": {"type": "string"},
+            "path": {"type": "string"},
+        },
+        "required": ["bp_id"],
+    },
+))
+_register(_spec(
+    "blueprint.ready", blueprint.ready_blueprint,
+    "Architect declares Blueprint ready for execution.",
+    {
+        "type": "object",
+        "properties": {
+            "bp_id": {"type": "string"},
+            "path": {"type": "string"},
+        },
+        "required": ["bp_id"],
+    },
+))
+_register(_spec(
+    "blueprint.assign", blueprint.assign_blueprint,
+    "Governor assigns an executor to the Blueprint.",
+    {
+        "type": "object",
+        "properties": {
+            "bp_id": {"type": "string"},
+            "executor": {"type": "string"},
+            "path": {"type": "string"},
+        },
+        "required": ["bp_id", "executor"],
+    },
+))
+_register(_spec(
+    "blueprint.claim", blueprint.claim_blueprint,
+    "Executor claims the Blueprint. State → in_progress.",
+    {
+        "type": "object",
+        "properties": {
+            "bp_id": {"type": "string"},
+            "path": {"type": "string"},
+        },
+        "required": ["bp_id"],
+    },
+))
+_register(_spec(
+    "blueprint.update", blueprint.update_blueprint,
+    "Update Blueprint progress with a note.",
+    {
+        "type": "object",
+        "properties": {
+            "bp_id": {"type": "string"},
+            "note": {"type": "string"},
+            "path": {"type": "string"},
+        },
+        "required": ["bp_id", "note"],
+    },
+))
+_register(_spec(
+    "blueprint.complete", blueprint.complete_blueprint,
+    "Declare execution complete. State → review.",
+    {
+        "type": "object",
+        "properties": {
+            "bp_id": {"type": "string"},
+            "evidence": {"type": "string"},
+            "path": {"type": "string"},
+        },
+        "required": ["bp_id"],
+    },
+))
+_register(_spec(
+    "blueprint.fail", blueprint.fail_blueprint,
+    "Blueprint hit an obstacle. State → blocked.",
+    {
+        "type": "object",
+        "properties": {
+            "bp_id": {"type": "string"},
+            "reason": {"type": "string"},
+            "path": {"type": "string"},
+        },
+        "required": ["bp_id", "reason"],
+    },
+))
+_register(_spec(
+    "blueprint.approve", blueprint.approve_blueprint,
+    "Auditor approves after cross-verification. State → done.",
+    {
+        "type": "object",
+        "properties": {
+            "bp_id": {"type": "string"},
+            "path": {"type": "string"},
+        },
+        "required": ["bp_id"],
+    },
+))
+_register(_spec(
+    "blueprint.re_delegate", blueprint.re_delegate_blueprint,
+    "Re-delegate after verification fail (max 3 loops).",
+    {
+        "type": "object",
+        "properties": {
+            "bp_id": {"type": "string"},
+            "path": {"type": "string"},
+        },
+        "required": ["bp_id"],
+    },
+))
+_register(_spec(
+    "blueprint.block_for_architect", blueprint.block_for_architect,
+    "Block for Architect manual review after 3rd verification fail.",
+    {
+        "type": "object",
+        "properties": {
+            "bp_id": {"type": "string"},
+            "path": {"type": "string"},
+        },
+        "required": ["bp_id"],
+    },
+))
+_register(_spec(
+    "blueprint.read", blueprint.read_blueprint,
+    "Read a full Blueprint (HCORTEX or CORTEX format).",
+    {
+        "type": "object",
+        "properties": {
+            "bp_id": {"type": "string"},
+            "format": {"type": "string", "enum": ["hcortex", "cortex"], "default": "hcortex"},
+            "path": {"type": "string"},
+        },
+        "required": ["bp_id"],
+    },
+))
+_register(_spec(
+    "blueprint.list", blueprint.list_blueprints,
+    "List Blueprints with optional filters.",
+    {
+        "type": "object",
+        "properties": {
+            "cycle": {"type": "string"},
+            "status": {"type": "string"},
+            "path": {"type": "string"},
+        },
+    },
+))
+
 
 # --- skill management handlers ---
 _register(_spec(
