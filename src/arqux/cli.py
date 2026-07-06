@@ -1,120 +1,225 @@
 """CLI entry point.
 
-Exposes three commands:
-    arqux serve    — start the MCP server on stdio.
-    arqux init     — initialize .arqux/ in the current directory.
-    arqux status   — print workspace/project/cycle status.
+Commands:
+    arqux serve              — start the MCP server on stdio.
+    arqux init               — initialize .arqux/ in the current directory.
+    arqux status             — print workspace/project/cycle status.
+    arqux call <handler>     — call any handler directly (no MCP required).
+    arqux setup-plantuml     — download plantuml.jar.
+    arqux serve-plantuml     — start PlantUML render server.
     arqux --version
 """
 
 from __future__ import annotations
 
+import json
 import sys
 from pathlib import Path
-from typing import Sequence
+from typing import Any, Sequence
 
 import click
 
 from . import __version__
 from .constants import PRODUCT_NAME, PRODUCT_NAME_TITLE
 
+#: ASCII art banner — only displayed with --banner or --version, never in handler output.
+BANNER = r"""
+       d8888                  888     888 Y88b   d88P
+      d88888                  888     888  Y88b d88P
+     d88P888                  888     888   Y88o88P
+    d88P 888 888d888 .d88888 888     888    Y888P
+   d88P  888 888P"  d8P"88 888     888    d888b
+  d88P   888 888    888 888 888     888   d88888b
+ d8888888888 888    Y88b 888 Y88b. .d88P d88P Y88b
+d88P     888 888     "Y88888 "Y88888P" d88P   Y88b
+                          888
+                          888
+                          888
+"""
 
-@click.group(
-    help=f"{PRODUCT_NAME_TITLE} — minimum-viable governance framework for AI agent teams."
-)
-@click.version_option(version=__version__, prog_name=PRODUCT_NAME)
-def cli() -> None:
-    """Top-level command group."""
+
+def _is_tty() -> bool:
+    """Check if stdout is a terminal (skip banner when piped)."""
+    return hasattr(sys.stdout, "isatty") and sys.stdout.isatty()
 
 
-@cli.command(help="Start the MCP server on stdio.")
-@click.option(
-    "--verbose",
-    is_flag=True,
-    default=False,
-    help="Log handler invocations to stderr (for debugging).",
-)
-def serve(verbose: bool) -> None:
-    """Start the MCP server."""
-    # Import lazily so `--version` and `--help` do not require MCP deps.
+def _call_handler(name: str, raw_args: list[str]) -> str:
+    """Dispatch a handler by name with key=value arguments.
+
+    Returns the handler's CORTEX-OUT message as a string.
+    """
+    from .handlers import REGISTRY
+    from .permissions import PermissionContext
+
+    if name not in REGISTRY:
+        # Try MCP-safe name (underscores → dots)
+        dotted = name.replace("_", ".")
+        if dotted in REGISTRY:
+            name = dotted
+        else:
+            available = "\n".join(f"  {n}" for n in sorted(REGISTRY.keys()))
+            return f"ERROR: unknown handler '{name}'. Available:\n{available}"
+
+    spec = REGISTRY[name]
+    ctx = PermissionContext.from_env()
+
+    # Parse key=value arguments
+    kwargs: dict[str, Any] = {}
+    for arg in raw_args:
+        if "=" in arg:
+            key, val = arg.split("=", 1)
+            # Try JSON parsing for complex values
+            try:
+                kwargs[key] = json.loads(val)
+            except (json.JSONDecodeError, ValueError):
+                kwargs[key] = val
+        else:
+            # Positional: use as first required param's value
+            req = spec.input_schema.get("required", [])
+            if req:
+                kwargs[req[0]] = arg
+
+    # Add path if not provided
+    if "path" not in kwargs:
+        kwargs["path"] = str(Path.cwd())
+
+    # Call handler
+    try:
+        result = spec.fn(**kwargs, ctx=ctx)
+    except TypeError as e:
+        return f"ERROR: {e}. Expected params: {list(spec.input_schema.get('properties', {}).keys())}"
+
+    if hasattr(result, "to_text"):
+        return result.to_text()
+    if hasattr(result, "message"):
+        return str(result.message)
+    return str(result)
+
+
+@click.group()
+@click.version_option(version=__version__, prog_name=PRODUCT_NAME, message=f"%(prog)s %(version)s\n{BANNER if _is_tty() else ''}")
+def main():
+    """Arqux — governance framework for AI agent teams."""
+    pass
+
+@main.command("init")
+@click.option("--path", default=None, help="Path to initialize.")
+@click.option("--verbose", is_flag=True, help="Use OUT-AUDIT profile.")
+def cmd_init(path: str | None, verbose: bool):
+    """Initialize .arqux/ in the current directory."""
+    from .handlers.workspace import init_workspace
+
+    result = init_workspace(path=path, verbose=verbose)
+    if _is_tty():
+        click.echo(BANNER)
+    click.echo(result.to_text())
+
+
+@main.command("status")
+@click.option("--path", default=None, help="Path to check.")
+@click.option("--verbose", is_flag=True, help="Verbose output.")
+def cmd_status(path: str | None, verbose: bool):
+    """Print workspace + project + cycle status."""
+    from .handlers.workspace import status as ws_status
+    from .handlers.project import status as pr_status
+    from .handlers.cycle import current_cycle
+
+    ws = ws_status(verbose=verbose, path=path)
+    click.echo(ws.to_text())
+
+    try:
+        pr = pr_status(verbose=verbose, path=path)
+        click.echo(pr.to_text())
+    except Exception:
+        pass
+
+    try:
+        cy = current_cycle(path=path)
+        click.echo(cy.to_text())
+    except Exception:
+        pass
+
+
+@main.command("serve")
+@click.option("--verbose", is_flag=True, help="Verbose startup.")
+def cmd_serve(verbose: bool):
+    """Start the MCP server on stdio."""
+    if verbose and _is_tty():
+        click.echo(BANNER, err=True)
     from .server import run_server
-
     run_server(verbose=verbose)
 
 
-@cli.command(help="Initialize .arqux/ in the current directory.")
-@click.option(
-    "--workspace",
-    is_flag=True,
-    default=False,
-    help="Initialize as a workspace root (creates meta-brain + projects index).",
-)
-@click.option(
-    "--project",
-    "project_name",
-    default=None,
-    help="Register the current directory as a project with this name.",
-)
-def init(workspace: bool, project_name: str | None) -> None:
-    """Initialize governance in the current directory."""
-    from .handlers.workspace import init_workspace
-    from .handlers.project import init_project
+@main.command("call")
+@click.argument("handler")
+@click.argument("args", nargs=-1)
+def cmd_call(handler: str, args: tuple[str, ...]):
+    """Call any Arqux handler directly (no MCP required).
 
-    if not workspace and project_name is None:
-        # Default: initialize as both workspace and a project named "default".
-        workspace = True
-        project_name = "default"
-
-    if workspace:
-        result = init_workspace(path=".", verbose=True)
-        click.echo(result.to_text())
-
-        # Write AGENTS.md to workspace root from package template.
-        _write_agents_md(Path(".").resolve())
-
-    if project_name is not None:
-        result = init_project(name=project_name, path=".", verbose=True)
-        click.echo(result.to_text())
+    Examples:
+        arqux call workspace.status
+        arqux call blueprint.create obj="OAuth2 endpoint" cycle=CYCLE-01
+        arqux call identity.record lesson="Always verify P0" kind=behavioral
+        arqux call blueprint.list status=done cycle=CYCLE-01
+    """
+    result = _call_handler(handler, list(args))
+    click.echo(result)
 
 
-def _write_agents_md(workspace_root: Path) -> None:
-    """Write AGENTS.md (CORTEX content, .md extension) to workspace root."""
-    template_path = Path(__file__).resolve().parent / "templates" / "AGENTS.md"
-    if not template_path.exists():
-        click.echo(f"WARNING template not found: {template_path}", err=True)
-        return
-    dst = workspace_root / "AGENTS.md"
-    if dst.exists():
-        click.echo(f"AGENTS.md already exists at {dst}, skipping", err=True)
-        return
-    dst.write_text(template_path.read_text(encoding="utf-8"), encoding="utf-8")
-    click.echo(f"OUT-WORK AGENTS.md written to {dst}")
+@main.command("setup-plantuml")
+@click.option("--force", is_flag=True, help="Force re-download.")
+def cmd_setup_plantuml(force: bool):
+    """Install plantuml.jar to ~/.arqux/bin/."""
+    from .plantuml import setup_plantuml as sp
+
+    ok, msg = sp(force=force)
+    click.echo(msg)
+    sys.exit(0 if ok else 1)
 
 
-@cli.command(help="Print workspace/project/cycle status.")
-@click.option(
-    "--profile",
-    type=click.Choice(["OUT-MIN", "OUT-WORK", "OUT-AUDIT", "OUT-FULL"]),
-    default="OUT-WORK",
-    help="CORTEX-OUT profile to use for the output.",
-)
-def status(profile: str) -> None:
-    """Print current status."""
-    from .cortex_out import format_status
-    from .state import find_workspace_root
+@main.command("serve-plantuml")
+@click.option("--port", type=int, default=9876, help="Port to listen on.")
+def cmd_serve_plantuml(port: int):
+    """Start PlantUML rendering server."""
+    from .plantuml_server import start_server
 
-    root = find_workspace_root()
-    if root is None:
-        click.echo(f"ERROR code=NOT_FOUND reason=no_workspace_init")
-        sys.exit(1)
+    srv = start_server(port=port)
+    import time
 
-    click.echo(format_status(root, profile=profile))
+    try:
+        while True:
+            time.sleep(1)
+    except KeyboardInterrupt:
+        srv.shutdown()
 
 
-def main(argv: Sequence[str] | None = None) -> None:
-    """Console-script entry point."""
-    cli(args=list(argv) if argv is not None else None)
+@main.command("render-diagram")
+@click.argument("puml_file")
+@click.option("--format", "fmt", default="svg", type=click.Choice(["svg", "png"]))
+@click.option("--output", "-o", default=None, help="Output directory.")
+def cmd_render_diagram(puml_file: str, fmt: str, output: str | None):
+    """Render a PUML file to SVG/PNG."""
+    from pathlib import Path
+
+    from .plantuml import render_puml
+
+    source = Path(puml_file).read_text(encoding="utf-8")
+    out_dir = Path(output) if output else None
+    ok, result = render_puml(source, format=fmt, output_dir=out_dir)
+    click.echo(result)
+    sys.exit(0 if ok else 1)
 
 
-if __name__ == "__main__":
-    main()
+@main.command("banner")
+def cmd_banner():
+    """Show the Arqux ASCII art banner."""
+    click.echo(BANNER)
+
+
+@main.command("handlers")
+def cmd_handlers():
+    """List all available handlers."""
+    from .handlers import list_handlers
+
+    for name in sorted(list_handlers()):
+        click.echo(name)

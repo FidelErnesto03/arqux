@@ -85,6 +85,20 @@ LNG:l011_sigil_format{type:"format",
     lesson:"El formato sigil con glosario $0 es el canonico."}
 
 
+LNG:test{type:"process", cause:"", lesson:"Test lesson from Qwen debug"}
+
+LNG:test{type:"behavioral", cause:"", lesson:"test"}
+
+LNG:p0{type:"behavioral", cause:"", lesson:"P0 test"}
+
+LNG:hcortex{type:"process", cause:"OpenCode/Codex session with el Arquitecto", lesson:"HCORTEX must be taught explicitly — agents default to CORTEX raw key=value, not vertical layout"}
+
+LNG:p0{type:"process", cause:"OpenCode/Codex session with el Arquitecto", lesson:"P0 must be self-contained with fallbacks — if a tool is unavailable, agent must know file-based alternative"}
+
+LNG:agents{type:"process", cause:"OpenCode/Codex session with el Arquitecto", lesson:"Agents cache AGENTS.md at startup — manual re-read required after updates, cannot auto-reload"}
+
+LNG:agents_md{type:"process", cause:"OpenCode could not load skills via skill_view", lesson:"AGENTS.md must use file paths not platform tools - skill_view is Hermes-only, use Read .arqux/skills/name instead"}
+
 $6: DESCRIPTION
 
 DESC:persona{

@@ -69,10 +69,9 @@ arqux serve
 ```
 
 **6. Verify connectivity.** Most MCP clients provide a test mechanism:
-
-- **Hermes:** `hermes mcp test arqux`
 - **Claude Desktop:** check the MCP tools panel
-- **VS Code:** check the MCP extension output
+- **VS Code / Cline:** check the MCP extension output
+- **Any client:** call `list_tools()` — expected ~54 tools discovered.
 
 Expected: 38 tools discovered, 0 errors.
 

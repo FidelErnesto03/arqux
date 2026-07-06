@@ -58,6 +58,12 @@ READ_ONLY_PREFIXES: tuple[str, ...] = (
     "cortex.read",
     "cortex.verify",
     "cortex.render",
+    "cortex.learn",
+    "cortex.learn.elevate",
+    "skill.list",
+    "blueprint.read",
+    "blueprint.list",
+    "identity.record",  # any agent can record lessons to their own identity
 )
 
 # Governor-only handlers — executor cannot call.
@@ -84,6 +90,13 @@ EXECUTOR_ALLOWED: tuple[str, ...] = (
     "evidence.list",
     "evidence.read",
     "protocol.release",  # self-release
+    "identity.record",   # executor can record own lessons
+    "blueprint.claim",
+    "blueprint.update",
+    "blueprint.complete",
+    "blueprint.fail",
+    "blueprint.read",
+    "blueprint.list",
 )
 
 
