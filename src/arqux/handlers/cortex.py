@@ -245,11 +245,17 @@ def render_diagram_handler(
     if not ok:
         return CortexOUT.error(result, code="RENDER_ERROR")
 
+    # Read rendered content for inline delivery via MCP
+    output_path = Path(result)
+    svg_content = ""
+    if output_path.exists() and format == "svg":
+        svg_content = output_path.read_text(encoding="utf-8")
+
     return CortexOUT.work(
         f"render_diagram ok format={format}",
         format=format,
-        output_path=result,
-        instruction=f"Diagram rendered to {result}. Use vision_analyze() to inspect it.",
+        output_path=str(output_path),
+        svg_content=svg_content if svg_content else None,
     )
 
 
