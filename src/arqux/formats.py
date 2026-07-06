@@ -407,10 +407,22 @@ def _build_brain_doc(doc, frontmatter, sections_input):
                 }))
     _add_section(doc, "$9", "RISKS", rsk_entries)
 
-    # $10: CONCURRENCY
+    # $10: KNOWLEDGE
+    knw_lines = (sections or {}).get("KNOWLEDGE", "").strip()
+    knw_entries = []
+    if knw_lines:
+        knw_entries.append(
+            _entry("$10", "KNW", "knowledge", {
+                "topic": "project_knowledge",
+                "content": knw_lines,
+                "status": "active",
+            }))
+    _add_section(doc, "$10", "KNOWLEDGE", knw_entries)
+
+    # $11: CONCURRENCY
     version = frontmatter.get("brain_version", "0")
-    _add_section(doc, "$10", "CONCURRENCY", [
-        _entry("$10", "ERR", "concurrency", {
+    _add_section(doc, "$11", "CONCURRENCY", [
+        _entry("$11", "ERR", "concurrency", {
             "version": str(version),
             "last_writer": frontmatter.get("brain_last_writer", ""),
             "updated": frontmatter.get("brain_updated", now),

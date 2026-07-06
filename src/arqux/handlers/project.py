@@ -350,7 +350,7 @@ def lessons(path: str | None = None, ctx: PermissionContext | None = None) -> Co
 
 def _update_meta_brain(ws_root: Path, name: str, path_str: str, seed: str) -> None:
     """Update meta-brain with cross-project knowledge from a new project."""
-    from .constants import META_BRAIN_CORTEX
+    from ..constants import META_BRAIN_CORTEX
 
     meta_path = ws_root / META_BRAIN_CORTEX
     if not meta_path.exists():
