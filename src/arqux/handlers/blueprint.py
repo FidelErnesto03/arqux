@@ -254,35 +254,56 @@ def define_blueprint(
     fm["status"] = BP_DEFINED
     fm["updated_at"] = _now_iso()
 
-    # Write body with filled sections
-    sections = {}
+    # Apply filled sections to body by replacing template placeholders
+    new_body = body
+    replacements = []
+
     if pre:
-        sections["preconditions"] = "\n".join(f"- [ ] {p}" for p in pre)
+        pre_text = "\n".join(f"- [ ] {p}" for p in pre)
+        replacements.append(("_Precondition 1 — verifiable via command or inspection_", pre_text))
+        replacements.append(("- [ ] _Precondition 1 — verifiable via command or inspection_", pre_text))
+
     if scope:
-        sections["scope"] = scope
+        replacements.append(("- _Item 1_\n- _Item 2_", f"- {scope}"))
+
     if exclusions:
-        sections["exclusions"] = exclusions
+        replacements.append(("- _Item 1_\n- _Item 2_", f"- {exclusions}"))
+
     if mandatory_rules:
-        sections["mandatory_rules"] = "\n".join(f"1. {r}" for r in mandatory_rules)
+        rules_text = "\n".join(f"{i+1}. {r}" for i, r in enumerate(mandatory_rules))
+        replacements.append(("1. _Rule 1_\n2. _Rule 2_", rules_text))
+
     if acceptance_criteria:
-        sections["acceptance_criteria"] = "\n".join(f"- [ ] **AC-{i+1:02d}:** {ac}" for i, ac in enumerate(acceptance_criteria))
+        ac_text = "\n".join(f"- [ ] **AC-{i+1:02d}:** {ac}" for i, ac in enumerate(acceptance_criteria))
+        replacements.append(("- [ ] **AC-01:** _Description — verification: command or procedure_", ac_text))
+
     if procedure:
-        sections["procedure"] = procedure
+        replacements.append(("_Phase 1: Preparation\n1. _Step_\n2. _Step_", procedure))
+
     if validations:
-        sections["validations"] = "\n".join(
+        val_text = "\n".join(
             f"| {v.get('type', 'test')} | {v.get('desc', '')} | `{v.get('cmd', '')}` | {v.get('expected', '')} |"
             for v in validations
         )
-    if technical_design:
-        sections["technical_design"] = technical_design
-    if operational_design:
-        sections["operational_design"] = operational_design
-    if risks:
-        sections["risks"] = "\n".join(risks)
-    if blocking_rule:
-        sections["blocking_rule"] = blocking_rule
+        replacements.append(("| test | _Description_ | `_command_` | _output_ |", val_text))
 
-    _write_blueprint(bp_path, fm, body)
+    if technical_design:
+        replacements.append(("' Component diagram here\n'", technical_design[:500]))
+
+    if operational_design:
+        replacements.append(("' Sequence diagram showing execution phases.\n'", operational_design[:500]))
+
+    if risks:
+        risk_text = "\n".join(f"| R-{i+1:02d} | {r} | _Impact_ | _Mitigation_ |" for i, r in enumerate(risks))
+        replacements.append(("| R-01 | _Description_ | _Impact_ | _Mitigation_ |", risk_text))
+
+    if blocking_rule:
+        replacements.append(("1. _Condition 1_", blocking_rule[:200]))
+
+    for old, new in replacements:
+        new_body = new_body.replace(old, new, 1)
+
+    _write_blueprint(bp_path, fm, new_body)
 
     return CortexOUT.work(
         f"blueprint.define ok id={bp_id}",
