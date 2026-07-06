@@ -25,7 +25,22 @@ from ..state import (
     cycle_dir,
     find_project_root,
     next_cycle_id,
+    parse_cortex_file as _parse_cortex_file,
     write_cortex_pair,
+)
+from ..constants import (
+    CYCLES_DIR,
+    CYCLE_CLOSED,
+    CYCLE_OPEN,
+    OUT_WORK,
+    TASKS_DIR,
+    TASK_BLOCKED,
+    TASK_CANCELLED,
+    TASK_DONE,
+    TASK_DRAFT,
+    TASK_IN_PROGRESS,
+    TASK_OPEN,
+    TASK_REVIEW,
 )
 
 
@@ -120,7 +135,14 @@ def close_cycle(
     path: str | None = None,
     ctx: PermissionContext | None = None,
 ) -> CortexOUT:
-    """Close a cycle (no new tasks can be added)."""
+    """Close a cycle with automatic lesson generation.
+
+    1. Checks for open tasks.
+    2. Scans completed and failed tasks for patterns.
+    3. Auto-generates LESSONS in the project brain.
+    4. Records cycle closure evidence in brain PULSE.
+    5. Writes cycle summary with metrics.
+    """
     root = find_project_root(start=path)
     if root is None:
         return CortexOUT.error("no project initialized", code="NOT_FOUND")
@@ -129,19 +151,112 @@ def close_cycle(
     if not cdir.exists():
         return CortexOUT.error(f"cycle {cycle_id} not found", code="NOT_FOUND")
 
+    tasks_dir = cdir / TASKS_DIR
+    now = _now_iso()
+
+    # 1. Scan all tasks in the cycle
+    open_tasks = []
+    completed = []
+    failed = []
+    task_list = sorted(tasks_dir.iterdir()) if tasks_dir.exists() else []
+
+    for tfile in task_list:
+        if tfile.suffix not in (".cortex",):
+            continue
+        try:
+            tfm, _ = _parse_cortex_file(tfile)
+            ts = tfm.get("status", "")
+            tid = tfm.get("id", tfile.stem)
+            if ts in (TASK_OPEN, TASK_DRAFT, TASK_IN_PROGRESS, TASK_REVIEW):
+                open_tasks.append(tid)
+            elif ts == TASK_DONE:
+                completed.append(tid)
+            elif ts in (TASK_BLOCKED, TASK_CANCELLED):
+                failed.append(tid)
+        except Exception:
+            continue
+
+    # 2. Block if there are open tasks (unless forced via a full summary)
+    if open_tasks and not summary:
+        return CortexOUT.work(
+            f"cycle {cycle_id} has {len(open_tasks)} open tasks: {', '.join(open_tasks)}. "
+            f"Close or complete them first, or provide a summary to force close.",
+            cycle_id=cycle_id,
+            open_tasks=open_tasks,
+            hint="Provide a summary to force-close with open tasks.",
+        )
+
+    # 3. Auto-generate lessons from completed/failed tasks
+    lessons = []
+    if failed:
+        lessons.append(
+            f"LNG:{cycle_id.lower()}_blockers{{type:\"process\", "
+            f"cause:\"{len(failed)} task(s) blocked in {cycle_id}\", "
+            f"lesson:\"Identify blockers early to avoid cycle delays\"}}"
+        )
+    if completed:
+        lessons.append(
+            f"LNG:{cycle_id.lower()}_completion{{type:\"process\", "
+            f"cause:\"{len(completed)} task(s) completed in {cycle_id}\", "
+            f"lesson:\"Completed tasks show effective cycle planning\"}}"
+        )
+
+    # 4. Update brain with lessons and closure evidence
+    if lessons:
+        try:
+            from ..state import read_brain, write_brain_sections
+            # find_project_root returns .arqux/ path; read_brain/write_brain_sections
+            # expect the project root (parent of .arqux/).
+            project_dir = root.parent
+            fm, sections, _ = read_brain(project_dir)
+            existing = sections.get("LESSONS", "").strip()
+            new_lessons = "\n".join(
+                f"- [{now}] {l}" for l in lessons
+            )
+            sections["LESSONS"] = (existing + "\n" + new_lessons).strip() if existing else new_lessons
+            # Also add to PULSE
+            pulse = sections.get("PULSE", "").strip()
+            closure_entry = (
+                f"- [{now}] AUD:{cycle_id}_close{{kind:\"cycle\", "
+                f"summary:{summary or ''!r}, completed:{len(completed)}, "
+                f"failed:{len(failed)}, lessons:{len(lessons)}}}"
+            )
+            sections["PULSE"] = (pulse + "\n" + closure_entry).strip() if pulse else closure_entry
+            write_brain_sections(project_dir, fm, sections)
+        except Exception:
+            pass
+
+    # 5. Write cycle.cortex with metrics
     fm = {
         "id": cycle_id,
         "status": CYCLE_CLOSED,
-        "closed": _now_iso(),
+        "closed": now,
         "summary": summary or "",
+        "tasks_total": len(task_list),
+        "tasks_completed": len(completed),
+        "tasks_failed": len(failed),
+        "tasks_open": len(open_tasks),
+        "lessons_generated": len(lessons),
     }
-    body = f"# CYCLE {cycle_id} (closed)\n\n{summary or ''}\n"
+    body = (
+        f"# CYCLE {cycle_id} (closed)\n\n"
+        f"## Summary\n{summary or 'Cycle closed'}\n\n"
+        f"## Metrics\n"
+        f"- Tasks completed: {len(completed)}\n"
+        f"- Tasks failed: {len(failed)}\n"
+        f"- Tasks open on close: {len(open_tasks)}\n"
+        f"- Lessons auto-generated: {len(lessons)}\n"
+    )
     write_cortex_pair(cdir, "cycle", fm, body)
 
     return CortexOUT.work(
-        f"cycle.close ok id={cycle_id}",
+        f"cycle.close ok id={cycle_id} completed={len(completed)} "
+        f"failed={len(failed)} lessons={len(lessons)}",
         cycle_id=cycle_id,
         status=CYCLE_CLOSED,
+        tasks_completed=len(completed),
+        tasks_failed=len(failed),
+        lessons_generated=len(lessons),
     )
 
 
