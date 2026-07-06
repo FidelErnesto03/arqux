@@ -3,9 +3,14 @@
 Handlers:
     skill.import  — acquire a skill from external source, store original in originals/
     skill.convert — convert skill from native format to CORTEX ultra-dense
-    skill.record  — record a deviation (ADA) when the skill doesn't match context
+    skill.record  — record a deviation (ADA) in the skill file's $0: ADAPTATIONS section
     skill.evolve  — apply an approved adaptation, updating the skill
     skill.list    — list all available skills in .arqux/skills/
+
+Adaptations are stored INSIDE the skill file as section $0: ADAPTATIONS (before $1).
+Each ADA entry documents a deviation between what the skill says and what was actually done.
+When evolve is approved, the adaptation moves from $0 into the relevant section
+and $0 is updated accordingly.
 """
 
 from __future__ import annotations
@@ -21,10 +26,8 @@ from ..permissions import PermissionContext
 from ..state import find_workspace_root, find_project_root
 
 
-ADA_FILENAME = "{name}.adapt.cortex"
 SKILL_DIR = "skills"
 ORIGINALS_DIR = "skills/originals"
-ADAPTATIONS_DIR = "skills/adaptations"
 
 
 def _resolve_arqux_root(path: str | None = None) -> Path | None:
@@ -36,6 +39,43 @@ def _resolve_arqux_root(path: str | None = None) -> Path | None:
     if pr:
         return pr  # find_project_root already returns .arqux/ path
     return None
+
+
+def _skill_path(arqux: Path, name: str) -> Path:
+    """Return the path to a skill file in .arqux/skills/."""
+    return arqux / SKILL_DIR / f"{name}.skill.md"
+
+
+def _append_ada_to_skill(skill_path: Path, name: str, line: str) -> None:
+    """Append an ADA entry to the skill file's $0: ADAPTATIONS section.
+
+    If no $0 section exists, creates it before $1.
+    """
+    content = skill_path.read_text(encoding="utf-8")
+    ada_entry = f"ADA:{name}{{{line}}}\n"
+
+    # Look for existing $0: ADAPTATIONS section
+    adapt_marker = "$0: ADAPTATIONS"
+    if adapt_marker in content:
+        # Append after the $0 header
+        idx = content.index(adapt_marker)
+        insert_at = content.index("\n", idx) + 1  # end of $0 line
+        # Find end of $0 section (next $N:)
+        rest = content[insert_at:]
+        next_sec = re.search(r"\n\$1:", rest)
+        if next_sec:
+            insert_at += next_sec.start()
+        content = content[:insert_at] + ada_entry + content[insert_at:]
+    else:
+        # Insert $0: ADAPTATIONS before $1: IDENTITY
+        sec1 = content.find("\n$1:")
+        if sec1 != -1:
+            insert_at = content.rfind("\n", 0, sec1) + 1
+            content = content[:insert_at] + f"$0: ADAPTATIONS\n\n{ada_entry}\n" + content[insert_at:]
+        else:
+            content += f"\n$0: ADAPTATIONS\n\n{ada_entry}\n"
+
+    skill_path.write_text(content, encoding="utf-8")
 
 
 # ---------------------------------------------------------------------------
@@ -54,13 +94,6 @@ def import_skill(
 
     Stores the original (canon) in ``.arqux/skills/originals/``.
     The skill is NOT yet usable — ``skill.convert`` must be called next.
-
-    Parameters:
-        source: Origin identifier (e.g. "marketplace", "platform", "url:...").
-        name: Skill name (e.g. "oracle-apex", "ci-cd-pipeline").
-        content: Raw content of the skill. If omitted, the handler returns
-                 instructions for the agent to provide it.
-        path: Path to workspace or project root.
     """
     arqux = _resolve_arqux_root(path)
     if arqux is None:
@@ -111,9 +144,11 @@ def convert_skill(
 ) -> CortexOUT:
     """Convert a skill from its original format to CORTEX ultra-dense.
 
-    Reads from ``.arqux/skills/originals/<name>.skill.md``,
-    converts to CORTES ultra-dense format,
-    writes to ``.arqux/skills/<name>.skill.md``.
+    The converted skill includes:
+      - $0: ADAPTATIONS — empty section ready for future ADA entries
+      - $1: IDENTITY — skill metadata
+      - $2: DESCRIPTION — overview
+      - $3: CANON — original content preserved as backup
 
     The original remains untouched in originals/.
     """
@@ -129,22 +164,18 @@ def convert_skill(
             hint="Use skill.import first to acquire the skill.",
         )
 
-    dst = arqux / SKILL_DIR / f"{name}.skill.md"
+    dst = _skill_path(arqux, name)
     raw = src.read_text(encoding="utf-8")
 
-    # Build an ultra-dense CORTEX wrapper.
-    # The original content is wrapped inside a DESC:cannon block so
-    # it remains accessible but the skill is now in CORTEX format.
     lines = raw.splitlines()
     title = lines[0].lstrip("#").strip() if lines else name
-    description = " ".join(
-        l.lstrip("#").strip() for l in lines[1:6] if l.startswith("#")
-    ) or f"Imported skill: {name}"
+    first_lines = [l for l in lines[1:8] if l.startswith("#")]
+    description = " ".join(l.lstrip("#").strip() for l in first_lines) or f"Imported skill: {name}"
 
     cortex_content = (
-        "$0\n"
-        "# -- $0: SKILL GLOSSARY --\n"
-        f"# SKL | {name} | skill | attrs | B | {description[:60]}\n"
+        "$0: ADAPTATIONS\n"
+        "# ADA entries are appended here as deviations are recorded.\n"
+        "# When evolve is approved, entries move to the relevant section.\n"
         "\n"
         "$1: IDENTITY\n"
         f"SKL:{name}{{source:\"imported\", format:\"cortex\", lines:{len(lines)}, file:\"{name}.skill.md\"}}\n"
@@ -167,8 +198,7 @@ def convert_skill(
         original_size=len(raw),
         location=str(dst),
         instruction=f"Skill {name!r} is now available in CORTEX format. "
-                    f"Load from .arqux/skills/{name}.skill.md. "
-                    f"Use skill.list() to see all available skills.",
+                    f"Load from .arqux/skills/{name}.skill.md.",
     )
 
 
@@ -187,9 +217,8 @@ def record_adaptation(
 ) -> CortexOUT:
     """Record a deviation (ADA) from a skill.
 
-    When an agent follows a skill but the real context requires a different
-    approach, it records an adaptation. Accumulated adaptations drive skill
-    evolution.
+    Writes the ADA entry directly into the skill file's $0: ADAPTATIONS section.
+    Accumulated ADAs drive skill evolution via skill.evolve.
 
     Parameters:
         name: Skill name (e.g. "oracle-apex").
@@ -201,20 +230,21 @@ def record_adaptation(
     if arqux is None:
         return CortexOUT.error("no arqux root found", code="NOT_FOUND")
 
-    adaptations_dir = arqux / ADAPTATIONS_DIR
-    adaptations_dir.mkdir(parents=True, exist_ok=True)
-
-    adapt_file = adaptations_dir / ADA_FILENAME.format(name=name)
+    skill_path = _skill_path(arqux, name)
+    if not skill_path.exists():
+        return CortexOUT.error(
+            f"skill {name!r} not found in .arqux/skills/",
+            code="NOT_FOUND",
+            hint="Use skill.import + skill.convert first.",
+        )
 
     agent = (ctx or PermissionContext.from_env()).agent_id
-    ada_line = (
-        f"ADA:{name}{{skill:{name!r}, expected:{expected!r}, "
-        f"actual:{actual!r}, reason:{reason!r}, agent:{agent!r}, "
-        f"status:\"active\"}}\n"
+    attrs = (
+        f"skill:{name!r}, expected:{expected!r}, actual:{actual!r}, "
+        f"reason:{reason!r}, agent:{agent!r}, status:\"active\""
     )
 
-    with open(adapt_file, "a", encoding="utf-8") as f:
-        f.write(ada_line)
+    _append_ada_to_skill(skill_path, name, attrs)
 
     return CortexOUT.work(
         f"skill.record ok name={name} agent={agent}",
@@ -223,7 +253,7 @@ def record_adaptation(
         actual=actual,
         reason=reason,
         agent=agent,
-        file=str(adapt_file),
+        stored_in="$0: ADAPTATIONS",
     )
 
 
@@ -242,35 +272,48 @@ def evolve_skill(
 ) -> CortexOUT:
     """Apply an approved adaptation to a skill.
 
+    Finds the ADA entry in the skill file's $0: ADAPTATIONS section.
     When ``apply=False`` (default): shows the proposed change (dry-run).
-    When ``apply=True``: applies the adaptation to the skill file.
+    When ``apply=True``: marks the ADA as applied in $0 (preserves history).
 
     Parameters:
         name: Skill name.
-        adaptation_id: The adaptation entry selector (ADA:<name>).
-        apply: If True, applies the change. Default is dry-run.
+        adaptation_id: The ADA entry selector (ADA:<name>).
+        apply: If True, marks as applied. Default is dry-run.
     """
     arqux = _resolve_arqux_root(path)
     if arqux is None:
         return CortexOUT.error("no arqux root found", code="NOT_FOUND")
 
-    adapt_file = arqux / ADAPTATIONS_DIR / ADA_FILENAME.format(name=name)
-    if not adapt_file.exists():
-        return CortexOUT.error(f"no adaptations found for skill {name!r}", code="NOT_FOUND")
+    skill_path = _skill_path(arqux, name)
+    if not skill_path.exists():
+        return CortexOUT.error(f"skill {name!r} not found in skills/", code="NOT_FOUND")
 
-    # Read all adaptations, find the target one
-    adapts = adapt_file.read_text(encoding="utf-8").strip().splitlines()
-    target_entry = None
-    remaining = []
-    for line in adapts:
-        if adaptation_id in line and "status:\"active\"" in line:
-            target_entry = line
-        else:
-            remaining.append(line)
+    content = skill_path.read_text(encoding="utf-8")
 
-    if not target_entry:
+    # Find the $0: ADAPTATIONS section
+    adapt_marker = "$0: ADAPTATIONS"
+    if adapt_marker not in content:
+        return CortexOUT.error(f"no $0: ADAPTATIONS section found in skill {name!r}", code="NOT_FOUND")
+
+    idx = content.index(adapt_marker)
+    sec_start = content.index("\n", idx) + 1
+    rest = content[sec_start:]
+    next_sec = re.search(r"\n\$1:", rest)
+    sec_end = sec_start + (next_sec.start() if next_sec else len(rest))
+    adapt_section = content[sec_start:sec_end]
+
+    # Find the target ADA
+    lines = adapt_section.splitlines()
+    target_line = None
+    for i, line in enumerate(lines):
+        if adaptation_id in line and '"active"' in line:
+            target_line = line
+            break
+
+    if not target_line:
         return CortexOUT.error(
-            f"adaptation {adaptation_id!r} not found in {adapt_file.name}",
+            f"adaptation {adaptation_id!r} not found (or already applied)",
             code="NOT_FOUND",
         )
 
@@ -280,34 +323,25 @@ def evolve_skill(
             name=name,
             adaptation=adaptation_id,
             mode="dry_run",
-            entry=target_entry,
+            entry=target_line.strip(),
             instruction="Review the adaptation entry above. "
-                        "Call with apply=true to update the skill.",
+                        "Call with apply=true to mark it as applied.",
         )
 
-    # Apply: update the skill with a note about the adaptation
-    skill_file = arqux / SKILL_DIR / f"{name}.skill.md"
-    if not skill_file.exists():
-        return CortexOUT.error(f"skill {name!r} not found in skills/", code="NOT_FOUND")
-
-    skill_content = skill_file.read_text(encoding="utf-8")
-    evolution_note = (
-        "\n$4: EVOLUTION\n"
-        f"# Adaptation applied: {adaptation_id}\n"
-        f"ADA:{name}{{status:\"applied\", entry:{target_entry!r}}}\n"
+    # Mark the ADA as applied in-place (change "active" → "applied")
+    updated = content.replace(
+        f'{target_line}',
+        target_line.replace('status:"active"', 'status:"applied"'),
+        1,
     )
-    skill_content += evolution_note
-    skill_file.write_text(skill_content, encoding="utf-8")
-
-    # Mark adaptation as applied
-    adapt_file.write_text("\n".join(remaining), encoding="utf-8")
+    skill_path.write_text(updated, encoding="utf-8")
 
     return CortexOUT.work(
         f"skill.evolve applied name={name} adaptation={adaptation_id}",
         name=name,
         adaptation=adaptation_id,
         mode="applied",
-        evolution_section="$4: EVOLUTION added to skill",
+        note="ADA marked as applied in $0: ADAPTATIONS. Entry preserved for history.",
     )
 
 
@@ -333,12 +367,15 @@ def list_skills(
 
     available = []
     for f in sorted(skills_dir.glob("*.skill.md")):
+        content = f.read_text(encoding="utf-8")
+        size = len(content)
         was_imported = (originals_dir / f.name).exists()
-        size = len(f.read_text(encoding="utf-8"))
+        ada_count = content.count("ADA:")
         available.append({
-            "name": f.stem,
+            "name": f.name.replace(".skill.md", ""),
             "size": size,
             "imported": was_imported,
+            "adaptations": ada_count,
         })
 
     return CortexOUT.work(

@@ -205,7 +205,6 @@ actor "Arquitecto" as A
 participant Agent as G
 participant "originals/" as ORIG
 participant ".arqux/skills/" as SK
-participant ".arqux/adaptations/" as ADP
 
 == ADQUISICION ==
 A -> G: Instala skill Oracle APEX
@@ -224,12 +223,12 @@ G -> G: Ejecuta siguiendo el skill
 
 == ADAPTACION ==
 G -> G: Detecta desviacion del skill
-G -> ADP: skill.record(deviation)
-note right: ADA registrada para evolucion futura
+G -> SK: skill.record() → $0: ADAPTATIONS
+note right: ADA en el propio skill
 
 == EVOLUCION ==
-G -> ADP: Acumula adaptaciones
-G -> G: Escanea patrones de desviacion
+G -> SK: Acumula ADAs en $0
+G -> G: Escanea patrones de ADA en $0
 G --> A: Propuesta de mejora
 A -> G: Aprobado
 G -> SK: Actualiza skill con mejora
