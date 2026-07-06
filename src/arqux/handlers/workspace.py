@@ -99,7 +99,6 @@ def init_workspace(
 
     # Create skill management directories.
     (gov_dir / "skills" / "originals").mkdir(parents=True, exist_ok=True)
-    (gov_dir / "skills" / "adaptations").mkdir(parents=True, exist_ok=True)
     skills_src = Path(__file__).resolve().parent.parent / "skills"
     if skills_src.is_dir():
         skills_dst = gov_dir / "skills"

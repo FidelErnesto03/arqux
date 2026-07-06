@@ -105,7 +105,7 @@ Expected: 38 tools discovered, 0 errors.
 - **standby_first**: Every session starts with an open question to the Architect.
 - **workflows_govern_operations**: Load `workflows.skill.md` before any multi-step operation.
 - **skills_under_governance**: All skills used by agents MUST be in `.arqux/skills/` in CORTEX format.
-- **originals_preserved**: External skills are stored in `skills/originals/` for backup. Only the CORTEX-converted version is used.
+- **adaptations_in_skill**: ADA entries are stored in the skill file itself (`$0: ADAPTATIONS`), not in separate files. The skill is self-contained.
 
 ## Architecture at a glance
 
@@ -119,8 +119,7 @@ workspace/
 │   ├── projects.cortex              ← registered project index
 │   ├── identities/ (7)              ← Alfred, Jarvis, Seshat, Heimdall + roles
 │   ├── skills/                      ← CORTEX skills (loaded on demand)
-│   │   ├── originals/               ← external canon preserved
-│   │   └── adaptations/             ← skill deviations (ADA)
+│   │   └── originals/               ← external canon preserved
 │   ├── cycles/                      ← workspace cycles
 │   └── packages/                    ← supplemental .cortex packages
 │
@@ -162,13 +161,14 @@ workspace/
    → stores original in .arqux/skills/originals/
 
 2. skill.convert(name)
-   → converts to CORTEX ultra-dense in .arqux/skills/
+   → converts to CORTEX with $0: ADAPTATIONS section
 
 3. Agent uses the skill (loaded from .arqux/skills/)
-   → deviations recorded via skill.record()
+   → deviations recorded via skill.record() → appended to $0: ADAPTATIONS
 
 4. skill.evolve(name, adaptation_id, apply=true)
-   → updates the skill with approved adaptations
+   → marks the ADA as applied (status → "applied") in $0
+   → entry preserved for history, skill self-contained
 ```
 
 ## Foundational principles (non-negotiable)
