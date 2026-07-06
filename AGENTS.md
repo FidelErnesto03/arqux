@@ -31,7 +31,9 @@ OBJ:identity{goal:"Load default identity alfred.cortex from .arqux/identities/."
 
 $2: DETECT
 
-WRK:detect{ Walk up the directory tree from cwd. If .arqux/manifest.cortex is found, you are inside a governed workspace. Read this file fully. If no .arqux/ is found, ask the Architect whether to run arqux init. Do NOT initialize without explicit confirmation. }
+AXM:context_first{ BEFORE reading any directory, file, or listing in this workspace, you MUST read brain.cortex first. brain.cortex contains FCS (current focus), OBJ (objectives), KNW (knowledge), and RSK (risks) — everything you need to understand the state. If you reach for ls, find, or cat before brain.cortex, you are violating this canonical rule. The brain exists to avoid filesystem scans. }
+
+WRK:detect{ Walk up the directory tree from cwd. If .arqux/manifest.cortex is found, you are inside a governed workspace. Read AGENTS.md fully before any other action. If no .arqux/ is found, ask the Architect whether to run arqux init. Do NOT initialize without explicit confirmation. }
 
 LIM:no_auto_init{limit:"Never initialize Arqux without Architect approval.", severity:"blocking"}
 
