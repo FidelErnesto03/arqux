@@ -5,9 +5,9 @@ from __future__ import annotations
 from arqux.handlers import REGISTRY, handler_count, list_handlers
 
 
-def test_handler_count_is_52() -> None:
-    """The full MCP surface: 26 governance + 6 utility + 1 identity + 2 learning + 5 skill + 14 blueprint = 52."""
-    assert handler_count() == 52
+def test_handler_count_is_54() -> None:
+    """The full MCP surface: 26 governance + 6 utility + 1 identity + 2 learning + 5 skill + 14 blueprint = 54."""
+    assert handler_count() == 54
 
 
 def test_mutating_handler_count_is_36() -> None:
@@ -15,7 +15,7 @@ def test_mutating_handler_count_is_36() -> None:
     Excludes session-only (pause/resume) and utility (cortex.*).
     """
     session_only = {"protocol.pause", "protocol.resume"}
-    utility = {"cortex.read", "cortex.write", "cortex.verify", "cortex.render", "cortex.learn", "cortex.learn.elevate", "identity.record", "skill.import", "skill.convert", "skill.record", "skill.evolve", "skill.list", "blueprint.read", "blueprint.list"}
+    utility = {"cortex.read", "cortex.write", "cortex.verify", "cortex.render", "cortex.learn", "cortex.learn.elevate", "identity.record", "skill.import", "skill.convert", "skill.record", "skill.evolve", "skill.list", "blueprint.read", "blueprint.list", "setup.plantuml"}
     excluded = session_only | utility
     mutating = [name for name in list_handlers() if name not in excluded]
     assert len(mutating) == 36
@@ -23,7 +23,7 @@ def test_mutating_handler_count_is_36() -> None:
 
 def test_handler_names_follow_module_convention() -> None:
     names = list_handlers()
-    modules: set[str] = {"workspace", "project", "cycle", "task", "evidence", "protocol", "cortex", "identity", "skill", "blueprint"}
+    modules: set[str] = {"workspace", "project", "cycle", "task", "evidence", "protocol", "cortex", "identity", "skill", "blueprint", "setup"}
     for name in names:
         module = name.split(".", 1)[0]
         assert module in modules, f"unknown module for handler: {name}"
@@ -47,9 +47,10 @@ def test_module_handler_counts() -> None:
         "task": 7,
         "evidence": 3,
         "protocol": 4,
-        "cortex": 6,
+        "cortex": 8,
         "identity": 1,
         "blueprint": 14,
+        "setup": 1,
         "skill": 5,
     }
     counts: dict[str, int] = {}

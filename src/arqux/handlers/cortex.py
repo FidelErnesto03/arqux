@@ -217,6 +217,56 @@ def record_lesson_handler(
     )
 
 
+# ---------------------------------------------------------------------------
+# cortex.render.diagram
+# ---------------------------------------------------------------------------
+
+
+def render_diagram_handler(
+    source: str,
+    format: str = "svg",
+    path: str | None = None,
+    ctx: PermissionContext | None = None,
+) -> CortexOUT:
+    """Render a PlantUML diagram from PUML source to SVG/PNG.
+
+    Requires plantuml.jar and Java runtime.
+    Install: python -m arqux setup-plantuml
+    """
+    from ..plantuml import is_available, render_puml
+
+    if not is_available():
+        return CortexOUT.error(
+            "plantuml.jar not found. Install Java JRE 8+ and run: python -m arqux setup-plantuml",
+            code="PLANTUML_UNAVAILABLE",
+        )
+
+    ok, result = render_puml(source, format=format)
+    if not ok:
+        return CortexOUT.error(result, code="RENDER_ERROR")
+
+    return CortexOUT.work(
+        f"render_diagram ok format={format}",
+        format=format,
+        output_path=result,
+        instruction=f"Diagram rendered to {result}. Use vision_analyze() to inspect it.",
+    )
+
+
+def setup_plantuml_handler(
+    force: bool = False,
+    path: str | None = None,
+    ctx: PermissionContext | None = None,
+) -> CortexOUT:
+    """Download and install plantuml.jar to ~/.arqux/bin/."""
+    from ..plantuml import setup_plantuml
+
+    ok, msg = setup_plantuml(force=force)
+    if ok:
+        return CortexOUT.work(msg, installed=True)
+    return CortexOUT.error(msg, code="SETUP_FAILED")
+
+
 def learn_scan_handler(
     scope: str = "project",
     path: str | None = None,
