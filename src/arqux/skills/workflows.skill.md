@@ -235,4 +235,21 @@ G -> SK: Actualiza skill con mejora
 @enduml
 }
 
-STP:w07_s{ 1:"skill.import(source, name) — adquiere skill, almacena original en originals/", 2:"skill.convert(name) — convierte a CORTEX ultra-denso, escribe en skills/", 3:"Agent carga desde .arqux/skills/ (directriz: NO desde externo)", 4:"Agent ejecuta y si se desvia: skill.record(name, expected, actual, reason)", 5:"Periodicamente: escanear adaptaciones, proponer mejoras", 6:"Arquitecto aprueba → skill.evolve(name, adaptation_id)" }
+STP:w07_s{ 1:"skill.import(source, name) — acquire skill, store original in originals/", 2:"skill.convert(name) — convert to CORTEX ultra-dense, write to skills/", 3:"Agent loads from .arqux/skills/ (directive: NOT from external)", 4:"Agent executes. If deviation: skill.record(name, expected, actual, reason)", 5:"Periodically: scan adaptations, propose improvements", 6:"Architect approves → skill.evolve(name, adaptation_id)" }
+
+
+$8: BLUEPRINT WORKFLOW
+
+IDN:workflow_blueprint{ name:"Blueprint Lifecycle", purpose:"Complete lifecycle: cycle maturation → Blueprint creation → maturation → execution → cross-verification → learning.", trigger:"Architect defines a new work item.", skill:"Load blueprint-workflow.skill.md for full detail (11 sections). This is a summary reference." }
+
+STP:w08_s{
+  1_cycle_create:"cycle.create(name, description) — MANIFEST.md from template, state=draft",
+  2_cycle_mature:"cycle.define(...) → cycle.mature() → cyclic interaction Architect ↔ Governor → cycle.ready()",
+  3_blueprint_create:"blueprint.create(obj, cycle) — BLP-NNN.md from template, state=draft",
+  4_blueprint_define:"blueprint.define(...) — Governor fills all 18 sections",
+  5_blueprint_mature:"blueprint.mature() → cyclic interaction Architect ↔ Governor → blueprint.ready()",
+  6_execution:"blueprint.assign() → claim → step-by-step execution with self-awareness. Escalate if stuck.",
+  7_cross_verify:"Auditor compares results vs design. Pass → approved. Fail → auto-re-delegate (max 3).",
+  8_closure:"cycle.close() → auto-generates LESSONS from all Blueprints. cortex.learn scans for patterns.",
+  key_rule:"NO Blueprint can be created until cycle is ready (Architect-approved)."
+}
