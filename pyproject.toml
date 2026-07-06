@@ -63,13 +63,11 @@ where = ["src"]
 "arqux" = [
     "templates/*.cortex",
     "templates/*.md",
-    "templates/*.cortex",
     "templates/*.cortex.tmpl",
     "templates/*.md.tmpl",
     "identities/*.cortex",
     "identities/*.md",
     "skills/*.skill.md",
-    "templates/*.cortex",
 ]
 
 [tool.pytest.ini_options]
