@@ -33,10 +33,10 @@ Every state mutation flows through 38 MCP handlers. There is no direct file edit
 ## Quick start
 
 ```bash
-# 1. Clone and install
-git clone https://github.com/FidelErnesto03/arqux.git
-cd arqux
-uv tool install --force -e .
+# 1. Install from PyPI (once published)
+pip install arqux
+# Or via uv:
+# uv tool install arqux
 
 # 2. Set agent environment (required for all arqux commands)
 export ARQUX_AGENT_ID=alfred
@@ -63,16 +63,11 @@ hermes mcp test arqux
 
 # 7. Restart the MCP session so tools become available
 #    (in Hermes: /reload-mcp or restart the app)
-
-# 8. Governance a project
-cd ~/my-workspace
-cp -a /path/to/existing-project ./my-project
-# Agent reads AGENTS.md → detects .arqux/ → STANDBY
-# Agent calls: project.init(name="my-project", path="./my-project")
-# Agent studies project → calls project.init again WITH seed=<brain_content>
 ```
 
-> **Note:** If `hermes mcp test` succeeds but tools don't appear in the session, run `/reload-mcp` or restart the application. The MCP process runs the code version that was current when it started — after `uv tool install --force`, restart the MCP server.
+> **Development install** (from repo): `git clone ... && cd arqux && uv tool install --force -e .`
+>
+> **Note:** If `hermes mcp test` succeeds but tools don't appear in the session, run `/reload-mcp` or restart the application. The MCP process runs the code version that was current when it started — after reinstalling, restart the MCP server.
 
 ## Core concepts
 
@@ -167,7 +162,7 @@ workspace/
 
 1. **Zero ceremony.** If a governance operation requires more than one handler invocation by the agent, the design is wrong.
 2. **Self-contained.** `AGENTS.md` is the single entry point. No auxiliary reading required.
-3. **Installable.** `uv tool install -e .` or eventually `pip install arqux`.
+3. **Installable.** `pip install arqux` (development: `uv tool install --force -e .`).
 4. **Dogfooded.** The framework governs its own development from day one.
 5. **State via CODEC-CORTEX.** All governance state uses CORTEX sigil format with `$0` glossary. Attrs single-line, cuerpo multiline.
 6. **CODEC-CORTEX as codec.** Natural dependency — no fork, no wrapper.
@@ -234,7 +229,7 @@ arqux/
 ## Development
 
 ```bash
-# Install in editable mode (after cloning the repo)
+# Install in editable mode (from repo clone)
 uv tool install --force -e .
 
 # Run tests
