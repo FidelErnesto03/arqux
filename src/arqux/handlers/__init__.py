@@ -594,6 +594,19 @@ _register(_spec(
     },
 ))
 _register(_spec(
+    "blueprint.cancel", blueprint.cancel_blueprint,
+    "Cancel a Blueprint. Governor-only. State → cancelled.",
+    {
+        "type": "object",
+        "properties": {
+            "bp_id": {"type": "string"},
+            "reason": {"type": "string"},
+            "path": {"type": "string"},
+        },
+        "required": ["bp_id"],
+    },
+))
+_register(_spec(
     "blueprint.fail", blueprint.fail_blueprint,
     "Blueprint hit an obstacle. State → blocked.",
     {

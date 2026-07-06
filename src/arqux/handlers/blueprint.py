@@ -659,6 +659,36 @@ def approve_blueprint(
 
 
 # ---------------------------------------------------------------------------
+# blueprint.cancel
+# ---------------------------------------------------------------------------
+
+
+def cancel_blueprint(
+    bp_id: str,
+    reason: str | None = None,
+    path: str | None = None,
+    ctx: PermissionContext | None = None,
+) -> CortexOUT:
+    """Cancel a Blueprint. State → cancelled. Governor-only."""
+    root = _resolve_root(path)
+    if root is None:
+        return CortexOUT.error("no project initialized", code="NOT_FOUND")
+    bp_path, fm, body = _find_blueprint(root, bp_id)
+    if bp_path is None:
+        return CortexOUT.error(f"blueprint {bp_id} not found", code="NOT_FOUND")
+    fm["status"] = BP_CANCELLED
+    fm["cancelled_reason"] = reason or "cancelled"
+    fm["closed_at"] = _now_iso()
+    fm["updated_at"] = _now_iso()
+    _write_blueprint(bp_path, fm, body)
+    _record_to_brain(root, bp_id, "cancelled", reason or "")
+    return CortexOUT.work(
+        f"blueprint.cancel ok id={bp_id}",
+        blueprint_id=bp_id, status=BP_CANCELLED, reason=reason,
+    )
+
+
+# ---------------------------------------------------------------------------
 # blueprint.re_delegate
 # ---------------------------------------------------------------------------
 
