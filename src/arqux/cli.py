@@ -22,20 +22,21 @@ import click
 from . import __version__
 from .constants import PRODUCT_NAME, PRODUCT_NAME_TITLE
 
-#: ASCII art banner — only displayed with --banner or --version, never in handler output.
-BANNER = r"""
-       d8888                  888     888 Y88b   d88P
-      d88888                  888     888  Y88b d88P
-     d88P888                  888     888   Y88o88P
-    d88P 888 888d888 .d88888 888     888    Y888P
-   d88P  888 888P"  d8P"88 888     888    d888b
-  d88P   888 888    888 888 888     888   d88888b
- d8888888888 888    Y88b 888 Y88b. .d88P d88P Y88b
-d88P     888 888     "Y88888 "Y88888P" d88P   Y88b
-                          888
-                          888
-                          888
-"""
+#: ASCII art banner with ANSI colors — Arqux brand identity.
+#: Colors: gray (90) → green (32) → cyan (96) gradient.
+BANNER = (
+    "\033[90m       d8888\033[0m                   \033[90m888\033[0m     \033[90m888\033[0m \033[32mY88b\033[0m   \033[90md88P\033[0m\n"
+    "\033[90m      d8\033[0m\033[32m888\033[0m\033[92m8\033[0m                  \033[90m888\033[0m     \033[90m8\033[0m\033[32m88\033[0m  \033[32mY88b\033[0m \033[90md88P\033[0m\n"
+    "\033[90m     d88\033[0m\033[32mP88\033[0m\033[92m8\033[0m                  \033[90m8\033[0m\033[32m88\033[0m     \033[32m88\033[0m\033[92m8\033[0m   \033[32mY88o88P\033[0m\n"
+    "\033[90m    d88\033[0m\033[32mP\033[0m \033[90m8\033[0m\033[32m88\033[0m \033[90m888d888\033[0m \033[32m.d88888\033[0m \033[90m888\033[0m     \033[32m88\033[0m\033[92m8\033[0m    \033[32mY888P\033[0m\n"
+    "\033[90m   d88\033[0m\033[32mP\033[0m  \033[90m8\033[0m\033[32m88\033[0m \033[90m888P\"\033[0m  \033[32md8P\"88\033[0m \033[90m888\033[0m     \033[32m88\033[0m\033[92m8\033[0m    \033[32md888b\033[0m\n"
+    "\033[90m  d88\033[0m\033[32mP\033[0m   \033[90m8\033[0m\033[32m88\033[0m \033[90m888\033[0m    \033[32m888 888\033[0m \033[90m888\033[0m     \033[32m88\033[0m\033[92m8\033[0m   \033[32md88888b\033[0m\n"
+    "\033[90m d8888888888\033[0m \033[90m888\033[0m    \033[32mY88b 888\033[0m \033[32mY88b. .d88P\033[0m \033[90md88P\033[0m \033[32mY88b\033[0m\n"
+    "\033[90md88P\033[0m     \033[90m888\033[0m \033[90m888\033[0m     \033[32m\"Y88888\033[0m \033[32m\"Y88888P\"\033[0m \033[90md88P\033[0m   \033[32mY88b\033[0m\n"
+    "                          \033[32m888\033[0m\n"
+    "                          \033[32m888\033[0m\n"
+    "                          \033[32m888\033[0m"
+)
 
 
 def _is_tty() -> bool:
@@ -109,9 +110,10 @@ def cmd_init(path: str | None, verbose: bool):
     """Initialize .arqux/ in the current directory."""
     from .handlers.workspace import init_workspace
 
-    result = init_workspace(path=path, verbose=verbose)
     if _is_tty():
         click.echo(BANNER)
+        click.echo()
+    result = init_workspace(path=path, verbose=verbose)
     click.echo(result.to_text())
 
 
