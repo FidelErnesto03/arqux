@@ -65,6 +65,7 @@ TASKS_DIR: str = "tasks"
 
 #: Per-project cycles directory.
 CYCLES_DIR: str = "cycles"
+BLUEPRINTS_DIR: str = "blueprints"
 
 # --- Brain sections (the project brain is the single shared mind) -----------
 #
