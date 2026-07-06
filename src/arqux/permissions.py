@@ -112,7 +112,7 @@ class PermissionContext:
     def from_env(cls) -> "PermissionContext":
         prefix = f"{PRODUCT_NAME_UPPER}_"
         agent_id = os.environ.get(f"{prefix}AGENT_ID", "anonymous")
-        role = os.environ.get(f"{prefix}AGENT_ROLE", ROLE_AUDITOR)
+        role = os.environ.get(f"{prefix}AGENT_ROLE", ROLE_GOVERNOR)
         project = os.environ.get(f"{prefix}PROJECT")
         return cls(agent_id=agent_id, role=role, project=project)
 
