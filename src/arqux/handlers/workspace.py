@@ -104,6 +104,16 @@ def init_workspace(
         if not policy_dst.exists():
             policy_dst.write_text(policy_tmpl.read_text(encoding="utf-8"), encoding="utf-8")
 
+    # Copy all templates to .arqux/templates/ for maturation over time.
+    templates_src = Path(__file__).resolve().parent.parent / "templates"
+    if templates_src.is_dir():
+        templates_dst = gov_dir / "templates"
+        templates_dst.mkdir(exist_ok=True)
+        for src in templates_src.iterdir():
+            dst = templates_dst / src.name
+            if not dst.exists():
+                dst.write_text(src.read_text(encoding="utf-8"), encoding="utf-8")
+
     # Create skill management directories.
     (gov_dir / "skills" / "originals").mkdir(parents=True, exist_ok=True)
     skills_src = Path(__file__).resolve().parent.parent / "skills"
