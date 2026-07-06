@@ -10,7 +10,7 @@ $0
 
 $1: SURFACE
 
-IDN:surface{ total:55, governance:36, utility:17, identity:1, protocol:2 (pause/resume), setup:1 }
+IDN:surface{ total:57, governance:39, utility:16, blueprint:17, skill:5, session:2 }
 
 AXM:handlers_only{ Governance state is mutated exclusively via MCP handlers. No direct file editing of .cortex governance files. The handler is the interface. The file is the storage. }
 
@@ -110,3 +110,32 @@ HDL:cortex.render{ signature:"render(path)", purpose:"Render .cortex to HCORTEX 
 $9: IDENTITY (1 handler)
 
 HDL:identity.record{ signature:"record(lesson, kind?, cause?, agent_id?, path?)", purpose:"Record behavioral lesson into agent's identity file. This evolves the agent's identity with each significant lesson." }
+
+
+$10: BLUEPRINT (17 handlers)
+
+HDL:blueprint.create{ signature:"create(obj, cycle?, path?)", purpose:"Create a new Blueprint from BLP_TEMPLATE.md in draft state" }
+HDL:blueprint.define{ signature:"define(bp_id, pre?, scope?, exclusions?, mandatory_rules?, acceptance_criteria?, procedure?, validations?, technical_design?, operational_design?, risks?, blocking_rule?, path?)", purpose:"Fill Blueprint definition sections. State → defined" }
+HDL:blueprint.mature{ signature:"mature(bp_id, path?)", purpose:"Enter maturation phase. Cyclic Architect interaction" }
+HDL:blueprint.ready{ signature:"ready(bp_id, path?)", purpose:"Architect declares Blueprint ready. State → ready" }
+HDL:blueprint.assign{ signature:"assign(bp_id, executor, path?)", purpose:"Governor assigns executor to Blueprint" }
+HDL:blueprint.claim{ signature:"claim(bp_id, path?)", purpose:"Executor claims Blueprint. State → in_progress" }
+HDL:blueprint.task{ signature:"task(bp_id, task_id, status, evidence?, path?)", purpose:"Update one task's checkbox in §14. status: in_progress/completed" }
+HDL:blueprint.ac{ signature:"ac(bp_id, ac_id, status, evidence?, reason?, path?)", purpose:"Verify one AC in §12. Fail triggers auto re-delegate (max 3)" }
+HDL:blueprint.update{ signature:"update(bp_id, note?, section?, content?, puml?, path?)", purpose:"Update Blueprint progress (note) or refine a single section" }
+HDL:blueprint.complete{ signature:"complete(bp_id, evidence?, path?)", purpose:"Declare execution complete. State → review" }
+HDL:blueprint.fail{ signature:"fail(bp_id, reason?, path?)", purpose:"Blueprint hit an obstacle. State → blocked" }
+HDL:blueprint.approve{ signature:"approve(bp_id, path?)", purpose:"Auditor approves after cross-verification. State → done" }
+HDL:blueprint.cancel{ signature:"cancel(bp_id, reason?, path?)", purpose:"Cancel a Blueprint. Governor-only. State → cancelled" }
+HDL:blueprint.re_delegate{ signature:"re_delegate(bp_id, path?)", purpose:"Re-delegate after verification fail (max 3 loops)" }
+HDL:blueprint.block_for_architect{ signature:"block_for_architect(bp_id, path?)", purpose:"Block for Architect manual review after 3rd verification fail" }
+HDL:blueprint.read{ signature:"read(bp_id, format?, path?)", purpose:"Read full Blueprint (HCORTEX or CORTEX)" }
+HDL:blueprint.list{ signature:"list(cycle?, status?, path?)", purpose:"List Blueprints with optional filters" }
+
+$10.1: BLUEPRINT EXAMPLES
+
+STP:create{ example:"blueprint.create(obj='Implement OAuth2', cycle='CYCLE-01', path='./proyecto')", result:"BLP-003 creado en draft con contexto pre-poblado" }
+STP:task_update{ example:"blueprint.task(bp_id='BLP-001', task_id='T-1.1', status='completed', evidence='Handler implementado y testeado', path='./proyecto')", result:"Checkbox T-1.1 marcado como [x] con evidencia" }
+STP:ac_verify{ example:"blueprint.ac(bp_id='BLP-001', ac_id='AC-01', status='verified', evidence='Tests pasan', path='./proyecto')", result:"AC-01 marcado como [x]. exit_code=0." }
+STP:ac_fail{ example:"blueprint.ac(bp_id='BLP-001', ac_id='AC-03', status='failed', reason='No cumple criterio', path='./proyecto')", result:"Dispara re_delegate automatico. Loop count incrementado." }
+STP:section_update{ example:"blueprint.update(bp_id='BLP-002', section='§3', content='## §3: Preconditions\\n\\n- [ ] Precond 1', path='./proyecto')", result:"Solo §3 reemplazado. Otras secciones intactas." }

@@ -1,6 +1,6 @@
 """Handler registry.
 
-55 handlers across 11 modules. Each handler is exposed as an MCP tool with:
+24 handlers across 6 modules. Each handler is exposed as an MCP tool with:
     - `fn`: the callable that does the work.
     - `description`: short one-liner for tool listings.
     - `input_schema`: JSON Schema describing the handler's arguments.
@@ -568,16 +568,50 @@ _register(_spec(
     },
 ))
 _register(_spec(
-    "blueprint.update", blueprint.update_blueprint,
-    "Update Blueprint progress with a note.",
+    "blueprint.task", blueprint.task_blueprint,
+    "Update one task's checkbox in §14. Status: in_progress/completed.",
     {
         "type": "object",
         "properties": {
             "bp_id": {"type": "string"},
-            "note": {"type": "string"},
+            "task_id": {"type": "string", "description": "Task ID like T-1.1"},
+            "status": {"type": "string", "enum": ["in_progress", "completed"]},
+            "evidence": {"type": "string", "description": "Optional evidence note"},
             "path": {"type": "string"},
         },
-        "required": ["bp_id", "note"],
+        "required": ["bp_id", "task_id", "status"],
+    },
+))
+_register(_spec(
+    "blueprint.ac", blueprint.ac_blueprint,
+    "Verify one AC in §12. Fail triggers auto re-delegate (max 3).",
+    {
+        "type": "object",
+        "properties": {
+            "bp_id": {"type": "string"},
+            "ac_id": {"type": "string", "description": "AC ID like AC-01"},
+            "status": {"type": "string", "enum": ["verified", "failed"]},
+            "evidence": {"type": "string", "description": "Evidence if verified"},
+            "reason": {"type": "string", "description": "Reason if failed"},
+            "path": {"type": "string"},
+        },
+        "required": ["bp_id", "ac_id", "status"],
+    },
+))
+_register(_spec(
+    "blueprint.update", blueprint.update_blueprint,
+    "Update Blueprint progress with a note or refine a single section.",
+    {
+        "type": "object",
+        "properties": {
+            "bp_id": {"type": "string"},
+            "note": {"type": "string", "description": "Progress note to append"},
+            "section": {"type": "string", "description": "Section number like '§3' or '3'"},
+            "content": {"type": "string", "description": "Section content (text or markdown)"},
+            "puml": {"type": "string", "description": "PlantUML source for diagram sections"},
+            "path": {"type": "string"},
+        },
+        "required": ["bp_id"],
     },
 ))
 _register(_spec(
