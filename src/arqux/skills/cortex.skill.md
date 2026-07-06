@@ -92,3 +92,31 @@ AXM:density_over_prose{ Every token consumed by prose is a token NOT used for th
 AXM:memory_evolves{ Agent memory is a living document. LNG entries accumulate. cortex.learn scans for patterns and proposes elevations to KNW. The agent's knowledge compounds over sessions. }
 
 AXM:one_format_everywhere{ Governance state (.cortex), agent docs (AGENTS.md), skills (.skill.md), output (CORTEX-OUT), and agent memory (memory.md) — ALL use the same sigil format. The LLM learns the language once and applies it everywhere. }
+
+
+$6: PLANTUML IN HCORTEX DOCUMENTS
+
+AXM:puml_mandatory{ Every Blueprint (BLP-NNN.md) MUST include three PUML diagrams: Context (§5), Technical Design (§8), and Operational Design (§9). These diagrams are the PRIMARY mechanism for communicating intent between Architect and Executor. Prose descriptions are supplementary — the diagrams are the contract. }
+
+STP:puml_diagrams{
+  context:{
+    name:"Context Diagram — UML deployment/context",
+    purpose:"Shows the environment: actors, systems, databases, external services.",
+    rule:"Every external dependency must be drawn. Nothing is 'obvious'.",
+    min_elements:"3+ actors/systems with labeled relationships.",
+  },
+  technical:{
+    name:"Technical Design — UML component diagram",
+    purpose:"Shows components to build, their responsibilities, and interfaces.",
+    rule:"Each component has ONE responsibility. Each arrow has ONE purpose.",
+    min_elements:"3+ components, interfaces, data flow arrows.",
+  },
+  operational:{
+    name:"Operational Design — UML sequence diagram",
+    purpose:"Step-by-step execution plan with phases, actions, and expected outputs.",
+    rule:"The agent follows this like a script. Ambiguous step = incomplete diagram.",
+    min_elements:"3 phases with clear inputs, actions, and expected responses.",
+  },
+}
+
+AXM:diagrams_are_contracts{ The three diagrams ARE the design contract between Architect and Executor. If the executor builds something different from what the diagrams show, it's a deviation. The diagrams are interpretable by both humans (visual) and agents (UML notation is machine-parseable). }
