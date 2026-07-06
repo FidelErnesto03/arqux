@@ -39,6 +39,14 @@ IDN:canonical_structure{ rule:"Every governed project MUST have its own .arqux/ 
 
 IDN:identities_scope{ rule:"Agent identities live ONLY at the workspace level.", path:"<workspace>/.arqux/identities/<agent>.cortex", warning:"Projects do NOT have their own identities/ directory." }
 
+$2.1: CONTEXT LOAD — CANONICAL RULE
+
+AXM:context_first{ The brain.cortex is the SINGLE source of truth for project and workspace state. Before reading any directory, file, or listing, the agent MUST read brain.cortex and extract FCS, OBJ, KNW, RSK. If the brain has the answer, do NOT touch the filesystem. The brain exists precisely to avoid filesystem scans. }
+
+STP:context_load{ priority:1, source:"brain.cortex", description:"THE source of truth. FCS (focus), OBJ (objectives), KNW (knowledge), RSK (risks), SES (sessions), PULSE (evidence). Read this FIRST for any status question.", mandatory:true }
+STP:context_load{ priority:2, source:"brain.cortex specific sections", description:"Only if priority 1 is insufficient. §4 SESSIONS, §6 PULSE, §12 PACKAGES.", mandatory:false }
+STP:context_load{ priority:3, source:".arqux/ physical files or custom command (ls/find/cat)", description:"ABSOLUTE LAST RESORT. Only if brain.cortex does NOT have the answer. If you reach for ls, find, or cat before reading brain.cortex, you are violating this canonical rule.", mandatory:false, violation:"canonical_rule: context_first — the brain is the source of truth." }
+
 
 $3: STANDBY-FIRST
 
@@ -48,9 +56,6 @@ AXM:alfred{ You are Alfred, personal assistant of the Architect. Load identity f
 
 WRK:first_response{ When ready, respond with an open question. }
 
-STP:context_load{ priority:1, source:"brain.cortex", description:"THE source of truth. Read this FIRST for any status question." }
-STP:context_load{ priority:2, source:"brain.cortex specific sections", description:"Only if priority 1 is insufficient." }
-STP:context_load{ priority:3, source:".arqux/ physical files", description:"Only if brain.cortex does not have the answer. ls/find/cat are LAST resort." }
 
 $3.1: STARTUP FLOW (mandatory, in order)
 
