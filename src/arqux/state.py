@@ -358,7 +358,8 @@ def parse_cortex_file(path: Path) -> tuple[dict[str, Any], str]:
                 "IDENTITY": None, "FOCUS": "FOCUS", "OBJECTIVES": "OBJECTIVES",
                 "SESSIONS": "SESSIONS", "HANDOFFS": "HANDOFFS", "PULSE": "PULSE",
                 "LESSONS": "LESSONS", "ACTIVE_CONTEXT": "ACTIVE_CONTEXT",
-                "RISKS": "RISKS", "CONCURRENCY": "CONCURRENCY",
+                "RISKS": "RISKS", "KNOWLEDGE": "KNOWLEDGE",
+                "CONCURRENCY": "CONCURRENCY",
                 "TASK": None, "WORKSPACE": None,
                 "META-BRAIN": None, "PROJECTS": None, "CYCLE": None,
                 "PRECONDITIONS": "PRE", "PROCEDURE": "PROC",
@@ -555,6 +556,7 @@ def read_brain(project_root: Path) -> tuple[dict[str, Any], dict[str, str], str]
                 "LESSONS": "LESSONS",
                 "ACTIVE_CONTEXT": "ACTIVE_CONTEXT",
                 "RISKS": "RISKS",
+                "KNOWLEDGE": "KNOWLEDGE",
                 "CONCURRENCY": None,
             }
 
@@ -611,6 +613,10 @@ def read_brain(project_root: Path) -> tuple[dict[str, Any], dict[str, str], str]
                         elif mapped == "RISKS":
                             description = e.value.get("description", "")
                             lines.append(f"- {description}")
+                        elif mapped == "KNOWLEDGE":
+                            content = e.value.get("content", "")
+                            if content:
+                                lines.append(content)
                         elif mapped == "OBJECTIVES":
                             goal = e.value.get("goal", "")
                             lines.append(f"- {goal}")

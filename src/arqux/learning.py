@@ -279,27 +279,26 @@ def elevate_candidate(
         if dry_run:
             return {"mode": "dry_run", "diff": diff, "candidate": candidate_id}
 
-        # Apply
-        result = apply_patch(brain_doc, patch, mode="apply")
-        if not result:
-            return {"error": "apply_patch returned no result"}
+        # Apply manually: add the elevated entry to KNOWLEDGE section.
+        from .state import read_brain, write_brain_sections
+        from .formats import _build_brain_doc as _build_doc
 
-        # Write updated brain back
-        from .state import _render_governance_cortex, write_cortex_pair
-        from .state import read_brain
-        from .formats import render_governance_cortex
+        # Build the new KNW/LNG entry text
+        new_sigil = patch.new_entry_sigil or target.target
+        new_name = patch.new_entry_name
+        new_value = patch.new_entry_value or {"topic": "elevated_knowledge", "content": str(target.source_entries), "status": "active"}
 
+        # Read current brain, add to KNOWLEDGE section
         fm, sections, _ = read_brain(project_root)
-        new_body = render_governance_cortex("brain", fm, sections)
-        # We need to re-parse the write_cortex output into sections
-        # then write_brain_sections.
-        # Simplest approach: write_cortex_pair with the new doc.
-        new_text = write_cortex(patch.target_doc) if hasattr(patch, "target_doc") and patch.target_doc else None
-        if new_text:
-            (project_root / ARQUX_DIR / BRAIN_CORTEX).write_text(new_text, encoding="utf-8")
-            return {"mode": "applied", "diff": diff, "candidate": candidate_id}
+        knw_line = f"{new_sigil}:{new_name} " + " ".join(f'{k}="{v}"' for k, v in new_value.items())
+        existing = sections.get("KNOWLEDGE", "").strip()
+        if existing:
+            sections["KNOWLEDGE"] = existing + "\n" + knw_line
         else:
-            return {"error": "could_not_serialize_elevated_document"}
+            sections["KNOWLEDGE"] = knw_line
+        write_brain_sections(project_root, fm, sections)
+
+        return {"mode": "applied", "diff": diff, "candidate": candidate_id}
 
     except Exception as exc:
         return {"error": str(exc)}
