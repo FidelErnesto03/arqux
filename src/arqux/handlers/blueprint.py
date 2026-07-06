@@ -408,6 +408,24 @@ def ready_blueprint(
     if err:
         return CortexOUT.error(err, code="INVALID_STATE")
 
+    # Verify quality gates: ALL must be true before ready.
+    # This prevents agents from skipping the maturation cycle.
+    gates_status = _read_quality_gates(fm)
+    if gates_status:
+        failed_gates = [g for g, v in gates_status.items() if not v]
+        if failed_gates:
+            return CortexOUT.error(
+                f"maturation incomplete — {len(failed_gates)} quality gate(s) still false: "
+                f"{', '.join(failed_gates)}. "
+                f"Complete the cyclic maturation interaction with the Architect first.",
+                code="MATURATION_INCOMPLETE",
+                failed_gates=failed_gates,
+                instruction=(
+                    "Load the blueprint-workflow skill (§8.3) for maturation protocol. "
+                    "Present each gate to the Architect. Only call ready() when ALL gates are true."
+                ),
+            )
+
     fm["status"] = BP_READY
     fm["updated_at"] = _now_iso()
     _write_blueprint(bp_path, fm, body)
@@ -809,6 +827,32 @@ def _find_blueprint(root: Path, bp_id: str) -> tuple[Path | None, dict[str, Any]
             if result:
                 return bp_path, result[0], result[1]
     return None, None, None
+
+
+def _read_quality_gates(fm: dict[str, Any]) -> dict[str, bool] | None:
+    """Extract quality gates from the Blueprint frontmatter.
+
+    The frontmatter parser flattens multi-line YAML structures into individual
+    keys. We check for the 6 expected gate keys directly.
+    Returns dict of gate_name: bool, or None if no gates found.
+    """
+    gate_names = [
+        "has_clear_objective",
+        "has_verifiable_preconditions",
+        "has_scope_and_exclusions",
+        "has_acceptance_criteria",
+        "has_work_procedure",
+        "has_required_validations",
+    ]
+    gates = {}
+    for name in gate_names:
+        raw = fm.get(name)
+        if raw is not None:
+            if isinstance(raw, bool):
+                gates[name] = raw
+            elif isinstance(raw, str):
+                gates[name] = raw.strip().rstrip(",").lower() == "true"
+    return gates if len(gates) == len(gate_names) else None
 
 
 def _record_to_brain(root: Path, bp_id: str, outcome: str, evidence: str) -> None:
