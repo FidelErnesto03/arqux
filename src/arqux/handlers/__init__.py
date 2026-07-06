@@ -14,7 +14,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any, Callable
 
-from . import cycle, evidence, project, protocol, task, workspace, cortex
+from . import cycle, evidence, project, protocol, task, workspace, cortex, skill
 
 
 @dataclass(frozen=True)
@@ -409,9 +409,7 @@ _register(_spec(
     },
 ))
 
-
 # --- identity handlers ---
-
 _register(_spec(
     "identity.record", cortex.record_lesson_handler,
     "Record a behavioral lesson into the agent's identity file.",
@@ -441,7 +439,6 @@ _register(_spec(
         },
     },
 ))
-
 _register(_spec(
     "cortex.learn.elevate", cortex.learn_elevate_handler,
     "Elevate a learning candidate (SES->LNG or LNG->KNW).\n"
@@ -455,6 +452,73 @@ _register(_spec(
             "path": {"type": "string", "description": "Path to project root. Defaults to cwd."},
         },
         "required": ["candidate_id"],
+    },
+))
+
+# --- skill management handlers ---
+_register(_spec(
+    "skill.import", skill.import_skill,
+    "Acquire a skill from external source, store original in originals/.",
+    {
+        "type": "object",
+        "properties": {
+            "source": {"type": "string", "description": "Origin (marketplace, platform, url:...)"},
+            "name": {"type": "string", "description": "Skill name (e.g. oracle-apex)"},
+            "content": {"type": "string", "description": "Raw skill content. Omit to get instructions first."},
+            "path": {"type": "string", "description": "Path to workspace/project root"},
+        },
+        "required": ["source", "name"],
+    },
+))
+_register(_spec(
+    "skill.convert", skill.convert_skill,
+    "Convert a skill from original format to CORTEX ultra-dense.",
+    {
+        "type": "object",
+        "properties": {
+            "name": {"type": "string", "description": "Skill name"},
+            "path": {"type": "string"},
+        },
+        "required": ["name"],
+    },
+))
+_register(_spec(
+    "skill.record", skill.record_adaptation,
+    "Record a deviation (ADA) when a skill does not match the real context.",
+    {
+        "type": "object",
+        "properties": {
+            "name": {"type": "string", "description": "Skill name"},
+            "expected": {"type": "string", "description": "What the skill says"},
+            "actual": {"type": "string", "description": "What was actually done"},
+            "reason": {"type": "string", "description": "Why the deviation occurred"},
+            "path": {"type": "string"},
+        },
+        "required": ["name", "expected", "actual", "reason"],
+    },
+))
+_register(_spec(
+    "skill.evolve", skill.evolve_skill,
+    "Apply an approved adaptation to a skill. Default is dry-run.",
+    {
+        "type": "object",
+        "properties": {
+            "name": {"type": "string", "description": "Skill name"},
+            "adaptation_id": {"type": "string", "description": "Adaptation entry selector"},
+            "apply": {"type": "boolean", "default": False, "description": "If true, apply the evolution"},
+            "path": {"type": "string"},
+        },
+        "required": ["name", "adaptation_id"],
+    },
+))
+_register(_spec(
+    "skill.list", skill.list_skills,
+    "List all available skills in .arqux/skills/.",
+    {
+        "type": "object",
+        "properties": {
+            "path": {"type": "string"},
+        },
     },
 ))
 
