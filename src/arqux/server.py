@@ -1,11 +1,15 @@
 """MCP server entry point.
 
-Exposes the 24 governance handlers as MCP tools. The server is transport-agnostic
+Exposes governance handlers as MCP tools. The server is transport-agnostic
 (stdio by default) — the `mcp` package handles the wire protocol.
 
 This module is intentionally thin: it imports the handler registry, registers
 each handler as an MCP tool, and starts the server. All logic lives in the
 handler modules.
+
+Tool names: dots (.) in handler names are converted to underscores (_)
+because the MCP protocol requires tool names matching ``^[a-zA-Z0-9_-]+$``.
+The internal registry preserves the dotted names for handler lookup.
 """
 
 from __future__ import annotations
@@ -23,6 +27,11 @@ from .constants import (
 from .cortex_out import CortexOUT
 from .handlers import REGISTRY
 from .permissions import PermissionContext, PermissionDenied
+
+
+def _safe_name(name: str) -> str:
+    """Convert a dotted handler name to an MCP-safe tool name."""
+    return name.replace(".", "_")
 
 
 def _wrap_handler(name: str, handler: Any) -> Any:
@@ -73,15 +82,22 @@ def build_server() -> Any:
     server = Server(PRODUCT_NAME)
     tools: list[Tool] = []
     handlers: dict[str, Any] = {}
+    # Maps safe name (underscores) → real dotted handler name
+    safe_to_dotted: dict[str, str] = {}
 
     for name, spec in REGISTRY.items():
+        safe = _safe_name(name)
+        safe_to_dotted[safe] = name
+
         tool = Tool(
-            name=name,
+            name=safe,
             description=spec.description,
             inputSchema=spec.input_schema,
         )
         tools.append(tool)
-        handlers[name] = _wrap_handler(name, spec.fn)
+        # Register handler under BOTH names: safe (for call_tool) and dotted (for permissions)
+        handlers[safe] = _wrap_handler(name, spec.fn)
+        handlers[name] = handlers[safe]  # alias for direct calls
 
     @server.list_tools()
     async def list_tools() -> list[Tool]:
