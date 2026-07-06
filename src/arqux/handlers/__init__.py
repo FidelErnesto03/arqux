@@ -398,6 +398,31 @@ _register(_spec(
     },
 ))
 _register(_spec(
+    "cortex.render.diagram", cortex.render_diagram_handler,
+    "Render a PlantUML diagram to SVG/PNG. Requires plantuml.jar.",
+    {
+        "type": "object",
+        "properties": {
+            "source": {"type": "string", "description": "PUML source text (@startuml block)"},
+            "format": {"type": "string", "enum": ["svg", "png"], "default": "svg"},
+            "path": {"type": "string"},
+        },
+        "required": ["source"],
+    },
+))
+_register(_spec(
+    "setup.plantuml", cortex.setup_plantuml_handler,
+    "Download and install plantuml.jar to ~/.arqux/bin/.",
+    {
+        "type": "object",
+        "properties": {
+            "force": {"type": "boolean", "default": False},
+            "path": {"type": "string"},
+        },
+    },
+))
+
+_register(_spec(
     "cortex.render", cortex.render_handler,
     "Render a .cortex file to HCORTEX READ markdown.",
     {
