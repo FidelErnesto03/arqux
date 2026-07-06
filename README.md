@@ -231,7 +231,42 @@ arqux/
 └── .arqux/                      ← dogfooding: this repo governs itself
 ```
 
-## Documentation
+## PlantUML rendering for PUML diagrams in HCORTEX documents
+
+Arqux includes a built-in PlantUML rendering system accessible in three ways:
+
+- **MCP handler**: `cortex.render.diagram(source, format)` — renders PUML to SVG/PNG and returns the content inline. Qwen or any MCP client can call this directly.
+- **Local server**: `arqux serve-plantuml` — starts a kroki-compatible HTTP server on port 9876.
+- **CLI**: `arqux render-diagram file.puml --format svg`
+
+### Configure your markdown previewer
+
+If PUML diagrams in `.md` files show errors like "plantuml.jar not found", configure your viewer to use the Arqux PlantUML server instead of a local jar path:
+
+**VSCode (markdown-preview-enhanced):**
+```json
+{
+  "markdown-preview-enhanced.plantumlServer": "http://localhost:9876/plantuml/svg",
+  "markdown-preview-enhanced.plantumlJarPath": ""
+}
+```
+
+**Qwen / otros clientes:**
+En lugar de configurar `plantumlJarPath`, configurar `plantumlServer` a `http://localhost:9876/plantuml/svg`
+
+### Setup
+
+```bash
+# 1. Install Java (required)
+sudo apt install default-jre
+
+# 2. Download plantuml.jar
+arqux setup-plantuml
+
+# 3. Start the rendering server
+arqux serve-plantuml
+# → Running on http://localhost:9876
+```
 
 - **`AGENTS.md`** — single entry point. An agent that reads this file can operate under Arqux.
 - **`.arqux/skills/workflows.skill.md`** — 7 canonical workflows with PlantUML diagrams.
