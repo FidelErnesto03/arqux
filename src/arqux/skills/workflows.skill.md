@@ -94,7 +94,7 @@ G --> A: Avance reportado
 @enduml
 }
 
-STP:w03_s{ 1:"Leer AGENTS.md (STANDBY-FIRST)", 2:"Cargar brain.cortex — FCS, OBJ, KNW, LNG como prioridad", 3:"Cargar identidad de .arqux/identities/", 4:"Pregunta abierta al Arquitecto", 5:"Ejecutar tarea asignada", 6:"Registrar evidencia via task.update o evidence.record" }
+STP:w03_s{ 1:"Read AGENTS.md (STANDBY-FIRST)", 2:"Load brain.cortex — FCS, OBJ, KNW, LNG as priority", 3:"Load identity from .arqux/identities/", 4:"Open question to the Architect", 5:"Execute assigned task", 6:"Record evidence via task.update or evidence.record" }
 
 
 $4: TASK LIFECYCLE
@@ -137,7 +137,7 @@ EXE --> A: Tarea completada/bloqueada
 @enduml
 }
 
-STP:w04_s{ 1:"Governor: task.create(obj=..., assignee=...)", 2:"Executor: task.claim(task_id)", 3:"Executor: trabaja en la tarea", 4:"Executor: task.update(task_id, note=...) periódicamente", 5:"Executor: evidence.record(kind=note, payload=...) al completar hitos", 6:"Executor: task.complete(task_id, evidence=...) o task.fail(task_id, reason=...)", 7:"Brain PULSE registra automáticamente la evidencia" }
+STP:w04_s{ 1:"Governor: task.create(obj=..., assignee=...)", 2:"Executor: task.claim(task_id)", 3:"Executor: works on the task", 4:"Executor: task.update(task_id, note=...) periodically", 5:"Executor: evidence.record(kind=note, payload=...) on milestones", 6:"Executor: task.complete(task_id, evidence=...) or task.fail(task_id, reason=...)", 7:"Brain PULSE automatically records evidence" }
 
 
 $5: IDENTITY EVOLUTION
@@ -163,7 +163,7 @@ G --> A: Lección registrada. No volverá a ocurrir.
 @enduml
 }
 
-STP:w05_s{ 1:"Arquitecto corrige o el agente descubre una lección conductual", 2:"Sintetizar en formato LNG: name{type, cause, lesson}", 3:"identity.record(lesson, kind, cause)", 4:"LNG agregado a .arqux/identities/<agent>.cortex", 5:"La identidad evoluciona permanentemente" }
+STP:w05_s{ 1:"Architect corrects or agent discovers a behavioral lesson", 2:"Synthesize in LNG format: name{type, cause, lesson}", 3:"identity.record(lesson, kind, cause)", 4:"LNG added to .arqux/identities/<agent>.cortex", 5:"Identity evolves permanently" }
 
 
 $6: PROTOCOL ADOPTION
