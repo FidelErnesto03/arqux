@@ -11,15 +11,22 @@
 
 ## What is this?
 
-Arqux is a governance framework for AI agents that work in teams. It is **not** an orchestrator, a CI/CD system, or a project manager. It is the **minimum viable protocol** that lets multiple agents collaborate on the same workspace without stepping on each other:
+Arqux is a **governance framework + learning engine + skill ecosystem** for AI agent teams. It is built on [CODEC-CORTEX](https://github.com/FidelErnesto03/codec-cortex), the canonical information codec that compresses structured knowledge into ultra-dense, self-indexing CORTEX sigil format.
+
+Arqux enables three layers of learning:
+- **Behavioral** — Agent identities evolve through `identity.record()`.
+- **Contextual** — Project lessons are scanned, scored, and elevated to permanent knowledge via `cortex.learn`.
+- **Procedural** — External skills are imported, converted to CORTEX, used by agents, and evolved through adaptations.
+
+It is **not** an orchestrator, a CI/CD system, or a project manager. It is the **minimum viable protocol** that lets multiple agents collaborate on the same workspace without stepping on each other:
 
 - A **governor** decides what to do and assigns it.
 - An **executor** picks up the work and leaves evidence.
 - An **auditor** can read everything but mutate nothing.
 
-Every state mutation flows through MCP handlers. There is no direct file editing of governance state — handlers are the interface, files are the storage.
+Every state mutation flows through 38 MCP handlers. There is no direct file editing of governance state — handlers are the interface, files are the storage in canonical CODEC-CORTEX format.
 
-**Requires [CODEC-CORTEX](https://github.com/FidelErnesto03/codec-cortex) >= 0.4.0** — the canonical persistence codec. All state files use CORTEX sigil format with `$0` glossary.
+**Requires [CODEC-CORTEX](https://github.com/FidelErnesto03/codec-cortex) >= 0.4.0.**
 
 ---
 
