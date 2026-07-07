@@ -1,8 +1,8 @@
 ---
-# Blueprint Template (BLP_TEMPLATE.md)
-# Copied by blueprint.create() to create BLP-NNN.md
-# HCORTEX format — human + machine readable
-# All sections with "_" are placeholders filled during definition
+# Plantilla de Blueprint (BLP_TEMPLATE.md)
+# Copiada por blueprint.create() para crear BLP-NNN.md
+# Formato HCORTEX — legible por humanos y máquinas
+# Todas las secciones con "_" son marcadores que se completan durante la definición
 
 blueprint_id: ""
 title: ""
@@ -22,104 +22,103 @@ quality_gates@: {
   has_acceptance_criteria: false,
   has_work_procedure: false,
   has_required_validations: false,
-  has_learning_recorded: false,
 }
 _template_ref: "BLP_TEMPLATE.md"
 ---
 
-# BLP-NNN: Title
+# BLP-NNN: Título
 
 ---
 
-## §1: Problem Statement
+## §1: Planteamiento del Problema
 
-_Describe the problem this Blueprint addresses. What evidence exists that it's real?_
+_Describe el problema que aborda este Blueprint. ¿Qué evidencia existe de que es real?_
 
-**Evidence:**
-- _Evidence item 1_
-- _Evidence item 2_
+**Evidencia:**
+- _Evidencia 1_
+- _Evidencia 2_
 
-**Impact of not solving:**
+**Impacto de no resolverlo:**
 _
 
 
-## §2: Objective
+## §2: Objetivo
 
-_Concrete, verifiable, self-contained. An executor reading only this section should understand what to achieve._
-
-
-## §3: Preconditions
-
-_What must exist or be true BEFORE execution begins. Each precondition must be verifiable._
-
-- [ ] _Precondition 1 — verifiable via command or inspection_
-- [ ] _Precondition 2 — verifiable via command or inspection_
+_Concreto, verificable, autocontenido. Un ejecutor leyendo solo esta sección debe entender qué lograr._
 
 
-## §4: Guiding Principle
+## §3: Precondiciones
 
-_The rule that governs this Blueprint. Executor must follow it without exception._
+_¿Qué debe existir o ser cierto ANTES de que comience la ejecución? Cada precondición debe ser verificable._
 
-**Problem evidence:** _What concrete evidence shows this is the right principle?_
+- [ ] _Precondición 1 — verificable mediante comando o inspección_
+- [ ] _Precondición 2 — verificable mediante comando o inspección_
 
-**Impact if violated:** _What happens if it's not followed?_
+
+## §4: Principio Rector
+
+_La regla que gobierna este Blueprint. El ejecutor debe seguirla sin excepción._
+
+**Evidencia del problema:** _¿Qué evidencia concreta muestra que este es el principio correcto?_
+
+**Impacto si se viola:** _¿Qué pasa si no se sigue?_
 
 
-## §5: Context
+## §5: Contexto
 
-_PUML diagram showing the environment: actors, external systems, data flows. Must answer: "What does the executor need to understand about the world this Blueprint operates in?"_
+_Diagrama PUML que muestra el entorno: actores, sistemas externos, flujos de datos. Debe responder: "¿Qué necesita entender el ejecutor sobre el mundo en el que opera este Blueprint?"_
 
 ```puml
 @startuml
-title Context — BLP-NNN
-' REQUIRED: Show all actors, systems, and their relationships
-' Use UML notation so both humans and agents understand it unambiguously
+title Contexto — BLP-NNN
+' REQUERIDO: Mostrar todos los actores, sistemas y sus relaciones
+' Usar notación UML para que humanos y agentes lo entiendan sin ambigüedad
 
-actor "User" as U
+actor "Usuario" as U
 actor "Admin" as A
 participant "API Gateway" as GW
 database "PostgreSQL" as DB
-cloud "External IdP" as IDP
+cloud "IdP Externo" as IDP
 
-' Data flows
-U -> GW: Request
-GW -> DB: Query
-GW -> IDP: Validate
-' Labels must be descriptive enough that an agent can understand what each arrow represents
+' Flujos de datos
+U -> GW: Solicitud
+GW -> DB: Consulta
+GW -> IDP: Validar
+' Las etiquetas deben ser lo suficientemente descriptivas para que un agente entienda qué representa cada flecha
 @enduml
 ```
 
 
-## §6: Scope & Exclusions
+## §6: Alcance y Exclusiones
 
-**In scope:**
-- _Item 1_
-- _Item 2_
+**Dentro del alcance:**
+- _Ítem 1_
+- _Ítem 2_
 
-**Out of scope (explicitly excluded):**
-- _Item 1_
-- _Item 2_
-
-
-## §7: Mandatory Rules
-
-_Non-negotiable constraints for the executor._
-
-1. _Rule 1_
-2. _Rule 2_
+**Fuera del alcance (excluido explícitamente):**
+- _Ítem 1_
+- _Ítem 2_
 
 
-## §8: Technical Design
+## §7: Reglas Obligatorias
 
-_Expected architecture: components, data flow, layers. This is what the executor builds. Must be unambiguous — an agent reading this should understand exactly what to create._
+_Restricciones no negociables para el ejecutor._
+
+1. _Regla 1_
+2. _Regla 2_
+
+
+## §8: Diseño Técnico
+
+_Arquitectura esperada: componentes, flujo de datos, capas. Esto es lo que construye el ejecutor. Debe ser inequívoco — un agente leyendo esto debe entender exactamente qué crear._
 
 ```puml
 @startuml
-title Technical Design — BLP-NNN
-' REQUIRED: Component diagram showing all modules, their responsibilities,
-' and their interfaces. Use standard UML component notation.
+title Diseño Técnico — BLP-NNN
+' REQUERIDO: Diagrama de componentes mostrando todos los módulos, sus responsabilidades,
+' y sus interfaces. Usar notación UML estándar de componentes.
 
-package "Auth Module" {
+package "Módulo Auth" {
   [Token Service] as TS
   [Refresh Handler] as RH
   [PKCE Validator] as PV
@@ -127,154 +126,154 @@ package "Auth Module" {
 
 database "Redis" as RC
 database "PostgreSQL" as PG
-interface "REST API" as API
+interface "API REST" as API
 
 API --> TS : POST /auth/token
-TS --> PG : store session
-TS --> RC : cache token
-RH --> RC : validate refresh
-PV --> TS : PKCE challenge
+TS --> PG : almacenar sesión
+TS --> RC : cachear token
+RH --> RC : validar refresh
+PV --> TS : desafío PKCE
 
-' Each component must have a clear responsibility.
-' Each arrow must have a clear purpose.
+' Cada componente debe tener una responsabilidad clara.
+' Cada flecha debe tener un propósito claro.
 @enduml
 ```
 
 
-## §9: Operational Design
+## §9: Diseño Operacional
 
-_Sequence diagram showing the EXACT execution flow: step by step, who does what, in what order. An executor agent follows this like a script._
+_Diagrama de secuencia que muestra el FLUJO DE EJECUCIÓN EXACTO: paso a paso, quién hace qué, en qué orden. Un agente ejecutor sigue esto como un guión._
 
 ```puml
 @startuml
-title Operational Design — BLP-NNN
-' REQUIRED: Sequence diagram showing execution phases.
-' Each phase has clear inputs, actions, and expected outputs.
-' The agent follows this as an unambiguous execution plan.
+title Diseño Operacional — BLP-NNN
+' REQUERIDO: Diagrama de secuencia mostrando las fases de ejecución.
+' Cada fase tiene entradas, acciones y salidas esperadas claras.
+' El agente sigue esto como un plan de ejecución inequívoco.
 
-actor "Executor" as E
+actor "Ejecutor" as E
 participant "API" as API
 database "DB" as DB
 participant "Test Runner" as TR
 
-== Phase 1: Schema ==
+== Fase 1: Esquema ==
 E -> DB: CREATE TABLE sessions
 E -> DB: CREATE TABLE tokens
-DB --> E: schema ready
+DB --> E: esquema listo
 
-== Phase 2: Implementation ==
-E -> API: Implement POST /auth/token
-E -> API: Implement POST /auth/refresh
-E -> API: Implement GET /auth/validate
-API --> E: endpoints ready
+== Fase 2: Implementación ==
+E -> API: Implementar POST /auth/token
+E -> API: Implementar POST /auth/refresh
+E -> API: Implementar GET /auth/validate
+API --> E: endpoints listos
 
-== Phase 3: Validation ==
+== Fase 3: Validación ==
 E -> TR: pytest tests/auth/
-TR --> E: 42 passed, 0 failed
+TR --> E: 42 pasaron, 0 fallaron
 E -> TR: bandit -r src/
-TR --> E: 0 HIGH/MEDIUM issues
+TR --> E: 0 issues HIGH/MEDIUM
 
-' Every step must be unambiguous.
-' The agent does NOT guess — it follows exactly what is drawn.
+' Cada paso debe ser inequívoco.
+' El agente NO adivina — sigue exactamente lo que está dibujado.
 @enduml
 ```
 
 
-## §10: Contracts
+## §10: Contratos
 
-**Expected inputs:**
-- _Input format, file, or payload_
+**Entradas esperadas:**
+- _Formato, archivo o payload de entrada_
 
-**Expected outputs:**
-- _Files created, modified, or reports generated_
+**Salidas esperadas:**
+- _Archivos creados, modificados o reportes generados_
 
-**Commands:**
-- `_command_` — _purpose_
-
-
-## §11: Work Procedure
-
-_Phased execution plan with rollback instructions._
-
-### Phase 1: Preparation
-1. _Step_
-2. _Step_
-
-### Phase 2: Implementation
-1. _Step_
-2. _Step_
-
-### Phase 3: Validation
-1. _Step_
-2. _Step_
-
-> **Rollback:** `_rollback command_`
+**Comandos:**
+- `_comando_` — _propósito_
 
 
-## §12: Acceptance Criteria
+## §11: Procedimiento de Trabajo
 
-_Each AC must be objectively verifiable._
+_Plan de ejecución por fases con instrucciones de reversión._
 
-- [ ] **AC-01:** _Description — verification: command or procedure_
-- [ ] **AC-02:** _Description — verification: command or procedure_
-- [ ] **AC-03:** _Description — verification: command or procedure_
+### Fase 1: Preparación
+1. _Paso_
+2. _Paso_
+
+### Fase 2: Implementación
+1. _Paso_
+2. _Paso_
+
+### Fase 3: Validación
+1. _Paso_
+2. _Paso_
+
+> **Reversión:** `_comando de reversión_`
 
 
-## §13: Required Validations
+## §12: Criterios de Aceptación
 
-| Type | Description | Command | Expected Evidence |
+_Cada CA debe ser objetivamente verificable._
+
+- [ ] **CA-01:** _Descripción — verificación: comando o procedimiento_
+- [ ] **CA-02:** _Descripción — verificación: comando o procedimiento_
+- [ ] **CA-03:** _Descripción — verificación: comando o procedimiento_
+
+
+## §13: Validaciones Requeridas
+
+| Tipo | Descripción | Comando | Evidencia Esperada |
 |---|---|---|---|
-| test | _Description_ | `_command_` | _output_ |
-| lint | _Description_ | `_command_` | _output_ |
-| security | _Description_ | `_command_` | _output_ |
+| test | _Descripción_ | `_comando_` | _salida_ |
+| lint | _Descripción_ | `_comando_` | _salida_ |
+| seguridad | _Descripción_ | `_comando_` | _salida_ |
 
 
-## §14: Tasks
+## §14: Tareas
 
-_Task breakdown. Tasks live inside this Blueprint._
+_Desglose de tareas. Las tareas viven dentro de este Blueprint._
 
-- [ ] **T-1.1:** _Title — Description_
-- [ ] **T-1.2:** _Title — Description (depends on T-1.1)_
-- [ ] **T-2.1:** _Title — Description_
+- [ ] **T-1.1:** _Título — Descripción_
+- [ ] **T-1.2:** _Título — Descripción (depende de T-1.1)_
+- [ ] **T-2.1:** _Título — Descripción_
 
 
-## §15: Risks
+## §15: Riesgos
 
-| ID | Description | Impact | Mitigation |
+| ID | Descripción | Impacto | Mitigación |
 |---|---|---|---|
-| R-01 | _Description_ | _Impact_ | _Mitigation_ |
-| R-02 | _Description_ | _Impact_ | _Mitigation_ |
+| R-01 | _Descripción_ | _Impacto_ | _Mitigación_ |
+| R-02 | _Descripción_ | _Impacto_ | _Mitigación_ |
 
 
-## §16: Blocking Rule
+## §16: Regla de Bloqueo
 
-_Conditions under which the executor MUST halt and report._
+_Condiciones bajo las cuales el ejecutor DEBE detenerse e informar._
 
-1. _Condition 1_
-2. _Condition 2_
+1. _Condición 1_
+2. _Condición 2_
 
-**Action:** HALT_AND_REPORT
-**Escalate to:** _responsible agent or Architect_
-
-
-## §17: Expected Output
-
-**Files created:**
-- `_path/to/file_`
-
-**Files modified:**
-- `_path/to/file_`
-
-**Evidence:**
-- `_path/to/evidence_`
-
-**Summary:**
-> _One-line description of expected result._
+**Acción:** DETENER_E_INFORMAR
+**Escalar a:** _agente responsable o Arquitecto_
 
 
-## §18: Quality Contract
+## §17: Salida Esperada
 
-| Gate | Status |
+**Archivos creados:**
+- `_ruta/al/archivo_`
+
+**Archivos modificados:**
+- `_ruta/al/archivo_`
+
+**Evidencia:**
+- `_ruta/a/la/evidencia_`
+
+**Resumen:**
+> _Descripción de una línea del resultado esperado._
+
+
+## §18: Contrato de Calidad
+
+| Compuerta | Estado |
 |---|---|
 | has_clear_objective | ☐ |
 | has_verifiable_preconditions | ☐ |
@@ -282,6 +281,5 @@ _Conditions under which the executor MUST halt and report._
 | has_acceptance_criteria | ☐ |
 | has_work_procedure | ☐ |
 | has_required_validations | ☐ |
-| has_learning_recorded | ☐ |
 
-> All gates must be ✅ before blueprint.ready(). See blueprint-workflow skill.
+> Todas las compuertas deben estar en ✅ antes de blueprint.ready(). Ver blueprint-workflow skill.

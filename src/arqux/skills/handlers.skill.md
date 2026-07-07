@@ -3,18 +3,14 @@ $0
 # -- $0: HANDLERS SKILL GLOSSARY --
 # Sigil | Name | Type | Risk | Cognitive Layer | Description
 # IDN   | identity   | attrs      | B | Semantic       | Actor / workspace identity
-# HDL   | handler    | attrs      | M | Semantic       | Handler definition
+# HDL   | handler    | attrs-pos  | M | Semantic       | Handler definition
 # LIM   | limit      | attrs      | M | Prefrontal     | Hard limit
 # AXM   | axiom      | cuerpo     | H | Prefrontal     | Non-negotiable principle
-# STP   | step       | attrs      | M | Working        | Procedure step / example
-# RFC   | reference  | attrs      | B | Semantic       | Reference / related info
-# CHK   | checklist  | attrs      | M | Protocol       | Validation checklist
-# DIAG  | diagram    | cuerpo     | M | Visual         | PlantUML diagram block
 
 
 $1: SURFACE
 
-IDN:surface{ total:62, governance:39, utility:16, blueprint:18, skill:5, session:3 }
+IDN:surface{ total:57, governance:39, utility:16, blueprint:17, skill:5, session:2 }
 
 AXM:handlers_only{ Governance state is mutated exclusively via MCP handlers. No direct file editing of .cortex governance files. The handler is the interface. The file is the storage. }
 
@@ -103,20 +99,12 @@ HDL:protocol.pause{ signature:"pause()", purpose:"Suspend governance without los
 HDL:protocol.resume{ signature:"resume()", purpose:"Resume governance after pause" }
 
 
-$8: CORTEX UTILITY (7 handlers)
+$8: CORTEX UTILITY (4 handlers)
 
 HDL:cortex.read{ signature:"read(path)", purpose:"Read and parse a .cortex file" }
 HDL:cortex.write{ signature:"write(path, content, force?)", purpose:"Write a .cortex file (not for governance files)" }
 HDL:cortex.verify{ signature:"verify(path)", purpose:"Validate .cortex file structure" }
 HDL:cortex.render{ signature:"render(path)", purpose:"Render .cortex to HCORTEX READ markdown" }
-HDL:cortex.render.validate_file{ signature:"validate_file(path)", purpose:"Validate all PUML blocks in a file. Returns D1-D5 checklist." }
-HDL:cortex.render.diagram{ signature:"render(diagram_source, format?, path?)", purpose:"Render a PlantUML diagram to SVG/PNG" }
-HDL:setup.plantuml{ signature:"plantuml(force?, path?)", purpose:"Download and install plantuml.jar to ~/.arqux/bin/" }
-
-$8.1: CORTEX LEARNING (2 handlers)
-
-HDL:cortex.learn{ signature:"learn(scope?, path?)", purpose:"Scan a project brain through the learning engine. Returns scored entries and elevation candidates." }
-HDL:cortex.learn.elevate{ signature:"elevate(candidate_id, apply?, confirm_hash?, path?)", purpose:"Elevate a learning candidate (SES->LNG or LNG->KNW). Default is dry-run." }
 
 
 $9: IDENTITY (1 handler)
@@ -124,28 +112,11 @@ $9: IDENTITY (1 handler)
 HDL:identity.record{ signature:"record(lesson, kind?, cause?, agent_id?, path?)", purpose:"Record behavioral lesson into agent's identity file. This evolves the agent's identity with each significant lesson." }
 
 
-$10: SESSION (3 handlers)
-
-HDL:session.close{ signature:"close(path?)", purpose:"End the current session. Saves SES handoff to brain PULSE." }
-HDL:session.resume{ signature:"resume(path?)", purpose:"Resume a previous session from stored SES context in brain PULSE." }
-HDL:session.status{ signature:"status(path?)", purpose:"Get the current session status (active SES, bound agent, project)." }
-
-
-$11: SKILL (5 handlers)
-
-HDL:skill.list{ signature:"list(path?)", purpose:"List all available skills in .arqux/skills/" }
-HDL:skill.import{ signature:"import(source, name, content?, path?)", purpose:"Acquire a skill from external source. Stores original in originals/." }
-HDL:skill.record{ signature:"record(name, expected, actual, reason, path?)", purpose:"Record a deviation (ADA) when a skill does not match real context." }
-HDL:skill.evolve{ signature:"evolve(name, adaptation_id, apply?, path?)", purpose:"Apply an approved adaptation to a skill. Default is dry-run." }
-HDL:skill.convert{ signature:"convert(name, path?)", purpose:"Convert a skill from original format to CORTEX ultra-dense format." }
-
-
-$12: BLUEPRINT (18 handlers)
+$10: BLUEPRINT (17 handlers)
 
 HDL:blueprint.create{ signature:"create(obj, cycle?, path?)", purpose:"Create a new Blueprint from BLP_TEMPLATE.md in draft state" }
 HDL:blueprint.define{ signature:"define(bp_id, pre?, scope?, exclusions?, mandatory_rules?, acceptance_criteria?, procedure?, validations?, technical_design?, operational_design?, risks?, blocking_rule?, path?)", purpose:"Fill Blueprint definition sections. State → defined" }
-HDL:blueprint.mature{ signature:"mature(bp_id, mode?, path?)", purpose:"Enter maturation phase. mode='async' (default) for cyclic iteration, mode='live' for synchronous co-design" }
-HDL:blueprint.gate{ signature:"gate(bp_id, gate?, path?)", purpose:"Approve one or all Blueprint quality gates after Architect maturation" }
+HDL:blueprint.mature{ signature:"mature(bp_id, path?)", purpose:"Enter maturation phase. Cyclic Architect interaction" }
 HDL:blueprint.ready{ signature:"ready(bp_id, path?)", purpose:"Architect declares Blueprint ready. State → ready" }
 HDL:blueprint.assign{ signature:"assign(bp_id, executor, path?)", purpose:"Governor assigns executor to Blueprint" }
 HDL:blueprint.claim{ signature:"claim(bp_id, path?)", purpose:"Executor claims Blueprint. State → in_progress" }
@@ -161,7 +132,7 @@ HDL:blueprint.block_for_architect{ signature:"block_for_architect(bp_id, path?)"
 HDL:blueprint.read{ signature:"read(bp_id, format?, path?)", purpose:"Read full Blueprint (HCORTEX or CORTEX)" }
 HDL:blueprint.list{ signature:"list(cycle?, status?, path?)", purpose:"List Blueprints with optional filters" }
 
-$12.1: BLUEPRINT EXAMPLES
+$10.1: BLUEPRINT EXAMPLES
 
 STP:create{ example:"blueprint.create(obj='Implement OAuth2', cycle='CYCLE-01', path='./proyecto')", result:"BLP-003 creado en draft con contexto pre-poblado" }
 STP:task_update{ example:"blueprint.task(bp_id='BLP-001', task_id='T-1.1', status='completed', evidence='Handler implementado y testeado', path='./proyecto')", result:"Checkbox T-1.1 marcado como [x] con evidencia" }
