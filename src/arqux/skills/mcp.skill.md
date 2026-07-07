@@ -22,11 +22,11 @@ STP:env_config{
 $2: MCP JSON SETUP
 
 STP:mcp_json{
-  format:"Standard MCP JSON. Key depends on platform:",
-  standard:"mcpServers (Claude, Continue, Cursor, generic)",
-  opencode:"mcp (OpenCode CLI)",
-  example:{
-    mcp:{
+  format:"MCP JSON. Key and fields depend on platform:",
+  standard:"Key: mcpServers. Fields: command, args, env. (Claude, Continue, Cursor)",
+  opencode:"Key: mcp. Fields: type:local, command, args, enabled:true, environment. (OpenCode CLI)",
+  example_standard:{
+    mcpServers:{
       arqux:{
         command:"arqux",
         args:["serve"],
@@ -37,7 +37,21 @@ STP:mcp_json{
       }
     }
   },
-  note:"For standard MCP clients, use mcpServers instead of mcp. Restart after config."
+  example_opencode:{
+    mcp:{
+      arqux:{
+        type:"local",
+        command:"arqux",
+        args:["serve"],
+        enabled:true,
+        environment:{
+          ARQUX_AGENT_ID:"alfred",
+          ARQUX_AGENT_ROLE:"governor"
+        }
+      }
+    }
+  },
+  note:"Restart after config. Standard uses env, OpenCode uses environment."
 }
 
 
