@@ -10,7 +10,7 @@ $0
 
 $1: SURFACE
 
-IDN:surface{ total:57, governance:39, utility:16, blueprint:17, skill:5, session:2 }
+IDN:surface{ total:62, governance:39, utility:16, blueprint:18, skill:5, session:3 }
 
 AXM:handlers_only{ Governance state is mutated exclusively via MCP handlers. No direct file editing of .cortex governance files. The handler is the interface. The file is the storage. }
 
