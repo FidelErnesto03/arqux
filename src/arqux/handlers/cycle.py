@@ -260,7 +260,7 @@ def close_cycle(
                 "candidates": [],
             }
         else:
-            candidates = scan.get("candidates", []) or list_candidates(project_dir)
+            candidates = scan.get("candidates", []) or list_candidates(root)
             learning_scan = {
                 "status": "ok",
                 "total": scan.get("count", 0),

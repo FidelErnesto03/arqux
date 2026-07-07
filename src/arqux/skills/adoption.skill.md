@@ -66,7 +66,7 @@ STP:govern{
 
 $6: SESSION START — RETURNING TO A GOVERNED WORKSPACE
 
-IDN:session_start{ purpose:"Protocol for starting a session in an already-governed workspace. The agent reads brain.cortex and presents a context summary. If a previous SES exists, session.resume() restores the context.", when:".arqux/ is detected in or above cwd." }
+IDN:session_start{ purpose:"Protocol for starting a session in an already-governed workspace. The agent reads brain.cortex and presents a context summary. If a previous SES exists, session.resume() restores the context. Step 5 runs an automatic w10 proactive audit on every session start.", when:".arqux/ is detected in or above cwd." }
 
 AXM:session_context_first{ The FIRST response in a governed workspace MUST include context from brain.cortex. Never just a greeting. The Architect opens with a word, the agent responds with awareness. }
 
@@ -75,7 +75,8 @@ STP:session_context{
   1_workspace_level:"If cwd is workspace root (no project): list projects from meta-brain with minimal description (name, last active, status). Ask which project to work on.",
   2_project_level:"If cwd is inside a project: read brain.cortex. Present: project name, active cycle, blueprint count + status, current focus (FCS), recent lessons (LNG). If session.resume() returned a SES, append the handoff context. Ask what to work on.",
   3_cycle_level:"If inside .arqux/cycles/CYCLE-NNN: present cycle manifest summary + all blueprints with status. Ask which blueprint to mature or execute.",
-  4_format:"HCORTEX vertical layout. Key fields, one-line summary, open question. See cortex.skill.md S4.",
+   4_format:"HCORTEX vertical layout. Key fields, one-line summary, open question. See cortex.skill.md S4.",
+   5_audit_w10:"Run proactive audit (w10): check for (a) blueprint status drift (BLPs in review/blocked >48h), (b) LNG backlog (lessons not elevated), (c) stale session SES >72h, (d) handler doc mismatch against registry. Present a one-line GAP summary. If no gaps, state 'Governance health: clean.' This keeps the audit loop on every session start without requiring a separate w10 workflow call.",
 }
 
 
