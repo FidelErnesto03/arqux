@@ -67,7 +67,7 @@ STP:govern{
 
 $6: SESSION START — RETURNING TO A GOVERNED WORKSPACE
 
-IDN:session_start{ purpose:"Protocol for starting a session in an already-governed workspace. The agent reads brain.cortex and presents a context summary. If a previous SES exists, session.resume() restores the context. Step 5 runs an automatic w10 proactive audit on every session start.", when:".arqux/ is detected in or above cwd." }
+IDN:session_start{ purpose:"Protocol for starting a session in an already-governed workspace. At workspace level: reads meta-brain.cortex. At project level: reads brain.cortex. If a previous SES exists, session.resume() restores context. Step 5 runs automatic w10 proactive audit.", when:".arqux/ is detected in or above cwd." }
 
 AXM:session_context_first{ The FIRST response in a governed workspace MUST include context from brain.cortex. Never just a greeting. The Architect opens with a word, the agent responds with awareness. }
 
