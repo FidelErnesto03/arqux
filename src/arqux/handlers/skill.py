@@ -346,6 +346,114 @@ def evolve_skill(
 
 
 # ---------------------------------------------------------------------------
+# skill.edit
+# ---------------------------------------------------------------------------
+
+
+def _replace_skill_section(body: str, section_id: str, new_content: str) -> str | None:
+    """Replace a CORTEX section in a skill file.
+
+    Section can be:
+      - ``$0`` (bare, no title)
+      - ``$1`` or ``$1: TITLE``
+      - ``$2.1`` or ``$2.1: TITLE``
+
+    The new_content should NOT include the section header —
+    the original header is preserved. If new_content does include
+    the header, it is stripped to avoid duplication.
+    Returns the new body, or None if the section was not found.
+    """
+    esc = re.escape(f"${section_id.lstrip('$')}")
+    pattern = rf"^{esc}(?::.*)?$(.*?)(?=^\$(?:\d+)(?:\.\d+)?(?::.*)?$|\Z)"
+    match = re.search(pattern, body, re.MULTILINE | re.DOTALL)
+    if not match:
+        return None
+    full = match.group(0)
+    hdr_end = full.index("\n") if "\n" in full else len(full)
+    hdr = full[:hdr_end]
+    # Strip section header from new_content if present
+    clean = new_content
+    if clean.lstrip().startswith(f"${section_id.lstrip('$')}"):
+        first_lf = clean.index("\n") if "\n" in clean else len(clean)
+        clean = clean[first_lf + 1:]
+    clean = clean.strip()
+    new_body = body.replace(full, hdr + "\n" + clean + "\n", 1)
+    if new_body == body:
+        return None
+    return new_body
+
+
+def edit_skill(
+    name: str,
+    content: str | None = None,
+    section: str | None = None,
+    path: str | None = None,
+    ctx: PermissionContext | None = None,
+) -> CortexOUT:
+    """Edit (read or write) a skill file in .arqux/skills/.
+
+    Without ``content``: returns the current content of the skill file.
+    With ``content`` and no ``section``: atomically replaces the entire skill file.
+    With ``content`` and ``section``: replaces only that section (e.g. ``$0``, ``$1``, ``$2.1``).
+
+    This is the governed alternative to direct file editing of skills.
+    Skills are NOT governance state — they are working documents.
+    """
+    arqux = _resolve_arqux_root(path)
+    if arqux is None:
+        return CortexOUT.error("no arqux root found", code="NOT_FOUND")
+
+    skill_path = _skill_path(arqux, name)
+
+    if not content:
+        if not skill_path.exists():
+            return CortexOUT.error(
+                f"skill {name!r} not found in .arqux/skills/",
+                code="NOT_FOUND",
+                hint="Use skill.list to see available skills.",
+            )
+        raw = skill_path.read_text(encoding="utf-8")
+        return CortexOUT.work(
+            f"skill.edit read name={name} size={len(raw)}",
+            name=name,
+            size=len(raw),
+            content=raw,
+        )
+
+    if section:
+        if not skill_path.exists():
+            return CortexOUT.error(
+                f"skill {name!r} not found in .arqux/skills/",
+                code="NOT_FOUND",
+            )
+        current = skill_path.read_text(encoding="utf-8")
+        updated = _replace_skill_section(current, section, content)
+        if updated is None:
+            return CortexOUT.error(
+                f"section ${section} not found in skill {name!r}",
+                code="NOT_FOUND",
+                hint="Sections use CORTEX format: $0, $1, $2.1, etc.",
+            )
+        skill_path.write_text(updated, encoding="utf-8")
+        return CortexOUT.work(
+            f"skill.edit section name={name} section=${section} size={len(content)}",
+            name=name,
+            section=f"${section}",
+            size=len(content),
+            status="section_written",
+        )
+
+    skill_path.parent.mkdir(parents=True, exist_ok=True)
+    skill_path.write_text(content, encoding="utf-8")
+    return CortexOUT.work(
+        f"skill.edit write name={name} size={len(content)}",
+        name=name,
+        size=len(content),
+        status="written",
+    )
+
+
+# ---------------------------------------------------------------------------
 # skill.list
 # ---------------------------------------------------------------------------
 
