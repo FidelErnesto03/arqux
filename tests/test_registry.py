@@ -5,9 +5,9 @@ from __future__ import annotations
 from arqux.handlers import REGISTRY, handler_count, list_handlers
 
 
-def test_handler_count_is_57() -> None:
-    """The full MCP surface: 57 handlers (55 original + 2 new: blueprint.task, blueprint.ac)."""
-    assert handler_count() == 57
+def test_handler_count_is_58() -> None:
+    """The full MCP surface: 58 handlers."""
+    assert handler_count() == 58
 
 
 def test_mutating_handler_count_is_39() -> None:
@@ -18,7 +18,7 @@ def test_mutating_handler_count_is_39() -> None:
     utility = {"cortex.read", "cortex.write", "cortex.verify", "cortex.render", "cortex.render.diagram", "cortex.learn", "cortex.learn.elevate", "identity.record", "skill.import", "skill.convert", "skill.record", "skill.evolve", "skill.list", "blueprint.read", "blueprint.list", "setup.plantuml"}
     excluded = session_only | utility
     mutating = [name for name in list_handlers() if name not in excluded]
-    assert len(mutating) == 39
+    assert len(mutating) == 40
 
 
 def test_handler_names_follow_module_convention() -> None:
@@ -50,7 +50,7 @@ def test_module_handler_counts() -> None:
         "cortex": 7,
         "setup": 1,
         "identity": 1,
-        "blueprint": 17,
+        "blueprint": 18,
         "setup": 1,
         "skill": 5,
     }

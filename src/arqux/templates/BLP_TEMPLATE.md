@@ -22,6 +22,7 @@ quality_gates@: {
   has_acceptance_criteria: false,
   has_work_procedure: false,
   has_required_validations: false,
+  has_learning_recorded: false,
 }
 _template_ref: "BLP_TEMPLATE.md"
 ---
@@ -281,5 +282,6 @@ _Conditions under which the executor MUST halt and report._
 | has_acceptance_criteria | ☐ |
 | has_work_procedure | ☐ |
 | has_required_validations | ☐ |
+| has_learning_recorded | ☐ |
 
 > All gates must be ✅ before blueprint.ready(). See blueprint-workflow skill.

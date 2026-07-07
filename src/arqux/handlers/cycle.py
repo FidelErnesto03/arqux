@@ -236,7 +236,44 @@ def close_cycle(
         except Exception:
             pass
 
-    # 5. Write cycle.cortex with metrics
+    # 5. Scan learning candidates. This proposes elevations only; it never
+    # applies LNG->KNW changes without Architect approval.
+    learning_scan: dict[str, Any] = {
+        "status": "not_run",
+        "candidates": [],
+    }
+    try:
+        from ..learning import scan_brain, list_candidates
+
+        project_dir = root.parent
+        scan = scan_brain(project_dir, verbose=True)
+        if scan.get("engine") == "unavailable":
+            learning_scan = {
+                "status": "unavailable",
+                "error": "learning engine unavailable",
+                "candidates": [],
+            }
+        elif "error" in scan:
+            learning_scan = {
+                "status": "error",
+                "error": scan["error"],
+                "candidates": [],
+            }
+        else:
+            candidates = scan.get("candidates", []) or list_candidates(project_dir)
+            learning_scan = {
+                "status": "ok",
+                "total": scan.get("count", 0),
+                "candidates": candidates,
+            }
+    except Exception as exc:  # noqa: BLE001
+        learning_scan = {
+            "status": "error",
+            "error": str(exc),
+            "candidates": [],
+        }
+
+    # 6. Write cycle.cortex with metrics
     fm = {
         "id": cycle_id,
         "status": CYCLE_CLOSED,
@@ -247,6 +284,8 @@ def close_cycle(
         "tasks_failed": len(failed),
         "tasks_open": len(open_tasks),
         "lessons_generated": len(lessons),
+        "learning_scan": learning_scan["status"],
+        "learning_candidates": len(learning_scan.get("candidates", [])),
     }
     body = (
         f"# CYCLE {cycle_id} (closed)\n\n"
@@ -256,17 +295,24 @@ def close_cycle(
         f"- Tasks failed: {len(failed)}\n"
         f"- Tasks open on close: {len(open_tasks)}\n"
         f"- Lessons auto-generated: {len(lessons)}\n"
+        f"- Learning scan: {learning_scan['status']}\n"
+        f"- Elevation candidates proposed: {len(learning_scan.get('candidates', []))}\n"
     )
     write_cortex_pair(cdir, "cycle", fm, body)
 
     return CortexOUT.work(
         f"cycle.close ok id={cycle_id} completed={len(completed)} "
-        f"failed={len(failed)} lessons={len(lessons)}",
+        f"failed={len(failed)} lessons={len(lessons)} "
+        f"learning_scan={learning_scan['status']} "
+        f"candidates={len(learning_scan.get('candidates', []))}",
         cycle_id=cycle_id,
         status=CYCLE_CLOSED,
         tasks_completed=len(completed),
         tasks_failed=len(failed),
         lessons_generated=len(lessons),
+        learning_scan=learning_scan["status"],
+        learning_candidates=len(learning_scan.get("candidates", [])),
+        instruction="Review cortex.learn candidates; apply elevations only with Architect approval.",
     )
 
 

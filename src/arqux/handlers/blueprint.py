@@ -42,6 +42,17 @@ from ..state import (
 
 BLUEPRINT_TEMPLATE = "BLP_TEMPLATE.md"
 MAX_VERIFICATION_LOOPS = 3
+LEARNING_GATE = "has_learning_recorded"
+QUALITY_GATES = [
+    "has_clear_objective",
+    "has_verifiable_preconditions",
+    "has_scope_and_exclusions",
+    "has_acceptance_criteria",
+    "has_work_procedure",
+    "has_required_validations",
+    LEARNING_GATE,
+]
+MATURATION_GATES = [gate for gate in QUALITY_GATES if gate != LEARNING_GATE]
 
 # Blueprint states
 BP_DRAFT = "draft"
@@ -65,6 +76,14 @@ VALID_TRANSITIONS = {
     BP_DONE: [],
     BP_CANCELLED: [],
 }
+
+
+def _learning_instruction(action: str) -> str:
+    return (
+        f"Record learning for {action}: call identity.record("
+        "lesson='<what changed or failed>', kind='process', "
+        "cause='<blueprint evidence>') before closing this governance step."
+    )
 
 
 def _now_iso() -> str:
@@ -200,6 +219,7 @@ def create_blueprint(
     body = body.replace("cycle: \"\"", f'cycle: "{cycle_id}"')
     body = body.replace("governor: \"\"", f'governor: "{gov}"')
     body = body.replace("created_at: \"\"", f'created_at: "{_now_iso()}"')
+    body = body.replace("# BLP-NNN: Title", f"# {bp_id}: {obj}")
 
     # Pre-fill context from brain.cortex and cycle manifest
     body = _prefill_from_context(body, root, cycle_id)
@@ -393,6 +413,71 @@ def mature_blueprint(
 
 
 # ---------------------------------------------------------------------------
+# blueprint.gate
+# ---------------------------------------------------------------------------
+
+
+def gate_blueprint(
+    bp_id: str,
+    gate: str = "all",
+    path: str | None = None,
+    ctx: PermissionContext | None = None,
+) -> CortexOUT:
+    """Approve one or all Blueprint quality gates after Architect maturation."""
+    root = _resolve_root(path)
+    if root is None:
+        return CortexOUT.error("no project initialized", code="NOT_FOUND")
+
+    bp_path, fm, body = _find_blueprint(root, bp_id)
+    if bp_path is None:
+        return CortexOUT.error(f"blueprint {bp_id} not found", code="NOT_FOUND")
+
+    if fm.get("status") != BP_MATURING:
+        return CortexOUT.error(
+            f"blueprint is {fm.get('status')} — must be maturing to approve gates",
+            code="INVALID_STATE",
+        )
+
+    requested = MATURATION_GATES if gate == "all" else [gate]
+    invalid = [name for name in requested if name not in QUALITY_GATES]
+    if invalid:
+        return CortexOUT.error(
+            f"unknown quality gate(s): {', '.join(invalid)}",
+            code="INVALID_ARGS",
+            invalid_gates=invalid,
+        )
+
+    approved: list[str] = []
+    blocked: list[str] = []
+    for name in requested:
+        if name == LEARNING_GATE and not _has_learning_recorded(root, bp_id):
+            blocked.append(name)
+            continue
+        fm[name] = True
+        approved.append(name)
+
+    fm["updated_at"] = _now_iso()
+    _write_blueprint(bp_path, fm, body)
+
+    if blocked:
+        return CortexOUT.error(
+            "learning gate requires recorded learning evidence. Call identity.record() first.",
+            code="LEARNING_NOT_RECORDED",
+            approved_gates=approved,
+            blocked_gates=blocked,
+            instruction=_learning_instruction(f"blueprint.gate({bp_id}, {gate})"),
+        )
+
+    return CortexOUT.work(
+        f"blueprint.gate ok id={bp_id} approved={len(approved)}",
+        blueprint_id=bp_id,
+        approved_gates=approved,
+        status=fm.get("status"),
+        instruction="Call blueprint.ready() when all required maturation gates are approved.",
+    )
+
+
+# ---------------------------------------------------------------------------
 # blueprint.ready
 # ---------------------------------------------------------------------------
 
@@ -419,8 +504,17 @@ def ready_blueprint(
     # This prevents agents from skipping the maturation cycle.
     gates_status = _read_quality_gates(fm)
     if gates_status:
+        if not gates_status.get(LEARNING_GATE, True) and _has_learning_recorded(root, bp_id):
+            gates_status[LEARNING_GATE] = True
         failed_gates = [g for g, v in gates_status.items() if not v]
         if failed_gates:
+            if failed_gates == [LEARNING_GATE]:
+                return CortexOUT.error(
+                    "Cannot ready: has_learning_recorded is false. Call identity.record() first.",
+                    code="LEARNING_NOT_RECORDED",
+                    failed_gates=failed_gates,
+                    instruction=_learning_instruction(f"blueprint.ready({bp_id})"),
+                )
             return CortexOUT.error(
                 f"maturation incomplete — {len(failed_gates)} quality gate(s) still false: "
                 f"{', '.join(failed_gates)}. "
@@ -568,11 +662,16 @@ def task_blueprint(
     fm["updated_at"] = ts
     _write_blueprint(bp_path, fm, body)
 
+    fields = {
+        "blueprint_id": bp_id,
+        "task_id": task_id,
+        "status": status,
+    }
+    if status == "completed":
+        fields["instruction"] = _learning_instruction(f"blueprint.task({bp_id}, {task_id})")
     return CortexOUT.work(
         f"blueprint.task ok id={bp_id} task={task_id} status={status}",
-        blueprint_id=bp_id,
-        task_id=task_id,
-        status=status,
+        **fields,
     )
 
 
@@ -640,7 +739,11 @@ def ac_blueprint(
         next_attempt = current + 1
         # Auto re-delegate (max 3 attempts). 3rd fail → block_for_architect.
         if fm.get("status") == BP_REVIEW and next_attempt < MAX_VERIFICATION_LOOPS:
-            return re_delegate_blueprint(bp_id, path=path, ctx=ctx)
+            result = re_delegate_blueprint(bp_id, path=path, ctx=ctx)
+            result.fields["instruction"] = _learning_instruction(
+                f"blueprint.ac({bp_id}, {ac_id}) failed verification"
+            )
+            return result
         elif fm.get("status") == BP_REVIEW:
             fm["verification_loop"] = next_attempt
             _write_blueprint(bp_path, fm, body)
@@ -652,14 +755,22 @@ def ac_blueprint(
                 status="failed",
                 verification_loop=next_attempt,
                 max_loops=MAX_VERIFICATION_LOOPS,
-                instruction="Call blueprint.block_for_architect() for manual review.",
+                instruction=(
+                    "Call blueprint.block_for_architect() for manual review. "
+                    + _learning_instruction(f"blueprint.ac({bp_id}, {ac_id}) failed verification")
+                ),
             )
 
+    fields = {
+        "blueprint_id": bp_id,
+        "ac_id": ac_id,
+        "status": status,
+    }
+    if status == "failed":
+        fields["instruction"] = _learning_instruction(f"blueprint.ac({bp_id}, {ac_id}) failed verification")
     return CortexOUT.work(
         f"blueprint.ac ok id={bp_id} ac={ac_id} status={status}",
-        blueprint_id=bp_id,
-        ac_id=ac_id,
-        status=status,
+        **fields,
     )
 
 
@@ -691,12 +802,34 @@ def update_blueprint(
     # Section refinement takes priority over note
     if section:
         sec_num = section.lstrip("§").strip()
+        section_titles = {
+            "1": "Problem Statement",
+            "2": "Objective",
+            "3": "Preconditions",
+            "4": "Guiding Principle",
+            "5": "Context",
+            "6": "Scope & Exclusions",
+            "7": "Mandatory Rules",
+            "8": "Technical Design",
+            "9": "Operational Design",
+            "10": "Contracts",
+            "11": "Work Procedure",
+            "12": "Acceptance Criteria",
+            "13": "Required Validations",
+            "14": "Tasks",
+            "15": "Risks",
+            "16": "Blocking Rule",
+            "17": "Expected Output",
+            "18": "Quality Contract",
+        }
+        section_title = section_titles.get(sec_num, "")
         section_header = f"## §{sec_num}:"
+        replacement_header = f"{section_header} {section_title}".rstrip()
         # Build replacement content
         if puml:
-            section_content = f"{section_header}\n\n{content or ''}\n\n```puml\n{puml}\n```\n"
+            section_content = f"{replacement_header}\n\n{content or ''}\n\n```puml\n{puml}\n```\n"
         elif content:
-            section_content = f"{section_header}\n\n{content}\n"
+            section_content = f"{replacement_header}\n\n{content}\n"
         else:
             return CortexOUT.error(
                 "section requires 'content' or 'puml' parameter",
@@ -728,11 +861,16 @@ def update_blueprint(
 
     _write_blueprint(bp_path, fm, body)
 
+    fields = {
+        "blueprint_id": bp_id,
+        "section": section,
+        "note": note,
+    }
+    if section:
+        fields["instruction"] = _learning_instruction(f"blueprint.update({bp_id}, section={section})")
     return CortexOUT.work(
         f"blueprint.update ok id={bp_id}",
-        blueprint_id=bp_id,
-        section=section,
-        note=note,
+        **fields,
     )
 
 
@@ -759,6 +897,14 @@ def complete_blueprint(
     err = _transition(bp_id, fm.get("status", BP_DRAFT), BP_REVIEW)
     if err:
         return CortexOUT.error(err, code="INVALID_STATE")
+
+    execution_errors = _validate_execution_complete(body, evidence)
+    if execution_errors:
+        return CortexOUT.error(
+            "Cannot complete: Blueprint execution evidence is incomplete.",
+            code="EXECUTION_INCOMPLETE",
+            **execution_errors,
+        )
 
     fm["status"] = BP_REVIEW
     fm["updated_at"] = _now_iso()
@@ -830,6 +976,25 @@ def approve_blueprint(
     if err:
         return CortexOUT.error(err, code="INVALID_STATE")
 
+    approval_errors = _validate_approval_ready(root, bp_id, fm, body)
+    if approval_errors:
+        return CortexOUT.error(
+            "Cannot approve: Blueprint review evidence is incomplete.",
+            code="APPROVAL_INCOMPLETE",
+            **approval_errors,
+        )
+
+    gates_status = _read_quality_gates(fm)
+    if gates_status and not gates_status.get(LEARNING_GATE, True) and _has_learning_recorded(root, bp_id):
+        gates_status[LEARNING_GATE] = True
+    if gates_status and not gates_status.get(LEARNING_GATE, True):
+        return CortexOUT.error(
+            "Cannot approve: has_learning_recorded is false. Call identity.record() first.",
+            code="LEARNING_NOT_RECORDED",
+            failed_gates=[LEARNING_GATE],
+            instruction=_learning_instruction(f"blueprint.approve({bp_id})"),
+        )
+
     fm["status"] = BP_DONE
     fm["closed_at"] = _now_iso()
     fm["updated_at"] = _now_iso()
@@ -842,7 +1007,10 @@ def approve_blueprint(
         f"blueprint.approve ok id={bp_id}",
         blueprint_id=bp_id,
         status=BP_DONE,
-        instruction="Record lessons via identity.record(). Check if cycle can be closed.",
+        instruction=(
+            _learning_instruction(f"blueprint.approve({bp_id})")
+            + " Check if cycle can be closed."
+        ),
     )
 
 
@@ -1059,26 +1227,124 @@ def _read_quality_gates(fm: dict[str, Any]) -> dict[str, bool] | None:
     """Extract quality gates from the Blueprint frontmatter.
 
     The frontmatter parser flattens multi-line YAML structures into individual
-    keys. We check for the 6 expected gate keys directly.
+    keys. We check for the expected gate keys directly. If legacy Blueprints
+    have the original 6 gates but no learning gate, the learning gate defaults
+    to false so they must pass through the new learning contract before ready
+    or approve.
     Returns dict of gate_name: bool, or None if no gates found.
     """
-    gate_names = [
-        "has_clear_objective",
-        "has_verifiable_preconditions",
-        "has_scope_and_exclusions",
-        "has_acceptance_criteria",
-        "has_work_procedure",
-        "has_required_validations",
-    ]
     gates = {}
-    for name in gate_names:
+    for name in QUALITY_GATES:
         raw = fm.get(name)
         if raw is not None:
             if isinstance(raw, bool):
                 gates[name] = raw
             elif isinstance(raw, str):
                 gates[name] = raw.strip().rstrip(",").lower() == "true"
-    return gates if len(gates) == len(gate_names) else None
+    if not gates:
+        return None
+    if len(gates) == len(QUALITY_GATES) - 1 and LEARNING_GATE not in gates:
+        gates[LEARNING_GATE] = False
+    return gates if len(gates) == len(QUALITY_GATES) else None
+
+
+def _section(body: str, number: int) -> str:
+    match = re.search(rf"## §{number}:.*?(?=\n## §\d+:|$)", body, flags=re.DOTALL)
+    return match.group(0) if match else ""
+
+
+def _unchecked_items(body: str, section_number: int, prefix: str) -> list[str]:
+    section = _section(body, section_number)
+    items: list[str] = []
+    pattern = re.compile(rf"^- \[([ ~x])\] \*\*({prefix}-\d+(?:\.\d+)?):\*\* (.+)$", re.MULTILINE)
+    for marker, item_id, title in pattern.findall(section):
+        if marker != "x":
+            items.append(f"{item_id}: {title.strip()}")
+    return items
+
+
+def _has_required_validation_rows(body: str) -> bool:
+    section = _section(body, 13)
+    rows = [
+        line
+        for line in section.splitlines()
+        if line.startswith("|")
+        and "---" not in line
+        and "Tipo" not in line
+        and "Type" not in line
+        and "_Description_" not in line
+    ]
+    return bool(rows)
+
+
+def _missing_required_artifacts(body: str, project_root: Path) -> list[str]:
+    section = _section(body, 17)
+    missing: list[str] = []
+    in_files = False
+    for raw_line in section.splitlines():
+        line = raw_line.strip()
+        lower = line.lower()
+        if lower.startswith("archivos modificados") or lower.startswith("files modified"):
+            in_files = True
+            continue
+        if in_files and not line:
+            continue
+        if in_files and not line.startswith("- "):
+            break
+        if not in_files or not line.startswith("- "):
+            continue
+        candidate = line[2:].strip()
+        if " " in candidate or not any(sep in candidate for sep in ("/", ".")):
+            continue
+        if not (project_root / candidate).exists():
+            missing.append(candidate)
+    return missing
+
+
+def _validate_execution_complete(body: str, evidence: str | None) -> dict[str, Any]:
+    errors: dict[str, Any] = {}
+    pending_tasks = _unchecked_items(body, 14, "T")
+    if pending_tasks:
+        errors["missing_tasks"] = pending_tasks
+    if _has_required_validation_rows(body) and not evidence:
+        errors["missing_validations"] = ["completion evidence is required for declared validations"]
+    return errors
+
+
+def _validate_approval_ready(root: Path, bp_id: str, fm: dict[str, Any], body: str) -> dict[str, Any]:
+    errors: dict[str, Any] = {}
+    missing_ac = _unchecked_items(body, 12, "AC")
+    if missing_ac:
+        errors["missing_acceptance_criteria"] = missing_ac
+    missing_artifacts = _missing_required_artifacts(body, root.parent)
+    if missing_artifacts:
+        errors["missing_artifacts"] = missing_artifacts
+    if not _has_learning_recorded(root, bp_id):
+        errors["missing_learning"] = ["record learning with identity.record before approval"]
+    if _has_required_validation_rows(body) and not fm.get("evidence"):
+        errors["missing_validations"] = ["review evidence is required for declared validations"]
+    return errors
+
+
+def _has_learning_recorded(root: Path, bp_id: str) -> bool:
+    """Return true when any workspace/project identity has an LNG for bp_id."""
+    identity_dirs = [
+        root / "identities",
+        root.parent / ARQUX_DIR / "identities",
+        root.parent.parent / ARQUX_DIR / "identities",
+    ]
+    needles = {bp_id.lower(), bp_id.lower().replace("-", "_")}
+    for identity_dir in identity_dirs:
+        if not identity_dir.exists():
+            continue
+        for identity_file in identity_dir.glob("*.cortex"):
+            try:
+                text = identity_file.read_text(encoding="utf-8").lower()
+            except OSError:
+                continue
+            if "lng:" in text and any(needle in text for needle in needles):
+                return True
+    return False
 
 
 def _record_to_brain(root: Path, bp_id: str, outcome: str, evidence: str) -> None:

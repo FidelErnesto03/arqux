@@ -468,12 +468,13 @@ _register(_spec(
     "cortex.learn.elevate", cortex.learn_elevate_handler,
     "Elevate a learning candidate (SES->LNG or LNG->KNW).\n"
     "Default is dry-run (shows diff without applying).\n"
-    "Pass apply=true to write the elevation to brain.cortex.",
+    "Pass apply=true with confirm_hash from a reviewed dry-run to write the elevation to brain.cortex.",
     {
         "type": "object",
         "properties": {
             "candidate_id": {"type": "string", "description": "Candidate ID from cortex.learn output"},
             "apply": {"type": "boolean", "default": False, "description": "If true, apply the elevation. Default is dry-run."},
+            "confirm_hash": {"type": "string", "description": "Preview hash from a reviewed dry-run. Required when apply=true."},
             "path": {"type": "string", "description": "Path to project root. Defaults to cwd."},
         },
         "required": ["candidate_id"],
@@ -525,6 +526,19 @@ _register(_spec(
         "type": "object",
         "properties": {
             "bp_id": {"type": "string"},
+            "path": {"type": "string"},
+        },
+        "required": ["bp_id"],
+    },
+))
+_register(_spec(
+    "blueprint.gate", blueprint.gate_blueprint,
+    "Approve one or all Blueprint quality gates after Architect maturation.",
+    {
+        "type": "object",
+        "properties": {
+            "bp_id": {"type": "string"},
+            "gate": {"type": "string", "description": "Quality gate name, or 'all' for maturation gates."},
             "path": {"type": "string"},
         },
         "required": ["bp_id"],
