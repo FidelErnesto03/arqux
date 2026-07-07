@@ -44,7 +44,7 @@ STP:adopt{
     manifest:"Registro del workspace y governor.",
     meta_brain:"Aprendizaje cross-proyecto — lecciones que se comparten entre proyectos.",
     identities:"4 agentes: Alfred (steward), Jarvis (executor), Seshat (scribe), Heimdall (auditor). Mas 3 roles: governor, executor, auditor.",
-    skills:"6 skills especializados: handlers, identities, cortex, mcp, learning, workflows + adoption (este).",
+    skills:"6 skills: handlers, cortex, mcp, diagram, learning, workflows + adoption (este).",
     templates:"10 templates incluyendo BLP_TEMPLATE.md (18 secciones para Blueprints) y CYCLE_MANIFEST_TEMPLATE.md (9 secciones para ciclos).",
     agente:"Soy Alfred, tu steward personal. Mi identidad esta en .arqux/identities/alfred.cortex. Aprendo de cada sesion y registro lecciones.",
   },
