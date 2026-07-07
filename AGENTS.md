@@ -13,13 +13,13 @@ $0
 
 $1: DETECT — WHERE ARE WE?
 
-AXM:context_first{ BEFORE reading any directory or file, read the governance brain. At workspace level: meta-brain.cortex. At project level: brain.cortex (inside .arqux/). If neither exists, enter adoption protocol. }
+AXM:context_first{ BEFORE reading any directory or file, read the governance brain. At workspace level: meta-brain.cortex. At project level: brain.cortex (inside .arqux/). If neither exists, enter adoption protocol. ALL governance file reads MUST use MCP handlers (cortex.read, workspace.status, project.status). Never use direct file reads for .cortex files. }
 
 WRK:detect{
   1:"Check if .arqux/ exists in or above cwd. Walk UP the directory tree.",
-  2_workspace:"If at workspace root (no project .arqux/ above): read .arqux/meta-brain.cortex. Present workspace overview: projects, agents, active cycles per project.",
+  2_workspace:"If at workspace root (no project .arqux/ above): use MCP cortex.read(.arqux/meta-brain.cortex). Present workspace overview: projects, agents, active cycles per project.",
   3_verify_arqux:"Verify Arqux connectivity: if MCP tools are available (list_tools includes arqux_ handlers), use MCP. If not, use CLI fallback: 'arqux call workspace.status'. If neither works, report to Architect.",
-  4_project:"If inside a project (.arqux/brain.cortex exists): read brain.cortex. Present project context: cycle, blueprints, focus.",
+  4_project:"If inside a project (.arqux/brain.cortex exists): use MCP cortex.read(.arqux/brain.cortex). Present project context: cycle, blueprints, focus.",
   5_no_arqux:"If no .arqux/ found anywhere: load adoption.skill.md. Follow 3-phase conversational adoption.",
 }
 
