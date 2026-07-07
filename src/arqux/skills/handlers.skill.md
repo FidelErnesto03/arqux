@@ -3,7 +3,7 @@ $0
 # -- $0: HANDLERS SKILL GLOSSARY --
 # Sigil | Name | Type | Risk | Cognitive Layer | Description
 # IDN   | identity   | attrs      | B | Semantic       | Actor / workspace identity
-# HDL   | handler    | attrs-pos  | M | Semantic       | Handler definition
+# HDL   | handler    | attrs      | M | Semantic       | Handler definition
 # LIM   | limit      | attrs      | M | Prefrontal     | Hard limit
 # AXM   | axiom      | cuerpo     | H | Prefrontal     | Non-negotiable principle
 

@@ -15,10 +15,11 @@ IDN:adoption{ purpose:"First-time Arqux adoption protocol. A guided conversation
 $2: PHASE 0 — DETECT
 
 STP:detect{
-  1:"Check if .arqux/ exists in or above cwd.",
+  1:"Check if .arqux/ exists in or above cwd. Walk UP the directory tree until you find .arqux/ or hit the filesystem root.",
   2_governed:"If YES: verify your ROLE immediately. Run `echo $ARQUX_AGENT_ROLE` or equivalent. If auditor/empty: report to Architect that write handlers are blocked. Do NOT edit files directly — that violates LIM:no_direct_edit. Ask Architect to configure MCP server with ARQUX_AGENT_ROLE=governor.",
   3_ungoverned:"If NO: Enter PHASE 1 — explain Arqux. Do NOT suggest pip install (assumed done).",
   4_no_bypass:"If handlers return PERMISSION_DENIED, REPORT the error. NEVER work around it with direct file edits. The governor role is required for mutations. Without it, you are a read-only observer.",
+  5_ignore_loose_files:"Even if you find brain.cortex, GOVERNANCE.md, or other governance-looking files in cwd, IGNORE them. Walk UP to find .arqux/ or workspace AGENTS.md. Loose files without .arqux/ are NOT an entry point. They are legacy or misplaced artifacts.",
 }
 
 
