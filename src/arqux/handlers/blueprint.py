@@ -1383,15 +1383,14 @@ def _has_learning_recorded(root: Path, bp_id: str) -> bool:
 def _record_to_brain(root: Path, bp_id: str, outcome: str, evidence: str) -> None:
     """Record Blueprint outcome in brain PULSE."""
     try:
-        project_dir = root.parent
-        fm, sections, _ = read_brain(project_dir)
+        fm, sections, _ = read_brain(root)
         pulse = sections.get("PULSE", "").strip()
         entry = (
             f"- [{_now_iso()}] AUD:{bp_id}_{outcome}{{kind:\"blueprint\", "
             f"evidence:{evidence!r}}}"
         )
         sections["PULSE"] = (pulse + "\n" + entry).strip() if pulse else entry
-        write_brain_sections(project_dir, fm, sections)
+        write_brain_sections(root, fm, sections)
     except Exception:
         pass
 
@@ -1403,8 +1402,7 @@ def _prefill_from_context(body: str, root: Path, cycle_id: str) -> str:
     the cyclic maturation interaction to begin immediately — no empty placeholder phase.
     """
     try:
-        project_dir = root.parent
-        fm, sections, _ = read_brain(project_dir)
+        fm, sections, _ = read_brain(root)
 
         # Extract knowledge from brain
         focus = sections.get("FOCUS", "").strip()

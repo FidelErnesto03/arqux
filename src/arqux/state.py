@@ -514,6 +514,23 @@ def find_project_root(start: Path | str | None = None) -> Path | None:
 #   - The CONCURRENCY section holds optimistic-locking state (version + writer).
 
 
+def _resolve_brain_path(project_root: Path) -> Path:
+    """Resolve the canonical brain.cortex path.
+
+    If ``project_root`` is the project root (has ``.arqux/`` subdirectory),
+    returns ``project_root / ARQUX_DIR / BRAIN_CORTEX``.
+    If ``project_root`` IS the ``.arqux/`` directory, returns
+    ``project_root / BRAIN_CORTEX``.
+    Falls back to ``project_root / BRAIN_CORTEX`` for backward compat.
+    """
+    if project_root.name == ARQUX_DIR:
+        return project_root / BRAIN_CORTEX
+    arqux_candidate = project_root / ARQUX_DIR / BRAIN_CORTEX
+    if arqux_candidate.exists() or (project_root / ARQUX_DIR).is_dir():
+        return arqux_candidate
+    return project_root / BRAIN_CORTEX
+
+
 def read_brain(project_root: Path) -> tuple[dict[str, Any], dict[str, str], str]:
     """Read the project brain.
 
@@ -524,7 +541,7 @@ def read_brain(project_root: Path) -> tuple[dict[str, Any], dict[str, str], str]
     Returns (frontmatter, sections, raw_body).
     `sections` is a dict mapping section name → raw text content.
     """
-    brain_path = project_root / BRAIN_CORTEX
+    brain_path = _resolve_brain_path(project_root)
     if not brain_path.exists():
         return {}, {}, ""
 
@@ -646,7 +663,8 @@ def write_brain_sections(
     sections: dict[str, str],
 ) -> tuple[Path, Path]:
     """Write the project brain from frontmatter + sections dict."""
-    return write_cortex_pair(project_root, "brain", frontmatter, sections)
+    directory = _resolve_brain_path(project_root).parent
+    return write_cortex_pair(directory, "brain", frontmatter, sections)
 
 
 def ensure_brain_section(sections: dict[str, str], name: str) -> str:
@@ -735,8 +753,9 @@ def write_brain(
 
     For updates, use `write_brain_sections` after reading with `read_brain`.
     """
+    directory = _resolve_brain_path(project_root).parent
     body = _initial_brain_body()
-    return write_cortex_pair(project_root, "brain", brain, body)
+    return write_cortex_pair(directory, "brain", brain, body)
 
 
 def _initial_brain_body() -> str:
