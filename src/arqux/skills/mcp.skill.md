@@ -22,9 +22,11 @@ STP:env_config{
 $2: MCP JSON SETUP
 
 STP:mcp_json{
-  format:"Standard MCP JSON for any client:",
+  format:"Standard MCP JSON. Key depends on platform:",
+  standard:"mcpServers (Claude, Continue, Cursor, generic)",
+  opencode:"mcp (OpenCode CLI)",
   example:{
-    mcpServers:{
+    mcp:{
       arqux:{
         command:"arqux",
         args:["serve"],
@@ -35,7 +37,7 @@ STP:mcp_json{
       }
     }
   },
-  note:"Restart MCP client after configuration."
+  note:"For standard MCP clients, use mcpServers instead of mcp. Restart after config."
 }
 
 
