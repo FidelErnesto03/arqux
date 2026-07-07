@@ -1,22 +1,43 @@
----
-level: 1
-workspace: <workspace-name>
-lessons: []
-knowledge: []
-risks: []
----
+$0
 
-# META-BRAIN
+# -- $0: META-BRAIN GLOSSARY --
+# Sigil | Name | Type | Risk | Cognitive Layer | Description
+# IDN   | identity   | attrs | B | Semantic | Actor / workspace identity
+# DOM   | domain     | attrs | B | Semantic | Project descriptor
+# KNW   | knowledge  | attrs | B | Semantic | Stable cross-project knowledge
+# FCS   | focus      | attrs | H | Working | Active attention anchor
+# LNG   | lesson     | attrs | M | Episodic | Cross-project lesson
 
-Cross-project knowledge and lessons. Lives at the workspace root in
-`.<product>/meta-brain.cortex`. The meta-brain knows **what projects
-exist** but not their internal details.
 
-## LESSONS
-- (lessons elevated from project brains — added by CODEC-CORTEX learning engine)
+$1: META-BRAIN
 
-## KNOWLEDGE
-- (global patterns, reusable decisions, cross-project insights)
+IDN:workspace{root:"/home/vatrox/workspace", governor:"alfred", created:"2026-07-05", projects:4, cycles_active:2, blueprints:14}
 
-## RISKS
-- (ecosystem-level risks observed across projects)
+
+$2: PROJECTS
+
+DOM:arqux{name:"ARQUX", path:"ARQUX", domain:"Governance framework for AI agent teams", status:"active", cycle:"CYCLE-01 (MVP Verification)", blueprints:"14 (10 done, 1 review, 3 ready)", handlers:62, tests:100}
+
+DOM:banco_familiar{name:"Banco Familiar", path:"Banco Familiar", domain:"Core bancario", status:"governed"}
+
+DOM:envx_infra{name:"ENVX_INFRA", path:"ENVX_INFRA", domain:"Infraestructura Docker", status:"governed", cycle:"CYCLE-01 (Diagnostico ORA-04031)"}
+
+DOM:codec_cortex{name:"CODEC-CORTEX", path:"CODEC-CORTEX/codec-cortex", domain:"CORTEX parser", status:"governed", cycle:"CYCLE-01 (Parser Evolution)", blueprints:"2 (1 done, 1 ready)"}
+
+
+$3: FOCUS
+
+FCS:current{what:"Cerrar CYCLE-01 de ARQUX — 14 blueprints, ciclo MVP completado", priority:"high"}
+
+
+$4: AGENTS
+
+IDN:alfred{role:"governor", status:"active", adopted:"2026-07-07"}
+IDN:jarvis{role:"executor", status:"active", adopted:"2026-07-07"}
+IDN:seshat{role:"auditor", status:"active"}
+IDN:heimdall{role:"auditor", status:"active"}
+
+
+$5: KNOWLEDGE
+
+KNW:workspace_access{content:"Agents operating under Arqux governance have full access to all projects within /home/vatrox/workspace/"}
