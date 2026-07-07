@@ -13,13 +13,14 @@ $0
 
 $1: DETECT — WHERE ARE WE?
 
-AXM:context_first{ BEFORE reading any directory or file, read the governance brain. At workspace level: meta-brain.cortex. At project level: brain.cortex (inside .arqux/). If neither exists, enter adoption protocol. }
+AXM:context_first{ BEFORE reading any directory or file, read the governance brain. At workspace level: meta-brain.cortex. At project level: brain.cortex (inside .arqux/). If neither exists, enter adoption protocol. ALL governance file reads MUST use MCP handlers (cortex.read, workspace.status, project.status). Never use direct file reads for .cortex files. }
 
 WRK:detect{
   1:"Check if .arqux/ exists in or above cwd. Walk UP the directory tree.",
-  2_workspace:"If at workspace root (no project .arqux/ above): read .arqux/meta-brain.cortex. Present workspace overview: projects, identities, cycles.",
-  3_project:"If inside a project (.arqux/brain.cortex exists): read brain.cortex. Present project context: cycle, blueprints, focus.",
-  4_no_arqux:"If no .arqux/ found anywhere: load adoption.skill.md. Follow 3-phase conversational adoption.",
+  2_workspace:"If at workspace root (no project .arqux/ above): use MCP cortex.read(.arqux/meta-brain.cortex). Present workspace overview: projects, agents, active cycles per project.",
+  3_verify_arqux:"Verify Arqux connectivity: if MCP tools are available (list_tools includes arqux_ handlers), use MCP. If not, use CLI fallback: 'arqux call workspace.status'. If neither works, report to Architect.",
+  4_project:"If inside a project (.arqux/brain.cortex exists): use MCP cortex.read(.arqux/brain.cortex). Present project context: cycle, blueprints, focus.",
+  5_no_arqux:"If no .arqux/ found anywhere: load adoption.skill.md. Follow 3-phase conversational adoption.",
 }
 
 
@@ -55,13 +56,12 @@ $4: SKILL REFERENCE (load on demand from .arqux/skills/)
 
 WRK:available_skills{
   skill:"adoption.skill.md", purpose:"First-time adoption: conversational 3-phase protocol + session start context.",
-  skill:"handlers.skill.md", purpose:"54 MCP handlers with signatures and examples.",
-  skill:"identities.skill.md", purpose:"Identity system + roles: alfred, jarvis, seshat, heimdall. identity.record.",
+  skill:"handlers.skill.md", purpose:"62 MCP handlers with signatures and examples.",
   skill:"cortex.skill.md", purpose:"CORTEX format, HCORTEX output, native memory, PUML diagrams.",
   skill:"mcp.skill.md", purpose:"MCP server configuration (platform-agnostic JSON).",
   skill:"diagram.skill.md", purpose:"PUML diagram creation, validation, and publishing — 3-phase protocol with checklist.",
   skill:"learning.skill.md", purpose:"Learning engine: scan, detect, elevate (LNG->KNW).",
-  skill:"workflows.skill.md", purpose:"8 canonical workflows with PlantUML diagrams.",
+  skill:"workflows.skill.md", purpose:"10 canonical workflows with PlantUML diagrams.",
 }
 
 
