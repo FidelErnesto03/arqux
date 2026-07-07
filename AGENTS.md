@@ -13,13 +13,13 @@ $0
 
 $1: DETECT — WHERE ARE WE?
 
-AXM:context_first{ BEFORE reading any directory or file, read brain.cortex first. It is the SINGLE source of truth. If you reach for ls/find/cat before brain.cortex, you are violating this rule. }
+AXM:context_first{ BEFORE reading any directory or file, read the governance brain. At workspace level: meta-brain.cortex. At project level: brain.cortex (inside .arqux/). If neither exists, enter adoption protocol. }
 
 WRK:detect{
-  1:"Check if .arqux/ exists in or above cwd.",
-  2_governed:"Read brain.cortex. Present context summary. See adoption.skill.md S6 for session start protocol.",
-  3_ungoverned:"Load adoption.skill.md. Follow the 3-phase conversational adoption protocol (DISCOVER -> ADOPT -> GOVERN).",
-  4_no_auto:"NEVER auto-init. NEVER auto-mutate. Always ask the Architect first.",
+  1:"Check if .arqux/ exists in or above cwd. Walk UP the directory tree.",
+  2_workspace:"If at workspace root (no project .arqux/ above): read .arqux/meta-brain.cortex. Present workspace overview: projects, identities, cycles.",
+  3_project:"If inside a project (.arqux/brain.cortex exists): read brain.cortex. Present project context: cycle, blueprints, focus.",
+  4_no_arqux:"If no .arqux/ found anywhere: load adoption.skill.md. Follow 3-phase conversational adoption.",
 }
 
 
