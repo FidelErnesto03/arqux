@@ -836,9 +836,15 @@ def update_blueprint(
                 code="INVALID_ARGS",
             )
 
-        # Replace from section header to next section or end
+        # Replace from section header to next *different* section or end.
+        # The negative lookahead (?!{sec_num}\b) prevents matching the same
+        # section number, which otherwise causes the regex to match only
+        # the blank gap between two identical headers when duplicates exist.
         def _replace_section(body: str, header: str, new_content: str) -> str:
-            pattern = re.escape(header) + r".*?(?=\n## §\d+:|$)"
+            pattern = (
+                re.escape(header)
+                + fr".*?(?=\n## §(?!{sec_num}\b)\d+:|$)"
+            )
             repl = new_content.rstrip()
             result = re.sub(pattern, repl, body, count=1, flags=re.DOTALL)
             if result == body:

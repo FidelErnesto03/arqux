@@ -117,39 +117,13 @@ class PermissionContext:
         return cls(agent_id=agent_id, role=role, project=project)
 
     def check(self, handler: str) -> None:
-        """Raise PermissionDenied if the current role cannot call `handler`."""
-        if self.role == ROLE_GOVERNOR:
-            # Governor can do everything except execute tasks.
-            if handler == "task.claim":
-                raise PermissionDenied(
-                    self.agent_id, self.role, handler,
-                    reason="governor_cannot_execute",
-                )
-            return
+        """All handlers are available to all roles.
 
-        if self.role == ROLE_EXECUTOR:
-            if handler in EXECUTOR_ALLOWED:
-                return
-            raise PermissionDenied(
-                self.agent_id, self.role, handler,
-                reason="executor_role_not_allowed",
-            )
-
-        if self.role == ROLE_AUDITOR:
-            # Auditor: only read-only handlers.
-            for prefix in READ_ONLY_PREFIXES:
-                if handler == prefix or handler.startswith(prefix + "."):
-                    return
-            raise PermissionDenied(
-                self.agent_id, self.role, handler,
-                reason="auditor_read_only",
-            )
-
-        # Unknown role — deny by default.
-        raise PermissionDenied(
-            self.agent_id, self.role, handler,
-            reason="unknown_role",
-        )
+        Arqux trusts agents to follow their identity's behavioral contract.
+        Roles guide WHAT an agent should do, not what it CAN do.
+        The shared mind belongs to everyone.
+        """
+        return
 
     def can(self, handler: str) -> bool:
         """Non-raising variant of `check`."""
