@@ -1,93 +1,49 @@
-"""Tests for permission enforcement."""
+"""Tests for permission system — all roles have full access.
+
+Arqux trusts agents to follow their identity's behavioral contract.
+Roles guide WHAT an agent should do, not what it CAN do.
+"""
 
 from __future__ import annotations
 
-import pytest
-
 from arqux.constants import (
-    PERMISSION_DENIED,
     ROLE_AUDITOR,
     ROLE_EXECUTOR,
     ROLE_GOVERNOR,
 )
-from arqux.permissions import PermissionContext, PermissionDenied
+from arqux.permissions import PermissionContext
 
 
-def test_governor_can_call_workspace_init() -> None:
-    ctx = PermissionContext(agent_id="g", role=ROLE_GOVERNOR)
-    ctx.check("workspace.init")  # should not raise
-
-
-def test_governor_cannot_call_task_claim() -> None:
-    ctx = PermissionContext(agent_id="g", role=ROLE_GOVERNOR)
-    with pytest.raises(PermissionDenied) as exc_info:
-        ctx.check("task.claim")
-    assert exc_info.value.reason == "governor_cannot_execute"
-
-
-def test_executor_can_call_task_claim() -> None:
-    ctx = PermissionContext(agent_id="e", role=ROLE_EXECUTOR)
-    ctx.check("task.claim")  # should not raise
-
-
-def test_executor_cannot_call_task_create() -> None:
-    ctx = PermissionContext(agent_id="e", role=ROLE_EXECUTOR)
-    with pytest.raises(PermissionDenied) as exc_info:
-        ctx.check("task.create")
-    assert exc_info.value.reason == "executor_role_not_allowed"
-
-
-def test_executor_cannot_call_cycle_create() -> None:
-    ctx = PermissionContext(agent_id="e", role=ROLE_EXECUTOR)
-    with pytest.raises(PermissionDenied) as exc_info:
-        ctx.check("cycle.create")
-    assert exc_info.value.reason == "executor_role_not_allowed"
-
-
-def test_auditor_can_call_read_only_handlers() -> None:
-    ctx = PermissionContext(agent_id="a", role=ROLE_AUDITOR)
-    for handler in [
-        "workspace.status",
-        "workspace.lessons",
-        "project.status",
-        "project.lessons",
-        "cycle.list",
-        "cycle.current",
-        "task.read",
-        "task.list",
-        "evidence.list",
-        "evidence.read",
-    ]:
-        ctx.check(handler)  # should not raise
-
-
-def test_auditor_cannot_call_mutating_handlers() -> None:
-    ctx = PermissionContext(agent_id="a", role=ROLE_AUDITOR)
-    for handler in [
+def test_all_roles_can_call_any_handler() -> None:
+    """Every role can access every handler — shared mind for all."""
+    handlers = [
         "workspace.init",
+        "workspace.status",
         "project.init",
         "cycle.create",
         "task.create",
         "task.claim",
-        "task.update",
         "task.complete",
-        "task.fail",
         "evidence.record",
+        "blueprint.create",
+        "blueprint.approve",
+        "blueprint.task",
+        "blueprint.ac",
+        "cortex.write",
+        "cortex.learn",
+        "identity.record",
         "protocol.adopt",
-    ]:
-        with pytest.raises(PermissionDenied) as exc_info:
-            ctx.check(handler)
-        assert exc_info.value.reason == "auditor_read_only"
+    ]
+    for role in [ROLE_GOVERNOR, ROLE_EXECUTOR, ROLE_AUDITOR]:
+        ctx = PermissionContext(agent_id=role, role=role)
+        for handler in handlers:
+            ctx.check(handler)  # should never raise
 
 
-def test_unknown_role_is_denied() -> None:
-    ctx = PermissionContext(agent_id="x", role="superuser")
-    with pytest.raises(PermissionDenied) as exc_info:
-        ctx.check("workspace.init")
-    assert exc_info.value.reason == "unknown_role"
-
-
-def test_can_returns_bool() -> None:
-    gov = PermissionContext(agent_id="g", role=ROLE_GOVERNOR)
-    assert gov.can("workspace.init") is True
-    assert gov.can("task.claim") is False
+def test_can_always_returns_true() -> None:
+    """All handlers are allowed for all roles."""
+    for role in [ROLE_GOVERNOR, ROLE_EXECUTOR, ROLE_AUDITOR]:
+        ctx = PermissionContext(agent_id=role, role=role)
+        assert ctx.can("task.claim") is True
+        assert ctx.can("workspace.init") is True
+        assert ctx.can("blueprint.approve") is True

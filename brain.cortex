@@ -36,7 +36,7 @@ FCS:current{what:"Correct learning elevation artifact and preserve reviewed lear
 
 $3: OBJECTIVES
 
-OBJ:_{goal:"- - Prevent unsafe learning elevation writes", status:"current", success:"", survive:"work"}
+OBJ:_{goal:"- - - Prevent unsafe learning elevation writes", status:"current", success:"", survive:"work"}
 
 $4: SESSIONS
 
@@ -53,7 +53,7 @@ $7: LESSONS
 
 $8: ACTIVE_CONTEXT
 
-WRK:current{phase:"active", current:"- cycle=- cycle=- cycle=- cycle=", blocked:"no", survive:"work"}
+WRK:current{phase:"active", current:"- cycle=- cycle=- cycle=- cycle=- cycle=", blocked:"no", survive:"work"}
 
 $9: RISKS
 

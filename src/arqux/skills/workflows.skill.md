@@ -111,49 +111,54 @@ STP:w03_s{
 }
 
 
-$4: TASK LIFECYCLE (LEGACY — PREFER BLUEPRINTS)
+$4: REACTIVE WORK — TASK LIFECYCLE (URGENT SUPPORT)
 
-IDN:workflow_task{ name:"Task Lifecycle", purpose:"Legacy task workflow. Tasks are simple work items within a cycle. For complex, design-driven work, use Blueprints (w08) which provide 18-section specifications, quality gates, maturation, and cross-verification. Tasks are still supported for quick, low-complexity items that don't need full Blueprint governance.", trigger:"Governor creates a simple task that doesn't need a Blueprint." }
+IDN:workflow_task{ name:"Reactive Work — Task Lifecycle", purpose:"For URGENT/REACTIVE work: incident response, diagnostics, emergency fixes, monitoring. No pre-design — direct execution with full traceability. Tasks are NOT legacy — they are the fast path for time-critical operations where the full Blueprint maturation cycle would add unacceptable delay.", trigger:"An incident, outage, or urgent diagnostic requires immediate action." }
 
-AXM:tasks_vs_blueprints{ Tasks are for simple work items (quick fixes, notes, minor changes). Blueprints (w08) are for governed work items that require design, maturation, and cross-verification. If in doubt, use a Blueprint. }
+AXM:decision_matrix{
+  use_tasks_when:"Incident response, emergency fixes, diagnostics, monitoring, hotfixes, security patches. The work is reactive — there was no time for pre-design.",
+  use_blueprints_when:"Planned features, architectural changes, new components, refactoring, system design. The work has a pre-design phase and benefits from cyclic maturation with the Architect.",
+  rule_of_thumb:"If the Architect says 'resuelve esto YA', use Tasks. If the Architect says 'diseñemos X', use Blueprints.",
+}
+
+AXM:task_rigor{ Even urgent tasks MUST include: objective, preconditions, acceptance criteria, blockers, evidence per action, and lessons learned. Speed does not excuse lack of traceability. See T-001 in ENVX_INFRA for the canonical example. }
 
 DIAG:w04{
 @startuml
-actor "Arquitecto" as A
-participant "Governor" as GOV
-participant "Executor" as EXE
-database "brain.cortex" as BC
+actor Arquitecto
+participant Agent
 database "tasks/" as TSK
 
-A -> GOV: Crea tarea X
-GOV -> TSK: task.create(obj=..., assignee=alfred)
-TSK --> GOV: T-001 creada (status=draft)
+Arquitecto -> Agent: Incidente/urgencia
+Agent -> Agent: Evaluar: ¿requiere diseño previo?
+note right: Si NO → Tasks
+Agent -> TSK: task.create(obj, priority=high)
+TSK --> Agent: T-001 (draft)
 
-GOV -> GOV: task.claim no permitido
-note right: LIM: governor NO puede claim
+Agent -> TSK: task.claim(T-001)
+Agent -> TSK: task.update(T-001, note="in progress")
+note right: Ejecucion directa
 
-A -> EXE: Ejecuta tarea T-001
-EXE -> TSK: task.claim(T-001)
-TSK --> EXE: T-001 status=in_progress
-
-EXE -> BC: evidence.record(kind="note", payload="50%")
-EXE -> TSK: task.update(T-001, note="Mitad completada")
-
-alt Completado
-    EXE -> TSK: task.complete(T-001, evidence="...")
-    TSK --> EXE: T-001 status=done
-    BC -> BC: AUD:E_NNN en brain PULSE
-else Bloqueado
-    EXE -> TSK: task.fail(T-001, reason="...")
-    TSK --> EXE: T-001 status=blocked
-    BC -> BC: AUD:E_NNN con causa
+loop Cada accion
+  Agent -> TSK: evidence.record(kind=artifact)
 end
 
-EXE --> A: Tarea completada/bloqueada
+Agent -> TSK: task.complete(T-001, evidence)
+Agent -> Agent: identity.record(lessons)
+Agent --> Arquitecto: Diagnostico + handoff
 @enduml
 }
 
-STP:w04_s{ 1:"Governor: task.create(obj=..., assignee=...)", 2:"Executor: task.claim(task_id)", 3:"Executor: works on the task", 4:"Executor: task.update(task_id, note=...) periodically", 5:"Executor: evidence.record(kind=note, payload=...) on milestones", 6:"Executor: task.complete(task_id, evidence=...) or task.fail(task_id, reason=...)", 7:"Brain PULSE automatically records evidence" }
+STP:w04_s{
+  1:"Architect reports incident or urgent request",
+  2:"Agent evaluates: ¿requires pre-design? If NO → use Tasks",
+  3:"task.create(obj, priority=high) — includes blockers and ACs",
+  4:"task.claim and execute directly — no maturation phase needed",
+  5:"evidence.record for every action taken",
+  6:"task.complete with full evidence and lessons",
+  7:"identity.record with lessons learned",
+  handoff:"Task completed → handoff to Architect with monitoring plan if needed",
+}
 
 
 $5: IDENTITY EVOLUTION

@@ -272,3 +272,23 @@ def test_blueprint_update_preserves_section_title(workspace_root: Path, governor
     text = bp_path.read_text(encoding="utf-8")
     assert "## §1: Problem Statement" in text
     assert "## §1:\n\nUpdated problem" not in text
+
+
+def test_blueprint_update_no_header_duplication(workspace_root: Path, governor_ctx) -> None:
+    """Multiple updates to the same section must not create duplicate headers."""
+    project_dir, bp_path = _setup_blueprint(workspace_root, governor_ctx)
+
+    cwd = os.getcwd()
+    try:
+        os.chdir(project_dir)
+        blueprint.update_blueprint("BLP-001", section="§1", content="First update")
+        blueprint.update_blueprint("BLP-001", section="§1", content="Second update")
+    finally:
+        os.chdir(cwd)
+
+    text = bp_path.read_text(encoding="utf-8")
+    # The header must appear exactly once
+    assert text.count("## §1: Problem Statement") == 1
+    assert "Second update" in text
+    # Verify no raw header remnants
+    assert text.count("## §1:\n") == 0

@@ -108,7 +108,7 @@ OUT:min_status{
   profile:"OUT-MIN",
   example:"""
 OUT-MIN
-  workspace:  /home/vatrox/workspace
+  workspace:  <your-workspace>
   agent:      alfred
   role:       governor
   cycles:     0
