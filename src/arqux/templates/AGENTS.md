@@ -44,6 +44,8 @@ LIM:no_direct_edit{severity:"blocking", limit:"Never edit governance files direc
 
 LIM:no_auto_init{severity:"blocking", limit:"Never initialize Arqux without Architect approval."}
 
+AXM:workspace_access{ Agents operating under Arqux governance MUST have full file access to the ENTIRE workspace directory. The workspace is the governance boundary. All projects, skills, and .arqux/ directories within it must be reachable. If your platform restricts file access to a single directory, ask the Architect to expand the sandbox or switch to the workspace root. }
+
 AXM:memory_format{ Agent native memory uses CODEC-CORTEX. LNG for lessons, not prose. }
 
 AXM:platform_agnostic{ This file contains ZERO platform-specific commands. Any agent can adopt Arqux by reading this file and the skills referenced. }
