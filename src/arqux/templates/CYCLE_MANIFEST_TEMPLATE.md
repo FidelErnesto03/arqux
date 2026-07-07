@@ -1,7 +1,7 @@
 ---
-# Cycle Manifest Template (CYCLE_MANIFEST_TEMPLATE.md)
-# Copied by cycle.create() to create CYCLE-NNN/MANIFEST.md
-# HCORTEX format — human + machine readable
+# Plantilla de Manifiesto de Ciclo (CYCLE_MANIFEST_TEMPLATE.md)
+# Copiada por cycle.create() para crear CYCLE-NNN/MANIFEST.md
+# Formato HCORTEX — legible por humanos y máquinas
 
 cycle_id: ""
 name: ""
@@ -24,99 +24,99 @@ quality_gates@: {
 _template_ref: "CYCLE_MANIFEST_TEMPLATE.md"
 ---
 
-# Manifest: {name}
+# Manifiesto: {name}
 
-> Cycle governing document. Defines identity, scope, objectives, guidelines, and control points. Source of truth for all Blueprints within this cycle.
+> Documento rector del ciclo. Define identidad, alcance, objetivos, directrices y puntos de control. Fuente de verdad para todos los Blueprints dentro de este ciclo.
 
 ---
 
-## §1: Purpose
+## §1: Propósito
 
-_Why does this cycle exist? What problem does it address within the project?_
+_¿Por qué existe este ciclo? ¿Qué problema aborda dentro del proyecto?_
 
-**Relationship to project objectives:**
-_Which project objectives (from brain.cortex OBJ) does this cycle contribute to?_
-
-
-## §2: Scope & Limits
-
-**In scope for this cycle:**
-- _Item 1_
-- _Item 2_
-
-**Out of scope (explicitly excluded):**
-- _Item 1_
-- _Item 2_
-
-> What is out of scope must NOT be addressed by any Blueprint in this cycle.
+**Relación con los objetivos del proyecto:**
+_¿A qué objetivos del proyecto (desde brain.cortex OBJ) contribuye este ciclo?_
 
 
-## §3: Objectives
+## §2: Alcance y Límites
 
-_Concrete, measurable cycle objectives. Each Blueprint must contribute to at least one._
+**Dentro del alcance de este ciclo:**
+- _Ítem 1_
+- _Ítem 2_
 
-- [ ] **CYC-OBJ-1:** _Objective — success criterion_
-- [ ] **CYC-OBJ-2:** _Objective — success criterion_
-- [ ] **CYC-OBJ-3:** _Objective — success criterion_
+**Fuera del alcance (excluido explícitamente):**
+- _Ítem 1_
+- _Ítem 2_
 
-
-## §4: Guidelines
-
-_Operational guidelines governing all Blueprints in this cycle._
-
-1. _Guideline 1 — e.g., "Infrastructure Blueprints take priority over feature Blueprints"_
-2. _Guideline 2 — e.g., "Every Blueprint must include a PUML diagram in the design section"_
-3. _Guideline 3 — e.g., "No Blueprint closes without running all required validations"_
-4. _Guideline 4 — e.g., "Dependencies between Blueprints must be resolved before the dependent starts"_
-
-**Blueprint creation guidelines:**
-1. _Every Blueprint must reference the cycle objective it contributes to_
-2. _Critical Blueprints must include a rollback plan_
-3. _Each Blueprint must estimate its impact on the cycle's success criteria_
+> Lo que está fuera del alcance NO debe ser abordado por ningún Blueprint de este ciclo.
 
 
-## §5: Control Points
+## §3: Objetivos
 
-_Milestones, reviews, and validation points. Execution stops at each point._
+_Objetivos concretos y medibles del ciclo. Cada Blueprint debe contribuir al menos a uno._
 
-| ID | Type | Planned Date | Description | Pass Criterion |
+- [ ] **CYC-OBJ-1:** _Objetivo — criterio de éxito_
+- [ ] **CYC-OBJ-2:** _Objetivo — criterio de éxito_
+- [ ] **CYC-OBJ-3:** _Objetivo — criterio de éxito_
+
+
+## §4: Directrices
+
+_Directrices operacionales que rigen todos los Blueprints de este ciclo._
+
+1. _Directriz 1 — ej., "Los Blueprints de infraestructura tienen prioridad sobre los de funcionalidad"_
+2. _Directriz 2 — ej., "Todo Blueprint debe incluir un diagrama PUML en la sección de diseño"_
+3. _Directriz 3 — ej., "Ningún Blueprint se cierra sin ejecutar todas las validaciones requeridas"_
+4. _Directriz 4 — ej., "Las dependencias entre Blueprints deben resolverse antes de que el dependiente comience"_
+
+**Directrices para creación de Blueprints:**
+1. _Cada Blueprint debe referenciar el objetivo del ciclo al que contribuye_
+2. _Los Blueprints críticos deben incluir un plan de reversión_
+3. _Cada Blueprint debe estimar su impacto en los criterios de éxito del ciclo_
+
+
+## §5: Puntos de Control
+
+_Hitos, revisiones y puntos de validación. La ejecución se detiene en cada punto._
+
+| ID | Tipo | Fecha Planificada | Descripción | Criterio de Aprobación |
 |---|---|---|---|---|
-| CP-01 | Design Review | _YYYY-MM-DD_ | _Description_ | _What must pass?_ |
-| CP-02 | Mid-point Check | _YYYY-MM-DD_ | _Description_ | _What must pass?_ |
-| CP-03 | Final Review | _YYYY-MM-DD_ | _Description_ | _What must be validated?_ |
+| CP-01 | Revisión de Diseño | _YYYY-MM-DD_ | _Descripción_ | _¿Qué debe cumplirse?_ |
+| CP-02 | Control Intermedio | _YYYY-MM-DD_ | _Descripción_ | _¿Qué debe cumplirse?_ |
+| CP-03 | Revisión Final | _YYYY-MM-DD_ | _Descripción_ | _¿Qué debe validarse?_ |
 
-> Control points are mandatory. The governor must inform the Architect when approaching one.
+> Los puntos de control son obligatorios. El gobernador debe informar al Arquitecto al aproximarse a uno.
 
 
-## §6: Blueprints (Index)
+## §6: Blueprints (Índice)
 
-_Brief index of Blueprints assigned to this cycle. Auto-populated._
+_Índice breve de los Blueprints asignados a este ciclo. Se auto-pobla._
 
-| BLP ID | Title | Status | Priority | Objective | Governor |
+| BLP ID | Título | Estado | Prioridad | Objetivo | Gobernador |
 |---|---|---|---|---|---|
-| _BLP-NNN_ | _Title_ | _draft/ready/..._ | _critical/high/medium/low_ | _CYC-OBJ-N_ | _agent_ |
+| _BLP-NNN_ | _Título_ | _draft/ready/..._ | _critical/high/medium/low_ | _CYC-OBJ-N_ | _agente_ |
 
 
-## §7: Status & Metrics
+## §7: Estado y Métricas
 
-**Current status:** draft
-**Total Blueprints:** 0 | **Draft:** 0 | **Maturating:** 0 | **Ready:** 0 | **In Progress:** 0 | **Done:** 0
-**Progress:** 0%
-**Next control point:** _CP-NN — Date_
-**Started:** _YYYY-MM-DD_ | **Planned end:** _YYYY-MM-DD_
-
-
-## §8: Cycle Rules
-
-_Rules specific to this cycle._
-
-1. _Rule 1_
-2. _Rule 2_
+**Estado actual:** draft
+**Total Blueprints:** 0 | **Draft:** 0 | **Madurando:** 0 | **Ready:** 0 | **En Progreso:** 0 | **Done:** 0
+**Progreso:** 0%
+**Próximo punto de control:** _CP-NN — Fecha_
+**Iniciado:** _YYYY-MM-DD_ | **Fin planificado:** _YYYY-MM-DD_
 
 
-## §9: Quality Contract
+## §8: Reglas del Ciclo
 
-| Gate | Status |
+_Reglas específicas de este ciclo._
+
+1. _Regla 1_
+2. _Regla 2_
+
+
+## §9: Contrato de Calidad
+
+| Compuerta | Estado |
 |---|---|
 | has_clear_purpose | ☐ |
 | has_explicit_scope | ☐ |
@@ -125,4 +125,4 @@ _Rules specific to this cycle._
 | has_control_points | ☐ |
 | aligns_with_project | ☐ |
 
-> All gates must be ✅ before cycle.ready(). See blueprint-workflow skill, §4.1.
+> Todas las compuertas deben estar en ✅ antes de cycle.ready(). Ver blueprint-workflow skill, §4.1.
