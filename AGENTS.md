@@ -57,6 +57,7 @@ WRK:available_skills{
   skill:"identities.skill.md", purpose:"Identity system + roles: alfred, jarvis, seshat, heimdall. identity.record.",
   skill:"cortex.skill.md", purpose:"CORTEX format, HCORTEX output, native memory, PUML diagrams.",
   skill:"mcp.skill.md", purpose:"MCP server configuration (platform-agnostic JSON).",
+  skill:"diagram.skill.md", purpose:"PUML diagram creation, validation, and publishing — 3-phase protocol with checklist.",
   skill:"learning.skill.md", purpose:"Learning engine: scan, detect, elevate (LNG->KNW).",
   skill:"workflows.skill.md", purpose:"8 canonical workflows with PlantUML diagrams.",
 }
