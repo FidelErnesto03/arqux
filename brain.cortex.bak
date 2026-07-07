@@ -1,0 +1,65 @@
+$0
+
+# -- $0: MINIMAL LOCAL GLOSSARY --
+# Required: every .cortex artifact must be locally self-contained.
+# Sigil | Name | Type | Risk | Cognitive Layer | Description
+# IDN   | identity   | attrs      | B | Semantic       | Actor identity
+# DOM   | domain     | attrs      | B | Semantic       | Project/scope descriptor
+# KNW   | knowledge  | attrs      | B | Semantic       | Stable or promoted knowledge
+# CNST  | constraint | attrs      | H | Prefrontal     | Hard constraint or precondition
+# CLAIM | claim      | attrs      | M | Prefrontal     | Acceptance criterion
+# AUD   | audit      | attrs      | M | Prefrontal     | Verification/audit record
+# RSK   | risk       | attrs      | M | Prefrontal     | Identified risk with mitigation
+# FCS   | focus      | attrs      | H | Working        | Active attention anchor
+# OBJ   | objective  | attrs      | H | Working        | Active goal with success criterion
+# WRK   | work       | attrs      | B | Working        | Current execution state
+# STP   | step       | attrs      | M | Working        | Task procedure step
+# SES   | session    | attrs      | M | Episodic       | Compressed I/O/R episode
+# LNG   | lesson     | attrs      | M | Episodic       | Learned lesson or pattern
+# HDL   | handler    | attrs-pos  | M | Semantic       | Handoff descriptor
+# DESC  | description | cuerpo     | B | Semantic       | Structured textual description
+# ERR   | error      | attrs      | M | Prefrontal     | Concurrency / state info
+# BLK   | blocker    | attrs      | H | Prefrontal     | Blocking condition
+#
+# Types:
+#
+# Micro-glossary:
+
+
+$1: IDENTITY
+
+IDN:governor{level:"2", project:"unknown", path:"", governor:"anonymous", created:"2026-07-06T23:10:37Z"}
+
+$2: FOCUS
+
+FCS:current{what:"", priority:"medium", status:"current", survive:"min"}
+
+$3: OBJECTIVES
+
+
+$4: SESSIONS
+
+
+$5: HANDOFFS
+
+
+$6: PULSE
+
+
+$7: LESSONS
+
+
+$8: ACTIVE_CONTEXT
+
+WRK:current{phase:"active", current:"- cycle=- cycle=", blocked:"no", survive:"work"}
+
+$9: RISKS
+
+
+$10: KNOWLEDGE
+
+KNW:knowledge{topic:"project_knowledge", content:"SES:current input=\"\" output=\"\" outcome=\"elevated_outcome\" date=\"\"", status:"active"}
+
+$11: CONCURRENCY
+
+ERR:concurrency{version:"0", last_writer:"", updated:"2026-07-06T23:10:37Z"}

@@ -1,28 +1,33 @@
----
-version: 1.0.0
-product: arqux
-governor: bootstrap
-created: 2026-07-04T10:00:00Z
-status: active
----
+$0
 
-# WORKSPACE
+# -- $0: MINIMAL LOCAL GLOSSARY --
+# Required: every .cortex artifact must be locally self-contained.
+# Sigil | Name | Type | Risk | Cognitive Layer | Description
+# IDN   | identity   | attrs      | B | Semantic       | Actor / workspace identity
+# KNW   | knowledge  | attrs      | B | Semantic       | Stable or promoted knowledge
+# CYC   | cycle      | attrs      | B | Working        | Active cycle reference
+#
+# Types:
+# attrs = canonical type
+# relación = canonical type
+# attrs-pos = canonical type
+# bloque = canonical type
+# cuerpo = canonical type
+#
+# Micro-glossary:
+# cur=current pln=planned fut=future blk=blocked
+# min=minimum rec=recovery wrk=work full=full
+# ok=success fail=failure part=partial
 
-This workspace governs the development of Arqux itself.
-Per the dogfooding rule (§8 of the founding brief), every feature of this
-framework is implemented as a governed task in `cycles/`.
 
-## BOOTSTRAP
-The first agent to call `workspace.init` on this directory became the
-governor by default. Subsequent agents must call `protocol.adopt` with
-a role assigned by the governor.
+$1: MANIFEST
 
-## CYCLES
-- `CYCLE-00` — initial skeleton + placeholder rename support (this cycle)
-- `CYCLE-01` — workspace + project + cycle handlers (Phase 1)
-- `CYCLE-02` — task handlers (Phase 2)
-- `CYCLE-03` — identities and permissions (Phase 3)
-- `CYCLE-04` — installability and CLI (Phase 4)
-- `CYCLE-05` — AGENTS.md unification (Phase 5)
-- `CYCLE-06` — tests and publication (Phase 6)
-- `CYCLE-99` — release v1.0 (Phase 7)
+IDN:product{name:"ARQUX", version:"1.0.0", governor:"Alfred", created:"2026-07-04", status:"current", survive:"work", desc:"Framework de gobernanza para proyectos de software. Dogfooding activo."}
+
+$2: CYCLES
+
+CYC:plan{}
+
+$3: BOOTSTRAP
+
+KNW:bootstrap{topic:"Bootstrap", content:"Primer agente en llamar workspace.init fue governor por defecto. Agentes subsecuentes usan protocol.adopt con rol asignado por governor.", status:"current", survive:"min"}

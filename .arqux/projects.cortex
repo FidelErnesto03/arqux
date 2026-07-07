@@ -1,9 +1,24 @@
----
-count: 1
-projects:
-  - arqux
----
+$0
 
-# PROJECTS
+# -- $0: MINIMAL LOCAL GLOSSARY --
+# Required: every .cortex artifact must be locally self-contained.
+# Sigil | Name | Type | Risk | Cognitive Layer | Description
+# PRJ   | project    | attrs      | B | Semantic       | Project reference
+#
+# Types:
+# attrs = canonical type
+# relación = canonical type
+# attrs-pos = canonical type
+# bloque = canonical type
+# cuerpo = canonical type
+#
+# Micro-glossary:
+# cur=current pln=planned fut=future blk=blocked
+# min=minimum rec=recovery wrk=work full=full
+# ok=success fail=failure part=partial
 
-- arqux at /home/z/my-project/download/__PRODUCT_NAME__
+
+$1: PROJECTS
+
+PRJ:arqux{path:"/home/vatrox/workspace/ARQUX", domain:"Framework Arqux (dogfooding)", survive:"work"}
+PRJ:banco_familiar{path:"/home/vatrox/workspace/Banco Familiar", domain:"Banca / Core Bancario", survive:"work"}

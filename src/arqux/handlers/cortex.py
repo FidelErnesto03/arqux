@@ -314,6 +314,7 @@ def learn_elevate_handler(
     path: str | None = None,
     *,
     apply: bool = False,
+    confirm_hash: str | None = None,
     ctx: PermissionContext | None = None,
 ) -> CortexOUT:
     """Elevate a learning candidate (dry-run or apply).
@@ -327,9 +328,14 @@ def learn_elevate_handler(
     if root is None:
         return CortexOUT.error("no project initialized", code="NOT_FOUND")
 
-    result = elevate_candidate(root, candidate_id, dry_run=not apply)
+    result = elevate_candidate(root, candidate_id, dry_run=not apply, confirm_hash=confirm_hash)
     if "error" in result:
-        return CortexOUT.error(result["error"], code="ELEVATE_ERROR")
+        return CortexOUT.error(
+            result["error"],
+            code="ELEVATE_ERROR",
+            preview_hash=result.get("preview_hash"),
+            diff=result.get("diff"),
+        )
 
     if result.get("mode") == "dry_run":
         return CortexOUT.work(
@@ -337,6 +343,8 @@ def learn_elevate_handler(
             candidate=candidate_id,
             mode="dry_run",
             diff=result.get("diff", ""),
+            preview_hash=result.get("preview_hash", ""),
+            validation_errors=result.get("validation_errors", []),
         )
 
     return CortexOUT.work(
@@ -344,4 +352,5 @@ def learn_elevate_handler(
         candidate=candidate_id,
         mode="applied",
         diff=result.get("diff", ""),
+        preview_hash=result.get("preview_hash", ""),
     )

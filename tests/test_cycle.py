@@ -66,6 +66,9 @@ def test_cycle_close_changes_status(workspace_root: Path, governor_ctx) -> None:
         os.chdir(project_dir)
         cycle.create_cycle(name="A")
         result = cycle.close_cycle(cycle_id="CYCLE-01", summary="done")
-        assert "status=closed" in result.to_text()
+        text = result.to_text()
+        assert "status=closed" in text
+        assert "learning_scan=" in text
+        assert "learning_candidates=" in text
     finally:
         os.chdir(cwd)

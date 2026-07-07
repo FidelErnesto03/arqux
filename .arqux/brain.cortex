@@ -1,0 +1,83 @@
+$0
+
+# -- $0: MINIMAL LOCAL GLOSSARY --
+# Required: every .cortex artifact must be locally self-contained.
+# Sigil | Name | Type | Risk | Cognitive Layer | Description
+# IDN   | identity   | attrs      | B | Semantic       | Actor identity
+# DOM   | domain     | attrs      | B | Semantic       | Project/scope descriptor
+# KNW   | knowledge  | attrs      | B | Semantic       | Stable or promoted knowledge
+# AUD   | audit      | attrs      | M | Prefrontal     | Verification/audit record
+# RSK   | risk       | attrs      | M | Prefrontal     | Identified risk with mitigation
+# FCS   | focus      | attrs      | H | Working        | Active attention anchor
+# OBJ   | objective  | attrs      | H | Working        | Active goal with success criterion
+# WRK   | work       | attrs      | B | Working        | Current execution state
+# SES   | session    | attrs      | M | Episodic       | Compressed I/O/R episode
+# LNG   | lesson     | attrs      | M | Episodic       | Learned lesson or pattern
+# ERR   | error      | attrs      | M | Prefrontal     | Concurrency / state info
+#
+# Types:
+# attrs = canonical type
+# relación = canonical type
+# attrs-pos = canonical type
+# bloque = canonical type
+# cuerpo = canonical type
+#
+# Micro-glossary:
+# cur=current pln=planned fut=future blk=blocked
+# min=minimum rec=recovery wrk=work full=full
+# ok=success fail=failure part=partial
+
+
+$1: IDENTITY
+
+IDN:governor{level:"2", project:"ARQUX", path:"/home/vatrox/workspace/ARQUX", governor:"Alfred", created:"2026-07-04", survive:"work"}
+DOM:domain{name:"Framework Arqux", purpose:"Framework de gobernanza para proyectos de software. Dogfooding activo. 55 handlers en 9 modulos.", survive:"work"}
+
+$2: FOCUS
+
+FCS:current{what:"Corregir datos en brain.cortex post revision del Arquitecto", priority:"high", status:"current", survive:"work"}
+
+$3: OBJECTIVES
+
+OBJ:governance_migration{goal:"Migrar governance ARQUX de YAML a CODEC-CORTEX nativo", status:"current", survive:"work", success:"brain.cortex poblado con datos correctos, bind de Alfred como governor completado"}
+OBJ:data_accuracy{goal:"Mantener datos precisos en brain.cortex — verificar contra codigo fuente antes de escribir", status:"current", survive:"work", success:"RISKS y KNW reflejan estado real del proyecto"}
+
+$4: SESSIONS
+
+SES:alfred{input:"Arquitecto solicita actualizar control y governance de ARQUX", output:"brain.cortex creado, archivos .cortex migrados a CODEC-CORTEX, agents.cortex limpio, Alfred bindeado como governor", role:"governor", outcome:"ok", date:"2026-07-06"}
+SES:alfred_revision{input:"Arquitecto revisa y encuentra datos incorrectos (24 handlers, rename-product legacy, falta bind, no HCORTEX)", output:"Correccion de RISKS, actualizacion KNW, LNG:verify_before_write registrada", role:"governor", outcome:"ok", date:"2026-07-06"}
+
+$5: HANDOFFS
+
+
+$6: PULSE
+
+AUD:brain_cortex_created{event:"brain.cortex_created", evidence:"arqux.cortex_write", task:"governance_migration", kind:"governance", agent:"Alfred", result:"ok", date:"2026-07-06"}
+AUD:alfred_bound{event:"alfred_bound_to_ARQUX", evidence:"arqux.project.bind", task:"governance_migration", kind:"governance", agent:"Alfred", result:"ok", date:"2026-07-06"}
+AUD:data_correction{event:"data_corrected_post_review", evidence:"arqux.cortex_write brain.cortex", task:"data_accuracy", kind:"governance", agent:"Alfred", result:"ok", date:"2026-07-06"}
+
+$7: LESSONS
+
+LNG:verify_before_write{type:"process", cause:"Poblé RISKS/KNW con datos desactualizados sin verificar codigo", lesson:"Siempre verificar contra el codigo fuente (grep/search) antes de escribir datos en brain.cortex. No asumir documentacion pasada vigente.", prevention:"Antes de escribir RISKS o KNW, hacer busqueda en codigo para confirmar numeros y referencias.", survive:"work"}
+
+$8: ACTIVE_CONTEXT
+
+WRK:current{phase:"active", current:"Corrigiendo brain.cortex tras revision del Arquitecto", blocked:"no", survive:"work"}
+
+$9: RISKS
+
+RSK:placeholder_name{risk:"Nombre 'arqux' es placeholder — debe renombrarse antes de publicacion v1.0", impact:"high", mitigation:"Definir nueva estrategia de rename (rename-product.py es legacy). CYCLE-99.", status:"current", survive:"work"}
+RSK:handler_doc_outdated{risk:"Documentacion (docstrings, skills) dice 24 handlers pero hay 55", impact:"medium", mitigation:"Actualizado por el Arquitecto: __init__.py (11 modulos) y handlers.skill.md (total:55 con breakdown).", status:"done", survive:"min"}
+RSK:codec_normalization{risk:"CODEC-CORTEX normaliza/reestructura el contenido al escribir — lo que se envia no es lo que queda", impact:"medium", mitigation:"Siempre leer el archivo post-write para verificar que el contenido final es correcto.", status:"current", survive:"work"}
+
+$10: KNOWLEDGE
+
+KNW:stack{topic:"Stack tecnologico", content:"Python 3.12+, Click CLI, MCP server", status:"current", survive:"work"}
+KNW:handlers{topic:"Handlers", content:"55 handlers MCP en 9 modulos: workspace(3), project(5), cycle(4), task(7), evidence(3), protocol(4), cortex(9), blueprint(15), skill(5)", status:"current", survive:"work"}
+KNW:architecture{topic:"Arquitectura", content:"CLI (Click) -> MCP handlers -> CODEC-CORTEX persistence. Dogfooding activo.", status:"current", survive:"work"}
+KNW:dependencies{topic:"Dependencias", content:"Python 3.12+, pip, pytest. CODEC-CORTEX format, MCP interface.", status:"current", survive:"work"}
+KNW:conventions{topic:"Convenciones", content:"Type hints. 55 handlers max. handlers.skill.md para firmas. naming: arquitectura_*. pytest en tests/.", status:"current", survive:"work"}
+
+$11: CONCURRENCY
+
+ERR:concurrency{version:"3", last_writer:"alfred", updated:"2026-07-06"}
