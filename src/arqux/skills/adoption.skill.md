@@ -73,11 +73,28 @@ AXM:session_context_first{ The FIRST response in a governed workspace MUST inclu
 
 STP:session_context{
   0_session_resume:"Call session.resume() to check for a previous SES. If found, include in context: last agent, summary, active BLPs, pending tasks, decisions, gaps. The SES complements brain.cortex — it does not replace it.",
-  1_workspace_level:"If cwd is workspace root (no project): list projects from meta-brain with minimal description (name, last active, status). Ask which project to work on.",
+  1_workspace_level:"If cwd is workspace root (no project): present the WORKSPACE DASHBOARD (see template below). List projects from meta-brain with minimal description. Ask which project to work on.",
   2_project_level:"If cwd is inside a project: read brain.cortex. Present: project name, active cycle, blueprint count + status, current focus (FCS), recent lessons (LNG). If session.resume() returned a SES, append the handoff context. Ask what to work on.",
   3_cycle_level:"If inside .arqux/cycles/CYCLE-NNN: present cycle manifest summary + all blueprints with status. Ask which blueprint to mature or execute.",
-   4_format:"HCORTEX vertical layout. Key fields, one-line summary, open question. See cortex.skill.md S4.",
-   5_audit_w10:"Run proactive audit (w10): check for (a) blueprint status drift (BLPs in review/blocked >48h), (b) LNG backlog (lessons not elevated), (c) stale session SES >72h, (d) handler doc mismatch against registry. Present a one-line GAP summary. If no gaps, state 'Governance health: clean.' This keeps the audit loop on every session start without requiring a separate w10 workflow call.",
+  4_format:"HCORTEX vertical layout. Key fields, one-line summary, open question. See cortex.skill.md S4.",
+  5_w10_audit:"Run automatic w10 proactive audit on session start. Report gaps with severity if any found.",
+}
+
+AXM:workspace_dashboard{ The first response at workspace level MUST follow this template:
+
+⬡[agent_name] Workspace: <path>
+
+| Dimensión | Estado |
+|---|---|
+| Proyectos | N gobernados (M con ciclo activo) |
+| Agentes | lista de agentes activos |
+| MCP | Operativo / CLI fallback |
+| Foco | FCS del meta-brain |
+| Sesión previa | SES resume o "Nueva sesión" |
+
+— ¿En qué proyecto trabajamos, Arquitecto?
+}
+   "Run proactive audit (w10): check for (a) blueprint status drift (BLPs in review/blocked >48h), (b) LNG backlog (lessons not elevated), (c) stale session SES >72h, (d) handler doc mismatch against registry. Present a one-line GAP summary. If no gaps, state 'Governance health: clean.' This keeps the audit loop on every session start without requiring a separate w10 workflow call.",
 }
 
 
