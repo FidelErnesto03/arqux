@@ -398,6 +398,17 @@ _register(_spec(
     },
 ))
 _register(_spec(
+    "cortex.render.validate_file", cortex.render_validate_file_handler,
+    "Validate all PUML blocks in a file. Returns D1-D5 checklist.",
+    {
+        "type": "object",
+        "properties": {
+            "path": {"type": "string"},
+        },
+        "required": ["path"],
+    },
+))
+_register(_spec(
     "cortex.render.diagram", cortex.render_diagram_handler,
     "Render a PlantUML diagram to SVG/PNG. Requires plantuml.jar.",
     {

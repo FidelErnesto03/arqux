@@ -218,6 +218,75 @@ def record_lesson_handler(
 
 
 # ---------------------------------------------------------------------------
+# cortex.render.validate_file
+# ---------------------------------------------------------------------------
+
+
+def render_validate_file_handler(
+    path: str,
+    ctx: PermissionContext | None = None,
+) -> CortexOUT:
+    """Validate all PUML blocks in a file (batch).
+
+    Equivalent to DIALECT's guide.validate_file. Scans a .md file for
+    @startuml/@enduml blocks and validates each against PlantUML parser.
+    Returns a report with pass/fail per diagram + D1-D5 checklist.
+    """
+    from pathlib import Path
+    import re
+
+    target = Path(path)
+    if not target.exists():
+        return CortexOUT.error(f"file not found: {path}", code="NOT_FOUND")
+
+    try:
+        text = target.read_text(encoding="utf-8")
+    except Exception as exc:
+        return CortexOUT.error(str(exc), code="READ_ERROR")
+
+    blocks = re.findall(r"@startuml\n(.*?)@enduml", text, re.DOTALL)
+    if not blocks:
+        return CortexOUT.work(
+            "validate_file ok — 0 PUML blocks found",
+            path=path, total=0, passed=0, failed=0,
+        )
+
+    from ..plantuml import render_puml
+
+    passed = 0
+    failed = 0
+    failures = []
+    for i, block in enumerate(blocks):
+        ok, result = render_puml(f"@startuml\n{block}\n@enduml", format="svg")
+        if ok:
+            passed += 1
+        else:
+            failed += 1
+            failures.append({"index": i + 1, "error": str(result)[:200]})
+
+    # D1-D5 checklist
+    checks = {
+        "D1_delimiters": text.count("@startuml") == text.count("@enduml"),
+        "D2_metadata": bool(re.search(r"@name:", text)),
+        "D3_syntax": failed == 0,
+        "D5_prohibited": not re.search(
+            r"skinparam\s+global|^box\s|newpage|autonumber", text, re.MULTILINE
+        ),
+    }
+    all_pass = all(checks.values())
+
+    return CortexOUT.work(
+        f"validate_file {'PASS' if all_pass else 'FAIL'} — {passed}/{passed + failed} diagrams ok",
+        path=path,
+        total=passed + failed,
+        passed=passed,
+        failed=failed,
+        checks=checks,
+        failures=failures if failures else None,
+    )
+
+
+# ---------------------------------------------------------------------------
 # cortex.render.diagram
 # ---------------------------------------------------------------------------
 
