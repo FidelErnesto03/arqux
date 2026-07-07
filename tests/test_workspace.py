@@ -12,7 +12,7 @@ def test_workspace_init_creates_governance_directory(workspace_root: Path, gover
     result = workspace.init_workspace(path=str(workspace_root), ctx=governor_ctx)
     gov_dir = workspace_root / ARQUX_DIR
     assert gov_dir.exists()
-    assert (gov_dir / "manifest.cortex").exists()
+    assert (gov_dir / "meta-brain.cortex").exists()
     assert (gov_dir / "meta-brain.cortex").exists()
     assert (gov_dir / "projects.cortex").exists()
     assert "workspace.init ok" in result.to_text()
@@ -36,7 +36,7 @@ def test_workspace_status_returns_ok_after_init(workspace_root: Path, governor_c
     try:
         os.chdir(workspace_root)
         result = workspace.status()
-        assert "manifest=true" in result.to_text()
+        assert "meta_brain=true" in result.to_text()
     finally:
         os.chdir(cwd)
 

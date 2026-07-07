@@ -469,10 +469,10 @@ class WorkspaceRoot:
 
 
 def find_workspace_root(start: Path | str | None = None) -> Path | None:
-    """Walk up from `start` (default: cwd) looking for `.<product>/manifest.cortex`."""
+    """Walk up from `start` (default: cwd) looking for `.<product>/meta-brain.cortex`."""
     cursor = Path(start or os.getcwd()).resolve()
     target_dir = ARQUX_DIR
-    target_file = MANIFEST_CORTEX
+    target_file = META_BRAIN_CORTEX
 
     while True:
         candidate = cursor / target_dir / target_file
