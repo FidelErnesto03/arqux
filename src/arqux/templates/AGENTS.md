@@ -52,7 +52,9 @@ AXM:memory_format{ Agent native memory uses CODEC-CORTEX. LNG for lessons, not p
 AXM:platform_agnostic{ This file contains ZERO platform-specific commands. Any agent can adopt Arqux by reading this file and the skills referenced. }
 
 
-$4: SKILL REFERENCE (load on demand from .arqux/skills/)
+$4: SKILL REFERENCE
+
+AXM:skill_resolution{ Skills live in the workspace .arqux/skills/ directory. To load a skill: walk UP from cwd until you find .arqux/, then read .arqux/skills/<skill>.md. Do NOT assume the path — always resolve it from the workspace root found during DETECT. }
 
 WRK:available_skills{
   skill:"adoption.skill.md", purpose:"First-time adoption: conversational 3-phase protocol + session start context.",
