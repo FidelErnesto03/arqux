@@ -43,9 +43,10 @@ def init_workspace(
     """Initialize a workspace root.
 
     Creates `.<product>/` at the given path (default: cwd) with:
-        - manifest.cortex / manifest.md
-        - meta-brain.cortex / meta-brain.md
-        - projects.cortex / projects.md
+        - meta-brain.cortex / meta-brain.md (cross-project knowledge)
+
+    Does NOT overwrite existing meta-brain. Does NOT create manifest or
+    projects index — all workspace state lives in meta-brain.
 
     The first agent to call this on a fresh workspace is implicitly promoted
     to governor (bootstrap case).
@@ -61,15 +62,6 @@ def init_workspace(
     if ctx.role != ROLE_GOVERNOR:
         ctx = promote_first_governor(ctx.agent_id)
 
-    manifest = {
-        "version": ARQUX_VERSION,
-        "product": PRODUCT_NAME,
-        "governor": ctx.agent_id,
-        "created": _now_iso(),
-        "status": "active",
-    }
-    write_manifest(gov_dir, manifest)
-
     # Copy AGENTS.md template to workspace root for agent discovery.
     agents_tmpl = Path(__file__).resolve().parent.parent / "templates" / "AGENTS.md"
     if agents_tmpl.exists():
@@ -77,13 +69,16 @@ def init_workspace(
         if not agents_dst.exists():
             agents_dst.write_text(agents_tmpl.read_text(encoding="utf-8"), encoding="utf-8")
 
-    meta_brain = {
-        "level": 1,
-        "workspace": target.name,
-        "lessons": [],
-        "knowledge": [],
-    }
-    write_meta_brain(gov_dir, meta_brain)
+    # Only create meta-brain if it doesn't already exist (non-destructive).
+    meta_brain_path = gov_dir / META_BRAIN_CORTEX
+    if not meta_brain_path.exists():
+        meta_brain = {
+            "level": 1,
+            "workspace": target.name,
+            "lessons": [],
+            "knowledge": [],
+        }
+        write_meta_brain(gov_dir, meta_brain)
 
     write_projects_index(gov_dir, [])
 
@@ -110,6 +105,10 @@ def init_workspace(
         templates_dst = gov_dir / "templates"
         templates_dst.mkdir(exist_ok=True)
         for src in templates_src.iterdir():
+            # AGENTS.md lives only at workspace root, not in templates/.
+            # task.* templates are legacy (replaced by Blueprints).
+            if src.name in ("AGENTS.md", "task.cortex", "task.md"):
+                continue
             dst = templates_dst / src.name
             if not dst.exists():
                 dst.write_text(src.read_text(encoding="utf-8"), encoding="utf-8")
@@ -140,7 +139,7 @@ def status(verbose: bool = False, path: str | None = None, ctx: PermissionContex
     if root is None:
         return CortexOUT.error("workspace not initialized", code="NOT_FOUND")
 
-    manifest_path = root / MANIFEST_CORTEX
+    manifest_path = root / META_BRAIN_CORTEX  # workspace root is .arqux/
     projects_path = root / PROJECTS_CORTEX
     meta_brain_path = root / META_BRAIN_CORTEX
 
