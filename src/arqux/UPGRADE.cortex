@@ -2,10 +2,15 @@ $0
 
 # -- $0: ARQUX UPGRADE GLOSSARY --
 # IDN | identity   | attrs      | B | Semantic       | Procedure identity
+IDN:identity{type:attrs, risk:B, cortex:Semantic, desc:"Procedure identity"}
 # STP | step       | attrs      | M | Working        | Upgrade step
+STP:step{type:attrs, risk:M, cortex:Working, desc:"Upgrade step"}
 # WRK | work       | attrs      | B | Working        | Current upgrade state
+WRK:work{type:attrs, risk:B, cortex:Working, desc:"Current upgrade state"}
 # RSK | risk       | attrs      | M | Prefrontal     | Upgrade risk
+RSK:risk{type:attrs, risk:M, cortex:Prefrontal, desc:"Upgrade risk"}
 # LNG | lesson     | attrs      | M | Episodic       | Post-upgrade learning
+LNG:lesson{type:attrs, risk:M, cortex:Episodic, desc:"Post-upgrade learning"}
 #
 # Types: attrs, cuerpo
 
