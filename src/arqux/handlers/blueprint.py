@@ -163,6 +163,17 @@ def _read_blueprint(path: Path) -> tuple[dict[str, Any], str] | None:
 # blueprint.create
 # ---------------------------------------------------------------------------
 
+def _find_workspace_template(root: Path, template_name: str) -> Path | None:
+    """Walk up from root to find .arqux/templates/<template_name>."""
+    cursor = root
+    while True:
+        tmpl = cursor / ARQUX_DIR / "templates" / template_name
+        if tmpl.exists():
+            return tmpl
+        if cursor.parent == cursor:
+            return None
+        cursor = cursor.parent
+
 
 def create_blueprint(
     obj: str,
@@ -205,8 +216,10 @@ def create_blueprint(
     bp_dir.mkdir(parents=True, exist_ok=True)
     bp_id = _next_blueprint_id(bp_dir)
 
-    # Copy template from package templates (always available after install).
-    template_src = Path(__file__).resolve().parent.parent / "templates" / BLUEPRINT_TEMPLATE
+    # Try workspace templates first, fallback to package templates.
+    template_src = _find_workspace_template(root, BLUEPRINT_TEMPLATE)
+    if template_src is None:
+        template_src = Path(__file__).resolve().parent.parent / "templates" / BLUEPRINT_TEMPLATE
 
     if not template_src.exists():
         return CortexOUT.error(f"template {BLUEPRINT_TEMPLATE} not found. Reinstall arqux.", code="NOT_FOUND")
