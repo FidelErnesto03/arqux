@@ -208,13 +208,37 @@ def record_lesson_handler(
     except Exception as exc:  # noqa: BLE001
         return CortexOUT.error(str(exc), code="IDENTITY_UPDATE_ERROR")
 
-    return CortexOUT.work(
+    # --- auto-trigger: sync LNG to brain + scan (non-blocking per AC-05) ---
+    scan_candidates = 0
+    try:
+        from ..state import find_project_root, read_brain, write_brain_sections, append_to_brain_section, _bump_concurrency
+
+        root = find_project_root(start=path or ".")
+        if root is not None:
+            project_dir = root.parent
+            fm, sections, _ = read_brain(project_dir)
+            lesson_line = f"LNG:{name}{{type:\"{kind}\", cause:\"{escaped_cause}\", lesson:\"{escaped_lesson}\"}}"
+            append_to_brain_section(sections, "LESSONS", lesson_line)
+            _bump_concurrency(fm, agent)
+            write_brain_sections(project_dir, fm, sections)
+
+            from ..learning import scan_brain
+            scan = scan_brain(project_dir, verbose=True)
+            scan_candidates = len(scan.get("candidates", []))
+    except Exception:  # noqa: BLE001
+        pass  # Non-blocking: scan failure never blocks identity.record
+
+    result = CortexOUT.work(
         f"identity.record ok agent={agent} lesson={name} kind={kind}",
         agent=agent,
         kind=kind,
         lesson=name,
         file=str(identity_file),
     )
+    if scan_candidates:
+        result.fields["hint"] = f"{scan_candidates} learning candidate(s) detected — run cortex.learn.elevate to review"
+        result.fields["learning_candidates"] = scan_candidates
+    return result
 
 
 # ---------------------------------------------------------------------------

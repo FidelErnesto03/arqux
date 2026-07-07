@@ -381,10 +381,21 @@ def define_blueprint(
 
 def mature_blueprint(
     bp_id: str,
+    mode: str = "async",
     path: str | None = None,
     ctx: PermissionContext | None = None,
 ) -> CortexOUT:
-    """Enter maturation phase. State → maturing."""
+    """Enter maturation phase. State → maturing.
+
+    Mode 'async' (default): cyclic iteration with Architect.
+    Mode 'live': synchronous co-design with immediate feedback.
+    """
+    if mode not in ("live", "async"):
+        return CortexOUT.error(
+            f"invalid mode={mode!r} (must be 'live' or 'async')",
+            code="INVALID_ARGS",
+        )
+
     root = _resolve_root(path)
     if root is None:
         return CortexOUT.error("no project initialized", code="NOT_FOUND")
@@ -401,14 +412,30 @@ def mature_blueprint(
         )
 
     fm["status"] = BP_MATURING
+    fm["mature_mode"] = mode
     fm["updated_at"] = _now_iso()
     _write_blueprint(bp_path, fm, body)
 
+    if mode == "live":
+        instruction = (
+            "Live co-design mode active. Iterate sections immediately "
+            "with Architect feedback — no waiting between cycles. "
+            "Refine each section until Architect approves, "
+            "then call blueprint.gate() for quality gates."
+        )
+    else:
+        instruction = (
+            "Cyclic maturation with Architect begins. "
+            "Present each section, wait for feedback, adjust. "
+            "Once all quality gates pass, call blueprint.ready()."
+        )
+
     return CortexOUT.work(
-        f"blueprint.mature ok id={bp_id}",
+        f"blueprint.mature ok id={bp_id} mode={mode}",
         blueprint_id=bp_id,
         status=BP_MATURING,
-        instruction="Cyclic maturation with Architect begins. Load blueprint-workflow skill §7 for 6 quality gates. Present each gate to Architect until all pass, then call blueprint.ready().",
+        mode=mode,
+        instruction=instruction,
     )
 
 
