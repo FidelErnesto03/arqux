@@ -33,7 +33,7 @@ STP:config_locations{
 STP:mcp_json{
   format:"MCP JSON. Key and fields depend on platform:",
   standard:"Key: mcpServers. Fields: command, args, env. (Claude, Continue, Cursor)",
-  opencode:"Key: mcp. Fields: type:local, command, args, enabled:true, environment. (OpenCode CLI)",
+  opencode:"Key: mcp. Fields: type:local, command (array), enabled:true, environment. (OpenCode CLI)",
   example_standard:{
     mcpServers:{
       arqux:{
@@ -50,8 +50,7 @@ STP:mcp_json{
     mcp:{
       arqux:{
         type:"local",
-        command:"arqux",
-        args:["serve"],
+        command:["arqux", "serve"],
         enabled:true,
         environment:{
           ARQUX_AGENT_ID:"alfred",
@@ -60,7 +59,7 @@ STP:mcp_json{
       }
     }
   },
-  note:"Restart after config. Standard uses env, OpenCode uses environment."
+  note:"OpenCode: command es array [comando, args...]. Standard (Claude/Cursor): command es string + args array aparte + env (no environment)."
 }
 
 
