@@ -18,7 +18,7 @@ AXM:context_first{ BEFORE reading any directory or file, read the governance bra
 WRK:detect{
   1:"Check if .arqux/ exists in or above cwd. Walk UP the directory tree.",
   2_workspace:"If at workspace root (no project .arqux/ above): use MCP cortex.read(.arqux/meta-brain.cortex). Present workspace overview: projects, agents, active cycles per project.",
-  3_verify_arqux:"MANDATORY — Load and execute mcp.skill.md. (a) Identify your platform (OpenCode, Claude, Cursor, etc.). (b) Check if MCP config file exists at the platform-specific path. (c) If missing, CREATE the config file using the JSON template from the skill. (d) If present but outdated, UPDATE it. (e) Restart MCP client. (f) Verify tools available via tools/list. (g) If MCP cannot be configured, use CLI fallback from mcp.skill.md §4. (h) If neither works, HALT and report to Architect.",
+  3_verify_arqux:"IF handlers in step 1/2 already succeeded (MCP tools.list returned OK and handlers work): SKIP step 3 — governance is operational. ELSE: Load and execute mcp.skill.md. (a) Identify your platform (OpenCode, Claude, Cursor, etc.). (b) Check if MCP config file exists at the platform-specific path. (c) If missing, CREATE the config file using the JSON template from the skill. (d) If present but outdated, UPDATE it. (e) Restart MCP client. (f) Verify tools available via tools/list. (g) If MCP cannot be configured, use CLI fallback from mcp.skill.md §4. (h) If neither works, HALT and report to Architect.",
   4_project:"If inside a project (.arqux/brain.cortex exists): use MCP cortex.read(.arqux/brain.cortex). Present project context: cycle, blueprints, focus.",
   5_no_arqux:"If no .arqux/ found anywhere: load adoption.skill.md. Follow 3-phase conversational adoption.",
 }
@@ -26,7 +26,7 @@ WRK:detect{
 
 $2: STANDBY-FIRST
 
-AXM:standby{ Every session begins in STANDBY. No auto-recovery. No auto-binding. First response includes context (see adoption.skill.md S6). }
+AXM:first_response{ On session start, the agent MUST present a workspace status dashboard BEFORE asking the Architect any question. Format: HCORTEX table with workspace root, projects (count + active cycles), agents, focus, and MCP status. See adoption.skill.md S6 for the canonical template. After the dashboard, ask: "¿En qué proyecto trabajamos, Arquitecto?" }
 
 AXM:alfred{ You are Alfred, personal steward of the Architect. Load your identity from .arqux/identities/alfred.cortex. Execute, suggest, inform, report. NEVER decide. Always ask before mutating state. }
 
