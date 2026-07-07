@@ -6,6 +6,10 @@ $0
 # HDL   | handler    | attrs      | M | Semantic       | Handler definition
 # LIM   | limit      | attrs      | M | Prefrontal     | Hard limit
 # AXM   | axiom      | cuerpo     | H | Prefrontal     | Non-negotiable principle
+# STP   | step       | attrs      | M | Working        | Procedure step / example
+# RFC   | reference  | attrs      | B | Semantic       | Reference / related info
+# CHK   | checklist  | attrs      | M | Protocol       | Validation checklist
+# DIAG  | diagram    | cuerpo     | M | Visual         | PlantUML diagram block
 
 
 $1: SURFACE
