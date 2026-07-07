@@ -90,3 +90,30 @@ def test_learn_elevate_handler_passes_confirm_hash(tmp_path: Path, monkeypatch) 
         "dry_run": False,
         "confirm_hash": "abc123",
     }
+
+
+def test_learn_validation_rejects_unknown_sigil() -> None:
+    problems = _validate_elevation_payload(
+        "XYZ",
+        {"topic": "test", "content": "some content"},
+        "+XYZ:test{topic:test}",
+    )
+    assert "unexpected elevation target: XYZ" in problems
+
+
+def test_learn_validation_accepts_valid_ses_to_lng() -> None:
+    problems = _validate_elevation_payload(
+        "SES",
+        {"input": "task", "output": "result", "outcome": "completed"},
+        "+SES:current{input:task, output:result, outcome:completed}",
+    )
+    assert len(problems) == 0
+
+
+def test_learn_validation_rejects_generic_content() -> None:
+    problems = _validate_elevation_payload(
+        "KNW",
+        {"topic": "elevated_outcome", "content": "[]"},
+        '+KNW:test{topic:"elevated_outcome", content:"[]"}',
+    )
+    assert len(problems) > 0

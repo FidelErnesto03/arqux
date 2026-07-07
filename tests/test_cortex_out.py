@@ -65,3 +65,19 @@ def test_profile_classmethod() -> None:
     out = CortexOUT.profile(OUT_MIN, "hello", key="value")
     assert out.profile == OUT_MIN
     assert "key=value" in out.to_text()
+
+
+def test_dict_value_formatting() -> None:
+    out = CortexOUT.work("test", meta={"a": "1", "b": "2"})
+    text = out.to_text()
+    assert "meta=a:1;b:2" in text
+
+
+def test_empty_fields() -> None:
+    out = CortexOUT.work("no fields")
+    assert out.to_text() == "OUT-WORK no fields"
+
+
+def test_error_with_code_only() -> None:
+    out = CortexOUT.error(message="failed")
+    assert out.to_text() == "OUT-ERROR failed"
