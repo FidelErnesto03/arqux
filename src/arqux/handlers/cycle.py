@@ -30,6 +30,7 @@ from ..state import (
     write_cortex_pair,
 )
 from ..constants import (
+    ARQUX_DIR,
     CYCLES_DIR,
     CYCLE_CLOSED,
     CYCLE_OPEN,
@@ -43,6 +44,17 @@ from ..constants import (
     TASK_OPEN,
     TASK_REVIEW,
 )
+
+def _find_workspace_template(root: Path, template_name: str) -> Path | None:
+    """Walk up from root to find .arqux/templates/<template_name>."""
+    cursor = root
+    while True:
+        tmpl = cursor / ARQUX_DIR / "templates" / template_name
+        if tmpl.exists():
+            return tmpl
+        if cursor.parent == cursor:
+            return None
+        cursor = cursor.parent
 
 
 def create_cycle(
@@ -60,8 +72,10 @@ def create_cycle(
     cdir = cycle_dir(root, cycle_id)
     cdir.mkdir(parents=True, exist_ok=True)
 
-    # Use CYCLE_MANIFEST_TEMPLATE.md from package templates (always available after install).
-    template_path = Path(__file__).resolve().parent.parent / "templates" / "CYCLE_MANIFEST_TEMPLATE.md"
+    # Try workspace templates first, fallback to package templates.
+    template_path = _find_workspace_template(root, "CYCLE_MANIFEST_TEMPLATE.md")
+    if template_path is None:
+        template_path = Path(__file__).resolve().parent.parent / "templates" / "CYCLE_MANIFEST_TEMPLATE.md"
 
     if template_path and template_path.exists():
         raw = template_path.read_text(encoding="utf-8")
