@@ -18,7 +18,7 @@ AXM:context_first{ BEFORE reading any directory or file, read the governance bra
 WRK:detect{
   1:"Check if .arqux/ exists in or above cwd. Walk UP the directory tree.",
   2_workspace:"If at workspace root (no project .arqux/ above): use MCP cortex.read(.arqux/meta-brain.cortex). Present workspace overview: projects, agents, active cycles per project.",
-  3_verify_arqux:"Verify and configure Arqux connectivity: (a) Load mcp.skill.md for MCP server JSON config. (b) Install/verify MCP server in stdio mode: 'arqux serve'. (c) Confirm MCP tools are available (list_tools includes arqux_ handlers). (d) If MCP cannot be configured, use CLI fallback: 'arqux call <handler> <key=value...>'. (e) If neither works, report to Architect and halt.",
+  3_verify_arqux:"MANDATORY — Load and execute mcp.skill.md. (a) Configure MCP server in stdio mode using the JSON config from the skill. (b) Restart MCP client. (c) Verify tools available. (d) If MCP cannot be configured, use CLI fallback from mcp.skill.md §4. (e) If neither works, HALT and report to Architect. Do NOT proceed without Arqux connectivity.",
   4_project:"If inside a project (.arqux/brain.cortex exists): use MCP cortex.read(.arqux/brain.cortex). Present project context: cycle, blueprints, focus.",
   5_no_arqux:"If no .arqux/ found anywhere: load adoption.skill.md. Follow 3-phase conversational adoption.",
 }
