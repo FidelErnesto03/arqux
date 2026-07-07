@@ -21,6 +21,15 @@ STP:env_config{
 
 $2: MCP JSON SETUP
 
+AXM:config_first{ The agent MUST create the MCP config file if it does not exist. The config file location depends on the platform. Without it, OpenCode/Claude/Cursor will not detect the MCP server. }
+
+STP:config_locations{
+  opencode:"Workspace root: <workspace>/opencode.json (priority). Also: ~/.config/opencode/opencode.jsonc (fallback).",
+  claude:"~/.config/claude/claude_desktop_config.json (mcpServers key).",
+  cursor:"~/.cursor/mcp.json (mcpServers key).",
+  generic:"Platform-specific. See mcp.skill.md for JSON format.",
+}
+
 STP:mcp_json{
   format:"MCP JSON. Key and fields depend on platform:",
   standard:"Key: mcpServers. Fields: command, args, env. (Claude, Continue, Cursor)",
