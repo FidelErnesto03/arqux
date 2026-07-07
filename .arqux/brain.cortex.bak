@@ -1,0 +1,58 @@
+$0
+
+# -- $0: MINIMAL LOCAL GLOSSARY --
+# Required: every .cortex artifact must be locally self-contained.
+# Sigil | Name | Type | Risk | Cognitive Layer | Description
+#
+# Types:
+# relación = canonical type
+# bloque = canonical type
+# cuerpo = canonical type
+# attrs-pos = canonical type
+# attrs = canonical type
+#
+# Micro-glossary:
+# cur=current pln=planned fut=future blk=blocked
+# min=minimum rec=recovery wrk=work full=full
+# ok=success fail=failure part=partial
+
+
+$1: IDENTITY
+
+IDN:governor{level:"2", project:"ARQUX", path:"/home/vatrox/workspace/ARQUX", governor:"alfred", created:"2026-07-07T19:50:08Z"}
+
+$2: FOCUS
+
+FCS:current{what:"Cerrar CYCLE-01 — completar BLP-012 (review) y BLP-013 (draft)", priority:"high", status:"current", survive:"work"}
+
+$3: OBJECTIVES
+
+OBJ:close_cycle_01{goal:"14 blueprints done/cancelled", status:"current", success:"all verified", survive:"work"}
+
+$4: SESSIONS
+
+
+$5: HANDOFFS
+
+
+$6: PULSE
+
+
+$7: LESSONS
+
+LNG:test{type:"test", cause:"test", lesson:"test", prevention:"test"}
+
+$8: ACTIVE_CONTEXT
+
+WRK:current{phase:"standby", current:"awaiting instructions", blocked:"no", survive:"work"}
+
+$9: RISKS
+
+
+$10: KNOWLEDGE
+
+KNW:arqux_handlers{topic:"ARQUX", content:"62 MCP handlers, 100 tests", status:"active"}
+
+$11: CONCURRENCY
+
+ERR:concurrency{version:"13", last_writer:"alfred", updated:"2026-07-07"}

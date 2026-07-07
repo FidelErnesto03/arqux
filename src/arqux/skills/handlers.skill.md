@@ -4,13 +4,14 @@ $0
 # Sigil | Name | Type | Risk | Cognitive Layer | Description
 # IDN   | identity   | attrs      | B | Semantic       | Actor / workspace identity
 # HDL   | handler    | attrs-pos  | M | Semantic       | Handler definition
+# STP   | step       | attrs      | M | Working        | Procedure step
 # LIM   | limit      | attrs      | M | Prefrontal     | Hard limit
 # AXM   | axiom      | cuerpo     | H | Prefrontal     | Non-negotiable principle
 
 
 $1: SURFACE
 
-IDN:surface{ total:57, governance:39, utility:16, blueprint:17, skill:5, session:2 }
+IDN:surface{ total:63, governance:39, utility:16, blueprint:17, skill:6, session:3 }
 
 AXM:handlers_only{ Governance state is mutated exclusively via MCP handlers. No direct file editing of .cortex governance files. The handler is the interface. The file is the storage. }
 

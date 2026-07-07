@@ -780,7 +780,7 @@ _register(_spec(
 ))
 
 
-# --- skill management handlers ---
+# --- skill management handlers (6 handlers) ---
 _register(_spec(
     "skill.import", skill.import_skill,
     "Acquire a skill from external source, store original in originals/.",
@@ -834,6 +834,24 @@ _register(_spec(
             "path": {"type": "string"},
         },
         "required": ["name", "adaptation_id"],
+    },
+))
+_register(_spec(
+    "skill.edit", skill.edit_skill,
+    "Edit (read, write, or section-edit) a skill file in .arqux/skills/. "
+    "Without content: returns the skill content. "
+    "With content but no section: atomically replaces the entire skill file. "
+    "With content and section: replaces only that CORTEX section (e.g. $0, $1, $2.1). "
+    "This is the governed alternative to direct file editing of skills.",
+    {
+        "type": "object",
+        "properties": {
+            "name": {"type": "string", "description": "Skill name (e.g. handlers)"},
+            "content": {"type": "string", "description": "New content. Omit to read current content."},
+            "section": {"type": "string", "description": "Section ID to replace (e.g. $0, $1, $2.1). Only valid with content."},
+            "path": {"type": "string", "description": "Path to workspace/project root"},
+        },
+        "required": ["name"],
     },
 ))
 _register(_spec(
