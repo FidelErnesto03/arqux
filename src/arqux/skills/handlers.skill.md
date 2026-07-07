@@ -116,7 +116,7 @@ $10: BLUEPRINT (17 handlers)
 
 HDL:blueprint.create{ signature:"create(obj, cycle?, path?)", purpose:"Create a new Blueprint from BLP_TEMPLATE.md in draft state" }
 HDL:blueprint.define{ signature:"define(bp_id, pre?, scope?, exclusions?, mandatory_rules?, acceptance_criteria?, procedure?, validations?, technical_design?, operational_design?, risks?, blocking_rule?, path?)", purpose:"Fill Blueprint definition sections. State → defined" }
-HDL:blueprint.mature{ signature:"mature(bp_id, path?)", purpose:"Enter maturation phase. Cyclic Architect interaction" }
+HDL:blueprint.mature{ signature:"mature(bp_id, mode?, path?)", purpose:"Enter maturation phase. mode='async' (default) for cyclic iteration, mode='live' for synchronous co-design" }
 HDL:blueprint.ready{ signature:"ready(bp_id, path?)", purpose:"Architect declares Blueprint ready. State → ready" }
 HDL:blueprint.assign{ signature:"assign(bp_id, executor, path?)", purpose:"Governor assigns executor to Blueprint" }
 HDL:blueprint.claim{ signature:"claim(bp_id, path?)", purpose:"Executor claims Blueprint. State → in_progress" }

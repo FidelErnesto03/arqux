@@ -14,7 +14,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any, Callable
 
-from . import cycle, evidence, project, protocol, task, workspace, cortex, skill, blueprint
+from . import cycle, evidence, project, protocol, session, task, workspace, cortex, skill, blueprint
 
 
 @dataclass(frozen=True)
@@ -353,6 +353,44 @@ _register(_spec(
     {"type": "object", "properties": {}},
 ))
 
+# Session module (3 handlers)
+_register(_spec(
+    "session.close", session.close,
+    "Close the current session and write a portable SES entry to brain PULSE.",
+    {
+        "type": "object",
+        "properties": {
+            "summary": {"type": "string", "description": "Short human-readable summary of what was accomplished."},
+            "blps": {"type": "string", "description": "Comma-separated active blueprint IDs (e.g. BLP-006,BLP-007)."},
+            "tasks": {"type": "string", "description": "Comma-separated pending task IDs."},
+            "decisions": {"type": "string", "description": "Comma-separated key decisions made."},
+            "gaps": {"type": "string", "description": "Comma-separated detected gaps or pending items."},
+            "path": {"type": "string", "description": "Path to project root. Defaults to cwd."},
+        },
+        "required": ["summary"],
+    },
+))
+_register(_spec(
+    "session.resume", session.resume,
+    "Read the last SES entry from brain PULSE and restore the context.",
+    {
+        "type": "object",
+        "properties": {
+            "path": {"type": "string", "description": "Path to project root. Defaults to cwd."},
+        },
+    },
+))
+_register(_spec(
+    "session.status", session.status,
+    "Read SES metadata without restoring full context.",
+    {
+        "type": "object",
+        "properties": {
+            "path": {"type": "string", "description": "Path to project root. Defaults to cwd."},
+        },
+    },
+))
+
 # --- Utility handlers (outside governance budget) ---------------------------
 #
 # These handlers do NOT count toward the 24-handler governance budget.
@@ -532,11 +570,12 @@ _register(_spec(
 ))
 _register(_spec(
     "blueprint.mature", blueprint.mature_blueprint,
-    "Enter maturation phase. Cyclic Architect interaction begins.",
+    "Enter maturation phase. Mode 'live' for synchronous co-design, 'async' (default) for cyclic iteration.",
     {
         "type": "object",
         "properties": {
             "bp_id": {"type": "string"},
+            "mode": {"type": "string", "enum": ["live", "async"], "default": "async", "description": "Maturation mode: 'live' for synchronous co-design, 'async' for cyclic iteration."},
             "path": {"type": "string"},
         },
         "required": ["bp_id"],

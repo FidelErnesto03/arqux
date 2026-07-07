@@ -66,13 +66,14 @@ STP:govern{
 
 $6: SESSION START — RETURNING TO A GOVERNED WORKSPACE
 
-IDN:session_start{ purpose:"Protocol for starting a session in an already-governed workspace. The agent reads brain.cortex and presents a context summary.", when:".arqux/ is detected in or above cwd." }
+IDN:session_start{ purpose:"Protocol for starting a session in an already-governed workspace. The agent reads brain.cortex and presents a context summary. If a previous SES exists, session.resume() restores the context.", when:".arqux/ is detected in or above cwd." }
 
 AXM:session_context_first{ The FIRST response in a governed workspace MUST include context from brain.cortex. Never just a greeting. The Architect opens with a word, the agent responds with awareness. }
 
 STP:session_context{
+  0_session_resume:"Call session.resume() to check for a previous SES. If found, include in context: last agent, summary, active BLPs, pending tasks, decisions, gaps. The SES complements brain.cortex — it does not replace it.",
   1_workspace_level:"If cwd is workspace root (no project): list projects from meta-brain with minimal description (name, last active, status). Ask which project to work on.",
-  2_project_level:"If cwd is inside a project: read brain.cortex. Present: project name, active cycle, blueprint count + status, current focus (FCS), recent lessons (LNG). Ask what to work on.",
+  2_project_level:"If cwd is inside a project: read brain.cortex. Present: project name, active cycle, blueprint count + status, current focus (FCS), recent lessons (LNG). If session.resume() returned a SES, append the handoff context. Ask what to work on.",
   3_cycle_level:"If inside .arqux/cycles/CYCLE-NNN: present cycle manifest summary + all blueprints with status. Ask which blueprint to mature or execute.",
   4_format:"HCORTEX vertical layout. Key fields, one-line summary, open question. See cortex.skill.md S4.",
 }
