@@ -56,7 +56,6 @@ $4: SKILL REFERENCE (load on demand from .arqux/skills/)
 WRK:available_skills{
   skill:"adoption.skill.md", purpose:"First-time adoption: conversational 3-phase protocol + session start context.",
   skill:"handlers.skill.md", purpose:"62 MCP handlers with signatures and examples.",
-  skill:"identities.skill.md", purpose:"Identity system + roles: alfred, jarvis, seshat, heimdall. identity.record.",
   skill:"cortex.skill.md", purpose:"CORTEX format, HCORTEX output, native memory, PUML diagrams.",
   skill:"mcp.skill.md", purpose:"MCP server configuration (platform-agnostic JSON).",
   skill:"diagram.skill.md", purpose:"PUML diagram creation, validation, and publishing — 3-phase protocol with checklist.",
