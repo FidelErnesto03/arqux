@@ -403,3 +403,103 @@ STP:w08_closure{
   4:"Elevation candidates (LNG→KNW) proposed for Architect review",
   key_rule:"Every closed cycle feeds the brain. Knowledge compounds over time."
 }
+
+
+$9: PAIRED DESIGN
+
+IDN:workflow_paired{ name:"Paired Design", purpose:"Formal workflow for synchronous co-design sessions between Architect and Agent. Covers preparation, live design (via BLP-008 mode=live), and handoff to maturation or execution.", trigger:"Architect says: 'Disenemos X juntos', 'Hagamos paired design de Y', or similar co-design intent." }
+
+AXM:paired_requires_architect_present{ Paired design REQUIRES the Architect to be present in the session. If the Architect goes offline, the session falls back to normal async maturation (w08 §8.3). The agent MUST NOT continue paired design without the Architect. }
+
+DIAG:w09{
+@startuml
+title w09 — Paired Design Flow
+
+actor Arquitecto
+participant Agent
+database "brain.cortex" as BC
+database "BLP-NNN.md" as BLP
+
+== Fase 1: Preparacion ==
+Arquitecto -> Agent: "Disenemos X juntos"
+Agent -> BC: Cargar contexto: FCS, OBJ, KNW, LNG
+Agent -> BC: Buscar patrones y disenos previos
+Agent --> Arquitecto: "Contexto listo. Secciones clave?"
+
+== Fase 2: Diseno (BLP-008 mode=live) ==
+Agent -> BLP: blueprint.create(obj=X, cycle)
+note right: BLP en draft
+
+loop Co-diseno vivo
+  Agent -> Arquitecto: Propuesta de seccion
+  Arquitecto -> Agent: Feedback inmediato
+  Agent -> BLP: blueprint.update(section)
+end
+
+== Fase 3: Transicion ==
+Agent -> BLP: blueprint.mature(mode=live) + blueprint.ready()
+Agent --> Arquitecto: "BLP listo. ¿Ejecutamos o seguimos?"
+@enduml
+}
+
+STP:w09_s{
+  1_prepare:"Architect declares co-design intent: 'Disenemos X juntos'",
+  2_prepare:"Agent loads brain.cortex: FCS, OBJ, KNW, LNG relevantes al tema",
+  3_prepare:"Agent presents summary to Architect before starting",
+  4_design:"blueprint.create(obj=X, cycle) → BLP en draft",
+  5_design:"blueprint.mature(mode=live) → maduracion sincrona activa",
+  6_design:"Loop: proponer seccion → recibir feedback inmediato → blueprint.update(section)",
+  7_design:"Minimum output: §1, §2, §4, §6, §12 poblados (6+ sections)",
+  8_transition:"Architect declares ready → blueprint.ready() → state = ready",
+  9_transition:"BLP listo para ejecucion o maduracion async adicional",
+  key_rule:"NUNCA continuar paired design sin el Arquitecto presente. Si se ausenta → w08 async.",
+  ref:"BLP-008 para modo live, w08 §4 para decision task vs blueprint."
+}
+
+
+$10: PROACTIVE AUDIT
+
+IDN:workflow_audit{ name:"Proactive Audit", purpose:"Periodic lightweight health check of governed projects. Two tiers: user audit (<500 tokens, any user) and developer audit (full dogfooding, framework maintainers). Read-only — never modifies state.", trigger:"Session start (automatic via adoption.skill.md §6), periodic cron, or Architect: 'audita el proyecto'." }
+
+AXM:audit_read_only{ The audit is STRICTLY read-only. It reads brain.cortex, counts handlers, verifies skills — it NEVER writes, creates, or modifies any file. If the audit would modify state, HALT_AND_REPORT. }
+
+DIAG:w10{
+@startuml
+title w10 — Proactive Audit Flow
+
+actor Arquitecto
+participant Agent
+database "brain.cortex" as BC
+database "Project" as PRJ
+database "handlers.skill.md" as HS
+
+== Tier 1: USER AUDIT (default) ==
+Agent -> BC: Leer KNW, RSK, FCS — datos vigentes?
+Agent -> BC: Contar LNGs sin KNW elevado
+Agent -> BC: Verificar estados de ciclos
+Agent -> BC: Verificar Blueprints stuck
+Agent --> Arquitecto: Gap report (<500 tokens) o silencio
+
+== Tier 2: DEVELOPER AUDIT (dogfooding) ==
+Agent -> HS: Handler count documentado
+Agent -> PRJ: Contar handlers reales en src/
+Agent -> HS: Verificar skills vs realidad
+Agent -> PRJ: Revisar permisos
+Agent --> Arquitecto: Gap report completo con severidad
+@enduml
+}
+
+STP:w10_s{
+  trigger:"Automatic (session start), periodic (cron), or manual ('audita el proyecto')",
+  1_user_health:"Brain health: KNW, RSK, FCS — ¿datos vigentes o stale? Verificar con grep contra codigo fuente",
+  2_user_backlog:"Learning backlog: contar LNGs sin KNW correspondiente en KNOWLEDGE",
+  3_user_cycles:"Cycle health: ciclos abiertos sin avance, ciclos cerrados sin LESSONS",
+  4_user_blueprints:"Blueprint health: BLP stuck en maturing sin activity >7d",
+  5_user_report:"Generar gap report con severidad (HIGH/MEDIUM/LOW), <500 tokens. Sin gaps → silencio.",
+  6_dev_handlers:"Handler count: handlers.skill.md vs handler_count() vs src/ count",
+  7_dev_skills:"Skill verification: skills documentados vs skills reales en .arqux/skills/",
+  8_dev_permissions:"Permission review: restrictions vs actual usage patterns",
+  9_dev_report:"Full gap report con todas las areas",
+  key_rule:"READ ONLY. Nunca modificar estado. Reporte sin gaps = silencio.",
+  output:"Gap report: ID, area, descripcion, severidad, recomendacion. Sin gaps → sin output.",
+}
