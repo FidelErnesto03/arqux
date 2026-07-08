@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "arqux"
-version = "0.3.0"
+version = "0.3.1"
 description = "Enterprise Agent Infrastructure. Governance framework for AI agents with behavioral contracts, identity handoff, and automatic knowledge elevation."
 readme = "README.md"
 license = "Apache-2.0"

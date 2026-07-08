@@ -1,8 +1,8 @@
-# ⬡ ArqUX v0.3.0
+# ⬡ ArqUX v0.3.1
 
 **Enterprise Agent Infrastructure.**
 
-[![Version](https://img.shields.io/badge/version-0.3.0-blue)](https://pypi.org/project/arqux/)
+[![Version](https://img.shields.io/badge/version-0.3.1-blue)](https://pypi.org/project/arqux/)
 [![License](https://img.shields.io/badge/license-MPL--2.0-green)](LICENSE)
 [![Python](https://img.shields.io/badge/python-3.10%2B-blue)](https://www.python.org/)
 [![BLPs](https://img.shields.io/badge/BLPs-22%20in%20CYCLE--01-orange)](https://github.com/FidelErnesto03/arqux)
@@ -134,7 +134,7 @@ Not for afternoon experiments. For teams putting AI agents into production with 
 
 ## 🗺️ Roadmap
 
-### v0.3.0 — Foundation (current)
+### v0.3.x — Foundation (current)
 - Governance framework with 71 MCP handlers and 22 BLPs in CYCLE-01
 - CORTEX format with sigils, validation, and automatic elevation
 - Multi-identity model with binding behavioral contracts
