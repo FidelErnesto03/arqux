@@ -178,49 +178,63 @@ def record_lesson_handler(
             )
 
     try:
-        text = identity_file.read_text(encoding="utf-8")
+        from ..state import crud_add
 
         # Generate a lesson name from the lesson text.
         name = re.sub(r"[^a-z0-9]", "_", lesson.lower().split()[0])[:30] or "lesson"
 
-        # Build the LNG entry.
-        escaped_lesson = lesson.replace('"', '\\"')
-        escaped_cause = cause.replace('"', '\\"')
-        entry = f'LNG:{name}{{type:"{kind}", cause:"{escaped_cause}", lesson:"{escaped_lesson}"}}'
+        # Build the LNG entry value as a structured dict.
+        value = {"type": kind, "cause": cause, "lesson": lesson}
 
-        # Append after $5: BEHAVIORAL LESSONS section (or before $6 if no lessons yet).
-        if "$5: BEHAVIORAL LESSONS" in text:
-            # Find the end of section 5 and insert before section 6.
-            sec5_end = text.find("\n$6:")
-            if sec5_end == -1:
-                sec5_end = len(text)
-            text = text[:sec5_end] + f"\n{entry}\n" + text[sec5_end:]
-        else:
-            # No behavioral lessons section — append before $6 or at end.
-            sec6_pos = text.find("\n$6:")
-            if sec6_pos != -1:
-                insert_at = text.rfind("\n", 0, sec6_pos) + 1
-                text = text[:insert_at] + f"\n$5: BEHAVIORAL LESSONS\n\n{entry}\n" + text[insert_at:]
+        # Use crud_add for atomic, validated insertion.
+        result = crud_add(
+            identity_file,
+            "$5", "LNG", name, value,
+            create_section=True,
+            force=True,
+        )
+        if "error" in result:
+            # Non-bypassable errors (pre-existing identity file issues).
+            # Fall back to direct string append.
+            raise_ = result.get("non_bypassable")
+            if not raise_:
+                return CortexOUT.error(result["error"], code="CRUD_ERROR")
+            text = identity_file.read_text(encoding="utf-8")
+            escaped_lesson = lesson.replace('"', '\\"')
+            escaped_cause = cause.replace('"', '\\"')
+            entry = f'LNG:{name}{{type:"{kind}", cause:"{escaped_cause}", lesson:"{escaped_lesson}"}}'
+            if "$5:" in text:
+                sec5_end = text.find("\n$6:")
+                if sec5_end == -1:
+                    sec5_end = len(text)
+                text = text[:sec5_end] + f"\n{entry}\n" + text[sec5_end:]
             else:
-                text += f"\n\n$5: BEHAVIORAL LESSONS\n\n{entry}\n"
-
-        identity_file.write_text(text, encoding="utf-8")
+                sec6_pos = text.find("\n$6:")
+                if sec6_pos != -1:
+                    insert_at = text.rfind("\n", 0, sec6_pos) + 1
+                    text = text[:insert_at] + f"\n$5: BEHAVIORAL LESSONS\n\n{entry}\n" + text[insert_at:]
+                else:
+                    text += f"\n\n$5: BEHAVIORAL LESSONS\n\n{entry}\n"
+            identity_file.write_text(text, encoding="utf-8")
     except Exception as exc:  # noqa: BLE001
         return CortexOUT.error(str(exc), code="IDENTITY_UPDATE_ERROR")
 
     # --- auto-trigger: sync LNG to brain + scan (non-blocking per AC-05) ---
     scan_candidates = 0
     try:
-        from ..state import find_project_root, read_brain, write_brain_sections, append_to_brain_section, _bump_concurrency
+        from ..state import find_project_root, read_brain, crud_add, _bump_concurrency
 
         root = find_project_root(start=path or ".")
         if root is not None:
             project_dir = root.parent
-            fm, sections, _ = read_brain(project_dir)
-            lesson_line = f"LNG:{name}{{type:\"{kind}\", cause:\"{escaped_cause}\", lesson:\"{escaped_lesson}\"}}"
-            append_to_brain_section(sections, "LESSONS", lesson_line)
-            _bump_concurrency(fm, agent)
-            write_brain_sections(project_dir, fm, sections)
+            brain_path = project_dir / ".arqux" / "brain.cortex"
+            if brain_path.exists():
+                crud_add(
+                    brain_path,
+                    "$7", "LNG", name,
+                    {"type": kind, "cause": cause, "lesson": lesson},
+                    create_section=True,
+                )
 
             from ..learning import scan_brain
             scan = scan_brain(project_dir, verbose=True)
@@ -446,4 +460,200 @@ def learn_elevate_handler(
         mode="applied",
         diff=result.get("diff", ""),
         preview_hash=result.get("preview_hash", ""),
+    )
+
+
+# ---------------------------------------------------------------------------
+# cortex.entry.* — generic .cortex entry CRUD via CODEC-CORTEX
+# ---------------------------------------------------------------------------
+
+
+def entry_get_handler(
+    path: str,
+    selector: str,
+    ctx: PermissionContext | None = None,
+) -> CortexOUT:
+    """Read entries matching a CORTEX selector from a .cortex file."""
+    from ..state import crud_read
+
+    try:
+        result = crud_read(path, selector)
+    except FileNotFoundError:
+        return CortexOUT.error(f"file not found: {path}", code="NOT_FOUND")
+    except Exception as exc:
+        return CortexOUT.error(str(exc), code="READ_ERROR")
+
+    return CortexOUT.work(
+        f"entry.get ok path={path} selector={selector} count={len(result['entries'])}",
+        path=path,
+        selector=selector,
+        count=len(result["entries"]),
+        entries=result["entries"],
+    )
+
+
+def entry_add_handler(
+    path: str,
+    section: str,
+    sigil: str,
+    name: str,
+    value: str,
+    *,
+    create_section: bool = False,
+    force: bool = False,
+    ctx: PermissionContext | None = None,
+) -> CortexOUT:
+    """Add a new entry to a .cortex file."""
+    from ..state import crud_add
+
+    try:
+        result = crud_add(path, section, sigil, name, value, create_section=create_section, force=force)
+    except FileNotFoundError:
+        return CortexOUT.error(f"file not found: {path}", code="NOT_FOUND")
+    except Exception as exc:
+        return CortexOUT.error(str(exc), code="ADD_ERROR")
+
+    if "error" in result:
+        return CortexOUT.error(result["error"], code="CRUD_ERROR")
+    return CortexOUT.work(
+        f"entry.add ok path={path} {sigil}:{name} in {section}",
+        path=path, section=section, sigil=sigil, name=name,
+        bytes_written=result.get("bytes_written"),
+        backup=result.get("backup"),
+    )
+
+
+def entry_update_handler(
+    path: str,
+    selector: str,
+    *,
+    set_: str | None = None,
+    replace_body: str | None = None,
+    append: bool = False,
+    force: bool = False,
+    ctx: PermissionContext | None = None,
+) -> CortexOUT:
+    """Update an entry selected by a CORTEX selector.
+
+    For attrs entries: pass ``set_`` as JSON key:value pairs (e.g. ``status:done,priority:high``).
+    For cuerpo entries: pass ``replace_body`` with the new body text.
+    """
+    from ..state import crud_update
+
+    # Parse set_ from key:val format
+    set_dict = None
+    if set_:
+        import json as _json
+        try:
+            # Try JSON format first: key:"val", key:"val2"
+            set_dict = _json.loads(f"{{{set_}}}")
+        except _json.JSONDecodeError:
+            # Fallback: parse raw key:val,key2:val2
+            try:
+                set_dict = {}
+                for pair in set_.split(","):
+                    pair = pair.strip()
+                    if ":" not in pair:
+                        continue
+                    k, v = pair.split(":", 1)
+                    k = k.strip().strip('"').strip("'")
+                    v = v.strip().strip('"').strip("'")
+                    set_dict[k] = v
+            except Exception:
+                return CortexOUT.error(f"invalid set_ format: {set_}", code="INVALID_ARGS")
+
+    try:
+        result = crud_update(path, selector, set_=set_dict, replace_body=replace_body, append=append, force=force)
+    except FileNotFoundError:
+        return CortexOUT.error(f"file not found: {path}", code="NOT_FOUND")
+    except Exception as exc:
+        return CortexOUT.error(str(exc), code="UPDATE_ERROR")
+
+    if "error" in result:
+        return CortexOUT.error(result["error"], code="CRUD_ERROR")
+    return CortexOUT.work(
+        f"entry.update ok path={path} selector={selector}",
+        path=path, selector=selector,
+        bytes_written=result.get("bytes_written"),
+        backup=result.get("backup"),
+    )
+
+
+def entry_delete_handler(
+    path: str,
+    selector: str,
+    *,
+    force: bool = False,
+    ctx: PermissionContext | None = None,
+) -> CortexOUT:
+    """Delete an entry matching a CORTEX selector from a .cortex file."""
+    from ..state import crud_delete
+
+    try:
+        result = crud_delete(path, selector, force=force)
+    except FileNotFoundError:
+        return CortexOUT.error(f"file not found: {path}", code="NOT_FOUND")
+    except Exception as exc:
+        return CortexOUT.error(str(exc), code="DELETE_ERROR")
+
+    if "error" in result:
+        return CortexOUT.error(result["error"], code="CRUD_ERROR")
+    return CortexOUT.work(
+        f"entry.delete ok path={path} selector={selector}",
+        path=path, selector=selector,
+        bytes_written=result.get("bytes_written"),
+        backup=result.get("backup"),
+    )
+
+
+def entry_move_handler(
+    path: str,
+    selector: str,
+    to_section: str,
+    *,
+    force: bool = False,
+    ctx: PermissionContext | None = None,
+) -> CortexOUT:
+    """Move an entry between sections in a .cortex file."""
+    from ..state import crud_move
+
+    try:
+        result = crud_move(path, selector, to_section, force=force)
+    except FileNotFoundError:
+        return CortexOUT.error(f"file not found: {path}", code="NOT_FOUND")
+    except Exception as exc:
+        return CortexOUT.error(str(exc), code="MOVE_ERROR")
+
+    if "error" in result:
+        return CortexOUT.error(result["error"], code="CRUD_ERROR")
+    return CortexOUT.work(
+        f"entry.move ok path={path} selector={selector} to={to_section}",
+        path=path, selector=selector, to_section=to_section,
+        bytes_written=result.get("bytes_written"),
+        backup=result.get("backup"),
+    )
+
+
+def entry_list_handler(
+    path: str,
+    *,
+    section: str | None = None,
+    sigil: str | None = None,
+    ctx: PermissionContext | None = None,
+) -> CortexOUT:
+    """List entries in a .cortex file, optionally filtered by section or sigil."""
+    from ..state import crud_list
+
+    try:
+        result = crud_list(path, section=section, sigil=sigil)
+    except FileNotFoundError:
+        return CortexOUT.error(f"file not found: {path}", code="NOT_FOUND")
+    except Exception as exc:
+        return CortexOUT.error(str(exc), code="LIST_ERROR")
+
+    return CortexOUT.work(
+        f"entry.list ok path={path} count={len(result['entries'])}",
+        path=path, section=section, sigil=sigil,
+        count=len(result["entries"]),
+        entries=result["entries"],
     )

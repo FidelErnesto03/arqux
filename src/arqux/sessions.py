@@ -13,9 +13,40 @@ from .state import (
     _bump_concurrency,
     _now_iso,
     append_to_brain_section,
+    crud_add,
+    crud_update,
+    find_project_root,
     read_brain,
     write_brain_sections,
 )
+
+
+def _brain_cortex_path(project_root: Path) -> Path:
+    """Resolve the brain.cortex path for direct crud operations."""
+    root = find_project_root(start=str(project_root))
+    if root is None:
+        return project_root / ".arqux" / "brain.cortex"
+    return root / "brain.cortex"
+
+
+def _bump_brain_concurrency(brain_path: Path, agent_id: str) -> None:
+    """Bump the ERR:concurrency version after a mutation."""
+    from .state import crud_update, crud_read
+    try:
+        result = crud_read(str(brain_path), "$11/ERR:concurrency")
+        entries = result.get("entries", [])
+        if entries:
+            val = dict(entries[0].get("value", {}))
+            try:
+                cur = int(val.get("version", "0"))
+            except (ValueError, TypeError):
+                cur = 0
+            val["version"] = str(cur + 1)
+            val["last_writer"] = agent_id
+            val["updated"] = _now_iso()
+            crud_update(str(brain_path), "$11/ERR:concurrency", set_=val, force=True)
+    except Exception:
+        pass
 
 
 def add_session_to_brain(
@@ -25,15 +56,19 @@ def add_session_to_brain(
 ) -> str:
     """Add a session entry to the brain's SESSIONS section.
 
-    Returns the rendered session line.
+    Returns session summary line.
     """
     ts = _now_iso()
-    line = f"- [{ts}] agent={agent_id} role={role} status=active"
-    fm, sections, _ = read_brain(project_root)
-    append_to_brain_section(sections, BRAIN_SECTION_SESSIONS, line)
-    _bump_concurrency(fm, agent_id)
-    write_brain_sections(project_root, fm, sections)
-    return line
+    brain_path = _brain_cortex_path(project_root)
+    crud_add(
+        brain_path, "$4", "SES", agent_id.replace("-", "_"),
+        {"date": ts, "agent": agent_id, "role": role, "status": "active",
+         "input": f"session start for {agent_id}", "output": "session active", "outcome": "active"},
+        create_section=True, force=True,
+    )
+    # Bump concurrency version
+    _bump_brain_concurrency(brain_path, agent_id)
+    return f"- [{ts}] agent={agent_id} role={role} status=active"
 
 
 def remove_session_from_brain(
@@ -77,12 +112,13 @@ def append_handoff(
 ) -> str:
     """Append a handoff entry to the brain's HANDOFFS section.
 
-    Returns the rendered handoff line.
+    Returns handoff summary line.
     """
     ts = _now_iso()
-    line = f"- [{ts}] {from_agent} -> {to_agent} task={task_id} :: {note}"
-    fm, sections, _ = read_brain(project_root)
-    append_to_brain_section(sections, BRAIN_SECTION_HANDOFFS, line)
-    _bump_concurrency(fm, from_agent)
-    write_brain_sections(project_root, fm, sections)
-    return line
+    brain_path = _brain_cortex_path(project_root)
+    crud_add(
+        brain_path, "$5", "HDL", f"{from_agent}_{to_agent}_{task_id}",
+        {"date": ts, "from": from_agent, "to": to_agent, "task": task_id, "note": note},
+        create_section=True, force=True,
+    )
+    return f"- [{ts}] {from_agent} -> {to_agent} task={task_id} :: {note}"

@@ -45,6 +45,9 @@ from .constants import (
 )
 from . import formats
 
+#: Name of the session context file inside ``.arqux/``.
+CONTEXT_CORTEX: str = "context.cortex"
+
 # --- CODEC-CORTEX integration (REQUIRED) -----------------------------------
 
 _HAS_CODEC_CORTEX: bool = False
@@ -55,6 +58,8 @@ try:
     import cortex.core.parser as _cc_parser
     import cortex.core.writer as _cc_writer
     import cortex.core.validator as _cc_validator
+    import cortex.crud.mutations as _cc_mutations
+    import cortex.crud.selectors as _cc_selectors
     import cortex.crud.transactions as _cc_transactions
     import cortex.hcortex.read_renderer as _cc_renderer
     import cortex.core.lexer as _cc_lexer
@@ -185,7 +190,189 @@ def cortex_render(path: str | Path) -> str:
     return _cc_renderer.render_hcortex_read(doc)
 
 
-# --- CORTEX file rendering (legacy YAML frontmatter fallback) ----------------
+# --- _cortex_crud -- partial file mutation via CODEC-CORTEX CRUD -----------
+
+
+def _parse_and_mutate(
+    path: Path,
+    mutate_fn,
+    *,
+    force: bool = False,
+    dry_run: bool = False,
+) -> dict:
+    """Parse a .cortex file, apply *mutate_fn* on the AST, validate and write.
+
+    *mutate_fn* receives the parsed ``CortexDocument`` and returns it (modified).
+    """
+    requires_codec_cortex()
+    text = path.read_text(encoding="utf-8")
+    doc = _cc_parser.parse_cortex(text, path=str(path))
+    doc = mutate_fn(doc)
+    diags = _cc_validator.validate(doc)
+    errors = [d for d in diags if d.get("severity") == "error"]
+    if errors and not force:
+        return {
+            "error": f"Validation failed ({len(errors)} errors). Use force=True to override.",
+            "diagnostics": [f"[{d.get('code','?')}] {d.get('message','')}" for d in errors],
+        }
+    if dry_run:
+        return {"dry_run": True, "path": str(path), "diagnostics": diags}
+    try:
+        result = _cc_transactions.atomic_write_cortex(doc, str(path), force=force)
+    except Exception as e:
+        return {"error": f"Atomic write failed: {e}", "non_bypassable": True}
+    return {
+        "path": str(path),
+        "bytes_written": result.bytes_written,
+        "backup": result.backup,
+        "diagnostics": [str(d) for d in result.diagnostics] if result.diagnostics else [],
+    }
+
+
+def crud_read(path: str | Path, selector: str) -> dict:
+    """Read entries matching *selector* from a .cortex file.
+
+    Returns a dict with ``entries`` (list of matched entries).
+    """
+    requires_codec_cortex()
+    path = Path(path)
+    if not path.exists():
+        raise FileNotFoundError(str(path))
+    text = path.read_text(encoding="utf-8")
+    doc = _cc_parser.parse_cortex(text, path=str(path))
+    sel = _cc_selectors.parse_selector(selector)
+    entries = _cc_selectors.select(doc, selector)
+    return {
+        "path": str(path),
+        "selector": selector,
+        "entries": [
+            {"sigil": e.sigil, "name": e.name, "section": e.section, "value": e.value}
+            for e in entries
+        ],
+    }
+
+
+def crud_add(
+    path: str | Path,
+    section: str,
+    sigil: str,
+    name: str,
+    value: str | dict,
+    *,
+    create_section: bool = False,
+    force: bool = False,
+    dry_run: bool = False,
+) -> dict:
+    """Add an entry to a .cortex file.
+
+    Returns the write result dict.
+    """
+    p = Path(path)
+
+    def _add(doc):
+        _cc_mutations.add_entry(
+            doc, section, sigil, name, value,
+            create_section=create_section,
+        )
+        return doc
+
+    return _parse_and_mutate(p, _add, force=force, dry_run=dry_run)
+
+
+def crud_update(
+    path: str | Path,
+    selector: str,
+    *,
+    set_: dict | None = None,
+    replace_body: str | None = None,
+    append: bool = False,
+    force: bool = False,
+    dry_run: bool = False,
+) -> dict:
+    """Update an entry selected by *selector* in a .cortex file.
+
+    For attrs entries use ``set_`` (dict of key/value pairs to merge).
+    For cuerpo/bloque entries use ``replace_body``.
+    """
+    p = Path(path)
+
+    def _update(doc):
+        _cc_mutations.update_entry(
+            doc, selector,
+            set_=set_, replace_body=replace_body, append=append,
+        )
+        return doc
+
+    return _parse_and_mutate(p, _update, force=force, dry_run=dry_run)
+
+
+def crud_delete(
+    path: str | Path,
+    selector: str,
+    *,
+    force: bool = False,
+    dry_run: bool = False,
+) -> dict:
+    """Delete an entry matching *selector* from a .cortex file."""
+    p = Path(path)
+
+    def _delete(doc):
+        _cc_mutations.delete_entry(doc, selector, force=force)
+        return doc
+
+    return _parse_and_mutate(p, _delete, force=force, dry_run=dry_run)
+
+
+def crud_move(
+    path: str | Path,
+    selector: str,
+    to_section: str,
+    *,
+    force: bool = False,
+    dry_run: bool = False,
+) -> dict:
+    """Move an entry from its current section to *to_section*."""
+    p = Path(path)
+
+    def _move(doc):
+        _cc_mutations.move_entry(doc, selector, to_section)
+        return doc
+
+    return _parse_and_mutate(p, _move, force=force, dry_run=dry_run)
+
+
+def crud_list(
+    path: str | Path,
+    *,
+    section: str | None = None,
+    sigil: str | None = None,
+) -> dict:
+    """List entries in a .cortex file, optionally filtered by section or sigil."""
+    requires_codec_cortex()
+    path = Path(path)
+    if not path.exists():
+        raise FileNotFoundError(str(path))
+    text = path.read_text(encoding="utf-8")
+    doc = _cc_parser.parse_cortex(text, path=str(path))
+
+    sel_parts = []
+    if section:
+        sel_parts.append(section)
+    s = "/".join(sel_parts)
+    sep = "/" if s else ""
+    if sigil:
+        s += f"{sep}{sigil}:*"
+    else:
+        s += f"{sep}*"
+    entries = _cc_selectors.select(doc, s)
+
+    return {
+        "path": str(path),
+        "entries": [
+            {"sigil": e.sigil, "name": e.name, "section": e.section, "value": e.value}
+            for e in entries
+        ],
+    }
 
 def write_cortex_pair(
     directory: Path,
@@ -484,7 +671,12 @@ def find_workspace_root(start: Path | str | None = None) -> Path | None:
 
 
 def find_project_root(start: Path | str | None = None) -> Path | None:
-    """Find a project-level `.<product>/` directory (must contain brain.cortex)."""
+    """Find a project-level `.<product>/` directory (must contain brain.cortex).
+
+    First walks up from *start* (default: cwd). If that fails and *start* is None,
+    falls back to resolving the project from the workspace context file
+    (``.arqux/context.cortex``), which is written by ``session.context.set``.
+    """
     cursor = Path(start or os.getcwd()).resolve()
     target_dir = ARQUX_DIR
 
@@ -493,8 +685,32 @@ def find_project_root(start: Path | str | None = None) -> Path | None:
         if candidate.exists():
             return cursor / target_dir
         if cursor.parent == cursor:
-            return None
+            break
         cursor = cursor.parent
+
+    # Fallback: try to resolve from workspace context.cortex
+    if start is not None:
+        return None
+
+    ws_root = find_workspace_root()
+    if ws_root is None:
+        return None
+
+    ctx_path = ws_root / CONTEXT_CORTEX
+    if not ctx_path.exists():
+        return None
+
+    import re
+    raw = ctx_path.read_text(encoding="utf-8")
+    m = re.search(r'project_root="([^"]*)"', raw)
+    if not m:
+        return None
+
+    fallback_root = Path(m.group(1))
+    fallback_arqux = fallback_root / ARQUX_DIR / BRAIN_CORTEX
+    if fallback_root.exists() and fallback_arqux.exists():
+        return fallback_root / ARQUX_DIR
+    return None
 
 
 # --- Project brain (the single shared mind) --------------------------------

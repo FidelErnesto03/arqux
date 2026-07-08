@@ -390,6 +390,31 @@ _register(_spec(
         },
     },
 ))
+_register(_spec(
+    "session.context.set", session.context_set,
+    "Set the current session context pointer (project + scope + optional BLP). "
+    "Validates project exists and returns the formatted header.",
+    {
+        "type": "object",
+        "properties": {
+            "project": {"type": "string", "description": "Project name (e.g. ARQUX)"},
+            "scope": {"type": "string", "description": "Scope within project (e.g. CYCLE-01)"},
+            "blp": {"type": "string", "description": "Optional active BLP ID (e.g. BLP-014)"},
+            "path": {"type": "string", "description": "Path to workspace root. Defaults to cwd."},
+        },
+        "required": ["project", "scope"],
+    },
+))
+_register(_spec(
+    "session.context.get", session.context_get,
+    "Read the current context pointer and return the formatted header.",
+    {
+        "type": "object",
+        "properties": {
+            "path": {"type": "string", "description": "Path to workspace root. Defaults to cwd."},
+        },
+    },
+))
 
 # --- Utility handlers (outside governance budget) ---------------------------
 #
@@ -527,6 +552,93 @@ _register(_spec(
             "path": {"type": "string", "description": "Path to project root. Defaults to cwd."},
         },
         "required": ["candidate_id"],
+    },
+))
+
+
+# --- cortex.entry.* handlers ---
+_register(_spec(
+    "cortex.entry.get", cortex.entry_get_handler,
+    "Read entries matching a CORTEX selector from a .cortex file.",
+    {
+        "type": "object",
+        "properties": {
+            "path": {"type": "string", "description": "Path to .cortex file"},
+            "selector": {"type": "string", "description": "CORTEX selector e.g. $2/FCS:current or LNG:*"},
+        },
+        "required": ["path", "selector"],
+    },
+))
+_register(_spec(
+    "cortex.entry.add", cortex.entry_add_handler,
+    "Add a new entry to a .cortex file.",
+    {
+        "type": "object",
+        "properties": {
+            "path": {"type": "string", "description": "Path to .cortex file"},
+            "section": {"type": "string", "description": "Section ID e.g. $5"},
+            "sigil": {"type": "string", "description": "Sigil e.g. LNG"},
+            "name": {"type": "string", "description": "Entry name"},
+            "value": {"type": "string", "description": "Entry value (attrs body or plain text)"},
+            "create_section": {"type": "boolean", "default": False},
+            "force": {"type": "boolean", "default": False},
+        },
+        "required": ["path", "section", "sigil", "name", "value"],
+    },
+))
+_register(_spec(
+    "cortex.entry.update", cortex.entry_update_handler,
+    "Update an entry selected by a CORTEX selector.",
+    {
+        "type": "object",
+        "properties": {
+            "path": {"type": "string", "description": "Path to .cortex file"},
+            "selector": {"type": "string", "description": "CORTEX selector e.g. $5/LNG:lesson"},
+            "set_": {"type": "string", "description": "Key:value pairs to merge (attrs entries). Not JSON — raw 'key:val,key2:val2'"},
+            "replace_body": {"type": "string", "description": "New body text (cuerpo/bloque entries)"},
+            "append": {"type": "boolean", "default": False, "description": "Append to existing body"},
+            "force": {"type": "boolean", "default": False},
+        },
+        "required": ["path", "selector"],
+    },
+))
+_register(_spec(
+    "cortex.entry.delete", cortex.entry_delete_handler,
+    "Delete an entry matching a CORTEX selector from a .cortex file.",
+    {
+        "type": "object",
+        "properties": {
+            "path": {"type": "string", "description": "Path to .cortex file"},
+            "selector": {"type": "string", "description": "CORTEX selector"},
+            "force": {"type": "boolean", "default": False},
+        },
+        "required": ["path", "selector"],
+    },
+))
+_register(_spec(
+    "cortex.entry.move", cortex.entry_move_handler,
+    "Move an entry between sections in a .cortex file.",
+    {
+        "type": "object",
+        "properties": {
+            "path": {"type": "string", "description": "Path to .cortex file"},
+            "selector": {"type": "string", "description": "CORTEX selector"},
+            "to_section": {"type": "string", "description": "Target section ID e.g. $7"},
+        },
+        "required": ["path", "selector", "to_section"],
+    },
+))
+_register(_spec(
+    "cortex.entry.list", cortex.entry_list_handler,
+    "List entries in a .cortex file, optionally filtered.",
+    {
+        "type": "object",
+        "properties": {
+            "path": {"type": "string", "description": "Path to .cortex file"},
+            "section": {"type": "string", "description": "Filter by section ID"},
+            "sigil": {"type": "string", "description": "Filter by sigil"},
+        },
+        "required": ["path"],
     },
 ))
 

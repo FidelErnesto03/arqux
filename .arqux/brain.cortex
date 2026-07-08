@@ -20,23 +20,22 @@ $0
 # DESC  | description | cuerpo     | B | Semantic       | Structured textual description
 # ERR   | error      | attrs      | M | Prefrontal     | Concurrency / state info
 # BLK   | blocker    | attrs      | H | Prefrontal     | Blocking condition
-#
-# Types:
-#
-# Micro-glossary:
 
 
 $1: IDENTITY
 
-IDN:governor{level:"2", project:"ARQUX", path:"/home/vatrox/workspace/ARQUX", governor:"alfred", created:"2026-07-07"}
+IDN:governor{level:"2", project:"ARQUX", path:"/home/vatrox/workspace/ARQUX", governor:"alfred", created:"2026-07-07T23:43:51Z"}
+
 
 $2: FOCUS
 
-FCS:current{what:"Cerrar CYCLE-01 — completar BLP-012 (review) y BLP-013 (draft)", priority:"medium", status:"current", survive:"min"}
+FCS:current{what:"Cerrar CYCLE-01 — skills refactor + context handlers", priority:"medium", status:"current", survive:"min"}
+
 
 $3: OBJECTIVES
 
-OBJ:_{goal:"- - 14 blueprints done o cancelled", status:"current", success:"", survive:"work"}
+OBJ:_ {goal:"14 blueprints completados + skills handlers/learning/protocol refactor", status:"current", success:"CYCLE-01 cerrado con todos los blueprints done y skills actualizadas", survive:"work"}
+
 
 $4: SESSIONS
 
@@ -49,56 +48,69 @@ $6: PULSE
 
 $7: LESSONS
 
-LNG:____siempre_pasar_pa{type:"contextual", cause:"", lesson:"- - Siempre pasar path explicito a handlers de descubrimiento."}
-LNG:____codec_cortex_es_{type:"contextual", cause:"", lesson:"- - CODEC-CORTEX es libreria obligatoria. No escribir fallbacks manuales."}
-LNG:____el_formato_sigil{type:"contextual", cause:"", lesson:"- - El formato sigil con glosario $0 es el canonico."}
-LNG:____cuando_arquitect{type:"contextual", cause:"", lesson:"- - Cuando Arquitecto dice 'la apruebo para ejecucion', avanzar directo a ready."}
-LNG:____alfred_completa_{type:"contextual", cause:"", lesson:"- - Alfred completa flujo completo: define, ejecuta, revisa, aprueba."}
-LNG:____despues_de_bluep{type:"contextual", cause:"", lesson:"- - Despues de blueprint_define, leer BLP-XXX.md para verificar secciones escritas."}
-LNG:____solo__aprobado__{type:"contextual", cause:"", lesson:"- - Solo 'aprobado', 'dale', 'ejecutalo' autorizan paso a ready y claim."}
-LNG:____presentar_concep{type:"contextual", cause:"", lesson:"- - Presentar concepto primero. Solo tras visto bueno hacer blueprint_create."}
-LNG:____ejecutar_cada_pa{type:"contextual", cause:"", lesson:"- - Ejecutar CADA paso de AGENTS.md. Cargar skills. Self-audit con LNG."}
-LNG:____mcp_environment_{type:"contextual", cause:"", lesson:"- - MCP environment field es 'environment' no 'env'."}
-LNG:____convertir_contad{type:"contextual", cause:"", lesson:"- - Convertir contadores a int al leer frontmatter."}
-LNG:____never_apply_from{type:"contextual", cause:"", lesson:"- - Never apply from generic approval. Require exact preview hash."}
-LNG:____present_proposal{type:"contextual", cause:"", lesson:"- - Present proposals in natural language. Show exact preview."}
-LNG:____blueprints_must_{type:"contextual", cause:"", lesson:"- - Blueprints must enforce procedure through handlers."}
-LNG:____blp_004{type:"contextual", cause:"", lesson:"- - BLP-004: enforced maturation gates y closure checks."}
-LNG:____blp_005{type:"contextual", cause:"", lesson:"- - BLP-005: header duplication en _replace_section regex. Solo cortex.skill.md tenia ruta hardcodeada."}
-LNG:____acs_de_grep_debe{type:"contextual", cause:"", lesson:"- - ACs de grep deben usar patrones especificos por entorno."}
-LNG:____cleanup_non_exis{type:"contextual", cause:"", lesson:"- - CLEANUP_NON_EXIST_OBJ fragmenta shared pool. DBMS_SCHEDULER.DISABLE() como solucion."}
-LNG:____siempre_ejecutar{type:"contextual", cause:"", lesson:"- - Siempre ejecutar cortex.render.validate_file antes de embeber diagramas."}
-LNG:____halt_and_report_{type:"contextual", cause:"", lesson:"- - HALT_AND_REPORT no tiene excepcion. Primero informar opciones al Arquitecto."}
-LNG:____evaluar_contexto{type:"contextual", cause:"", lesson:"- - Evaluar contexto completo: jobs que re-habilitan, dependencias, recovery time."}
-LNG:____siempre_intentar{type:"contextual", cause:"", lesson:"- - Siempre intentar handler MCP primero. Bypass solo con autorizacion explicita."}
-LNG:____session_handlers{type:"contextual", cause:"", lesson:"- - Session handlers implementados: close, resume, status. SES menor a 2KB en brain PULSE."}
-LNG:____adoption_skill_m{type:"contextual", cause:"", lesson:"- - adoption.skill.md S6 actualizado con session.resume como paso 0 del session start protocol."}
-LNG:____read_brain_y_fin{type:"contextual", cause:"", lesson:"- - read_brain y find_project_root usan paths diferentes. Consolidar ruta unica de brain."}
-LNG:____mode_live_es_ext{type:"contextual", cause:"", lesson:"- - mode=live es extension al handler mature. No cambia flujo async existente."}
-LNG:____w10_auditoria_2_{type:"contextual", cause:"", lesson:"- - w10 auditoria 2 tiers. Handler doc mismatch: 62 vs 48."}
-LNG:____31_tests_nuevos_{type:"contextual", cause:"", lesson:"- - 31 tests nuevos. Cobertura de 69 a 100."}
-LNG:____gap_001_002_fixe{type:"contextual", cause:"", lesson:"- - GAP-001/002 fixed directos. GAP-003/004/005 via BLP-012 con gobernanza."}
-LNG:____138_e017___20_e0{type:"contextual", cause:"", lesson:"- - 138 E017 + 20 E006 en skills. Sigilos locales no declarados en $0."}
-LNG:____loose_governance{type:"contextual", cause:"", lesson:"- - Loose governance files no son entry points. Walk UP para encontrar .arqux/ o AGENTS.md."}
-LNG:____codec_cortex_v0_{type:"contextual", cause:"", lesson:"- - CODEC-CORTEX v0.4.3 soporta sigilos locales via /usr/bin/bash table format. E017 de 138 a 0."}
-LNG:____parse_attrs_body{type:"contextual", cause:"", lesson:"- - parse_attrs_body debe respetar quoted strings con colons internos."}
-LNG:____session_iniciali{type:"contextual", cause:"", lesson:"- - Session inicializada correctamente con brain.cortex v13 limpio."}
+LNG:____________________ {type:"contextual", cause:"detectado durante sesiones de trabajo", lesson:"Siempre pasar path explicito a handlers de descubrimiento.", prevention:"Siempre incluir path en handlers de discovery"}
+LNG:____________________ {type:"contextual", cause:"detectado durante sesiones de trabajo", lesson:"CODEC-CORTEX es libreria obligatoria. No escribir fallbacks manuales.", prevention:"Verificar import de codec-cortex antes de implementar parsing manual"}
+LNG:____________________ {type:"contextual", cause:"detectado durante sesiones de trabajo", lesson:"El formato sigil con glosario $0 es el canonico.", prevention:"Siempre incluir $0 con glosario en archivos .cortex"}
+LNG:____________________ {type:"contextual", cause:"Arquitecto aprobo BLP directamente", lesson:"Cuando Arquitecto dice 'la apruebo para ejecucion', avanzar directo a ready.", prevention:"blueprint.approve es autorizacion directa del Arquitecto"}
+LNG:____________________ {type:"contextual", cause:"Arquitecto confia en Alfred como auditor", lesson:"Alfred completa flujo completo: define, ejecuta, revisa, aprueba.", prevention:"Alfred tiene autorizacion para actuar como auditor tambien"}
+LNG:____________________ {type:"contextual", cause:"BLP-002 quedo con template vacio", lesson:"Despues de blueprint_define, leer BLP-XXX.md para verificar secciones escritas.", prevention:"blueprint_define solo actualiza frontmatter — verificar cuerpo del documento"}
+LNG:____________________ {type:"contextual", cause:"Arquitecto corrigio interpretacion de 'me parece'", lesson:"Solo 'aprobado', 'dale', 'ejecutalo' autorizan paso a ready y claim.", prevention:"No interpretar 'me parece' o 'suena bien' como aprobacion para ejecutar"}
+LNG:____________________ {type:"contextual", cause:"BLP-003 creado sin autorizacion verbal previa", lesson:"Presentar concepto primero. Solo tras visto bueno hacer blueprint_create.", prevention:"No crear blueprint sin que el Arquitecto apruebe verbalmente la idea"}
+LNG:____________________ {type:"contextual", cause:"Arquitecto detecto P0 saltado", lesson:"Ejecutar CADA paso de AGENTS.md. Cargar skills. Self-audit con LNG.", prevention:"P0 no es opcional — AGENTS.md es sistema operativo"}
+LNG:____________________ {type:"contextual", cause:"corregido en opencode.json schema", lesson:"MCP environment field es 'environment' no 'env'.", prevention:"Usar 'environment' en configuracion MCP JSON"}
+LNG:____________________ {type:"contextual", cause:"verification_loop TypeError", lesson:"Convertir contadores a int al leer frontmatter.", prevention:"Siempre int(raw) if isinstance(raw, str) else raw al leer frontmatter"}
+LNG:____________________ {type:"contextual", cause:"BLP-003 elevation unsafe aplicada", lesson:"Never apply from generic approval. Require exact preview hash.", prevention:"Siempre dry-run primero, revisar diff exacto, pasar confirm_hash para aplicar"}
+LNG:____________________ {type:"contextual", cause:"Arquitecto corrigio uso de sigils internos", lesson:"Present proposals in natural language. Show exact preview.", prevention:"No usar sigils internos en comunicacion con el Arquitecto"}
+LNG:____________________ {type:"contextual", cause:"BLP-003 cerrado sin ejecutar actividades", lesson:"Blueprints must enforce procedure through handlers.", prevention:"El handler blueprint.approve debe verificar procedimiento antes de aprobar"}
+LNG:____________________ {type:"contextual", cause:"BLP-004 implementacion", lesson:"BLP-004: enforced maturation gates y closure checks.", prevention:"Validar gates de maduracion antes de permitir blueprint.ready"}
+LNG:____________________ {type:"contextual", cause:"BLP-005 audit", lesson:"BLP-005: header duplication en _replace_section regex.", prevention:"Corregir regex en _replace_section para no duplicar headers"}
+LNG:____________________ {type:"contextual", cause:"BLP-005 AC falso positivo", lesson:"ACs de grep deben usar patrones especificos por entorno.", prevention:"Usar rutas de desarrollo especificas en ACs, no patrones genericos"}
+LNG:____________________ {type:"contextual", cause:"diagnostico ORA-04031", lesson:"CLEANUP_NON_EXIST_OBJ fragmenta shared pool.", prevention:"DBMS_SCHEDULER.DISABLE('CLEANUP_NON_EXIST_OBJ') desde SYSDBA"}
+LNG:____________________ {type:"contextual", cause:"BLP-006 diagramas fallaron validacion", lesson:"Siempre ejecutar cortex.render.validate_file antes de embeber diagramas.", prevention:"validate_file atrapa bugs de sintaxis PUML antes de incrustar en documentos"}
+LNG:____________________ {type:"contextual", cause:"docker restart sin consultar al Arquitecto", lesson:"HALT_AND_REPORT no tiene excepcion. Primero informar opciones al Arquitecto.", prevention:"Incluso en urgencia, la primera accion es reportar y esperar decision"}
+LNG:____________________ {type:"contextual", cause:"CLEANUP_NON_EXIST_OBJ re-habilitado al reiniciar BD", lesson:"Evaluar contexto completo: jobs que re-habilitan, dependencias, recovery time.", prevention:"No ignorar efectos secundarios de acciones correctivas"}
+LNG:____________________ {type:"contextual", cause:"MCP permisos restaurados post-restart", lesson:"Siempre intentar handler MCP primero. Bypass solo con autorizacion explicita.", prevention:"MCP handler primero, reportar si falla por permisos, esperar instrucciones"}
+LNG:____________________ {type:"contextual", cause:"BLP-006 implementacion", lesson:"Session handlers implementados: close, resume, status. SES menor a 2KB.", prevention:"Siempre session.close al finalizar sesion para preservar contexto"}
+LNG:____________________ {type:"contextual", cause:"BLP-006 T-3.1", lesson:"adoption.skill.md S6 actualizado con session.resume como paso 0.", prevention:"session.resume es el primer paso del session start protocol"}
+LNG:____________________ {type:"contextual", cause:"BLP-007 sync verification", lesson:"read_brain y find_project_root usan paths diferentes.", prevention:"Consolidar ruta unica de brain en futura refactorizacion"}
+LNG:____________________ {type:"contextual", cause:"BLP-008 implementacion", lesson:"mode=live es extension al handler mature.", prevention:"mode=live no cambia flujo async existente — solo anade instrucciones en respuesta"}
+LNG:____________________ {type:"contextual", cause:"BLP-010 auditoria", lesson:"w10 auditoria 2 tiers. Handler doc mismatch: 62 vs 48.", prevention:"Mantener documentacion de handlers sincronizada con registro"}
+LNG:____________________ {type:"contextual", cause:"BLP-011 implementacion", lesson:"31 tests nuevos. Cobertura de 69 a 100.", prevention:"Mantener cobertura de tests por encima de 100"}
+LNG:____________________ {type:"contextual", cause:"auditoria Jarvis GAP-001/005", lesson:"GAP-001/002 fixed directos. GAP-003/004/005 via BLP-012 con gobernanza.", prevention:"Gaps de auditoria requieren BLP para resolucion, no fixes directos"}
+LNG:____________________ {type:"contextual", cause:"BLP-013 co-design con Jarvis", lesson:"138 E017 + 20 E006 en skills. Sigilos locales no declarados en $0.", prevention:"Declarar todos los sigilos en $0 glossary de cada skill"}
+LNG:____________________ {type:"contextual", cause:"adoption protocol bypass por loose files", lesson:"Loose governance files no son entry points.", prevention:"Walk UP para encontrar .arqux/ o AGENTS.md. Ignorar archivos sueltos"}
+LNG:____________________ {type:"contextual", cause:"CODEC-CORTEX BLP-001", lesson:"CODEC-CORTEX v0.4.3 soporta sigilos locales via table format.", prevention:"Usar tabla /usr/bin/bash en $0 para sigilos locales. E017 de 138 a 0."}
+LNG:____________________ {type:"contextual", cause:"72 warnings en handlers.skill.md", lesson:"parse_attrs_body debe respetar quoted strings con colons internos.", prevention:"STP entries con valores como OUT-MIN governor=alfred requieren quoted strings"}
+LNG:____________________ {type:"contextual", cause:"inicializacion sesion 2026-07-07", lesson:"Session inicializada correctamente con brain.cortex v13 limpio.", prevention:"Verificar brain.cortex init produce entries conformes desde el principio"}
+LNG:____________lng {type:"process", cause:"BLP-014 maduracion: blueprint.update con section= angliciza headers y duplica", lesson:"_replace_section en blueprint.py regenera header en ingles y duplica. El regex no preserva header original del template.", prevention:"No pasar header en content de blueprint.update section — usar section content puro"}
+LNG:__________lng {type:"infrastructure", cause:"Al migrar de string ops a crud, CODEC-CORTEX v0.4.3 bloqueo escrituras en 7 identity files por 64 errores preexistentes", lesson:"CODEC-CORTEX valida estrictamente al escribir. Archivos con entries incompletos acumulan errores non-bypassable.", prevention:"Antes de migrar handler a crud, sanear archivo destino primero"}
+LNG:________lng {type:"process", cause:"Migrar solo escritura a crud_add mientras lectura seguia con read_brain produjo 10 tests fallando", lesson:"Migrar escritura Y lectura en el mismo ciclo.", prevention:"No migrar solo write() mientras read() usa path viejo. Crud_add estructura entries que read_brain no interpreta."}
+LNG:______lng {type:"process", cause:"Brain inicial producia FCS:current{what:''} sin OBJ. Cualquier crud_add fallaba con E024/E034.", lesson:"Brain.cortex init debe producir entries conformes desde el principio.", prevention:"FCS con what no vacio, OBJ con goal y success, WRK con current no vacio. Brain invalido bloquea todas las escrituras crud."}
+LNG:____lng {type:"format", cause:"Template BLP_TEMPLATE.md usa CA-01 (espanol) pero handlers buscan AC-01 (ingles)", lesson:"Template y handler deben usar el mismo naming.", prevention:"Mantener consistencia entre BLP_TEMPLATE.md y blueprint.py. Si cambia idioma, cambiar ambos."}
+LNG:lng {type:"process", cause:"BLP-014 executed: 110 tests, 6 entry handlers, 4 sistemas migrados a CODEC-CORTEX CRUD", lesson:"BLP-014 migro identity.record, sessions.py, pulse.py a CRUD. Fix header duplication. 7 identity files actualizados.", prevention:"Verificar brain.cortex init para nivel 2 antes de migrar escrituras. Brain init requiere FCS y OBJ conformes."}
+LNG:skill_edit_section_truncation {type:"infrastructure", cause:"3 ocurrencias durante edicion de protocol.skill.md via MCP skill.edit section=$3. El handler trunca archivo desde seccion reemplazada hasta el final.", lesson:"skill.edit con parametro section tiene bug en regex de deteccion de limites de seccion: reemplaza desde inicio de seccion hasta fin de archivo, eliminando $4+.", prevention:"Usar write (archivo completo) en vez de section edit. Verificar contenido completo tras cada edicion. Fix requerido en handler skill.edit para detectar correctamente el final de la seccion destino."}
+
 
 $8: ACTIVE_CONTEXT
 
-WRK:current{phase:"active", current:"- cycle=- cycle=awaiting instructions", blocked:"no", survive:"work"}
+WRK:current{phase:"active", current:"Skills refactor: handlers, learning, protocol", blocked:"no", survive:"work"}
+
 
 $9: RISKS
 
-RSK:risk{description:"- -", mitigation:"", severity:"medium"}
-RSK:risk{description:"- -", mitigation:"", severity:"medium"}
-RSK:risk{description:"- -", mitigation:"", severity:"medium"}
-RSK:risk{description:"- -", mitigation:"", severity:"medium"}
+RSK:risk{description:"Brain.cortex tiene 30+ LNG entries con nombres placeholder (underscores) que requieren limpieza", mitigation:"Refactorizar nombres y consolidar lecciones en BLP futuro", severity:"low"}
+RSK:risk{description:"skill.edit section replacement bug puede truncar archivos de skill sin warning", mitigation:"Usar write completo en vez de section edit hasta que se corrija el handler", severity:"medium"}
+RSK:risk{description:"CODEC-CORTEX CRUD validation reject writes en files con pre-existing issues", mitigation:"Sanear archivos antes de migrar handlers a CRUD", severity:"medium"}
+RSK:risk{description:"Handlers/learning/protocol skills refactorizados — verificar sync package vs workspace", mitigation:"Correr diff entre .arqux/skills/ y ARQUX/src/arqux/skills/", severity:"low"}
+
 
 $10: KNOWLEDGE
 
-KNW:knowledge{topic:"project_knowledge", content:"62 MCP handlers, 100 tests, framework gobierno agents AI.\nUsar handlers MCP para mutar governance. No editar .cortex directamente.\nCYCLE-01: 13 blueprints listados (10 done, 1 review, 1 draft). Meta-brain reporta 14.", status:"active"}
+KNW:knowledge{topic:"project_knowledge", content:"71 MCP handlers, 110 tests, framework gobierno agents AI. Skills: protocol, handlers, cortex, mcp, diagram, learning, workflows. Usar handlers MCP para mutar governance. No editar .cortex directamente.", status:"active"}
+KNW:three_levels{topic:"learning_framework", content:"3 niveles de aprendizaje: CONDUCTUAL (identity.record) / CONTEXTUAL (cortex.entry.add) / PROCEDIMENTAL (skill.edit). Clasificar INMEDIATAMENTE al momento de la leccion. Elevacion (cortex.learn) es proceso posterior.", status:"active"}
+KNW:context_pointer{topic:"session_context", content:"session.context.set/get mantienen contexto activo (proyecto + scope + agente). Header visible ⬡ <AGENTE> | <PROYECTO> | <SCOPE> en toda respuesta. session.resume restaura contexto entre sesiones.", status:"active"}
+
 
 $11: CONCURRENCY
 
-ERR:concurrency{version:"13", last_writer:"alfred", updated:"2026-07-07"}
+ERR:concurrency{version:"20", last_writer:"alfred", updated:"2026-07-07T23:43:51Z"}

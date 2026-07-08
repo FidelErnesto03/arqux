@@ -22,6 +22,7 @@ quality_gates@: {
   has_acceptance_criteria: false,
   has_work_procedure: false,
   has_required_validations: false,
+  has_learning_recorded: false,
 }
 _template_ref: "BLP_TEMPLATE.md"
 ---
@@ -214,9 +215,9 @@ _Plan de ejecución por fases con instrucciones de reversión._
 
 _Cada CA debe ser objetivamente verificable._
 
-- [ ] **CA-01:** _Descripción — verificación: comando o procedimiento_
-- [ ] **CA-02:** _Descripción — verificación: comando o procedimiento_
-- [ ] **CA-03:** _Descripción — verificación: comando o procedimiento_
+- [ ] **AC-01:** _Descripción — verificación: comando o procedimiento_
+- [ ] **AC-02:** _Descripción — verificación: comando o procedimiento_
+- [ ] **AC-03:** _Descripción — verificación: comando o procedimiento_
 
 
 ## §13: Validaciones Requeridas
@@ -281,5 +282,6 @@ _Condiciones bajo las cuales el ejecutor DEBE detenerse e informar._
 | has_acceptance_criteria | ☐ |
 | has_work_procedure | ☐ |
 | has_required_validations | ☐ |
+| has_learning_recorded | ☐ |
 
 > Todas las compuertas deben estar en ✅ antes de blueprint.ready(). Ver blueprint-workflow skill.

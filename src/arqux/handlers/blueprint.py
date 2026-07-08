@@ -232,7 +232,7 @@ def create_blueprint(
     body = body.replace("cycle: \"\"", f'cycle: "{cycle_id}"')
     body = body.replace("governor: \"\"", f'governor: "{gov}"')
     body = body.replace("created_at: \"\"", f'created_at: "{_now_iso()}"')
-    body = body.replace("# BLP-NNN: Title", f"# {bp_id}: {obj}")
+    body = body.replace("# BLP-NNN: Título", f"# {bp_id}: {obj}")
 
     # Pre-fill context from brain.cortex and cycle manifest
     body = _prefill_from_context(body, root, cycle_id)
@@ -883,10 +883,21 @@ def update_blueprint(
         def _replace_section(body: str, header: str, new_content: str) -> str:
             pattern = (
                 re.escape(header)
-                + fr".*?(?=\n## §(?!{sec_num}\b)\d+:|$)"
+                + fr".*?(?=\n## §(?!{sec_num}\b)\d+:|\$)"
             )
-            repl = new_content.rstrip()
-            result = re.sub(pattern, repl, body, count=1, flags=re.DOTALL)
+            match = re.search(pattern, body, flags=re.DOTALL)
+            if not match:
+                return None
+            full = match.group(0)
+            # Preserve original header
+            hdr_end = full.index("\n") if "\n" in full else len(full)
+            hdr = full[:hdr_end]
+            # Strip header from new_content if present (avoids duplication)
+            clean = new_content.strip()
+            clean_lines = clean.split("\n")
+            if clean_lines[0].strip().startswith("## §"):
+                clean = "\n".join(clean_lines[1:]).strip()
+            result = body.replace(full, hdr + "\n" + clean + "\n", 1)
             if result == body:
                 return None
             return result
