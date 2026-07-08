@@ -1,8 +1,8 @@
-# ⬡ ArqUX v0.3.1
+# ⬡ ArqUX v0.3.2
 
 **Enterprise Agent Infrastructure.**
 
-[![Version](https://img.shields.io/badge/version-0.3.1-blue)](https://pypi.org/project/arqux/)
+[![Version](https://img.shields.io/badge/version-0.3.2-blue)](https://pypi.org/project/arqux/)
 [![License](https://img.shields.io/badge/license-MPL--2.0-green)](LICENSE)
 [![Python](https://img.shields.io/badge/python-3.10%2B-blue)](https://www.python.org/)
 [![BLPs](https://img.shields.io/badge/BLPs-22%20in%20CYCLE--01-orange)](https://github.com/FidelErnesto03/arqux)
@@ -45,7 +45,7 @@ The agent reads `AGENTS.md`, discovers context, and is operational. Everything e
 
 ## 🏛️ Architecture
 
-![ArqUX Architecture — identity management, governance layer, and learning pipeline](docs/diagrams/arquitectura.svg)
+![ArqUX Architecture — identity management, governance layer, and learning pipeline](https://raw.githubusercontent.com/FidelErnesto03/arqux/master/docs/diagrams/arquitectura.svg)
 
 | Component | Purpose |
 |---|---|
@@ -93,7 +93,7 @@ A Blueprint (BLP) captures **every dimension of a design decision** in 18 sectio
 
 ### Lifecycle
 
-![Blueprint Lifecycle — state machine from draft to done](docs/diagrams/blp-lifecycle.svg)
+![Blueprint Lifecycle — state machine from draft to done](https://raw.githubusercontent.com/FidelErnesto03/arqux/master/docs/diagrams/blp-lifecycle.svg)
 
 ```
 create → mature (inquiry + synthesis) → ready → claim
@@ -106,7 +106,7 @@ create → mature (inquiry + synthesis) → ready → claim
 
 Every lesson follows an automatic elevation pipeline:
 
-![Learning Pipeline — behavioral to contextual to procedural knowledge](docs/diagrams/learning-pipeline.svg)
+![Learning Pipeline — behavioral to contextual to procedural knowledge](https://raw.githubusercontent.com/FidelErnesto03/arqux/master/docs/diagrams/learning-pipeline.svg)
 
 | Level | Description | Persists in |
 |---|---|---|
