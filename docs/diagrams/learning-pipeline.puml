@@ -1,0 +1,33 @@
+@startuml
+title Learning Pipeline — Lesson Elevation
+
+rectangle "BEHAVIORAL\nidentity.record" as BEH
+rectangle "CONTEXTUAL\nbrain.cortex KNW" as CTX
+rectangle "PROCEDURAL\nreusable skill" as PRO
+
+rectangle "Individual agent\nlesson" as SRC
+rectangle "Project-level\nknowledge" as PROJ
+rectangle "Org-wide\nworkflow" as ORG
+
+SRC --> BEH : correction event
+BEH --> CTX : elevation engine
+CTX --> PRO : elevation engine
+
+note right of BEH
+  AXM:workflow_fidelity
+  LNG:template_mismatch
+  Scoped to one agent
+end note
+
+note right of CTX
+  All agents in project
+  benefit from this lesson
+  Survives session restarts
+end note
+
+note right of PRO
+  Any agent in any workspace
+  can load this skill
+  True knowledge reuse
+end note
+@enduml

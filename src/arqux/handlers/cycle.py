@@ -29,6 +29,7 @@ from ..state import (
     parse_cortex_file as _parse_cortex_file,
     write_cortex_pair,
 )
+from ..sync import sync_brain
 from ..constants import (
     ARQUX_DIR,
     CYCLES_DIR,
@@ -95,6 +96,8 @@ def create_cycle(
     }
     body = f"# CYCLE {cycle_id}\n\n{description or ''}\n"
     write_cortex_pair(cdir, "cycle", fm, body)
+
+    sync_brain(root, "cycle.create", focus=f"Ciclo {cycle_id} iniciado", detail=f"cycle {cycle_id} created")
 
     return CortexOUT.work(
         f"cycle.create ok id={cycle_id}",
@@ -313,6 +316,8 @@ def close_cycle(
         f"- Elevation candidates proposed: {len(learning_scan.get('candidates', []))}\n"
     )
     write_cortex_pair(cdir, "cycle", fm, body)
+
+    sync_brain(root, "cycle.close", focus="Ciclo cerrado", metrics={"cycles_closed": 1}, detail=f"cycle {cycle_id} closed")
 
     return CortexOUT.work(
         f"cycle.close ok id={cycle_id} completed={len(completed)} "

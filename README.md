@@ -1,292 +1,174 @@
-# ArqUX
+# ⬡ ArqUX v1.0
 
-> Minimum-viable governance framework for AI agent teams.
-> Defines what to do, who does it, and leaves evidence — without slowing work down.
+**Enterprise Agent Infrastructure.**
 
-[![Status](https://img.shields.io/badge/status-beta-orange)]()
-[![License: Apache 2.0](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
-[![Python](https://img.shields.io/badge/python-3.11%2B-blue)]()
+[![Version](https://img.shields.io/badge/version-1.0.0-blue)](https://github.com/nousresearch/arqux)
+[![License](https://img.shields.io/badge/license-MPL--2.0-green)](LICENSE)
+[![Python](https://img.shields.io/badge/python-3.11%2B-blue)](https://www.python.org/)
+[![BLPs](https://img.shields.io/badge/BLPs-22%20in%20CYCLE--01-orange)](https://github.com/nousresearch/arqux)
+[![Handlers](https://img.shields.io/badge/MCP%20Handlers-71-purple)](https://github.com/nousresearch/arqux)
+[![Agents](https://img.shields.io/badge/agents-4-red)](https://github.com/nousresearch/arqux)
+[![Status](https://img.shields.io/badge/status-production--ready-brightgreen)](https://github.com/nousresearch/arqux)
 
----
+**Tags:** `ai-governance` `agent-orchestration` `llm-framework` `enterprise-ai` `mcp-server` `multi-agent` `audit-trail` `behavioral-contracts` `knowledge-management` `cortex-format`
 
-## What is this?
+ArqUX is the first governance infrastructure purpose-built for **AI agents in enterprise environments**. It defines how an agent thinks, acts, learns, and accounts for its decisions — all under binding behavioral contracts that no command can override.
 
-Arqux is a **governance framework + learning engine + skill ecosystem** for AI agent teams. It is built on [CODEC-CORTEX](https://github.com/FidelErnesto03/codec-cortex), the canonical information codec that compresses structured knowledge into ultra-dense, self-indexing CORTEX sigil format.
-
-Arqux enables three layers of learning:
-- **Behavioral** — Agent identities evolve through `identity.record()`.
-- **Contextual** — Project lessons are scanned, scored, and elevated to permanent knowledge via `cortex.learn`.
-- **Procedural** — External skills are imported, converted to CORTEX, used by agents, and evolved through adaptations.
-
-It is **not** an orchestrator, a CI/CD system, or a project manager. It is the **minimum viable protocol** that lets multiple agents collaborate on the same workspace without stepping on each other:
-
-- A **governor** decides what to do and assigns it.
-- An **executor** picks up the work and leaves evidence.
-- An **auditor** can read everything but mutate nothing.
-
-Every state mutation flows through 38 MCP handlers. There is no direct file editing of governance state — handlers are the interface, files are the storage in canonical CODEC-CORTEX format.
-
-**Requires [CODEC-CORTEX](https://github.com/FidelErnesto03/codec-cortex) >= 0.4.0.**
+Built on a radical principle: **the agent is the interface.**
 
 ---
 
-## Quick start
+## 🔍 Use Cases
+
+| Scenario | How ArqUX Helps |
+|---|---|
+| **AI agent in production** | Traces every decision, enforces role separation, persists institutional memory |
+| **Multi-agent team** | Each identity has its own behavioral contract (AXM, LIM, FCS); hot handoff between them |
+| **Compliance & audit** | Every handoff, state transition, and mutation is recorded as verifiable evidence in brain.cortex |
+| **Knowledge retention** | Lessons auto-elevate from individual → project → organization level without manual intervention |
+| **Agent governance** | The framework governs itself (dogfooding) — every feature is a governed Blueprint |
+| **Enterprise deployment** | 71 MCP handlers, structured decision maps (18-section Blueprints), session resilience |
+
+---
+
+## ⚡ Quick Start
 
 ```bash
-# 1. Install from PyPI (once published)
 pip install arqux
-# Or via uv:
-# uv tool install arqux
-
-# 2. Set agent environment (required for all arqux commands)
-export ARQUX_AGENT_ID=alfred
-export ARQUX_AGENT_ROLE=governor
-
-# 3. Initialize a governed workspace
-mkdir ~/my-workspace && cd ~/my-workspace
+cd your-workspace
 arqux init
-# Creates: AGENTS.md + .arqux/ (manifest, brain, meta-brain, identities, skills)
-
-# 4. Start the MCP server (in a separate terminal or background)
-arqux serve
 ```
 
-**5. Configure MCP client.** Arqux exposes 38 tools via the Model Context Protocol. Add the following to your MCP client configuration (replace `<path-to-arqux>` with `which arqux`):
+The agent reads `AGENTS.md`, discovers context, and is operational. Everything else it learns on the fly.
 
-```json
-{
-  "mcpServers": {
-    "arqux": {
-      "command": "<path-to-arqux>",
-      "args": ["serve"],
-      "env": {
-        "ARQUX_AGENT_ID": "alfred",
-        "ARQUX_AGENT_ROLE": "governor"
-      }
-    }
-  }
-}
-```
+---
 
-**6. Verify connectivity.** Most MCP clients provide a test mechanism:
-- **Claude Desktop:** check the MCP tools panel
-- **VS Code / Cline:** check the MCP extension output
-- **Any client:** call `list_tools()` — expected ~54 tools discovered.
+## 🏛️ Architecture
 
-Expected: 38 tools discovered, 0 errors.
+![ArqUX Architecture — identity management, governance layer, and learning pipeline](docs/diagrams/arquitectura.svg)
 
-**7. Restart or reload** the MCP session so tools become available (most clients: reload tools or restart the app).
-
-> **Development install** (from repo): `git clone ... && cd arqux && uv tool install --force -e .`
->
-> **Note:** If the MCP client discovers the tools but they don't appear in the session, reload or restart the client. The `arqux serve` process runs the code version that was current when it started — after reinstalling, restart the server.
-
-## Core concepts
-
-### Three learning layers
-
-| Layer | What it captures | Where | Mechanism |
-|---|---|---|---|
-| **Behavioral** | Agent identity, style, axioms | `.arqux/identities/<agent>.cortex` | `identity.record()` |
-| **Contextual** | Project lessons → knowledge | `brain.cortex` §7 → §10 | `cortex.learn` (scan → elevate) |
-| **Procedural** | Skills and capabilities | `.arqux/skills/*.skill.md` | `skill.import → convert → record → evolve` |
-
-### Two language rules
-
-| Rule | Scope | Language |
-|---|---|---|
-| `AXM:natural_language` | Human-facing responses | Working context (currently Spanish) |
-| `AXM:agent_lang_en` | Agent artifacts (AGENTS.md, skills, state files) | English |
-
-### Canonical rules
-
-- **context_first**: Read `brain.cortex` before any `ls`/`find`/`cat`. The brain is the source of truth.
-- **standby_first**: Every session starts with an open question to the Architect.
-- **workflows_govern_operations**: Load `workflows.skill.md` before any multi-step operation.
-- **skills_under_governance**: All skills used by agents MUST be in `.arqux/skills/` in CORTEX format.
-- **adaptations_in_skill**: ADA entries are stored in the skill file itself (`$0: ADAPTATIONS`), not in separate files. The skill is self-contained.
-
-## Architecture at a glance
-
-```
-workspace/
-├── AGENTS.md                        ← single entry point for agents (CORTEX in .md)
-├── .arqux/
-│   ├── manifest.cortex
-│   ├── brain.cortex                 ← workspace-level brain
-│   ├── meta-brain.cortex            ← cross-project knowledge
-│   ├── projects.cortex              ← registered project index
-│   ├── identities/ (7)              ← Alfred, Jarvis, Seshat, Heimdall + roles
-│   ├── skills/                      ← CORTEX skills (loaded on demand)
-│   │   └── originals/               ← external canon preserved
-│   ├── cycles/                      ← workspace cycles
-│   └── packages/                    ← supplemental .cortex packages
-│
-└── my-project/
-    └── .arqux/
-        ├── brain.cortex             ← 12 sections: FCS, OBJ, KNW, LNG, RSK...
-        ├── cycles/CYCLE-01/
-        │   └── tasks/T-001.cortex
-        ├── packages/                ← project-specific packages
-        └── learn-policies.cortex    ← learning engine thresholds
-```
-
-## Handlers (38 total)
-
-### Governance (24 handlers)
-
-| Module | Handlers |
+| Component | Purpose |
 |---|---|
-| `workspace` | `init`, `status`, `lessons` |
-| `project` | `init(name, path?, seed?)`, `bind`, `unbind`, `status`, `lessons` |
-| `cycle` | `create`, `list`, `current`, `close` |
-| `task` | `create`, `claim`, `update`, `complete`, `fail`, `read`, `list` |
-| `evidence` | `record`, `list`, `read` |
-| `protocol` | `adopt`, `release`, `pause`, `resume` |
+| **Active Identity** | Agent operating under a behavioral contract (AXM, LIM, FCS) |
+| **Handoff Manager** | Switches identities via greeting or request |
+| **MCP Handlers** | 71 handlers for governance operations |
+| **brain.cortex** | Project shared memory (decisions, lessons, state) |
+| **meta-brain** | Consolidated workspace state across projects |
+| **Skills Library** | Reusable workflows across agents and projects |
 
-### Utility (14 handlers)
+---
 
-| Module | Handlers |
-|---|---|
-| `cortex` | `read`, `write`, `verify`, `render` |
-| `cortex.learn` | `learn` (scan), `learn.elevate` (dry-run or apply) |
-| `identity` | `record` (behavioral lesson) |
-| `skill` | `import`, `convert`, `record`, `evolve`, `list` |
+## 🆔 Agent Identities — The Team
 
-## Skill lifecycle
+ArqUX replaces "one agent" with a **team of specialized identities**, each with its own binding behavioral contract.
 
-```
-1. skill.import(source, name, content)
-   → stores original in .arqux/skills/originals/
-
-2. skill.convert(name)
-   → converts to CORTEX with $0: ADAPTATIONS section
-
-3. Agent uses the skill (loaded from .arqux/skills/)
-   → deviations recorded via skill.record() → appended to $0: ADAPTATIONS
-
-4. skill.evolve(name, adaptation_id, apply=true)
-   → marks the ADA as applied (status → "applied") in $0
-   → entry preserved for history, skill self-contained
-```
-
-## Foundational principles (non-negotiable)
-
-1. **Zero ceremony.** If a governance operation requires more than one handler invocation by the agent, the design is wrong.
-2. **Self-contained.** `AGENTS.md` is the single entry point. No auxiliary reading required.
-3. **Installable.** `pip install arqux` (development: `uv tool install --force -e .`).
-4. **Dogfooded.** The framework governs its own development from day one.
-5. **State via CODEC-CORTEX.** All governance state uses CORTEX sigil format with `$0` glossary. Attrs single-line, cuerpo multiline.
-6. **CODEC-CORTEX as codec.** Natural dependency — no fork, no wrapper.
-7. **CORTEX-OUT for output efficiency.** Token minimization protocol on agent responses.
-8. **Identities with teeth.** Permissions enforced at the handler level.
-9. **Frictionless traceability.** Every governance action leaves an automatic trail.
-10. **Clean exit.** Decommissioning an agent is one handler. No orphans.
-11. **MCP as the only governance interface.** Direct editing of governance files is forbidden.
-12. **SKILL-driven procedure.** Skills are external, convertible to CORTEX, and evolve by use — the canon never changes.
-
-## Three roles
-
-| Role | Can | Cannot |
+| Identity | Role | Scope |
 |---|---|---|
-| `governor` | Create cycles/tasks, assign, approve, close | Execute tasks |
-| `executor` | Claim tasks, update progress, complete, fail | Create cycles/tasks, mutate workspace |
-| `auditor` | Read everything | Mutate anything |
+| **⬡ Alfred** | Governor | Cycles, BLPs, tasks, approvals |
+| **⬡ Jarvis** | Technical executor | Assigned tasks (claim, complete, evidence) |
+| **⬡ Seshat** | Scribe | Documentation, diagrams, presentations |
+| **⬡ Heimdall** | Guardian | Audit, monitoring, reporting |
 
-## Repository layout
+The Architect switches between identities with natural fluency:
+
+> *"Hello Jarvis"* → starts as technical executor
+> *"Switch to Seshat"* → handoff to documentation
+> *"Back to Alfred"* → resumes governance
+
+Each identity has hard limits (LIM) that even the Architect cannot violate without an explicit handoff.
+
+---
+
+## 📋 Blueprints — The Decision Map
+
+A Blueprint (BLP) captures **every dimension of a design decision** in 18 sections that the agent synthesizes autonomously after a single inquiry conversation.
 
 ```
-arqux/
-├── README.md
-├── AGENTS.md                    ← single entry point for agents (CORTEX)
-├── pyproject.toml
-├── src/arqux/
-│   ├── cli.py                   ← `arqux init | serve`
-│   ├── server.py                ← MCP server
-│   ├── cortex_out.py            ← CORTEX-OUT output profiles
-│   ├── permissions.py           ← role enforcement
-│   ├── constants.py
-│   ├── state.py                 ← core: brain read/write, CODEC-CORTEX init
-│   ├── pulse.py                 ← pulse/evidence operations
-│   ├── sessions.py              ← session add/release
-│   ├── formats.py               ← canonical CORTEX builder
-│   ├── learning.py              ← CODEC-CORTEX learning engine adapter
-│   ├── handlers/
-│   │   ├── __init__.py          ← registry (38 handlers)
-│   │   ├── workspace.py
-│   │   ├── project.py
-│   │   ├── cycle.py
-│   │   ├── task.py
-│   │   ├── evidence.py
-│   │   ├── protocol.py
-│   │   ├── cortex.py            ← + identity.record + learn handlers
-│   │   └── skill.py             ← skill lifecycle handlers
-│   ├── identities/ (7)
-│   ├── skills/ (10 .skill.md)
-│   └── templates/
-│       ├── AGENTS.md
-│       └── learn-policies.cortex
-├── tests/ (57+ tests)
-└── .arqux/                      ← dogfooding: this repo governs itself
+§1 Problem → §2 Objective → §3 Preconditions → §4 Guiding Principle
+§5 Context → §6 Scope → §7 Rules → §8 Technical Design
+§9 Operational Design → §10 Contracts → §11 Work Procedure
+§12 Acceptance Criteria → §13 Validations → §14 Tasks
+§15 Risks → §16 Blocking Rule → §17 Expected Output → §18 Quality
 ```
 
-## PlantUML rendering for PUML diagrams in HCORTEX documents
+### Lifecycle
 
-Arqux includes a built-in PlantUML rendering system accessible in three ways:
+![Blueprint Lifecycle — state machine from draft to done](docs/diagrams/blp-lifecycle.svg)
 
-- **MCP handler**: `cortex.render.diagram(source, format)` — renders PUML to SVG/PNG and returns the content inline. Qwen or any MCP client can call this directly.
-- **Local server**: `arqux serve-plantuml` — starts a kroki-compatible HTTP server on port 9876.
-- **CLI**: `arqux render-diagram file.puml --format svg`
-
-### Configure your markdown previewer
-
-If PUML diagrams in `.md` files show errors like "plantuml.jar not found", configure your viewer to use the Arqux PlantUML server instead of a local jar path:
-
-**VSCode (markdown-preview-enhanced):**
-```json
-{
-  "markdown-preview-enhanced.plantumlServer": "http://localhost:9876/plantuml/svg",
-  "markdown-preview-enhanced.plantumlJarPath": ""
-}
+```
+create → mature (inquiry + synthesis) → ready → claim
+→ execution (checkpoint per task) → complete → verify → approve
 ```
 
-**Qwen / otros clientes:**
-En lugar de configurar `plantumlJarPath`, configurar `plantumlServer` a `http://localhost:9876/plantuml/svg`
+---
 
-### Setup
+## 🧠 Continuous Learning
 
-```bash
-# 1. Install Java (required)
-sudo apt install default-jre
+Every lesson follows an automatic elevation pipeline:
 
-# 2. Download plantuml.jar
-arqux setup-plantuml
+![Learning Pipeline — behavioral to contextual to procedural knowledge](docs/diagrams/learning-pipeline.svg)
 
-# 3. Start the rendering server
-arqux serve-plantuml
-# → Running on http://localhost:9876
-```
+| Level | Description | Persists in |
+|---|---|---|
+| **BEHAVIORAL** | Individual agent lesson | `identity.record()` → agent .cortex file |
+| **CONTEXTUAL** | Project-level knowledge | `brain.cortex` KNW |
+| **PROCEDURAL** | Reusable workflow | Skill in `.arqux/skills/` |
 
-- **`AGENTS.md`** — single entry point. An agent that reads this file can operate under Arqux.
-- **`.arqux/skills/workflows.skill.md`** — 7 canonical workflows with PlantUML diagrams.
-- **`.arqux/skills/handlers.skill.md`** — full handler reference with examples.
-- **`.arqux/skills/learning.skill.md`** — CODEC-CORTEX learning engine usage.
-- **`.arqux/skills/format.skill.md`** — file conventions and canonical format rules.
+A lesson learned by one agent in one project can become a skill for **every agent in the organization**, without manual intervention.
 
-## Development
+---
 
-```bash
-# Install in editable mode (from repo clone)
-uv tool install --force -e .
+## 🎯 Who ArqUX Is For
 
-# Run tests
-uv pip install pytest pytest-asyncio --python $(which python3)
-PYTHONPATH=src python3 -m pytest tests/
+ArqUX is designed for organizations where:
 
-# Run MCP server locally for testing
-ARQUX_AGENT_ID=alfred ARQUX_AGENT_ROLE=governor python3 -m arqux serve
-```
+- ✅ **Compliance is not optional.** Every action must be auditable.
+- ✅ **Agents operate continuously** and must maintain coherence across sessions.
+- ✅ **Role separation is critical.** Not every identity can do everything.
+- ✅ **Institutional knowledge must persist** beyond ephemeral model memory.
+- ✅ **The cost of failure justifies investment in governance.**
 
-## License
+Not for afternoon experiments. For teams putting AI agents into production with real responsibilities.
 
-Apache 2.0 — see [LICENSE](LICENSE).
+---
+
+## 🗺️ Roadmap
+
+### v1.0 — Foundation (current)
+- Governance framework with 71 MCP handlers and 22 BLPs in CYCLE-01
+- CORTEX format with sigils, validation, and automatic elevation
+- Multi-identity model with binding behavioral contracts
+- Hot handoff between identities via greeting or request
+- Autonomous Blueprint synthesis (inquiry → batch of 18 sections)
+- Learning pipeline: BEHAVIORAL → CONTEXTUAL → PROCEDURAL
+- Structural markers `<!-- BLP:N -->` for precise section replacement
+- Full dogfooding — ArqUX governs itself
+
+### v1.1 — Operational maturity
+- Native HCORTEX ↔ CORTEX translation
+- Self-healing structural inconsistencies
+- Consolidated workspace dashboard
+- Quick-response tasks for lightweight actions
+
+### v2.0 — Enterprise scale
+- Progressive mode: from basic operation to full governance
+- Institutional skills marketplace
+- CODEC-CORTEX as standalone library
+- Interoperability with enterprise agent ecosystems
+- Visual governance and audit interface
+
+---
+
+## 📚 Documentation
+
+| Resource | Description |
+|---|---|
+| `AGENTS.md` | Agent entry point — one file to start |
+| `protocol.skill.md` | Session protocol, handoff, and decision-making |
+| `w08-blueprint-lifecycle.md` | Complete Blueprint lifecycle |
+| `w10-identity-handoff.md` | Hot identity handoff workflow |
+| `cortex.skill.md` | CORTEX format and HCORTEX reference |
+
+---
+
+*⬡ ArqUX — The agent is the interface.*

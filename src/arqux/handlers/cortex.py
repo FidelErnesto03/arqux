@@ -23,6 +23,7 @@ from typing import Any
 from ..cortex_out import CortexOUT
 from ..permissions import PermissionContext
 from ..state import cortex_read, cortex_write, cortex_verify, cortex_render
+from ..sync import sync_brain
 
 
 def read_handler(
@@ -180,8 +181,9 @@ def record_lesson_handler(
     try:
         from ..state import crud_add
 
-        # Generate a lesson name from the lesson text.
-        name = re.sub(r"[^a-z0-9]", "_", lesson.lower().split()[0])[:30] or "lesson"
+        # Generate a lesson name from the lesson text (strip leading non-alnum).
+        first_word = lesson.lstrip(" -").lower().split()[0] if lesson.split() else "lesson"
+        name = re.sub(r"[^a-z0-9]", "_", first_word)[:30] or "lesson"
 
         # Build the LNG entry value as a structured dict.
         value = {"type": kind, "cause": cause, "lesson": lesson}

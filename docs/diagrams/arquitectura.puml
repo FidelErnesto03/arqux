@@ -1,0 +1,45 @@
+@startuml
+title ArqUX — Enterprise Agent Architecture
+
+package "Agent Runtime" {
+  [Active Identity] as ID
+  [Handoff Manager] as HO
+  [Learning Engine] as LN
+}
+
+package "Governance" {
+  [MCP Handlers] as MCP
+  [brain.cortex] as BR
+  [meta-brain] as MB
+  [Skills Library] as SK
+}
+
+package "Agent Identities" {
+  [Alfred\ngovernor] as ALF
+  [Jarvis\nexecutor] as JAR
+  [Seshat\nscribe] as SES
+  [Heimdall\nguardian] as HEI
+}
+
+database ".arqux/" as ARQ
+
+Architect --> ID: "greeting / handoff request"
+ID --> HO: identity switch
+HO --> ALF: load identity
+HO --> JAR: load identity
+HO --> SES: load identity
+HO --> HEI: load identity
+ID --> MCP: governance mutations
+MCP --> BR: persist decisions
+MCP --> MB: sync metrics
+ID --> LN: record lessons
+LN --> SK: elevate knowledge
+BR --> ARQ: file storage
+SK --> ARQ: skill storage
+
+note right of HO
+  Detects "Hello Jarvis"
+  or "switch to Seshat"
+  Applies AXM/LIM contract
+end note
+@enduml
