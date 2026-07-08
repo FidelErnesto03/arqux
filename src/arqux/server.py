@@ -135,14 +135,12 @@ def run_server(verbose: bool = False) -> None:
 
         async def _main() -> None:
             async with stdio_server() as (read_stream, write_stream):
-                                init_opts = server.create_initialization_options()
+                init_opts = server.create_initialization_options()
                 # Advertise environment-based auth for clients that require it (Codex).
-                # Local stdio servers are implicitly trusted — identity is set via
-                # ARQUX_AGENT_ID / ARQUX_AGENT_ROLE environment variables.
                 init_opts.capabilities.experimental = getattr(init_opts.capabilities, 'experimental', {}) or {}
                 init_opts.capabilities.experimental['auth'] = {
                     'type': 'environment',
-                    'description': 'Identity via ARQUX_AGENT_ID and ARQUX_AGENT_ROLE environment variables'
+                    'description': 'Identity via ARQUX_AGENT_ID and ARQUX_AGENT_ROLE'
                 }
                 await server.run(read_stream, write_stream, init_opts)
 
