@@ -4,8 +4,8 @@
 
 **Architectural User Experience for governed AI agents.**
 
-[![Version](https://img.shields.io/badge/version-0.3.3-167A55?style=flat-square\&labelColor=050807)](https://pypi.org/project/arqux/)
-[![Status](https://img.shields.io/badge/status-beta-FFB020?style=flat-square\&labelColor=050807)](https://pypi.org/project/arqux/)
+[![Version](https://img.shields.io/badge/version-0.3.5-167A55?style=flat-square&labelColor=050807)](https://pypi.org/project/arqux/)
+[![Status](https://img.shields.io/badge/status-beta-FFB020?style=flat-square&labelColor=050807)](https://pypi.org/project/arqux/)
 [![License](https://img.shields.io/badge/license-Apache--2.0-2EC98D?style=flat-square\&labelColor=050807)](LICENSE)
 [![Python](https://img.shields.io/badge/python-3.10%2B-8FE3C0?style=flat-square\&labelColor=050807)](https://www.python.org/)
 [![MCP](https://img.shields.io/badge/MCP-governance%20layer-167A55?style=flat-square\&labelColor=050807)](https://github.com/FidelErnesto03/arqux)
