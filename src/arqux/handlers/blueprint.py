@@ -38,6 +38,7 @@ from ..state import (
     write_brain_sections,
     write_cortex_pair,
 )
+from ..sync import sync_brain
 
 
 BLUEPRINT_TEMPLATE = "BLP_TEMPLATE.md"
@@ -175,6 +176,16 @@ def _find_workspace_template(root: Path, template_name: str) -> Path | None:
         cursor = cursor.parent
 
 
+def scan_markers(text: str) -> list[str]:
+    """Scan text for all ``<!-- BLP:ID -->`` markers and return their IDs.
+
+    Discards closing markers (``<!-- /BLP:ID -->``). Returns IDs in order
+    of appearance, e.g. ``[\"BLP:TITLE\", \"BLP:1\", \"BLP:2\", ...]``.
+    """
+    import re
+    return re.findall(r"<!-- (BLP:[\w.]+) -->", text)
+
+
 def create_blueprint(
     obj: str,
     cycle: str | None = None,
@@ -237,8 +248,26 @@ def create_blueprint(
     # Pre-fill context from brain.cortex and cycle manifest
     body = _prefill_from_context(body, root, cycle_id)
 
+    # Scan markers and store map in frontmatter
+    markers = scan_markers(body)
+    if markers:
+        markers_json = ", ".join(f'"{m}"' for m in markers)
+        body = body.replace(
+            "_template_ref:",
+            f"blp_markers@: [{markers_json}]\n_template_ref:",
+            1,
+        )
+
     bp_path = bp_dir / f"{bp_id}.md"
     bp_path.write_text(body, encoding="utf-8")
+
+    # Auto-sync brain context
+    sync_brain(
+        root,
+        "blueprint.create",
+        focus=f"Definir {bp_id}",
+        detail=f"{bp_id} created in {cycle_id}",
+    )
 
     return CortexOUT.work(
         f"blueprint.create ok id={bp_id} cycle={cycle_id}",
@@ -246,12 +275,10 @@ def create_blueprint(
         cycle=cycle_id,
         status=BP_DRAFT,
         path=str(bp_path),
+        markers=markers,
         instruction=(
-            "IMMEDIATE NEXT STEP: call blueprint.define() to fill ALL 18 sections. "
-            "The draft has basic brain context pre-filled, but the Architect expects "
-            "a complete document with: §3 Preconditions, §6 Scope, §8 Technical Design (PUML), "
-            "§9 Operational Design (PUML), §11 Work Procedure, §12 Acceptance Criteria, §14 Tasks. "
-            "Do NOT present this draft to the Architect — define it FIRST, then enter maturation."
+            f"Blueprint {bp_id} created with {len(markers)} markers. "
+            "Use blueprint.update(section=N, content=...) to fill sections."
         ),
     )
 
@@ -299,55 +326,59 @@ def define_blueprint(
     import re
     new_body = body
 
-    # §3 Preconditions — replace the placeholder line(s)
+    # --- Marker-based section replacement ---
+    # Helper: replace content between <!-- BLP:N --> markers
+    # Preserves the section header (## §N: Title) if present.
+    def _replace_marker(text: str, marker_id: str, content: str) -> str:
+        open_tag = f"<!-- {marker_id} -->"
+        close_tag = f"<!-- /{marker_id} -->"
+        pattern = rf"{re.escape(open_tag)}.*?{re.escape(close_tag)}"
+
+        match = re.search(pattern, text, re.DOTALL)
+        if not match:
+            return text
+
+        block = match.group(0)
+        inner = block[len(open_tag):-len(close_tag)].strip()
+
+        # Preserve section header (first line starting with ## §)
+        header = ""
+        for line in inner.split("\n"):
+            if line.strip().startswith("## §"):
+                header = line.rstrip()
+                break
+
+        if header:
+            replacement = f"{open_tag}\n{header}\n\n{content}\n{close_tag}"
+        else:
+            replacement = f"{open_tag}\n{content}\n{close_tag}"
+
+        return text.replace(block, replacement, 1)
+
+    # §3 Preconditions
     if pre:
         pre_text = "\n".join(f"- [ ] {p}" for p in pre)
-        # Match the preconditions section: from "## §3:" to the next "## §"
-        new_body = re.sub(
-            r"(## §3: Preconditions\n\n).*?(\n## §4:)",
-            rf"\1{pre_text}\n\2",
-            new_body, count=1, flags=re.DOTALL,
-        )
+        new_body = _replace_marker(new_body, "BLP:3", pre_text)
 
-    # §6 Scope — replace in-scope items
+    # §6 Scope (BLP:6.1) and Exclusions (BLP:6.2)
     if scope:
-        new_body = re.sub(
-            r"(\*\*In scope:\*\*\n)- _Item 1_\n- _Item 2_",
-            f"**In scope:**\n- {scope}",
-            new_body, count=1,
-        )
+        new_body = _replace_marker(new_body, "BLP:6.1", f"- {scope}")
     if exclusions:
-        new_body = re.sub(
-            r"(\*\*Out of scope.*:\*\*\n)- _Item 1_\n- _Item 2_",
-            f"**Out of scope:**\n- {exclusions}",
-            new_body, count=1,
-        )
+        new_body = _replace_marker(new_body, "BLP:6.2", f"- {exclusions}")
 
     # §7 Mandatory Rules
     if mandatory_rules:
         rules_text = "\n".join(f"{i+1}. {r}" for i, r in enumerate(mandatory_rules))
-        new_body = re.sub(
-            r"1\. _Rule 1_\n2\. _Rule 2_",
-            rules_text,
-            new_body, count=1,
-        )
+        new_body = _replace_marker(new_body, "BLP:7", rules_text)
+
+    # §11 Work Procedure
+    if procedure:
+        new_body = _replace_marker(new_body, "BLP:11", procedure)
 
     # §12 Acceptance Criteria
     if acceptance_criteria:
         ac_text = "\n".join(f"- [ ] **AC-{i+1:02d}:** {ac}" for i, ac in enumerate(acceptance_criteria))
-        new_body = re.sub(
-            r"- \[ \] \*\*AC-01:\*\* _Description.*_verification: command or procedure_\n- \[ \] \*\*AC-02:.*\n- \[ \] \*\*AC-03:.*",
-            ac_text,
-            new_body, count=1,
-        )
-
-    # §11 Work Procedure — replace phase placeholders
-    if procedure:
-        new_body = re.sub(
-            r"(## §11: Work Procedure\n\n).*?(\n## §12:)",
-            rf"\1{procedure}\n\2",
-            new_body, count=1, flags=re.DOTALL,
-        )
+        new_body = _replace_marker(new_body, "BLP:12", ac_text)
 
     # §13 Required Validations
     if validations:
@@ -355,28 +386,16 @@ def define_blueprint(
             f"| {v.get('type', 'test')} | {v.get('desc', '')} | `{v.get('cmd', '')}` | {v.get('expected', '')} |"
             for v in validations
         )
-        new_body = re.sub(
-            r"\| test \| _Description_ \| `_command_` \| _output_ \|\n.*?\n.*?\n",
-            val_text + "\n",
-            new_body, count=1,
-        )
+        new_body = _replace_marker(new_body, "BLP:13", val_text)
 
     # §15 Risks
     if risks:
         risk_text = "\n".join(f"| R-{i+1:02d} | {r} | _Impact_ | _Mitigation_ |" for i, r in enumerate(risks))
-        new_body = re.sub(
-            r"\| R-01 \| _Description_ \| _Impact_ \| _Mitigation_ \|",
-            risk_text,
-            new_body, count=1,
-        )
+        new_body = _replace_marker(new_body, "BLP:15", risk_text)
 
     # §16 Blocking Rule
     if blocking_rule:
-        new_body = re.sub(
-            r"1\. _Condition 1_",
-            blocking_rule[:200],
-            new_body, count=1,
-        )
+        new_body = _replace_marker(new_body, "BLP:16", blocking_rule[:200])
 
     _write_blueprint(bp_path, fm, new_body)
 
@@ -418,9 +437,9 @@ def mature_blueprint(
         return CortexOUT.error(f"blueprint {bp_id} not found", code="NOT_FOUND")
 
     valid_from = fm.get("status", BP_DRAFT)
-    if valid_from not in (BP_DEFINED, BP_BLOCKED):
+    if valid_from not in (BP_DEFINED, BP_BLOCKED, BP_DRAFT):
         return CortexOUT.error(
-            f"cannot mature from {valid_from} (must be defined or blocked)",
+            f"cannot mature from {valid_from} (must be draft, defined or blocked)",
             code="INVALID_STATE",
         )
 
@@ -570,6 +589,14 @@ def ready_blueprint(
     fm["status"] = BP_READY
     fm["updated_at"] = _now_iso()
     _write_blueprint(bp_path, fm, body)
+
+    # Auto-sync brain context
+    sync_brain(
+        root,
+        "blueprint.ready",
+        focus=f"Ejecutar {bp_id}",
+        detail=f"{bp_id} ready for execution",
+    )
 
     return CortexOUT.work(
         f"blueprint.ready ok id={bp_id}",
@@ -836,79 +863,120 @@ def update_blueprint(
     bp_path, fm, body = _find_blueprint(root, bp_id)
     if bp_path is None:
         return CortexOUT.error(f"blueprint {bp_id} not found", code="NOT_FOUND")
+    assert body is not None  # _find_blueprint guarantees body on success
 
     fm["updated_at"] = _now_iso()
 
     # Section refinement takes priority over note
     if section:
-        sec_num = section.lstrip("§").strip()
-        section_titles = {
-            "1": "Problem Statement",
-            "2": "Objective",
-            "3": "Preconditions",
-            "4": "Guiding Principle",
-            "5": "Context",
-            "6": "Scope & Exclusions",
-            "7": "Mandatory Rules",
-            "8": "Technical Design",
-            "9": "Operational Design",
-            "10": "Contracts",
-            "11": "Work Procedure",
-            "12": "Acceptance Criteria",
-            "13": "Required Validations",
-            "14": "Tasks",
-            "15": "Risks",
-            "16": "Blocking Rule",
-            "17": "Expected Output",
-            "18": "Quality Contract",
-        }
-        section_title = section_titles.get(sec_num, "")
-        section_header = f"## §{sec_num}:"
-        replacement_header = f"{section_header} {section_title}".rstrip()
+        sec_input = section.lstrip("§").strip()
+
         # Build replacement content
         if puml:
-            section_content = f"{replacement_header}\n\n{content or ''}\n\n```puml\n{puml}\n```\n"
+            section_content = f"{content or ''}\n\n```puml\n{puml}\n```"
         elif content:
-            section_content = f"{replacement_header}\n\n{content}\n"
+            section_content = content.strip()
         else:
             return CortexOUT.error(
                 "section requires 'content' or 'puml' parameter",
                 code="INVALID_ARGS",
             )
 
-        # Replace from section header to next *different* section or end.
-        # The negative lookahead (?!{sec_num}\b) prevents matching the same
-        # section number, which otherwise causes the regex to match only
-        # the blank gap between two identical headers when duplicates exist.
-        def _replace_section(body: str, header: str, new_content: str) -> str:
-            pattern = (
-                re.escape(header)
-                + fr".*?(?=\n## §(?!{sec_num}\b)\d+:|\$)"
-            )
-            match = re.search(pattern, body, flags=re.DOTALL)
-            if not match:
-                return None
-            full = match.group(0)
-            # Preserve original header
-            hdr_end = full.index("\n") if "\n" in full else len(full)
-            hdr = full[:hdr_end]
-            # Strip header from new_content if present (avoids duplication)
-            clean = new_content.strip()
-            clean_lines = clean.split("\n")
-            if clean_lines[0].strip().startswith("## §"):
-                clean = "\n".join(clean_lines[1:]).strip()
-            result = body.replace(full, hdr + "\n" + clean + "\n", 1)
-            if result == body:
-                return None
-            return result
+        # Resolve marker ID: accept "BLP:3" directly, or derive "3" → "BLP:3"
+        if sec_input.startswith("BLP:"):
+            marker_id = sec_input
+            sec_num = sec_input.replace("BLP:", "")
+        else:
+            sec_num = sec_input
+            marker_id = f"BLP:{sec_num}"
 
-        new_body = _replace_section(body, section_header, section_content)
-        if new_body is None:
-            return CortexOUT.error(
-                f"section {section} not found in blueprint",
-                code="NOT_FOUND",
+        # Validate marker against frontmatter map if available
+        blp_markers_raw = fm.get("blp_markers@", "")
+        if blp_markers_raw and isinstance(blp_markers_raw, str):
+            known = [m.strip().strip('"') for m in blp_markers_raw.strip("[]").split(",") if m.strip()]
+            if known and marker_id not in known:
+                return CortexOUT.error(
+                    f"marker {marker_id} not in blueprint marker map. Known: {known}",
+                    code="NOT_FOUND",
+                )
+
+        # Marker-based replacement
+        open_tag = f"<!-- {marker_id} -->"
+        close_tag = f"<!-- /{marker_id} -->"
+        marker_pattern = rf"{re.escape(open_tag)}.*?{re.escape(close_tag)}"
+
+        marker_match = re.search(marker_pattern, body, re.DOTALL)
+        if marker_match:
+            # Preserve section header (## §N: Title) from existing content
+            existing_block = marker_match.group(0)
+            inner = existing_block[len(open_tag):-len(close_tag)].strip()
+            header = ""
+            for line in inner.split("\n"):
+                if line.strip().startswith("## §"):
+                    header = line.rstrip()
+                    break
+            if header and not section_content.strip().startswith("## §"):
+                section_content = f"{header}\n\n{section_content}"
+            marker_replacement = f"{open_tag}\n{section_content}\n{close_tag}"
+            body = re.sub(
+                marker_pattern,
+                marker_replacement,
+                body, count=1, flags=re.DOTALL,
             )
-        body = new_body
+        else:
+            # Fallback: legacy section-header-based replacement
+            section_titles = {
+                "1": "Problem Statement",
+                "2": "Objective",
+                "3": "Preconditions",
+                "4": "Guiding Principle",
+                "5": "Context",
+                "6": "Scope & Exclusions",
+                "7": "Mandatory Rules",
+                "8": "Technical Design",
+                "9": "Operational Design",
+                "10": "Contracts",
+                "11": "Work Procedure",
+                "12": "Acceptance Criteria",
+                "13": "Required Validations",
+                "14": "Tasks",
+                "15": "Risks",
+                "16": "Blocking Rule",
+                "17": "Expected Output",
+                "18": "Quality Contract",
+            }
+            section_title = section_titles.get(sec_num, "")
+            section_header = f"## §{sec_num}:"
+            replacement_header = f"{section_header} {section_title}".rstrip()
+
+            def _replace_section(body: str, header: str, new_content: str) -> str:
+                pattern = (
+                    re.escape(header)
+                    + fr".*?(?=\n## §(?!{sec_num}\b)\d+:|\$)"
+                )
+                match = re.search(pattern, body, flags=re.DOTALL)
+                if not match:
+                    return None
+                full = match.group(0)
+                hdr_end = full.index("\n") if "\n" in full else len(full)
+                hdr = full[:hdr_end]
+                clean = new_content.strip()
+                clean_lines = clean.split("\n")
+                if clean_lines[0].strip().startswith("## §"):
+                    clean = "\n".join(clean_lines[1:]).strip()
+                result = body.replace(full, hdr + "\n" + clean + "\n", 1)
+                if result == body:
+                    return None
+                return result
+
+            section_content_full = f"{replacement_header}\n\n{section_content}\n"
+            new_body = _replace_section(body, section_header, section_content_full)
+            if new_body is None:
+                return CortexOUT.error(
+                    f"section {section} not found in blueprint",
+                    code="NOT_FOUND",
+                )
+            body = new_body
 
     if note:
         body += f"\n\n> [{_now_iso()}] {note}"
@@ -967,6 +1035,15 @@ def complete_blueprint(
     fm["updated_at"] = _now_iso()
     fm["evidence"] = evidence or ""
     _write_blueprint(bp_path, fm, body)
+
+    # Auto-sync brain context
+    sync_brain(
+        root,
+        "blueprint.complete",
+        focus="Verificar ACs y aprobar",
+        metrics={"blueprints_completed": 1},
+        detail=f"BLP {bp_id} completed",
+    )
 
     return CortexOUT.work(
         f"blueprint.complete ok id={bp_id}",
@@ -1060,6 +1137,15 @@ def approve_blueprint(
     # Record completion in brain
     _record_to_brain(root, bp_id, "done", fm.get("evidence", ""))
 
+    # Auto-sync brain context
+    sync_brain(
+        root,
+        "blueprint.approve",
+        focus="Próximo BLP o cierre de ciclo",
+        metrics={"blueprints_done": 1},
+        detail=f"BLP {bp_id} approved",
+    )
+
     return CortexOUT.work(
         f"blueprint.approve ok id={bp_id}",
         blueprint_id=bp_id,
@@ -1095,6 +1181,15 @@ def cancel_blueprint(
     fm["updated_at"] = _now_iso()
     _write_blueprint(bp_path, fm, body)
     _record_to_brain(root, bp_id, "cancelled", reason or "")
+
+    # Auto-sync brain context
+    sync_brain(
+        root,
+        "blueprint.cancel",
+        metrics={"blueprints_cancelled": 1},
+        detail=f"{bp_id} cancelled: {reason or ''}",
+    )
+
     return CortexOUT.work(
         f"blueprint.cancel ok id={bp_id}",
         blueprint_id=bp_id, status=BP_CANCELLED, reason=reason,

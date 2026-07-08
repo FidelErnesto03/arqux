@@ -1,0 +1,24 @@
+@startuml
+title Blueprint Lifecycle — State Machine
+
+state "draft" as D
+state "maturing" as M
+state "ready" as R
+state "in_progress" as IP
+state "review" as RV
+state "done" as DN
+state "blocked" as B
+state "cancelled" as CN
+
+[*] --> D : blueprint.create
+D --> M : blueprint.mature\n(inquiry + synthesis)
+M --> R : blueprint.ready
+R --> IP : blueprint.claim
+IP --> RV : blueprint.complete
+IP --> B : blueprint.fail
+B --> D : re-plan
+B --> CN : blueprint.cancel
+RV --> DN : blueprint.approve
+RV --> IP : re-delegate (max 3 cycles)
+RV --> CN : 3rd fail
+@enduml

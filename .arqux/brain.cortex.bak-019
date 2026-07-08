@@ -1,0 +1,110 @@
+$0
+
+# -- $0: MINIMAL LOCAL GLOSSARY --
+# Required: every .cortex artifact must be locally self-contained.
+# Sigil | Name | Type | Risk | Cognitive Layer | Description
+# IDN   | identity   | attrs      | B | Semantic       | Actor identity
+# DOM   | domain     | attrs      | B | Semantic       | Project/scope descriptor
+# KNW   | knowledge  | attrs      | B | Semantic       | Stable or promoted knowledge
+# CNST  | constraint | attrs      | H | Prefrontal     | Hard constraint or precondition
+# CLAIM | claim      | attrs      | M | Prefrontal     | Acceptance criterion
+# AUD   | audit      | attrs      | M | Prefrontal     | Verification/audit record
+# RSK   | risk       | attrs      | M | Prefrontal     | Identified risk with mitigation
+# FCS   | focus      | attrs      | H | Working        | Active attention anchor
+# OBJ   | objective  | attrs      | H | Working        | Active goal with success criterion
+# WRK   | work       | attrs      | B | Working        | Current execution state
+# STP   | step       | attrs      | M | Working        | Task procedure step
+# SES   | session    | attrs      | M | Episodic       | Compressed I/O/R episode
+# LNG   | lesson     | attrs      | M | Episodic       | Learned lesson or pattern
+# HDL   | handler    | attrs-pos  | M | Semantic       | Handoff descriptor
+# DESC  | description | cuerpo     | B | Semantic       | Structured textual description
+# ERR   | error      | attrs      | M | Prefrontal     | Concurrency / state info
+# BLK   | blocker    | attrs      | H | Prefrontal     | Blocking condition
+#
+# Types:
+#
+# Micro-glossary:
+
+
+$1: IDENTITY
+
+IDN:governor{level:"2", project:"ARQUX", path:"/home/vatrox/workspace/ARQUX", governor:"alfred", created:"2026-07-08T10:30:00Z"}
+
+$2: FOCUS
+
+FCS:current{what:"BLP-016 listo para ejecucion — Skills Refactor: mcp+handlers fusion", priority:"medium", status:"current", survive:"work"}
+
+$3: OBJECTIVES
+
+OBJ:_{goal:"- - - Ejecutar BLP-016 — Skills Refactor: fusion mcp+handlers", status:"current", success:"", survive:"work"}
+
+$4: SESSIONS
+
+
+$5: HANDOFFS
+
+
+$6: PULSE
+
+
+$7: LESSONS
+
+LNG:______siempre_pasar_{type:"contextual", cause:"", lesson:"- - - Siempre pasar path explicito a handlers de descubrimiento"}
+LNG:______codec_cortex_e{type:"contextual", cause:"", lesson:"- - - CODEC-CORTEX es libreria obligatoria. No escribir fallbacks manuales."}
+LNG:______el_formato_sig{type:"contextual", cause:"", lesson:"- - - El formato sigil con glosario $0 es el canonico"}
+LNG:______cuando_arquite{type:"contextual", cause:"", lesson:"- - - Cuando Arquitecto dice la apruebo para ejecucion avanzar directo a ready"}
+LNG:______alfred_complet{type:"contextual", cause:"", lesson:"- - - Alfred completa flujo completo define ejecuta revisa aprueba"}
+LNG:______despues_de_blu{type:"contextual", cause:"", lesson:"- - - Despues de blueprint_define leer BLP-XXX.md para verificar secciones"}
+LNG:______solo_aprobado_{type:"contextual", cause:"", lesson:"- - - Solo aprobado dale ejecutalo autorizan paso a ready y claim"}
+LNG:______presentar_conc{type:"contextual", cause:"", lesson:"- - - Presentar concepto primero. Solo tras visto bueno hacer blueprint_create"}
+LNG:______ejecutar_cada_{type:"contextual", cause:"", lesson:"- - - Ejecutar CADA paso de AGENTS.md. Cargar skills. Self-audit con LNG"}
+LNG:______mcp_environmen{type:"contextual", cause:"", lesson:"- - - MCP environment field es environment no env"}
+LNG:______convertir_cont{type:"contextual", cause:"", lesson:"- - - Convertir contadores a int al leer frontmatter"}
+LNG:______never_apply_fr{type:"contextual", cause:"", lesson:"- - - Never apply from generic approval. Require exact preview hash"}
+LNG:______present_propos{type:"contextual", cause:"", lesson:"- - - Present proposals in natural language. Show exact preview"}
+LNG:______blueprints_mus{type:"contextual", cause:"", lesson:"- - - Blueprints must enforce procedure through handlers"}
+LNG:______blp_004_enforc{type:"contextual", cause:"", lesson:"- - - BLP-004 enforced maturation gates y closure checks"}
+LNG:______blp_005_header{type:"contextual", cause:"", lesson:"- - - BLP-005 header duplication en _replace_section regex"}
+LNG:______acs_de_grep_de{type:"contextual", cause:"", lesson:"- - - ACs de grep deben usar patrones especificos por entorno"}
+LNG:______cleanup_non_ex{type:"contextual", cause:"", lesson:"- - - CLEANUP_NON_EXIST_OBJ fragmenta shared pool"}
+LNG:______siempre_ejecut{type:"contextual", cause:"", lesson:"- - - Siempre ejecutar cortex.render.validate_file antes de embeber diagramas"}
+LNG:______halt_and_repor{type:"contextual", cause:"", lesson:"- - - HALT_AND_REPORT no tiene excepcion. Primero informar opciones al Arquitecto"}
+LNG:______evaluar_contex{type:"contextual", cause:"", lesson:"- - - Evaluar contexto completo jobs dependencias recovery time"}
+LNG:______siempre_intent{type:"contextual", cause:"", lesson:"- - - Siempre intentar handler MCP primero. Bypass solo con autorizacion explicita"}
+LNG:______session_handle{type:"contextual", cause:"", lesson:"- - - Session handlers implementados close resume status SES menor a 2KB"}
+LNG:______adoption_skill{type:"contextual", cause:"", lesson:"- - - adoption.skill.md S6 actualizado con session.resume como paso 0"}
+LNG:______read_brain_y_f{type:"contextual", cause:"", lesson:"- - - read_brain y find_project_root usan paths diferentes"}
+LNG:______mode_live_es_e{type:"contextual", cause:"", lesson:"- - - mode live es extension al handler mature"}
+LNG:______w10_auditoria_{type:"contextual", cause:"", lesson:"- - - w10 auditoria 2 tiers Handler doc mismatch 62 vs 48"}
+LNG:______gap_001_002_fi{type:"contextual", cause:"", lesson:"- - - GAP-001/002 fixed directos GAP-003/004/005 via BLP-012 con gobernanza"}
+LNG:______138_e017___20_{type:"contextual", cause:"", lesson:"- - - 138 E017 + 20 E006 en skills Sigilos locales no declarados en $0"}
+LNG:______loose_governan{type:"contextual", cause:"", lesson:"- - - Loose governance files no son entry points"}
+LNG:______codec_cortex_v{type:"contextual", cause:"", lesson:"- - - CODEC-CORTEX v0.4.3 soporta sigilos locales via table format"}
+LNG:______parse_attrs_bo{type:"contextual", cause:"", lesson:"- - - parse_attrs_body debe respetar quoted strings con colons internos"}
+LNG:______session_inicia{type:"contextual", cause:"", lesson:"- - - Session inicializada correctamente con brain.cortex v13 limpio"}
+LNG:_______replace_secti{type:"contextual", cause:"", lesson:"- - - _replace_section en blueprint.py regenera header en ingles y duplica"}
+LNG:______codec_cortex_v{type:"contextual", cause:"", lesson:"- - - CODEC-CORTEX valida estrictamente al escribir. Entries incompletos acumulan errores"}
+LNG:______migrar_escritu{type:"contextual", cause:"", lesson:"- - - Migrar escritura Y lectura en el mismo ciclo"}
+LNG:______brain_cortex_i{type:"contextual", cause:"", lesson:"- - - Brain.cortex init debe producir entries conformes desde el principio"}
+LNG:______template_y_han{type:"contextual", cause:"", lesson:"- - - Template y handler deben usar el mismo naming"}
+LNG:______blp_014_migro_{type:"contextual", cause:"", lesson:"- - - BLP-014 migro identity.record sessions.py pulse.py a CRUD Fix header duplication"}
+LNG:______skill_edit_con{type:"contextual", cause:"", lesson:"- - - skill.edit con parametro section tiene bug de reemplazo hasta EOF"}
+
+$8: ACTIVE_CONTEXT
+
+WRK:current{phase:"active", current:"- cycle=- cycle=- cycle=- CYCLE-01 BLP-016 ready for execution by Jarvis", blocked:"no", survive:"work"}
+
+$9: RISKS
+
+RSK:risk{description:"- - -", mitigation:"", severity:"medium"}
+RSK:risk{description:"- - -", mitigation:"", severity:"medium"}
+RSK:risk{description:"- - -", mitigation:"", severity:"medium"}
+RSK:risk{description:"- - -", mitigation:"", severity:"medium"}
+
+$10: KNOWLEDGE
+
+KNW:knowledge{topic:"project_knowledge", content:"71 MCP handlers 119 tests 6 skills mcp-handlers unified transport+interface cortex CODEC+HCORTEX protocol session+interaction workflows index+8-file library learning 3-level engine diagram PUML pipeline Usar handlers MCP para mutar governance No editar cortex directamente session context set get mantienen contexto activo Header visible toda respuesta session resume restaura contexto", status:"active"}
+
+$11: CONCURRENCY
+
+ERR:concurrency{version:"21", last_writer:"alfred", updated:"2026-07-08T10:30:00Z"}

@@ -60,17 +60,17 @@ STP:halt{ when:"Sistema se cae, error crítico, o contexto ambiguo", action:"HAL
 
 $3: SESSION CONTEXT POINTER
 
-AXM:context_pointer{ El agente mantiene un puntero de contexto activo durante toda la sesión: proyecto actual + ruta absoluta + última acción. Cada vez que el Arquitecto nombra un proyecto, se actualiza este puntero. Ninguna operación sobre archivos o handlers debe ejecutarse sin verificar que el path corresponda al contexto activo. }
+AXM:context_pointer{ El agente mantiene un puntero de contexto activo durante toda la sesión: proyecto actual + ruta absoluta + ciclo. Cada vez que el Arquitecto nombra un proyecto, se actualiza este puntero. Ninguna operación sobre archivos o handlers debe ejecutarse sin verificar que el path corresponda al contexto activo. }
 
 IDN:active_context{ name:"CONTEXTO ACTIVO", fields:["project_name: nombre del proyecto (ej: ARQUX)", "project_root: ruta absoluta (ej: /home/vatrox/workspace/ARQUX)", "scope: 'workspace' | 'project' | 'cycle'", "last_bp: BLP activo si existe", "set_at: timestamp de cuando se estableció"], scope:"Por sesión — se pierde al cerrar sesión, se restaura con session.resume()" }
 
-HDL:session.context.set{ signature:"context.set(project, scope, blp?, path?)", purpose:"Establece el contexto activo. Valida que el proyecto existe (via meta-brain o path explicito), escribe .arqux/context.cortex con project_root absoluto, devuelve header formateado '⬡ Alfred | ARQUX | CYCLE-01'. DESPUES de esta llamada, handlers sin path= (project.status, task.list, etc.) resuelven automaticamente desde workspace root usando el context_root almacenado." }
+HDL:session.context.set{ signature:"context.set(project, scope, blp?, path?)", purpose:"Establece el contexto activo. Valida que el proyecto existe (resolviendo path desde meta-brain o desde path= explicito), escribe .arqux/context.cortex con project_root absoluto, devuelve header '⬡ Alfred | ARQUX | CYCLE-01'. DESPUES de esta llamada, los handlers sin path= (project.status, task.list, etc.) resuelven automaticamente desde workspace root usando project_root almacenado en context.cortex." }
 
-HDL:session.context.get{ signature:"context.get(path?)", purpose:"Lee el contexto activo desde .arqux/context.cortex. Devuelve header + datos estructurados (project, scope, blp, agent, project_root). Read-only, sin efectos secundarios." }
+HDL:session.context.get{ signature:"context.get(path?)", purpose:"Lee el contexto activo desde .arqux/context.cortex. Devuelve header + datos estructurados (project, scope, blp, agent, project_root). Read-only." }
 
-AXM:path_verification{ Toda llamada a handler con parámetro path DEBE resolverse contra el contexto activo. Si el path no coincide con project_root, preguntar al Arquitecto antes de ejecutar. Si se omitió path, usar project_root por defecto. }
+AXM:path_verification{ Toda llamada handler con path DEBE resolverse contra contexto activo. Path sin coincidencia con project_root → preguntar. Path omitido → find_project_root() usa fallback a context.cortex que contiene project_root. }
 
-STP:header_format{ Primera línea del mensaje debe ser el header de contexto definido en AGENTS.md $2 (AXM:visible_header). Formato: ⬡ <AGENTE> | <PROYECTO> | <SCOPE>. Si hay BLP activo: incluir | <BLP>. Si es workspace root: ⬡ <AGENTE> | WORKSPACE | meta-brain. }
+STP:header_format{ Primera linea del mensaje debe ser el header de contexto definido en AGENTS.md $2 (AXM:visible_header). Formato: ⬡ <AGENTE> | <PROYECTO> | <SCOPE>. Si hay BLP activo: incluir | <BLP>. Si es workspace root: ⬡ <AGENTE> | WORKSPACE | meta-brain. }
 
 STP:header_examples{ valid:["⬡ Alfred | ARQUX | CYCLE-01 | BLP-014", "⬡ Jarvis | CODEC-CORTEX | v0.4.3", "⬡ Alfred | WORKSPACE | meta-brain", "⬡ Seshat | ENVX_INFRA | Diagnóstico"], invalid:["solo texto sin header", "header sin ⬡", "proyecto que no coincide con context_root", "agente que no es el que responde"] }
 
@@ -98,32 +98,20 @@ LIM:mcp_first{ severity:"blocking", limit:"Siempre intentar handler MCP primero 
 
 LIM:no_direct_edit{ severity:"blocking", limit:"Nunca editar archivos de governance (.cortex) directamente. Usar MCP handlers o CLI (arqux call)." }
 
-STP:cli_fallback{ when:"MCP tools no disponibles", action:"Usar 'arqux call <handler> <key=value>...' Para listar handlers: 'python -c 'from arqux.handlers import list_handlers; print(*list_handlers(), sep=\"\\n\")''" }
+STP:cli_fallback{ when:"MCP tools no disponibles", action:"Usar 'arqux call <handler> <key=value>...' Para listar handlers: 'python -c 'from arqux.handlers import list_handlers; print(*list_handlers(), sep="\n")''" }
 
 LIM:no_auto_commit{ severity:"blocking", limit:"Nunca commit, push o publish sin autorización explícita del Arquitecto." }
 
 
-$6: HCORTEX DISCIPLINE
+$6: HCORTEX DISCIPLINE — REFERENCIA
 
-AXM:hcortex_format{ Todas las respuestas al Arquitecto usan HCORTEX: tablas verticales, listas, diagramas PUML. Palabras completas, sin abreviaturas. NUNCA key=value en texto plano. NUNCA sigils crudos en mensajes humanos. }
+AXM:hcortex_reference{ All HCORTEX formatting rules, profile selection, and output conventions are defined in cortex.skill.md §4 (CORTEX-OUT — Output Protocol). This protocol.skill.md previously contained HCORTEX rules in §6 but they have been consolidated into cortex.skill.md to eliminate duplication. }
 
-STP:good{ patterns:[
-  "Tabla | Dimensión | Valor | para pares clave-valor",
-  "Listas con bullets para enumeraciones",
-  "Diagramas PUML (@startuml) para flujos y estados",
-  "Texto corrido español para explicaciones",
-]}
-
-STP:bad{ patterns:[
-  "OUT-WORK key=val,key2=val2",
-  "$5/LNG:lesson{type:...} en mensaje al usuario",
-  "key=value pairs sin formato de tabla",
-  "Sigils como IDN, FCS, LNG en texto humano",
-]}
+HDL:cortex.render{ signature:"render(path)", purpose:"Render a .cortex file to HCORTEX READ markdown — use for reviewing any .cortex content in HCORTEX format." }
 
 
 $7: EVIDENCE & SESSION LIFE
 
 AXM:evidence_over_opinion{ Toda decisión, blocker y completitud produce evidencia. Si no está registrado, no pasó. Preferir evidence.record sobre afirmaciones verbales. }
 
-STP:session_close{ when:"Fin de sesión o pausa larga", action:"session.close(summary='...', blps='...', tasks='...', decisions='...', gaps='...'). Esto preserva el contexto para la próxima sesión vía session.resume(). El contexto activo se pierde al cerrar — session.resume() lo restaura desde el SES." }
+STP:session_close{ when:"Fin de sesión o pausa larga", action:"session.close(summary='...', blps='...', tasks='...', decisions='...', gaps='...'). Esto preserva el contexto para la próxima sesión vía session.resume(). El contexto activo y el header se pierden al cerrar — session.resume() los restaura desde el SES." }

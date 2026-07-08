@@ -8,8 +8,6 @@ $0
 # OUT   | output     | attrs      | M | Working        | CORTEX-OUT example
 # FMT   | format     | attrs      | B | Semantic       | Formatting rule
 
-# For the full glossary see AGENTS.md §0.
-
 
 $1: CANONICAL RULES
 
@@ -53,6 +51,8 @@ IDN:cortex_out{ purpose:"Token-efficient output protocol for agent responses. Us
 
 AXM:hcortex_output{ CORTEX-OUT uses HCORTEX formatting — human-readable CORTEX. This means: vertical layout with line breaks, indentation for hierarchy, lists, tables, and boxes instead of prose paragraphs, full words (no abbreviations), one-line natural language summary after the structured block. The LLM parses it as efficiently as raw CORTEX. Line breaks are cheap tokens. }
 
+AXM:hcortex_format{ All responses to the Architect use HCORTEX. Vertical tables, lists, PUML diagrams. Full words, no abbreviations. NEVER key=value in plain text. NEVER raw sigils in human-facing messages. }
+
 FMT:hcortex_rules{
   vertical:"Each key-value pair on its own line, indented under the profile header.",
   tables:"Use markdown tables for multi-field comparisons instead of repeated key=value lines.",
@@ -62,6 +62,22 @@ FMT:hcortex_rules{
   summary:"ALWAYS end with a one-line natural language summary after ' — '.",
   diagrams:"When explaining structure or flow, prefer PUML diagram over prose description.",
 }
+
+STP:hcortex_good{ patterns:[
+  "'⬡ <AGENTE> | <PROYECTO> | <SCOPE>' as first line (see AGENTS.md $2)",
+  "Table | Dimension | Value | for key-value pairs",
+  "Bullet lists for enumerations",
+  "PUML diagrams (@startuml) for flows and states",
+  "Running Spanish text for explanations",
+]}
+
+STP:hcortex_bad{ patterns:[
+  "OUT-WORK key=val,key2=val2",
+  "$5/LNG:lesson{type:...} in user-facing messages",
+  "key=value pairs without table formatting",
+  "Sigils like IDN, FCS, LNG in human text",
+  "Response without context header (⬡)",
+]}
 
 
 $4.1: PROFILE SELECTION MATRIX
@@ -182,7 +198,24 @@ AXM:profile_rules{
 }
 
 
-$5: KEY PRINCIPLES
+$5: BRAIN SYNC — AUTO-UPDATE BRAIN.CORTEX (sync_brain)
+
+IDN:brain_sync{ name:"sync_brain", location:"src/arqux/sync.py", purpose:"Automatically update brain.cortex (WRK:current, FCS:current, metrics) after every successful handler mutation. Eliminates cognitive dissonance between execution and brain state." }
+
+AXM:fail_silent{ sync_brain() never interrupts the calling handler. Errors are logged and swallowed. The handler always completes normally. }
+
+HDL:sync_brain{ signature:"sync_brain(project_root, event, focus?, metrics?, detail?)", purpose:"Update WRK:current, update FCS:current (if focus=), log metrics. Called as last line before return in mutating handlers.", event:"Canonical event name: 'blueprint.approve', 'task.complete', 'cycle.create'", focus:"New FCS value. Only for major events (approve, create, close).", metrics:"Dict of counters: {'blueprints_done': 17}", detail:"Human-readable detail about the event" }
+
+STP:integrated_handlers{ count:15, modules:["blueprint (create, complete, approve, cancel, ready)", "task (create, complete)", "cycle (create, close)", "skill (edit)", "project (bind)", "cortex (record_lesson_handler)"], note:"Each handler calls sync_brain() as its last non-return line." }
+
+AXM:handler_responsibility{ Each mutating handler is responsible for calling sync_brain() explicitly. No middleware. The handler calls it as the last line before returning success. }
+
+AXM:no_read_sync{ Read-only handlers (list, read, get, status, lessons) MUST NOT call sync_brain(). The test_sync_brain.py test verifies this with a grep check. }
+
+AXM:identity_skip{ identity.record already has built-in brain sync via its auto-trigger mechanism (syncs LNG to brain + scans for patterns). Adding sync_brain there would be redundant — the auto-trigger IS the sync. }
+
+
+$6: KEY PRINCIPLES
 
 AXM:density_over_prose{ Every token consumed by prose is a token NOT used for thinking. CORTEX delivers 8x the information per token. Write for the LLM reader, not the human reader. }
 
@@ -191,7 +224,7 @@ AXM:memory_evolves{ Agent memory is a living document. LNG entries accumulate. c
 AXM:one_format_everywhere{ Governance state, agent docs, skills, output, and agent memory — ALL use the same sigil format. }
 
 
-$6: PLANTUML IN HCORTEX DOCUMENTS
+$7: PLANTUML IN HCORTEX DOCUMENTS
 
 AXM:puml_mandatory{ Every Blueprint (BLP-NNN.md) MUST include three PUML diagrams: Context (§5), Technical Design (§8), and Operational Design (§9). These diagrams are the PRIMARY mechanism for communicating intent between Architect and Executor. }
 

@@ -1,0 +1,75 @@
+$0
+
+# -- $0: ARQUX GOVERNANCE GLOSSARY --
+# Sigil | Name | Type | Risk | Cognitive Layer | Description
+# IDN   | identity   | attrs      | B | Semantic       | Actor identity
+# FCS   | focus      | attrs      | H | Working        | Active attention anchor
+# OBJ   | objective  | attrs      | H | Working        | Active goal with success criterion
+# WRK   | work       | attrs      | B | Working        | Current execution state
+# SES   | session    | attrs      | M | Episodic       | Compressed I/O/R episode
+# HDL   | handler    | attrs-pos  | M | Semantic       | Handoff descriptor
+# AUD   | audit      | attrs      | M | Prefrontal     | Verification/audit record
+# LNG   | lesson     | attrs      | M | Episodic       | Learned lesson or pattern
+# STP   | step       | attrs      | M | Working        | Task procedure step
+# CNST  | constraint | attrs      | H | Prefrontal     | Hard constraint or precondition
+# CLAIM | claim      | attrs      | M | Prefrontal     | Acceptance criterion
+# BLK   | blocker    | attrs      | H | Prefrontal     | Blocking condition
+# RSK   | risk       | attrs      | M | Prefrontal     | Identified risk with mitigation
+# KNW   | knowledge  | attrs      | B | Semantic       | Stable or promoted knowledge
+# DOM   | domain     | attrs      | B | Semantic       | Project/scope descriptor
+# ERR   | error      | attrs      | M | Prefrontal     | Concurrency / state info
+# DESC  | description | cuerpo     | B | Semantic       | Structured textual description
+#
+# Types:
+# bloque = canonical type
+# attrs = canonical type
+# attrs-pos = canonical type
+# cuerpo = canonical type
+# relacion = canonical type
+#
+# Micro-glossary:
+# cur=current pln=planned fut=future blk=blocked
+# min=minimum rec=recovery wrk=work full=full
+# ok=success fail=failure part=partial
+
+
+$1: TASK
+
+WRK:task{id:"T-001", status:"done", governor:"hermes", assignee:"hermes", priority:"high", complexity:"standard", cycle:"CYCLE-01", created:"2026-07-08T18:02:41Z", updated:"2026-07-08T18:08:18Z"}
+
+
+$2: OBJECTIVE
+
+OBJ:objective{text:"- text=- text=Hacer language-agnostic los regex de blueprint.define — usar referencias numéricas de sección (## §N:) en vez de títulos en inglés"}
+
+
+$3: PRECONDITIONS
+
+CNST:pre1{text:"text=text=Bug identificado: regex usan headers en ingles pero template esta en espanol"}
+
+CNST:pre2{text:"text=text=Fix \\1 → \\\\g<1> ya aplicado en lineas 317 y 357"}
+
+CNST:pre3{text:"text=text=BLP-021 existe en estado defined con cuerpo vacio por este bug"}
+
+
+$4: ACCEPTANCE
+
+CLAIM:ac1{criterion:"criterion=criterion=§3 regex usa ## §3:.* sin depender del titulo"}
+
+CLAIM:ac2{criterion:"criterion=criterion=§6 scope regex usa ## §6:.* seguido de primer bold text"}
+
+CLAIM:ac3{criterion:"criterion=criterion=§6 exclusions regex usa ## §6:.* seguido de segundo bold text"}
+
+CLAIM:ac4{criterion:"criterion=criterion=§11 regex usa ## §11:.* sin depender del titulo"}
+
+CLAIM:ac5{criterion:"criterion=criterion=§12 AC regex acepta AC-XX y CA-XX"}
+
+CLAIM:ac6{criterion:"criterion=criterion=§15 risks regex usa ## §15: boundary"}
+
+CLAIM:ac7{criterion:"criterion=criterion=Todos los regex existentes siguen siendo compatibles con BLP_TEMPLATE.md actual"}
+
+
+$5: EVIDENCE
+
+AUD:evidence{text:"Todos los regex de blueprint.define ahora usan referencias numericas de seccion (## §N:) sin depender del idioma del titulo. 7 regex actualizados: §3, §6 scope, §6 exclusions, §7, §11, §12, §15. BLP-021 definido correctamente con secciones pobladas."}
+

@@ -24,6 +24,7 @@ from ..constants import ARQUX_DIR
 from ..cortex_out import CortexOUT
 from ..permissions import PermissionContext
 from ..state import find_workspace_root, find_project_root
+from ..sync import sync_brain
 
 
 SKILL_DIR = "skills"
@@ -452,6 +453,7 @@ def edit_skill(
                 hint="Sections use CORTEX format: $0, $1, $2.1, etc.",
             )
         skill_path.write_text(updated, encoding="utf-8")
+        sync_brain(arqux.parent, "skill.edit", detail=f"section ${section} of {name} written")
         return CortexOUT.work(
             f"skill.edit section name={name} section=${section} size={len(content)}",
             name=name,
@@ -462,6 +464,7 @@ def edit_skill(
 
     skill_path.parent.mkdir(parents=True, exist_ok=True)
     skill_path.write_text(content, encoding="utf-8")
+    sync_brain(arqux.parent, "skill.edit", detail=f"full write of {name} ({len(content)} bytes)")
     return CortexOUT.work(
         f"skill.edit write name={name} size={len(content)}",
         name=name,

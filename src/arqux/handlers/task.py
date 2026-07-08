@@ -38,6 +38,7 @@ from ..state import (
     task_path,
     write_cortex_pair,
 )
+from ..sync import sync_brain
 
 
 def create_task(
@@ -95,6 +96,13 @@ def create_task(
         task_id,
         fm,
         body,
+    )
+
+    sync_brain(
+        root,
+        "task.create",
+        metrics={"tasks_active": 1},
+        detail=f"task {task_id} created in {cycle_id}",
     )
 
     return CortexOUT.work(
@@ -209,6 +217,13 @@ def complete_task(
         agent=agent,
         payload=evidence or "",
         cycle=fm.get("cycle", ""),
+    )
+
+    sync_brain(
+        root,
+        "task.complete",
+        metrics={"tasks_done": 1},
+        detail=f"task {task_id} completed",
     )
 
     return CortexOUT.work(

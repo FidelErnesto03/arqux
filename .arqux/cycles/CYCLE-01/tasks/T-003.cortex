@@ -1,0 +1,73 @@
+$0
+
+# -- $0: ARQUX GOVERNANCE GLOSSARY --
+# Sigil | Name | Type | Risk | Cognitive Layer | Description
+# IDN   | identity   | attrs      | B | Semantic       | Actor identity
+# FCS   | focus      | attrs      | H | Working        | Active attention anchor
+# OBJ   | objective  | attrs      | H | Working        | Active goal with success criterion
+# WRK   | work       | attrs      | B | Working        | Current execution state
+# SES   | session    | attrs      | M | Episodic       | Compressed I/O/R episode
+# HDL   | handler    | attrs-pos  | M | Semantic       | Handoff descriptor
+# AUD   | audit      | attrs      | M | Prefrontal     | Verification/audit record
+# LNG   | lesson     | attrs      | M | Episodic       | Learned lesson or pattern
+# STP   | step       | attrs      | M | Working        | Task procedure step
+# CNST  | constraint | attrs      | H | Prefrontal     | Hard constraint or precondition
+# CLAIM | claim      | attrs      | M | Prefrontal     | Acceptance criterion
+# BLK   | blocker    | attrs      | H | Prefrontal     | Blocking condition
+# RSK   | risk       | attrs      | M | Prefrontal     | Identified risk with mitigation
+# KNW   | knowledge  | attrs      | B | Semantic       | Stable or promoted knowledge
+# DOM   | domain     | attrs      | B | Semantic       | Project/scope descriptor
+# ERR   | error      | attrs      | M | Prefrontal     | Concurrency / state info
+# DESC  | description | cuerpo     | B | Semantic       | Structured textual description
+#
+# Types:
+# bloque = canonical type
+# attrs = canonical type
+# attrs-pos = canonical type
+# cuerpo = canonical type
+# relacion = canonical type
+#
+# Micro-glossary:
+# cur=current pln=planned fut=future blk=blocked
+# min=minimum rec=recovery wrk=work full=full
+# ok=success fail=failure part=partial
+
+
+$1: TASK
+
+WRK:task{id:"T-003", status:"done", governor:"hermes", assignee:"hermes", priority:"high", complexity:"complex", cycle:"CYCLE-01", created:"2026-07-08T18:33:19Z", updated:"2026-07-08T18:36:45Z"}
+
+
+$2: OBJECTIVE
+
+OBJ:objective{text:"- text=- text=- text=Blueprint Marker Discovery — los handlers de blueprint descubren dinamicamente los marcadores <!-- BLP:N --> del template en vez de tener listas internas hardcodeadas"}
+
+
+$3: PRECONDITIONS
+
+CNST:pre1{text:"text=text=text=BLP_TEMPLATE.md tiene marcadores <!-- BLP:N --> en las 18 secciones + TITLE"}
+
+CNST:pre2{text:"text=text=text=blueprint.define y update ya usan marcadores pero con referencia hardcodeada a IDs especificos"}
+
+CNST:pre3{text:"text=text=text=T-002 completo: define y update usan marcadores con preservacion de header"}
+
+
+$4: ACCEPTANCE
+
+CLAIM:ac1{criterion:"criterion=criterion=criterion=blueprint.define descubre marcadores del BLP via escaner <!-- BLP: --> en vez de usar lista interna"}
+
+CLAIM:ac2{criterion:"criterion=criterion=criterion=blueprint.update usa marcador descubierto dinamicamente en vez de mapeo section_number → marker_id"}
+
+CLAIM:ac3{criterion:"criterion=criterion=criterion=El escaner de marcadores es una funcion compartida (scan_markers) usada por create, define y update"}
+
+CLAIM:ac4{criterion:"criterion=criterion=criterion=blueprint.create guarda el mapa de marcadores en frontmatter (blp_markers@) para referencia rapida"}
+
+CLAIM:ac5{criterion:"criterion=criterion=criterion=Handler no tiene hardcodeados section_titles ni mapeos de idioma"}
+
+CLAIM:ac6{criterion:"criterion=criterion=criterion=Compatibilidad hacia atras con BLPs que no tienen marcadores (fallback a metodo legacy)"}
+
+
+$5: EVIDENCE
+
+AUD:evidence{text:"scan_markers() implementada. create_blueprint escanea y guarda blp_markers@ en frontmatter. update_blueprint valida contra el mapa y acepta marker IDs directos (BLP:3). Define ya no es necesario como paso separado — update es el unico mecanismo de modificacion de secciones."}
+

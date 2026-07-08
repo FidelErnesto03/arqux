@@ -1,0 +1,260 @@
+---
+blueprint_id: "BLP-021"
+title: "Cambio de identidad en caliente — handoff entre agentes Arqux (Alfred, Jarvis, Seshat, Heimdall) por saludo inicial y por solicitud en sesion activa"
+cycle: "CYCLE-01"
+status: "defined"
+governor: "hermes"
+executor: ""
+created_at: "2026-07-08T18:07:07Z"
+updated_at: "2026-07-08T18:17:36Z"
+closed_at: ""
+priority: "medium"
+complexity: "standard"
+quality_gates@: "{"
+has_clear_objective: "false,"
+has_verifiable_preconditions: "false,"
+has_scope_and_exclusions: "false,"
+has_acceptance_criteria: "false,"
+has_work_procedure: "false,"
+has_required_validations: "false,"
+_template_ref: "BLP_TEMPLATE.md"
+---
+
+# BLP-021: Cambio de identidad en caliente — handoff entre agentes Arqux (Alfred, Jarvis, Seshat, Heimdall) por saludo inicial y por solicitud en sesion activa
+
+---
+
+## §1: Planteamiento del Problema
+
+_Describe el problema que aborda este Blueprint. ¿Qué evidencia existe de que es real?_
+
+**Evidencia:**
+- _Evidencia 1_
+- _Evidencia 2_
+
+**Impacto de no resolverlo:**
+_
+
+
+## §2: Objetivo
+
+_Concreto, verificable, autocontenido. Un ejecutor leyendo solo esta sección debe entender qué lograr._
+
+
+## §3: Precondiciones
+
+- [ ] Identidades existen en .arqux/identities/
+- [ ] protocol.skill.md define inicio de sesion actual
+## §4: Principio Rector
+
+_La regla que gobierna este Blueprint. El ejecutor debe seguirla sin excepción._
+
+**Evidencia del problema:** _¿Qué evidencia concreta muestra que este es el principio correcto?_
+
+**Impacto si se viola:** _¿Qué pasa si no se sigue?_
+
+
+## §5: Contexto
+
+_Diagrama PUML que muestra el entorno: actores, sistemas externos, flujos de datos. Debe responder: "¿Qué necesita entender el ejecutor sobre el mundo en el que opera este Blueprint?"_
+
+```puml
+@startuml
+title Contexto — BLP-NNN
+' REQUERIDO: Mostrar todos los actores, sistemas y sus relaciones
+' Usar notación UML para que humanos y agentes lo entiendan sin ambigüedad
+
+actor "Usuario" as U
+actor "Admin" as A
+participant "API Gateway" as GW
+database "PostgreSQL" as DB
+cloud "IdP Externo" as IDP
+
+' Flujos de datos
+U -> GW: Solicitud
+GW -> DB: Consulta
+GW -> IDP: Validar
+' Las etiquetas deben ser lo suficientemente descriptivas para que un agente entienda qué representa cada flecha
+@enduml
+```
+
+
+## §6: Alcance y Exclusiones
+
+**Dentro del alcance:**
+- Implementar cambio de identidad en caliente entre Alfred, Jarvis, Seshat y Heimdall dentro de una misma sesion de chat por saludo inicial o handoff explicito.
+
+**Fuera del alcance (excluido explícitamente):**
+- Handoff via SES. Modificacion de identidades existentes.
+
+## §7: Reglas Obligatorias
+
+_Restricciones no negociables para el ejecutor._
+
+1. El handoff preserva el hilo de conversacion
+2. Cada identidad opera bajo sus propios AXM y LIM
+3. Header visible refleja identidad activa
+
+
+## §8: Diseño Técnico
+
+_Arquitectura esperada: componentes, flujo de datos, capas. Esto es lo que construye el ejecutor. Debe ser inequívoco — un agente leyendo esto debe entender exactamente qué crear._
+
+```puml
+@startuml
+title Diseño Técnico — BLP-NNN
+' REQUERIDO: Diagrama de componentes mostrando todos los módulos, sus responsabilidades,
+' y sus interfaces. Usar notación UML estándar de componentes.
+
+package "Módulo Auth" {
+  [Token Service] as TS
+  [Refresh Handler] as RH
+  [PKCE Validator] as PV
+}
+
+database "Redis" as RC
+database "PostgreSQL" as PG
+interface "API REST" as API
+
+API --> TS : POST /auth/token
+TS --> PG : almacenar sesión
+TS --> RC : cachear token
+RH --> RC : validar refresh
+PV --> TS : desafío PKCE
+
+' Cada componente debe tener una responsabilidad clara.
+' Cada flecha debe tener un propósito claro.
+@enduml
+```
+
+
+## §9: Diseño Operacional
+
+_Diagrama de secuencia que muestra el FLUJO DE EJECUCIÓN EXACTO: paso a paso, quién hace qué, en qué orden. Un agente ejecutor sigue esto como un guión._
+
+```puml
+@startuml
+title Diseño Operacional — BLP-NNN
+' REQUERIDO: Diagrama de secuencia mostrando las fases de ejecución.
+' Cada fase tiene entradas, acciones y salidas esperadas claras.
+' El agente sigue esto como un plan de ejecución inequívoco.
+
+actor "Ejecutor" as E
+participant "API" as API
+database "DB" as DB
+participant "Test Runner" as TR
+
+== Fase 1: Esquema ==
+E -> DB: CREATE TABLE sessions
+E -> DB: CREATE TABLE tokens
+DB --> E: esquema listo
+
+== Fase 2: Implementación ==
+E -> API: Implementar POST /auth/token
+E -> API: Implementar POST /auth/refresh
+E -> API: Implementar GET /auth/validate
+API --> E: endpoints listos
+
+== Fase 3: Validación ==
+E -> TR: pytest tests/auth/
+TR --> E: 42 pasaron, 0 fallaron
+E -> TR: bandit -r src/
+TR --> E: 0 issues HIGH/MEDIUM
+
+' Cada paso debe ser inequívoco.
+' El agente NO adivina — sigue exactamente lo que está dibujado.
+@enduml
+```
+
+
+## §10: Contratos
+
+**Entradas esperadas:**
+- _Formato, archivo o payload de entrada_
+
+**Salidas esperadas:**
+- _Archivos creados, modificados o reportes generados_
+
+**Comandos:**
+- `_comando_` — _propósito_
+
+
+## §11: Procedimiento de Trabajo
+
+Fase 1 Disenar protocolo handoff en protocol.skill.md con diagrama de flujo. Fase 2 Actualizar AGENTS.md con deteccion por saludo inicial. Fase 3 Implementar deteccion de frases de handoff en caliente. Fase 4 Implementar carga de identidad via cortex.read. Fase 5 Registrar handoff con evidence.record. Fase 6 Verificar que los LIM de cada identidad se respetan tras el cambio.
+## §12: Criterios de Aceptación
+
+_Cada CA debe ser objetivamente verificable._
+
+- [ ] **AC-01:** Saludo inicial detecta agente por nombre y carga su identidad
+- [ ] **AC-02:** Sin nombre de agente, default a Alfred
+- [ ] **AC-03:** Handoff en caliente con pasame con X cambia identidad
+- [ ] **AC-04:** Handoff registrado como evidencia
+- [ ] **AC-05:** protocol.skill.md actualizado
+
+
+## §13: Validaciones Requeridas
+
+| Tipo | Descripción | Comando | Evidencia Esperada |
+|---|---|---|---|
+| test | _Descripción_ | `_comando_` | _salida_ |
+| lint | _Descripción_ | `_comando_` | _salida_ |
+| seguridad | _Descripción_ | `_comando_` | _salida_ |
+
+
+## §14: Tareas
+
+_Desglose de tareas. Las tareas viven dentro de este Blueprint._
+
+- [ ] **T-1.1:** _Título — Descripción_
+- [ ] **T-1.2:** _Título — Descripción (depende de T-1.1)_
+- [ ] **T-2.1:** _Título — Descripción_
+
+
+## §15: Riesgos
+
+| ID | Descripción | Impacto | Mitigación |
+|---|---|---|---|
+| R-01 | _Descripción_ | _Impacto_ | _Mitigación_ |
+| R-02 | _Descripción_ | _Impacto_ | _Mitigación_ |
+| R-01 | Agente inexistente: informar y mantener identidad actual | _Impact_ | _Mitigation_ |
+| R-02 | Handoff durante operacion critica: completar antes de cambiar | _Impact_ | _Mitigation_ |
+
+## §16: Regla de Bloqueo
+
+_Condiciones bajo las cuales el ejecutor DEBE detenerse e informar._
+
+1. _Condición 1_
+2. _Condición 2_
+
+**Acción:** DETENER_E_INFORMAR
+**Escalar a:** _agente responsable o Arquitecto_
+
+
+## §17: Salida Esperada
+
+**Archivos creados:**
+- `_ruta/al/archivo_`
+
+**Archivos modificados:**
+- `_ruta/al/archivo_`
+
+**Evidencia:**
+- `_ruta/a/la/evidencia_`
+
+**Resumen:**
+> _Descripción de una línea del resultado esperado._
+
+
+## §18: Contrato de Calidad
+
+| Compuerta | Estado |
+|---|---|
+| has_clear_objective | ☐ |
+| has_verifiable_preconditions | ☐ |
+| has_scope_and_exclusions | ☐ |
+| has_acceptance_criteria | ☐ |
+| has_work_procedure | ☐ |
+| has_required_validations | ☐ |
+
+> Todas las compuertas deben estar en ✅ antes de blueprint.ready(). Ver blueprint-workflow skill.

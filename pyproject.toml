@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "arqux"
-version = "1.0.0"
-description = "Minimum-viable governance framework for AI agent teams. Defines what to do, who does it, and leaves evidence — without slowing work down."
+version = "0.3.0"
+description = "Enterprise Agent Infrastructure. Governance framework for AI agents with behavioral contracts, identity handoff, and automatic knowledge elevation."
 readme = "README.md"
 license = "Apache-2.0"
 license-files = ["LICENSE"]

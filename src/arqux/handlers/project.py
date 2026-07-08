@@ -27,6 +27,7 @@ from ..cortex_out import CortexOUT
 from ..permissions import PermissionContext
 from ..sessions import add_session_to_brain, remove_session_from_brain
 from ..state import find_project_root, find_workspace_root, read_brain, write_brain
+from ..sync import sync_brain
 
 
 def init_project(
@@ -264,6 +265,8 @@ def bind(
         return CortexOUT.error("no project initialized", code="NOT_FOUND")
 
     add_session_to_brain(root, agent_id, role)
+
+    sync_brain(root, "project.bind", detail=f"agent {agent_id} bound as {role}")
 
     return CortexOUT.work(
         f"project.bind ok agent={agent_id} role={role} (session recorded in brain)",
