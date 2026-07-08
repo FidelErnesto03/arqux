@@ -8,18 +8,18 @@ Both are append-only operations on the brain sections dict.
 
 from __future__ import annotations
 
-import re
 from pathlib import Path
 from typing import Any
 
-from .constants import BRAIN_SECTION_HANDOFFS, BRAIN_SECTION_PULSE
-from .state import (
-    _bump_concurrency,
-    _now_iso,
-    append_to_brain_section,
-    read_brain,
-    write_brain_sections,
-)
+from .constants import BRAIN_SECTION_PULSE
+from .state import _now_iso, crud_add, crud_read, find_project_root
+
+
+def _brain_cortex_path(project_root: Path) -> Path:
+    root = find_project_root(start=str(project_root))
+    if root is None:
+        return project_root / ".arqux" / "brain.cortex"
+    return root / "brain.cortex"
 
 
 # --- Pulse operations --------------------------------------------------------
@@ -55,19 +55,19 @@ def append_pulse_to_brain(
 ) -> str:
     """Append a pulse entry to the brain's PULSE section.
 
-    Returns the rendered pulse line.
+    Returns pulse summary line.
     """
-    fm, sections, _ = read_brain(project_root)
     ts = _now_iso()
-    cycle_part = f" cycle={cycle}" if cycle else ""
-    line = (
-        f"- [{ts}] id={event_id} task={task_id or '-'} kind={kind}{cycle_part} "
-        f"agent={agent} :: {payload}"
+    brain_path = _brain_cortex_path(project_root)
+    value = {"date": ts, "event": event_id, "task": task_id or "-", "kind": kind, "agent": agent, "result": payload, "evidence": payload}
+    if cycle:
+        value["cycle"] = cycle
+    crud_add(
+        brain_path, "$6", "AUD", event_id.replace("-", "_"),
+        value,
+        create_section=True, force=True,
     )
-    append_to_brain_section(sections, BRAIN_SECTION_PULSE, line)
-    _bump_concurrency(fm, agent)
-    write_brain_sections(project_root, fm, sections)
-    return line
+    return f"- [{ts}] id={event_id} task={task_id or '-'} kind={kind} agent={agent} :: {payload}"
 
 
 def read_pulse_from_brain(
@@ -78,28 +78,39 @@ def read_pulse_from_brain(
     since: str | None = None,
     limit: int = 100,
 ) -> list[dict[str, str]]:
-    """Read pulse entries from the brain's PULSE section.
+    """Read pulse entries from the brain's PULSE section via crud_read.
 
-    Each entry is returned as a dict with parsed fields:
+    Each entry is returned as dict with fields:
         {ts, id, task, kind, cycle, agent, payload}
     """
-    _, sections, _ = read_brain(project_root)
-    raw = sections.get(BRAIN_SECTION_PULSE, "")
+    brain_path = _brain_cortex_path(project_root)
+    if not brain_path.exists():
+        return []
+    try:
+        result = crud_read(brain_path, "$6/AUD:*")
+    except Exception:
+        return []
     entries: list[dict[str, str]] = []
-    for line in raw.splitlines():
-        line = line.strip()
-        if not line.startswith("- "):
+    for entry in result.get("entries", []):
+        val = entry.get("value", {})
+        if not isinstance(val, dict):
             continue
-        entry = _parse_pulse_line(line)
-        if not entry:
+        ev = {
+            "ts": val.get("date", ""),
+            "id": val.get("event", entry.get("name", "")),
+            "task": val.get("task", "-"),
+            "kind": val.get("kind", ""),
+            "agent": val.get("agent", ""),
+            "payload": val.get("evidence", val.get("result", "")),
+            "cycle": val.get("cycle", ""),
+        }
+        if task_id and ev["task"] != task_id:
             continue
-        if task_id and entry.get("task") != task_id:
+        if cycle and ev.get("cycle") != cycle:
             continue
-        if cycle and entry.get("cycle") != cycle:
+        if since and ev["ts"] < since:
             continue
-        if since and entry.get("ts", "") < since:
-            continue
-        entries.append(entry)
+        entries.append(ev)
         if len(entries) >= limit:
             break
     return entries
@@ -137,32 +148,31 @@ def read_handoffs(
     task_id: str | None = None,
     limit: int = 100,
 ) -> list[dict[str, str]]:
-    """Read handoff entries from the brain's HANDOFFS section."""
-    _, sections, _ = read_brain(project_root)
-    raw = sections.get(BRAIN_SECTION_HANDOFFS, "")
+    """Read handoff entries from the brain via crud_read."""
+    brain_path = _brain_cortex_path(project_root)
+    if not brain_path.exists():
+        return []
+    try:
+        result = crud_read(brain_path, "$5/HDL:*")
+    except Exception:
+        return []
     entries: list[dict[str, str]] = []
-    for line in raw.splitlines():
-        line = line.strip()
-        if not line.startswith("- "):
+    for entry in result.get("entries", []):
+        val = entry.get("value", {})
+        if not isinstance(val, dict):
             continue
-        m = re.match(
-            r"^- \[(?P<ts>[^\]]+)\] (?P<from>\S+) -> (?P<to>\S+) task=(?P<task>\S+) :: (?P<note>.*)$",
-            line,
-        )
-        if not m:
-            continue
-        entry = {
-            "ts": m.group("ts"),
-            "from": m.group("from"),
-            "to": m.group("to"),
-            "task": m.group("task"),
-            "note": m.group("note"),
+        ev = {
+            "ts": val.get("date", ""),
+            "from": val.get("from", ""),
+            "to": val.get("to", ""),
+            "task": val.get("task", ""),
+            "note": val.get("note", ""),
         }
-        if agent and agent not in (entry["from"], entry["to"]):
+        if agent and agent not in (ev["from"], ev["to"]):
             continue
-        if task_id and entry["task"] != task_id:
+        if task_id and ev["task"] != task_id:
             continue
-        entries.append(entry)
+        entries.append(ev)
         if len(entries) >= limit:
             break
     return entries

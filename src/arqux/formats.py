@@ -304,11 +304,11 @@ def _build_brain_doc(doc, frontmatter, sections_input):
     # $2: FOCUS
     focus = (sections or {}).get("FOCUS", "").strip()
     focus_val = (focus if focus and focus != "(one-sentence current focus of the project)"
-                 else "")
+                 else "Project governance and development")
     _add_section(doc, "$2", "FOCUS", [
         _entry("$2", "FCS", "current", {
             "what": focus_val, "priority": "medium",
-            "status": "current", "survive": "min",
+            "status": "current", "survive": "work",
         }),
     ])
 
@@ -324,7 +324,12 @@ def _build_brain_doc(doc, frontmatter, sections_input):
                     "goal": line, "status": "current",
                     "success": "", "survive": "work",
                 }))
-    _add_section(doc, "$3", "OBJECTIVES", obj_entries)
+    _add_section(doc, "$3", "OBJECTIVES", obj_entries or [
+        _entry("$3", "OBJ", "default", {
+            "goal": "Default project objective",
+            "status": "current", "success": "verified", "survive": "work",
+        }),
+    ])
 
     # $4: SESSIONS
     ses_entries = []
@@ -391,7 +396,7 @@ def _build_brain_doc(doc, frontmatter, sections_input):
     _add_section(doc, "$8", "ACTIVE_CONTEXT", [
         _entry("$8", "WRK", "current", {
             "phase": "active",
-            "current": active if active and not active.startswith("(") else "",
+            "current": active if active and not active.startswith("(") else "Initial cycle",
             "blocked": "no", "survive": "work",
         }),
     ])

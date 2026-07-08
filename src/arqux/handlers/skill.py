@@ -363,21 +363,38 @@ def _replace_skill_section(body: str, section_id: str, new_content: str) -> str 
     the header, it is stripped to avoid duplication.
     Returns the new body, or None if the section was not found.
     """
-    esc = re.escape(f"${section_id.lstrip('$')}")
-    pattern = rf"^{esc}(?::.*)?$(.*?)(?=^\$(?:\d+)(?:\.\d+)?(?::.*)?$|\Z)"
-    match = re.search(pattern, body, re.MULTILINE | re.DOTALL)
-    if not match:
+    normalized = section_id.lstrip("$")
+    target_header = re.compile(rf"^\${re.escape(normalized)}(?::.*)?$")
+    section_header = re.compile(r"^\$(\d+(?:\.\d+)?)(?::.*)?$")
+
+    lines = body.splitlines(keepends=True)
+    start = None
+    for idx, line in enumerate(lines):
+        if target_header.match(line.rstrip("\r\n")):
+            start = idx
+            break
+
+    if start is None:
         return None
-    full = match.group(0)
-    hdr_end = full.index("\n") if "\n" in full else len(full)
-    hdr = full[:hdr_end]
+
+    end = len(lines)
+    for idx in range(start + 1, len(lines)):
+        match = section_header.match(lines[idx].rstrip("\r\n"))
+        if match and match.group(1) != normalized:
+            end = idx
+            break
+
+    hdr = lines[start].rstrip("\r\n")
+
     # Strip section header from new_content if present
     clean = new_content
-    if clean.lstrip().startswith(f"${section_id.lstrip('$')}"):
+    clean_lines = clean.lstrip().splitlines()
+    if clean_lines and target_header.match(clean_lines[0].rstrip("\r\n")):
         first_lf = clean.index("\n") if "\n" in clean else len(clean)
-        clean = clean[first_lf + 1:]
+        clean = clean[first_lf + 1:] if first_lf < len(clean) else ""
     clean = clean.strip()
-    new_body = body.replace(full, hdr + "\n" + clean + "\n", 1)
+    new_section = hdr + "\n" + clean + "\n"
+    new_body = "".join(lines[:start]) + new_section + "".join(lines[end:])
     if new_body == body:
         return None
     return new_body

@@ -1,9 +1,11 @@
 """`session` module — session handoff between agents.
 
 Handlers:
-    session.close   — generate a portable SES entry in brain PULSE
-    session.resume  — read the last SES and restore context
-    session.status  — read SES metadata without restoring full context
+    session.close           — generate a portable SES entry in brain PULSE
+    session.resume          — read the last SES and restore context
+    session.status          — read SES metadata without restoring full context
+    session.context.set     — set the session context pointer (project + scope)
+    session.context.get     — read the current context pointer
 
 SES entries are stored in the brain's PULSE section as evidence-like
 entries with kind="session". Each SES is self-contained and < 2KB.
@@ -11,15 +13,15 @@ entries with kind="session". Each SES is self-contained and < 2KB.
 
 from __future__ import annotations
 
-import json
 import re
 from pathlib import Path
 from typing import Any
 
+from ..constants import ARQUX_DIR, BRAIN_CORTEX
 from ..cortex_out import CortexOUT
 from ..permissions import PermissionContext
 from ..pulse import append_pulse_to_brain, next_pulse_event_id, read_pulse_from_brain
-from ..state import find_project_root
+from ..state import find_project_root, find_workspace_root
 
 
 def close(
@@ -149,6 +151,157 @@ def status(
         decision_count=len(parsed.get("decisions", [])),
         gap_count=len(parsed.get("gaps", [])),
         lng_count=parsed.get("lng_count", 0),
+    )
+
+
+def _resolve_project_from_meta_brain(ws_root: Path, project_name: str) -> Path | None:
+    """Look up a project's absolute root path from meta-brain.cortex.
+
+    Reads the workspace meta-brain, finds the DOM entry matching *project_name*,
+    and returns the resolved absolute path.
+    """
+    meta_brain_path = ws_root / "meta-brain.cortex"
+    if not meta_brain_path.exists():
+        return None
+
+    try:
+        raw = meta_brain_path.read_text(encoding="utf-8")
+        # Find DOM:<name>{... path="VALUE" ... name="PROJECT_NAME" ...}
+        # or DOM:<name>{... name="PROJECT_NAME" ... path="VALUE" ...}
+        import re as _re
+        # Look for DOM entry where name matches project_name (case-insensitive)
+        pattern = (
+            rf'DOM:\w+\s*{{\s*'
+            rf'(?:[^}}]*?path:"([^"]*)"[^}}]*?name:"{_re.escape(project_name)}"'
+            rf'|[^}}]*?name:"{_re.escape(project_name)}"[^}}]*?path:"([^"]*)"'
+            rf')[^}}]*?}}'
+        )
+        m = _re.search(pattern, raw, _re.IGNORECASE)
+        if m:
+            rel_path = m.group(1) or m.group(2)
+            if rel_path:
+                resolved = (ws_root.parent / rel_path).resolve()
+                if resolved.exists():
+                    return resolved
+    except Exception:
+        pass
+
+    # Fallback: try to find the project as a subdirectory of workspace
+    candidate = ws_root.parent / project_name
+    if (candidate / ARQUX_DIR / BRAIN_CORTEX).exists():
+        return candidate
+    return None
+
+CONTEXT_CORTEX = "context.cortex"
+
+
+def context_set(
+    project: str,
+    scope: str,
+    blp: str | None = None,
+    path: str | None = None,
+    ctx: PermissionContext | None = None,
+) -> CortexOUT:
+    """Set the current session context pointer.
+
+    Validates that the project exists, stores a lightweight context entry
+    in ``.arqux/context.cortex``, and returns the formatted header string.
+    The context file is overwritten on each call (one context per workspace).
+    """
+    root = find_project_root(start=path)
+    if root is None:
+        return CortexOUT.error("no project initialized", code="NOT_FOUND")
+
+    agent = (ctx or PermissionContext.from_env()).agent_id
+
+    # Validate that the target project exists
+    # If path was given, resolve relative to the found project root
+    if path:
+        project_root = root.parent / project if project else root.parent
+    else:
+        # No explicit path: try to resolve project via meta-brain
+        ws_root = find_workspace_root()
+        if ws_root is None:
+            return CortexOUT.error("no workspace root found", code="NOT_FOUND")
+        project_root = _resolve_project_from_meta_brain(ws_root, project)
+
+    if project_root is None:
+        return CortexOUT.error(
+            f"project {project!r} not found — provide explicit path=",
+            code="NOT_FOUND",
+        )
+    project_brain = project_root / ARQUX_DIR / BRAIN_CORTEX
+    if not project_brain.exists():
+        return CortexOUT.error(
+            f"project {project!r} not found (no brain.cortex at {project_brain})",
+            code="NOT_FOUND",
+        )
+
+    arqux_dir = root / ARQUX_DIR
+    arqux_dir.mkdir(parents=True, exist_ok=True)
+    context_path = arqux_dir / CONTEXT_CORTEX
+
+    blp_part = f' blp="{_escape_ses_value(blp)}"' if blp else ""
+    entry = (
+        f'CTX:{agent} project="{_escape_ses_value(project)}"'
+        f' scope="{_escape_ses_value(scope)}"{blp_part}'
+        f' agent="{_escape_ses_value(agent)}"'
+        f' project_root="{_escape_ses_value(str(project_root))}"'
+    )
+    context_path.write_text(f"$0\n\n$1: CURRENT\n{entry}\n", encoding="utf-8")
+
+    header = f"⬡ {agent} | {project} | {scope}"
+    if blp:
+        header += f" | {blp}"
+
+    return CortexOUT.work(
+        "session.context.set ok",
+        header=header,
+        project=project,
+        scope=scope,
+        blp=blp or "",
+        agent=agent,
+    )
+
+
+def context_get(
+    path: str | None = None,
+) -> CortexOUT:
+    """Read the current context pointer from ``.arqux/context.cortex``."""
+    root = find_project_root(start=path)
+    if root is None:
+        return CortexOUT.error("no project initialized", code="NOT_FOUND")
+
+    context_path = root / ARQUX_DIR / CONTEXT_CORTEX
+    if not context_path.exists():
+        return CortexOUT.error("no context set", code="NOT_FOUND")
+
+    raw = context_path.read_text(encoding="utf-8")
+    result: dict[str, str] = {}
+
+    # Parse CTX:{agent_id} key="val" pairs
+    m = re.search(r"CTX:(\S+)\s+(.+)", raw)
+    if m:
+        result["agent"] = m.group(1)
+        pairs = m.group(2)
+        for pair in re.findall(r'(\w+)="([^"]*)"', pairs):
+            result[pair[0]] = pair[1]
+
+    if not result:
+        return CortexOUT.error("invalid context format", code="PARSE_ERROR")
+
+    header = (
+        f"⬡ {result.get('agent', '?')}"
+        f" | {result.get('project', '?')}"
+        f" | {result.get('scope', '?')}"
+    )
+    if result.get("blp"):
+        header += f" | {result['blp']}"
+
+    return CortexOUT.work(
+        "session.context.get ok",
+        header=header,
+        **result,
     )
 
 
