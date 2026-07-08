@@ -1,14 +1,14 @@
-# ⬡ ArqUX v1.0
+# ⬡ ArqUX v0.3.0
 
 **Enterprise Agent Infrastructure.**
 
-[![Version](https://img.shields.io/badge/version-1.0.0-blue)](https://github.com/nousresearch/arqux)
+[![Version](https://img.shields.io/badge/version-0.3.0-blue)](https://pypi.org/project/arqux/)
 [![License](https://img.shields.io/badge/license-MPL--2.0-green)](LICENSE)
-[![Python](https://img.shields.io/badge/python-3.11%2B-blue)](https://www.python.org/)
-[![BLPs](https://img.shields.io/badge/BLPs-22%20in%20CYCLE--01-orange)](https://github.com/nousresearch/arqux)
-[![Handlers](https://img.shields.io/badge/MCP%20Handlers-71-purple)](https://github.com/nousresearch/arqux)
-[![Agents](https://img.shields.io/badge/agents-4-red)](https://github.com/nousresearch/arqux)
-[![Status](https://img.shields.io/badge/status-production--ready-brightgreen)](https://github.com/nousresearch/arqux)
+[![Python](https://img.shields.io/badge/python-3.10%2B-blue)](https://www.python.org/)
+[![BLPs](https://img.shields.io/badge/BLPs-22%20in%20CYCLE--01-orange)](https://github.com/FidelErnesto03/arqux)
+[![Handlers](https://img.shields.io/badge/MCP%20Handlers-71-purple)](https://github.com/FidelErnesto03/arqux)
+[![Agents](https://img.shields.io/badge/agents-4-red)](https://github.com/FidelErnesto03/arqux)
+[![Status](https://img.shields.io/badge/status-beta-yellow)](https://pypi.org/project/arqux/)
 
 **Tags:** `ai-governance` `agent-orchestration` `llm-framework` `enterprise-ai` `mcp-server` `multi-agent` `audit-trail` `behavioral-contracts` `knowledge-management` `cortex-format`
 
@@ -134,7 +134,7 @@ Not for afternoon experiments. For teams putting AI agents into production with 
 
 ## 🗺️ Roadmap
 
-### v1.0 — Foundation (current)
+### v0.3.0 — Foundation (current)
 - Governance framework with 71 MCP handlers and 22 BLPs in CYCLE-01
 - CORTEX format with sigils, validation, and automatic elevation
 - Multi-identity model with binding behavioral contracts
