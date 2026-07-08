@@ -1,8 +1,8 @@
-# ⬡ ArqUX v0.3.2
+# ⬡ ArqUX v0.3.3
 
 **Enterprise Agent Infrastructure.**
 
-[![Version](https://img.shields.io/badge/version-0.3.2-blue)](https://pypi.org/project/arqux/)
+[![Version](https://img.shields.io/badge/version-0.3.3-blue)](https://pypi.org/project/arqux/)
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue)](LICENSE)
 [![Python](https://img.shields.io/badge/python-3.10%2B-blue)](https://www.python.org/)
 [![BLPs](https://img.shields.io/badge/BLPs-22%20in%20CYCLE--01-orange)](https://github.com/FidelErnesto03/arqux)
