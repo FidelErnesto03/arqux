@@ -26,7 +26,7 @@ PRODUCT_NAME_UPPER: str = "ARQUX"
 PRODUCT_NAME_TITLE: str = "Arqux"
 
 #: Version string — single source of truth.
-ARQUX_VERSION: str = "1.0.0"
+ARQUX_VERSION: str = "0.4.0"
 
 # --- Filesystem layout -----------------------------------------------------
 

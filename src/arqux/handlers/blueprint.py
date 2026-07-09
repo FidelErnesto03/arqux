@@ -24,6 +24,7 @@ import time as _time
 from pathlib import Path
 from typing import Any
 
+from ..concurrency import next_blueprint_id_safe
 from ..constants import (
     ARQUX_DIR,
     BLUEPRINTS_DIR,
@@ -101,7 +102,7 @@ def _blueprints_dir(root: Path, cycle_id: str) -> Path:
     return root / CYCLES_DIR / cycle_id / BLUEPRINTS_DIR
 
 
-def _next_blueprint_id(bp_dir: Path) -> str:
+def next_blueprint_id_safe(bp_dir: Path) -> str:
     """Generate next blueprint ID (BLP-NNN)."""
     existing = []
     if bp_dir.exists():
@@ -225,7 +226,7 @@ def create_blueprint(
 
     bp_dir = _blueprints_dir(root, cycle_id)
     bp_dir.mkdir(parents=True, exist_ok=True)
-    bp_id = _next_blueprint_id(bp_dir)
+    bp_id = next_blueprint_id_safe(bp_dir)
 
     # Try workspace templates first, fallback to package templates.
     template_src = _find_workspace_template(root, BLUEPRINT_TEMPLATE)

@@ -4,7 +4,7 @@
 
 **Architectural User Experience for governed AI agents.**
 
-[![Version](https://img.shields.io/badge/version-0.3.5-167A55?style=flat-square&labelColor=050807)](https://pypi.org/project/arqux/)
+[![Version](https://img.shields.io/badge/version-0.4.0-167A55?style=flat-square&labelColor=050807)](https://pypi.org/project/arqux/)
 [![Status](https://img.shields.io/badge/status-beta-FFB020?style=flat-square&labelColor=050807)](https://pypi.org/project/arqux/)
 [![License](https://img.shields.io/badge/license-Apache--2.0-2EC98D?style=flat-square\&labelColor=050807)](LICENSE)
 [![Python](https://img.shields.io/badge/python-3.10%2B-8FE3C0?style=flat-square\&labelColor=050807)](https://www.python.org/)
@@ -379,7 +379,7 @@ It is a more accountable architecture.**
 
 ## Roadmap
 
-### v0.3.x — Foundation
+### v0.4.x — Foundation
 
 * Governance framework.
 * MCP handlers.

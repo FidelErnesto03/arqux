@@ -17,11 +17,12 @@ Handlers:
 
 from __future__ import annotations
 
+import os
 from pathlib import Path
 from typing import Any
 
 from ..cortex_out import CortexOUT
-from ..permissions import PermissionContext
+from ..permissions import PermissionContext, enforce_ctx, HMAC_REQUIRED
 from ..state import cortex_read, cortex_write, cortex_verify, cortex_render
 from ..sync import sync_brain
 
@@ -134,6 +135,18 @@ def render_handler(
 
 
 def record_lesson_handler(
+    lesson: str, kind: str | None = None, cause: str | None = None,
+    agent_id: str | None = None,
+    path: str | None = None, ctx: PermissionContext | None = None,
+) -> CortexOUT:
+    """Record a behavioral lesson into agent identity with HMAC verification."""
+    enforce_ctx(ctx, "identity.record", require_hmac=os.environ.get("ARQUX_STRICT_SECURITY") == "1")
+    if agent_id and ctx and agent_id != ctx.agent_id:
+        return CortexOUT.error("PERMISSION_DENIED", code="FORBIDDEN")
+    return record_lesson_handler_legacy(lesson=lesson, kind=kind, cause=cause, agent_id=agent_id, path=path, ctx=ctx)
+
+
+def record_lesson_handler_legacy(
     lesson: str,
     kind: str = "behavioral",
     cause: str = "",

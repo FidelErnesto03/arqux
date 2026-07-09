@@ -105,7 +105,7 @@ $5: MCP WIRE PROTOCOL
 AXM:dot_to_underscore{ The MCP protocol requires tool names matching `^[a-zA-Z0-9_-]+$`. Dots (.) in handler names are converted to underscores (_) on the wire. Example: `blueprint.create` → tool name `blueprint_create`. The internal registry preserves dotted names. Both names resolve at runtime. }
 
 
-$6: QUICK REFERENCE — 71 HANDLERS
+$6: QUICK REFERENCE — 72 HANDLERS
 
 HDL:blueprint.ac{ signature:"ac(bp_id, ac_id, status, evidence?, reason?, path?)", purpose:"Verify one AC in §12. Fail triggers auto re-delegate (max 3)." }
 HDL:blueprint.approve{ signature:"approve(bp_id, path?)", purpose:"Auditor approves after cross-verification. State → done." }

@@ -1,21 +1,23 @@
-"""
-PATCH: src/arqux/sync.py
-========================
+"""Brain sync — automatically update brain.cortex after handler mutations.
 
-This file REPLACES the existing sync.py to fix:
-    - MEDIO-1: sync_brain path doble (GAP-001 auto-reconocido)
+Every mutating handler (blueprint, task, cycle, skill, identity, project)
+should call ``sync_brain()`` as its last line before returning success.
+This keeps brain.cortex (WRK:current, FCS:current, metrics) always
+reflecting the latest state — no more cognitive dissonance.
 
-CHANGES vs original:
-    1. `sync_brain()` now uses `state._resolve_brain_path()` to correctly
-       resolve brain.cortex location, instead of hardcoded
-       `project_root / ".arqux" / "brain.cortex"`.
-    2. Handles both cases: `project_root` is the actual project root
-       (has .arqux/ subdir) OR `project_root` IS the .arqux/ directory.
-    3. The "brain.cortex not found at .arqux/.arqux/brain.cortex" warning
-       is eliminated.
+Since BLP-019, sync_brain also updates meta-brain.cortex (DOM:arqux)
+when metrics are provided, keeping workspace-level knowledge in sync.
 
-NOTE: The function signature and behavior are unchanged. This is a pure
-      bug fix. Existing callers do not need to be updated.
+Usage::
+
+    from arqux.sync import sync_brain
+
+    sync_brain(
+        project_root=root,
+        event="blueprint.approve",
+        focus="Próximo BLP o cierre de ciclo",
+        metrics={"blueprints_done": 17},
+    )
 """
 
 from __future__ import annotations
@@ -45,17 +47,16 @@ def sync_brain(
     Parameters
     ----------
     project_root:
-        Path to project root. Can be either:
-        - The actual project root (has ``.arqux/`` subdirectory)
-        - The ``.arqux/`` directory itself (as returned by
-          ``state.find_project_root()``)
-        The function auto-detects which case it is.
+        Absolute path to the project root (where ``.arqux/`` lives).
     event:
         Canonical event name, e.g. ``"blueprint.approve"``.
     focus:
         If provided, updates ``FCS:current`` in brain.cortex.
+        Only set this on *major* events (approve, create, cycle close).
     metrics:
-        Optional dict of counters to merge into brain.cortex.
+        Optional dict of counters to merge into brain.cortex
+        (e.g. ``{"blueprints_done": 17}``). When provided, also
+        updates meta-brain.cortex DOM:arqux with the new counts.
     detail:
         Optional human-readable detail about the event.
     """
@@ -63,28 +64,9 @@ def sync_brain(
         logger.warning("sync_brain: project_root is None, skipping")
         return
 
-    # FIX GAP-001: Use _resolve_brain_path to correctly find brain.cortex.
-    # Previously this was hardcoded as `project_root / ".arqux" / "brain.cortex"`,
-    # which produced `.arqux/.arqux/brain.cortex` when project_root was already
-    # the .arqux/ directory (the common case from find_project_root).
-    try:
-        from arqux.state import _resolve_brain_path
-        brain_path = _resolve_brain_path(project_root)
-    except ImportError:
-        # Fallback: manual resolution matching _resolve_brain_path logic.
-        from arqux.constants import ARQUX_DIR, BRAIN_CORTEX
-        if project_root.name == ARQUX_DIR:
-            brain_path = project_root / BRAIN_CORTEX
-        elif (project_root / ARQUX_DIR / BRAIN_CORTEX).exists():
-            brain_path = project_root / ARQUX_DIR / BRAIN_CORTEX
-        else:
-            brain_path = project_root / BRAIN_CORTEX
-
+    brain_path = project_root / ".arqux" / "brain.cortex"
     if not brain_path.exists():
-        logger.debug(
-            "sync_brain: brain.cortex not found at %s, skipping (this is normal for new workspaces)",
-            brain_path,
-        )
+        logger.warning("sync_brain: brain.cortex not found at %s, skipping", brain_path)
         return
 
     # Use the CRUD layer from state.py for atomic writes.
@@ -166,15 +148,19 @@ def _update_metrics(
 
 
 def _count_blueprints(root: Path) -> dict[str, int]:
-    """Count blueprints by status from the filesystem."""
+    """Count blueprints by status from the filesystem.
+
+    Scans all ``BLP-*.md`` files under ``cycles/``.
+    Accepts either a project root (with ``.arqux/cycles/`` subdir)
+    or the ``.arqux/`` directory directly (``cycles/`` subdir).
+    """
     counts: dict[str, int] = {
         "done": 0, "draft": 0, "cancelled": 0,
         "review": 0, "in_progress": 0, "ready": 0,
         "blocked": 0,
     }
 
-    # FIX GAP-001: Try .arqux/cycles first (project root), then cycles/
-    # (already in .arqux/). This handles both call conventions.
+    # Try .arqux/cycles first (project root), then cycles/ (already in .arqux/)
     cycles_dir = root / ".arqux" / "cycles"
     if not cycles_dir.is_dir():
         cycles_dir = root / "cycles"
@@ -198,15 +184,15 @@ def _sync_meta_brain(
     event: str,
     ts: str,
 ) -> None:
-    """Sync metrics to meta-brain DOM:arqux entry."""
+    """Sync metrics to meta-brain DOM:arqux entry.
+
+    Derives workspace root from project_root parent directory,
+    updates DOM:arqux with handler count, test count, blueprint counts.
+    """
     try:
         from arqux.state import find_workspace_root, crud_update
 
-        # FIX GAP-001: find_workspace_root expects a project root (with .arqux/),
-        # but project_root may already BE the .arqux/ dir. Handle both.
-        search_start = project_root.parent if project_root.name == ".arqux" else project_root
-
-        ws_root = find_workspace_root(start=search_start)
+        ws_root = find_workspace_root(start=project_root)
         if ws_root is None:
             logger.debug("sync_brain: workspace root not found, skipping meta-brain sync")
             return
@@ -218,6 +204,8 @@ def _sync_meta_brain(
 
         dom_updates: dict[str, Any] = {"updated": ts, "last_event": event}
 
+        # Derive actual blueprint counts from the filesystem
+        # (instead of relying on callers' hardcoded metric=1 values)
         try:
             bp_counts = _count_blueprints(project_root)
             dom_updates["blueprints_done"] = str(bp_counts.get("done", 0))
@@ -226,11 +214,13 @@ def _sync_meta_brain(
             dom_updates["blueprints_completed"] = str(bp_counts.get("review", 0))
         except Exception:
             logger.debug("sync_brain: failed to count blueprints, using metric values (continuing)")
+            # Fallback: use caller-provided metric values
             for key in ("blueprints_done", "blueprints_draft",
                         "blueprints_cancelled", "blueprints_completed"):
                 if key in metrics:
                     dom_updates[key] = str(metrics[key])
 
+        # Non-blueprint metrics still come from callers (handlers, tests, etc.)
         for key, value in metrics.items():
             if key in ("handlers", "tests",
                        "tasks_done", "tasks_active", "cycles_closed"):

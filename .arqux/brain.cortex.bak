@@ -22,11 +22,11 @@ $0
 # BLK   | blocker    | attrs      | H | Prefrontal     | Blocking condition
 #
 # Types:
-# cuerpo = canonical type
-# attrs = canonical type
 # bloque = canonical type
-# relación = canonical type
 # attrs-pos = canonical type
+# relación = canonical type
+# attrs = canonical type
+# cuerpo = canonical type
 #
 # Micro-glossary:
 # cur=current pln=planned fut=future blk=blocked
@@ -40,11 +40,11 @@ IDN:governor{level:"2", project:"ARQUX", path:"/home/vatrox/workspace/ARQUX", go
 
 $2: FOCUS
 
-FCS:current{what:"Verificar contadores derivados del filesystem", priority:"medium", status:"current", survive:"work", updated:"2026-07-08T17:36:09Z", event:"test.derive_counts_v2"}
+FCS:current{what:"Verificar contadores derivados del filesystem", priority:"medium", status:"current", survive:"work"}
 
 $3: OBJECTIVES
 
-OBJ:_{goal:"- 20 BLPs completados en CYCLE-01. Sincronia brain.cortex restaurada.", status:"current", success:"pending", survive:"work"}
+OBJ:_{goal:"- - - - - - - - - - - - 20 BLPs completados en CYCLE-01. Sincronia brain.cortex restaurada.", status:"current", success:"pending", survive:"work"}
 
 $4: SESSIONS
 
@@ -54,23 +54,20 @@ $5: HANDOFFS
 
 $6: PULSE
 
-KNW:blueprints_done{value:"20", updated:"2026-07-08T17:29:26Z", topic:"untitled", content:"pending", status:"active"}
-KNW:blueprints_draft{value:"0", updated:"2026-07-08T17:29:26Z", topic:"untitled", content:"pending", status:"active"}
-KNW:handlers{value:"71", updated:"2026-07-08T17:36:09Z", topic:"untitled", content:"pending", status:"active"}
-KNW:tests{value:"124", updated:"2026-07-08T17:36:09Z", topic:"untitled", content:"pending", status:"active"}
-AUD:E_0001{date:"2026-07-08T18:08:18Z", event:"E-0001", task:"T-001", kind:"task_complete", agent:"hermes", result:"Todos los regex de blueprint.define ahora usan referencias numericas de seccion (## §N:) sin depender del idioma del titulo. 7 regex actualizados: §3, §6 scope, §6 exclusions, §7, §11, §12, §15. BLP-021 definido correctamente con secciones pobladas.", evidence:"Todos los regex de blueprint.define ahora usan referencias numericas de seccion (## §N:) sin depender del idioma del titulo. 7 regex actualizados: §3, §6 scope, §6 exclusions, §7, §11, §12, §15. BLP-021 definido correctamente con secciones pobladas.", cycle:"CYCLE-01"}
-AUD:E_0002{date:"2026-07-08T18:19:11Z", event:"E-0002", task:"T-002", kind:"task_complete", agent:"hermes", result:"BLP_TEMPLATE.md actualizado con 21 marcadores. blueprint.define simplificado a _replace_marker(). BLP-021 creado con marcadores y definido correctamente. Template sincronizado a workspace .arqux/templates/.", evidence:"BLP_TEMPLATE.md actualizado con 21 marcadores. blueprint.define simplificado a _replace_marker(). BLP-021 creado con marcadores y definido correctamente. Template sincronizado a workspace .arqux/templates/.", cycle:"CYCLE-01"}
+AUD:E_0001{event:"E-0001", evidence:"Todos los regex de blueprint.define ahora usan referencias numericas de seccion (## §N:) sin depender del idioma del titulo. 7 regex actualizados: §3, §6 scope, §6 exclusions, §7, §11, §12, §15. BLP-021 definido correctamente con secciones pobladas.", task:"T-001", kind:"task_complete", agent:"hermes", result:"Todos los regex de blueprint.define ahora usan referencias numericas de seccion (## §N:) sin depender del idioma del titulo. 7 regex actualizados: §3, §6 scope, §6 exclusions, §7, §11, §12, §15. BLP-021 definido correctamente con secciones pobladas.", date:"2026-07-08"}
+AUD:E_0002{event:"E-0002", evidence:"BLP_TEMPLATE.md actualizado con 21 marcadores. blueprint.define simplificado a _replace_marker(). BLP-021 creado con marcadores y definido correctamente. Template sincronizado a workspace .arqux/templates/.", task:"T-002", kind:"task_complete", agent:"hermes", result:"BLP_TEMPLATE.md actualizado con 21 marcadores. blueprint.define simplificado a _replace_marker(). BLP-021 creado con marcadores y definido correctamente. Template sincronizado a workspace .arqux/templates/.", date:"2026-07-08"}
+AUD:E_0003{event:"E-0003", evidence:"scan_markers() implementada. create_blueprint escanea y guarda blp_markers@ en frontmatter. update_blueprint valida contra el mapa y acepta marker IDs directos (BLP:3). Define ya no es necesario como paso separado — update es el unico mecanismo de modificacion de secciones.", task:"T-003", kind:"task_complete", agent:"hermes", result:"scan_markers() implementada. create_blueprint escanea y guarda blp_markers@ en frontmatter. update_blueprint valida contra el mapa y acepta marker IDs directos (BLP:3). Define ya no es necesario como paso separado — update es el unico mecanismo de modificacion de secciones.", date:"2026-07-08"}
 
 $7: LESSONS
 
 
 $8: ACTIVE_CONTEXT
 
-WRK:current{phase:"active", current:"test.derive_counts_v2: Test v2: contadores reales desde el filesystem", blocked:"no", survive:"work", updated:"2026-07-08T17:36:09Z", event:"test.derive_counts_v2"}
+WRK:current{phase:"active", current:"cleanup", blocked:"no", survive:"work", updated:"2026-07-08T23:06:04Z", event:"cleanup"}
 
 $9: RISKS
 
-RSK:risk{description:"- Meta-brain DOM valores truncados por comas en parentesis", mitigation:"pending", severity:"medium", risk:"pending", impact:"pending", status:"active", survive:"work"}
+RSK:risk{description:"- - - - - - - - - - - - Meta-brain DOM valores truncados por comas en parentesis", mitigation:"pending", severity:"medium", risk:"pending", impact:"pending", status:"active", survive:"work"}
 
 $10: KNOWLEDGE
 
