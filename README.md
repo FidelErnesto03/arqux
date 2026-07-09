@@ -12,6 +12,7 @@
 [![Handlers](https://img.shields.io/badge/MCP%20Handlers-71-purple)](https://github.com/FidelErnesto03/arqux)
 [![Agents](https://img.shields.io/badge/agents-4-red)](https://github.com/FidelErnesto03/arqux)
 [![CORTEX](https://img.shields.io/badge/CORTEX-persistent%20memory-2EC98D?style=flat-square\&labelColor=050807)](https://github.com/FidelErnesto03/codec-cortex)
+[![Coverage](https://img.shields.io/badge/coverage-61%25-yellow?style=flat-square\&labelColor=050807)](https://github.com/FidelErnesto03/arqux)
 
 **The agent is the interface.**
 
@@ -439,6 +440,18 @@ See [`LICENSE`](LICENSE).
 
 ---
 
+## Security
+
+See [SECURITY.md](SECURITY.md) for information on reporting vulnerabilities.
+
+---
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines on how to contribute to ArqUX.
+
+---
+
 <div align="center">
 
 **⬡ ArqUX**
@@ -450,5 +463,11 @@ The agent is the interface.
 The hexagon is the contract.
 ArqUX is the governance layer.
 ```
+
+---
+
+## Edge Cases
+
+See [docs/edge-cases/](docs/edge-cases/) for documentation on edge cases and extreme scenarios.
 
 </div>
