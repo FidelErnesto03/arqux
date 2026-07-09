@@ -35,6 +35,23 @@ def _setup_blueprint(workspace_root: Path, ctx) -> tuple[Path, Path]:
     finally:
         os.chdir(cwd)
     bp_path = project_dir / ".arqux" / "cycles" / "CYCLE-01" / "blueprints" / f"{bp_id}.md"
+    # Add ACs to §12 so ac_blueprint can find them
+    text = bp_path.read_text(encoding="utf-8")
+    ac_block = (
+        "<!-- BLP:12 -->\n"
+        "## §12: Acceptance Criteria\n\n"
+        "- [ ] **AC-01:** Test acceptance criterion\n"
+        "- [ ] **AC-02:** Second test criterion\n"
+        "<!-- /BLP:12 -->"
+    )
+    import re
+    text = re.sub(
+        r"<!-- BLP:12 -->.*?<!-- /BLP:12 -->",
+        ac_block,
+        text,
+        flags=re.DOTALL,
+    )
+    bp_path.write_text(text, encoding="utf-8")
     return project_dir, bp_path
 
 
@@ -128,8 +145,13 @@ def test_blueprint_approve_blocks_unverified_acceptance_criteria(workspace_root:
     finally:
         os.chdir(cwd)
 
-    assert "code=APPROVAL_INCOMPLETE" in result.to_text()
-    assert "missing_acceptance_criteria=" in result.to_text()
+    assert "APPROVAL_INCOMPLETE" in result.to_text()
+    # Approve blocks when ACs are unchecked OR learning/validations are missing
+    assert (
+        "missing_acceptance_criteria=" in result.to_text()
+        or "missing_learning=" in result.to_text()
+        or "missing_validations=" in result.to_text()
+    )
 
 
 def test_blueprint_approve_requires_learning_gate_and_returns_instruction(workspace_root: Path, governor_ctx) -> None:

@@ -152,3 +152,71 @@ def test_sync_brain_does_not_change_read_only_handlers() -> None:
                 "identity",
                 "cortex",
             }, f"{stem}.py imports sync_brain but is not in the approved list"
+
+
+# ---------------------------------------------------------------------------
+# BLP-027: meta-brain template consistency tests
+# ---------------------------------------------------------------------------
+
+
+def test_meta_brain_template_has_dom_arqux() -> None:
+    """Template meta-brain.cortex includes $2/DOM:arqux entry (BLP-027)."""
+    template_path = (
+        Path(__file__).resolve().parent.parent
+        / "src"
+        / "arqux"
+        / "templates"
+        / "meta-brain.cortex"
+    )
+    content = template_path.read_text(encoding="utf-8")
+    assert "DOM:arqux" in content, (
+        "Template meta-brain.cortex missing DOM:arqux entry required by sync.py"
+    )
+    assert "$2" in content, (
+        "Template meta-brain.cortex missing $2 section required by sync.py"
+    )
+
+
+def test_sync_meta_brain_no_warning(tmp_path: Path, caplog) -> None:
+    """_sync_meta_brain() does not produce NotFoundError for DOM:arqux (BLP-027)."""
+    import logging
+
+    # Create workspace with meta-brain.cortex from template
+    ws_root = tmp_path
+    meta_brain = ws_root / "meta-brain.cortex"
+    template_path = (
+        Path(__file__).resolve().parent.parent
+        / "src"
+        / "arqux"
+        / "templates"
+        / "meta-brain.cortex"
+    )
+    meta_brain.write_text(template_path.read_text(encoding="utf-8"), encoding="utf-8")
+
+    # Create project with brain.cortex
+    project_root = ws_root / "test_project"
+    arqux_dir = project_root / ".arqux"
+    arqux_dir.mkdir(parents=True)
+    brain = arqux_dir / "brain.cortex"
+    brain.write_text("""$0
+# Glossary
+# WRK   | work       | attrs      | B | Working        | Current execution
+# FCS   | focus      | attrs      | H | Working        | Active attention anchor
+
+$2: FOCUS
+FCS:current{what:"Test", priority:"medium", status:"current", survive:"work"}
+
+$8: ACTIVE_CONTEXT
+WRK:current{phase:"active", current:"test", blocked:"no", survive:"work"}
+""", encoding="utf-8")
+
+    from arqux.sync import _sync_meta_brain
+
+    with caplog.at_level(logging.WARNING):
+        _sync_meta_brain(project_root, {"handlers": 10}, "test.event", "2026-01-01T00:00:00Z")
+
+    # Verify no NotFoundError in logs
+    not_found_errors = [r for r in caplog.records if "NotFoundError" in r.message]
+    assert len(not_found_errors) == 0, (
+        f"_sync_meta_brain produced NotFoundError: {not_found_errors}"
+    )

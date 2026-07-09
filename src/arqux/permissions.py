@@ -5,14 +5,19 @@ PATCH: src/arqux/permissions.py
 This file REPLACES the existing permissions.py to fix:
     - MEDIO-3: API de permisos incompleta (enum Role missing)
     - CRÍTICO-1 (partial): adds `require_role()` and `enforce_ctx()` helpers
+    - BLP-024: Governance handlers are UNIVERSAL for all roles
 
 CHANGES vs original:
     1. Added `Role` enum with GOVERNOR, EXECUTOR, AUDITOR values.
-    2. `PermissionContext.check()` now actually enforces role-based access
-       using READ_ONLY_PREFIXES, GOVERNOR_ONLY, and EXECUTOR_ALLOWED.
-    3. Added `require_role()` decorator for handler-level enforcement.
-    4. Added `enforce_ctx()` helper that handlers can call to require ctx.
-    5. Backward compat: when ctx is None, falls back to from_env() with
+    2. `PermissionContext.check()` enforces role-based access:
+       - GOVERNOR: full access to all handlers.
+       - EXECUTOR: universal access except GOVERNOR_ONLY (init handlers).
+       - AUDITOR: read-only + governance handlers (universal).
+    3. GOVERNOR_ONLY is reduced to: workspace.init, project.init.
+    4. EXECUTOR_ALLOWED eliminated — governance handlers are universal.
+    5. Added `require_role()` decorator for handler-level enforcement.
+    6. Added `enforce_ctx()` helper that handlers can call to require ctx.
+    7. Backward compat: when ctx is None, falls back to from_env() with
        a deprecation warning (set ARQUX_STRICT_ROLES=1 to fail-loud).
 
 NOTE: The `identity.record` handler is removed from READ_ONLY_PREFIXES
@@ -109,42 +114,15 @@ READ_ONLY_PREFIXES: tuple[str, ...] = (
     # explicit HMAC verification in the handler itself.
 )
 
-# Governor-only handlers — executor and auditor cannot call.
+# Governor-only handlers — only initialization is restricted.
+# Governance handlers (blueprint, task, cycle, evidence, cortex, session,
+# project.bind, protocol.adopt) are UNIVERSAL for all roles.
 GOVERNOR_ONLY: tuple[str, ...] = (
     "workspace.init",
     "project.init",
-    "project.bind",
-    "project.unbind",
-    "cycle.create",
-    "cycle.mature",  # NEW in v0.4.0
-    "cycle.close",
-    "task.create",
-    "protocol.adopt",
-    "blueprint.approve",
-    "blueprint.re_delegate",
-    "blueprint.block_for_architect",
 )
 
-# Executor-allowed handlers (subset of full surface).
-EXECUTOR_ALLOWED: tuple[str, ...] = (
-    "task.claim",
-    "task.update",
-    "task.complete",
-    "task.fail",
-    "task.read",
-    "task.list",
-    "evidence.record",
-    "evidence.list",
-    "evidence.read",
-    "protocol.release",  # self-release
-    "identity.record",   # executor can record own lessons (with HMAC)
-    "blueprint.claim",
-    "blueprint.update",
-    "blueprint.complete",
-    "blueprint.fail",
-    "blueprint.read",
-    "blueprint.list",
-)
+
 
 # Handlers that require HMAC signature verification (CRÍTICO-1 fix).
 HMAC_REQUIRED: tuple[str, ...] = (
@@ -206,10 +184,12 @@ class PermissionContext:
     def check(self, handler: str) -> None:
         """Enforce role-based access control on the given handler.
 
-        v0.4.0 behavior:
+        v0.4.0 behavior (governance handlers universal):
             - GOVERNOR: can call any handler (full access).
-            - EXECUTOR: can call EXECUTOR_ALLOWED + READ_ONLY_PREFIXES.
-            - AUDITOR: can call READ_ONLY_PREFIXES only.
+            - EXECUTOR: can call any handler except GOVERNOR_ONLY (init handlers).
+            - AUDITOR: can call READ_ONLY_PREFIXES + governance handlers.
+
+        GOVERNOR_ONLY is restricted to: workspace.init, project.init.
 
         Backward compat:
             - If ARQUX_STRICT_ROLES is not set, role=GOVERNOR is the default
@@ -225,34 +205,29 @@ class PermissionContext:
         if not strict and self.role == ROLE_GOVERNOR:
             return
 
-        # Auditor: read-only.
-        if self.role == ROLE_AUDITOR:
-            if not self._matches_prefix(handler, READ_ONLY_PREFIXES):
-                raise PermissionDenied(
-                    self.agent_id, self.role, handler,
-                    "auditor role is read-only; cannot mutate state",
-                )
+        # Governor: full access (but still subject to HMAC if applicable).
+        if self.role == ROLE_GOVERNOR:
             return
 
-        # Executor: allowed set + read-only.
+        # Executor: universal governance handlers, except init handlers.
         if self.role == ROLE_EXECUTOR:
-            if (
-                handler in EXECUTOR_ALLOWED
-                or self._matches_prefix(handler, READ_ONLY_PREFIXES)
-            ):
-                return
             if handler in GOVERNOR_ONLY:
                 raise PermissionDenied(
                     self.agent_id, self.role, handler,
                     "governor-only handler; executor cannot call",
                 )
-            raise PermissionDenied(
-                self.agent_id, self.role, handler,
-                "handler not in executor allowed list",
-            )
+            return
 
-        # Governor: full access (but still subject to HMAC if applicable).
-        if self.role == ROLE_GOVERNOR:
+        # Auditor: read-only + governance handlers.
+        if self.role == ROLE_AUDITOR:
+            if handler in GOVERNOR_ONLY:
+                raise PermissionDenied(
+                    self.agent_id, self.role, handler,
+                    "governor-only handler; auditor cannot call",
+                )
+            if self._matches_prefix(handler, READ_ONLY_PREFIXES):
+                return
+            # Governance handlers are universal — auditor can read any governance handler.
             return
 
         # Unknown role.

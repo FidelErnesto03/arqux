@@ -1,22 +1,39 @@
----
-level: 1
-workspace: <workspace-name>
-lessons: []
-knowledge: []
-risks: []
----
+$0
 
-# META-BRAIN
+# -- $0: MINIMAL LOCAL GLOSSARY --
+# Required: every .cortex artifact must be locally self-contained.
+# Sigil | Name | Type | Risk | Cognitive Layer | Description
+#
+# Types:
+# relación = canonical type
+# attrs = canonical type
+# attrs-pos = canonical type
+# cuerpo = canonical type
+# bloque = canonical type
+#
+# Micro-glossary:
+# cur=current pln=planned fut=future blk=blocked
+# min=minimum rec=recovery wrk=work full=full
+# ok=success fail=failure part=partial
 
-Cross-project knowledge and lessons. Lives at the workspace root in
-`.<product>/meta-brain.cortex`. The meta-brain knows **what projects
-exist** but not their internal details.
 
-## LESSONS
-- (lessons elevated from project brains — added by CODEC-CORTEX learning engine)
+$1: META-BRAIN
 
-## KNOWLEDGE
-- (global patterns, reusable decisions, cross-project insights)
+IDN:workspace{root:"<workspace-root>", governor:"alfred", created:"<timestamp>", projects:0, cycles_active:0, blueprints:"0"}
 
-## RISKS
-- (ecosystem-level risks observed across projects)
+$2: PROJECTS
+
+DOM:arqux{name:"<workspace-name>", path:".", domain:"workspace", status:"active", cycle:"none", handlers:"0", tests:"0", skills:"", cycle_status:"none", blueprints_done:"0", blueprints_draft:"0", updated:"<timestamp>", last_event:"init", blueprints_cancelled:"0", blueprints_completed:"0"}
+
+$3: FOCUS
+
+FCS:current{what:"Workspace initialized", priority:"medium", status:"current", survive:"work", updated:"<timestamp>"}
+
+$4: AGENTS
+
+IDN:alfred{role:"governor", status:"active", adopted:"<timestamp>"}
+IDN:jarvis{role:"executor", status:"active", adopted:"<timestamp>"}
+
+$5: KNOWLEDGE
+
+KNW:workspace_access{topic:"workspace_access", status:"active", content:"Agents operating under Arqux governance have full access to all projects within the workspace."}

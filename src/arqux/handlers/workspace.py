@@ -124,6 +124,16 @@ def init_workspace(
             if not dst.exists():
                 dst.write_text(src.read_text(encoding="utf-8"), encoding="utf-8")
 
+    # Copy skills/workflows/*.md to .arqux/skills/workflows/ (BLP-025).
+    workflows_src = Path(__file__).resolve().parent.parent / "skills" / "workflows"
+    if workflows_src.is_dir():
+        workflows_dst = gov_dir / "skills" / "workflows"
+        workflows_dst.mkdir(exist_ok=True)
+        for src in workflows_src.glob("*.md"):
+            dst = workflows_dst / src.name
+            if not dst.exists():
+                dst.write_text(src.read_text(encoding="utf-8"), encoding="utf-8")
+
     profile = OUT_AUDIT if verbose else OUT_MIN
     return CortexOUT.profile(
         profile,
