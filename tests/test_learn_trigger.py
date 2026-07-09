@@ -32,7 +32,8 @@ def test_learn_auto_trigger_on_record(workspace_root: Path, governor_ctx) -> Non
         cortex.record_lesson_handler,
         lesson="Auto-trigger test lesson",
         kind="behavioral",
-        agent_id="alfred",
+        agent_id="test-governor",
+        ctx=governor_ctx,
         path=str(project_dir),
     )
     assert result.profile == "OUT-WORK"
@@ -47,7 +48,7 @@ def test_learn_scan_detects_patterns(workspace_root: Path, governor_ctx) -> None
             cortex.record_lesson_handler,
             lesson=f"Pattern lesson {i}",
             kind="behavioral",
-            agent_id="alfred",
+            agent_id="test-governor",
             path=str(project_dir),
         )
     result = _run_in_project(
@@ -69,7 +70,7 @@ def test_learn_elevate_writes_knw(workspace_root: Path, governor_ctx) -> None:
             cortex.record_lesson_handler,
             lesson=f"Elevate test {i}",
             kind="behavioral",
-            agent_id="alfred",
+            agent_id="test-governor",
             path=str(project_dir),
         )
     scan = _run_in_project(
@@ -100,7 +101,7 @@ def test_learn_no_pattern_silent(workspace_root: Path, governor_ctx) -> None:
             cortex.record_lesson_handler,
             lesson="Single lesson",
             kind="behavioral",
-            agent_id="alfred",
+            agent_id="test-governor",
         path=str(project_dir),
     )
     scan = _run_in_project(

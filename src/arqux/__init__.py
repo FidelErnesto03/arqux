@@ -26,3 +26,8 @@ __all__ = [
     "ARQUX_VERSION",
     "__version__",
 ]
+
+
+# v0.4.0 — security and concurrency modules
+from arqux.permissions import Role
+from arqux import security, concurrency

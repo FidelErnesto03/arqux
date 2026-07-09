@@ -2,6 +2,40 @@
 
 All notable changes to Arqux are documented here.
 
+## [0.4.0] — 2026-07-08
+
+### Added
+- **security.py**: HMAC-SHA256 identity verification for MCP handlers
+- **security.py**: SHA-256 integrity hashes for .cortex files (tamper detection)
+- **security.py**: Ed25519 optional signing for non-repudiation
+- **concurrency.py**: File locking and placeholder-based ID generation
+- **cycle.mature handler**: Transition draft → ready (closes ALTO-1)
+- **enum Role**: GOVERNOR, EXECUTOR, AUDITOR with enforcement (closes MEDIO-3)
+- Backward-compat mode via ARQUX_STRICT_SECURITY and ARQUX_STRICT_ROLES env vars
+
+### Changed
+- **permissions.py**: Role enforcement with HMAC verification
+- **sync.py**: Fixed GAP-001 sync_brain path double-bug
+- **handlers/cycle.py**: create_cycle now writes draft status explicitly
+- **handlers/cortex.py**: HMAC verification on record_lesson_handler
+- **handlers/blueprint.py**: Uses concurrency.next_blueprint_id_safe
+- Handler count: 71 → 72 (cycle.mature added)
+
+### Fixed
+- CRÍTICO-1: Identity bypass (HMAC-SHA256)
+- CRÍTICO-2: Evidence tampering (SHA-256 + Ed25519)
+- ALTO-1: Workflow incomplete (cycle.mature)
+- ALTO-2: ID non-determinism (concurrency file locking)
+- MEDIO-1: sync_brain double path (GAP-001)
+- MEDIO-2: Version inconsistency (1.0.0 → 0.4.0)
+- MEDIO-3: Permission API incomplete (enum Role + enforcement)
+
+## [0.3.5] — 2026-07-08
+
+### Changed
+- README rebranded to Architectural User Experience with Hexagon Contract
+- License aligned to Apache-2.0 across all surfaces
+
 ## [1.0.0] — 2026-07-06
 
 ### Added

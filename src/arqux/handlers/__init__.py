@@ -162,6 +162,17 @@ _register(_spec(
     }},
 ))
 _register(_spec(
+    "cycle.mature", cycle.mature_cycle,
+    "Mature a cycle (draft → ready).",
+    {
+        "type": "object",
+        "properties": {
+            "cycle_id": {"type": "string"},
+            "path": {"type": "string", "description": "Path to project root. Defaults to cwd."},
+        },
+    },
+))
+_register(_spec(
     "cycle.close", cycle.close_cycle,
     "Close a cycle (no new tasks can be added).",
     {

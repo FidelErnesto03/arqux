@@ -1,10 +1,18 @@
-"""`cycle` module — work-cycle governance.
+"""
+PATCH: src/arqux/handlers/cycle.py
+==================================
 
-Handlers:
-    cycle.create   — open a new cycle in the active project
-    cycle.list     — list cycles in the active project
-    cycle.current  — get the currently active cycle
-    cycle.close    — close a cycle (no new tasks can be added)
+This file REPLACES the existing cycle.py to add:
+    - ALTO-1 fix: `cycle.mature` handler for draft → ready transition.
+
+CHANGES vs original:
+    1. New handler `mature_cycle()` that transitions a cycle from
+       status="draft" to status="ready".
+    2. `create_cycle()` now writes status="draft" explicitly (was implicit
+       via template), and returns an instruction to call cycle.mature.
+    3. `close_cycle()` unchanged except for also updating MANIFEST.md.
+
+The new handler is registered in handlers/__init__.py as "cycle.mature".
 """
 
 from __future__ import annotations
@@ -12,24 +20,6 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from ..constants import (
-    ARQUX_DIR,
-    CYCLES_DIR,
-    CYCLE_CLOSED,
-    CYCLE_OPEN,
-    OUT_WORK,
-    TASKS_DIR,
-)
-from ..cortex_out import CortexOUT
-from ..permissions import PermissionContext
-from ..state import (
-    cycle_dir,
-    find_project_root,
-    next_cycle_id,
-    parse_cortex_file as _parse_cortex_file,
-    write_cortex_pair,
-)
-from ..sync import sync_brain
 from ..constants import (
     ARQUX_DIR,
     CYCLES_DIR,
@@ -45,6 +35,39 @@ from ..constants import (
     TASK_OPEN,
     TASK_REVIEW,
 )
+from ..cortex_out import CortexOUT
+from ..permissions import PermissionContext, enforce_ctx
+from ..state import (
+    cycle_dir,
+    find_project_root,
+    next_cycle_id,
+    parse_cortex_file as _parse_cortex_file,
+    write_cortex_pair,
+)
+from ..sync import sync_brain
+
+
+# --- Cycle states (NEW in v0.4.0) -----------------------------------------
+# Previously cycles only had "open" and "closed" states. The MANIFEST.md
+# template writes status="draft" but blueprint.create validates
+# status in ("ready", "active"). This was the ALTO-1 bug.
+# v0.4.0 introduces explicit cycle state machine:
+#     draft → ready → active → closed
+# The "open" state is kept as alias for backward compat (mapped to "ready").
+
+CYCLE_DRAFT = "draft"
+CYCLE_READY = "ready"
+CYCLE_ACTIVE = "active"
+
+CYCLE_TRANSITIONS_V040: dict[str, tuple[str, ...]] = {
+    CYCLE_DRAFT: (CYCLE_READY,),
+    CYCLE_READY: (CYCLE_ACTIVE, CYCLE_CLOSED),
+    CYCLE_ACTIVE: (CYCLE_CLOSED,),
+    CYCLE_CLOSED: (),
+    # Backward compat: "open" maps to ready.
+    CYCLE_OPEN: (CYCLE_ACTIVE, CYCLE_CLOSED),
+}
+
 
 def _find_workspace_template(root: Path, template_name: str) -> Path | None:
     """Walk up from root to find .arqux/templates/<template_name>."""
@@ -58,13 +81,70 @@ def _find_workspace_template(root: Path, template_name: str) -> Path | None:
         cursor = cursor.parent
 
 
+def _now_iso() -> str:
+    import time
+    return time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+
+
+def _read_cycle_manifest(cdir: Path) -> dict[str, Any] | None:
+    """Read the cycle's MANIFEST.md frontmatter."""
+    mf = cdir / "MANIFEST.md"
+    if not mf.exists():
+        return None
+    text = mf.read_text(encoding="utf-8")
+    # Parse frontmatter (between --- markers).
+    parts = text.split("---", 2)
+    if len(parts) < 3:
+        return None
+    fm_raw = parts[1].strip()
+    fm: dict[str, Any] = {}
+    for line in fm_raw.splitlines():
+        line = line.strip()
+        if not line or ":" not in line:
+            continue
+        if line.startswith("#"):
+            continue
+        key, _, value = line.partition(":")
+        value = value.strip()
+        if value.startswith('"') and value.endswith('"'):
+            value = value[1:-1]
+        fm[key.strip()] = value
+    return fm
+
+
+def _write_cycle_manifest(cdir: Path, fm: dict[str, Any]) -> None:
+    """Write the cycle's MANIFEST.md with updated frontmatter."""
+    mf = cdir / "MANIFEST.md"
+    text = mf.read_text(encoding="utf-8") if mf.exists() else ""
+    parts = text.split("---", 2)
+    body = parts[2] if len(parts) >= 3 else ""
+
+    new_fm_lines = ["---"]
+    for k, v in fm.items():
+        if isinstance(v, str):
+            new_fm_lines.append(f'{k}: "{v}"')
+        elif isinstance(v, bool):
+            new_fm_lines.append(f'{k}: {str(v).lower()}')
+        else:
+            new_fm_lines.append(f"{k}: {v}")
+    new_fm_lines.append("---")
+
+    new_text = "\n".join(new_fm_lines) + "\n" + body
+    mf.write_text(new_text, encoding="utf-8")
+
+
 def create_cycle(
     name: str | None = None,
     description: str | None = None,
     path: str | None = None,
     ctx: PermissionContext | None = None,
 ) -> CortexOUT:
-    """Open a new cycle in the active project."""
+    """Open a new cycle in the active project.
+
+    v0.4.0 change: cycle starts in status="draft". Call `cycle.mature`
+    to transition to "ready" before creating blueprints.
+    """
+    ctx = enforce_ctx(ctx, "cycle.create")
     root = find_project_root(start=path)
     if root is None:
         return CortexOUT.error("no project initialized", code="NOT_FOUND")
@@ -73,7 +153,6 @@ def create_cycle(
     cdir = cycle_dir(root, cycle_id)
     cdir.mkdir(parents=True, exist_ok=True)
 
-    # Try workspace templates first, fallback to package templates.
     template_path = _find_workspace_template(root, "CYCLE_MANIFEST_TEMPLATE.md")
     if template_path is None:
         template_path = Path(__file__).resolve().parent.parent / "templates" / "CYCLE_MANIFEST_TEMPLATE.md"
@@ -82,16 +161,17 @@ def create_cycle(
         raw = template_path.read_text(encoding="utf-8")
         raw = raw.replace('cycle_id: ""', f'cycle_id: "{cycle_id}"')
         raw = raw.replace('name: ""', f'name: "{name or cycle_id}"')
-        raw = raw.replace('governor: ""', f'governor: "{(ctx or PermissionContext.from_env()).agent_id}"')
+        raw = raw.replace('governor: ""', f'governor: "{ctx.agent_id}"')
         raw = raw.replace('created_at: ""', f'created_at: "{_now_iso()}"')
+        # v0.4.0: explicit draft status.
+        raw = raw.replace('status: "open"', 'status: "draft"')
         (cdir / "MANIFEST.md").write_text(raw, encoding="utf-8")
 
-    # Also create the legacy cycle.cortex for backward compat
     fm = {
         "id": cycle_id,
         "name": name or cycle_id,
         "description": description or "",
-        "status": CYCLE_OPEN,
+        "status": CYCLE_DRAFT,
         "created": _now_iso(),
     }
     body = f"# CYCLE {cycle_id}\n\n{description or ''}\n"
@@ -100,9 +180,125 @@ def create_cycle(
     sync_brain(root, "cycle.create", focus=f"Ciclo {cycle_id} iniciado", detail=f"cycle {cycle_id} created")
 
     return CortexOUT.work(
-        f"cycle.create ok id={cycle_id}",
+        f"cycle.create ok id={cycle_id} status=draft",
         cycle_id=cycle_id,
         path=str(cdir),
+        status=CYCLE_DRAFT,
+        instruction=(
+            f"Cycle {cycle_id} is in draft state. "
+            "Call cycle.mature to transition to ready before creating blueprints."
+        ),
+    )
+
+
+def mature_cycle(
+    cycle_id: str | None = None,
+    path: str | None = None,
+    ctx: PermissionContext | None = None,
+) -> CortexOUT:
+    """Mature a cycle from draft → ready.
+
+    NEW handler in v0.4.0. Fixes ALTO-1 (workflow incompleto).
+
+    A cycle in "ready" state allows blueprint creation. The maturation
+    step is intentional: it forces the governor to explicitly declare
+    the cycle ready for work, providing a natural checkpoint for review.
+
+    Args:
+        cycle_id: Cycle to mature. If None, uses the most recent cycle.
+        path: Path to project root.
+        ctx: Permission context (requires GOVERNOR role in strict mode).
+
+    Returns:
+        CortexOUT with cycle_id and new status.
+    """
+    ctx = enforce_ctx(ctx, "cycle.mature")
+    root = find_project_root(start=path)
+    if root is None:
+        return CortexOUT.error("no project initialized", code="NOT_FOUND")
+
+    cycles_base = root / CYCLES_DIR
+    if not cycles_base.exists():
+        return CortexOUT.error("no cycles", code="NOT_FOUND")
+
+    if cycle_id is None:
+        all_cycles = sorted(
+            d.name for d in cycles_base.iterdir() if d.is_dir()
+        )
+        if not all_cycles:
+            return CortexOUT.error("no cycles", code="NOT_FOUND")
+        cycle_id = all_cycles[-1]
+
+    cdir = cycle_dir(root, cycle_id)
+    if not cdir.exists():
+        return CortexOUT.error(f"cycle {cycle_id} not found", code="NOT_FOUND")
+
+    fm = _read_cycle_manifest(cdir)
+    if fm is None:
+        return CortexOUT.error(
+            f"cycle {cycle_id} has no MANIFEST.md", code="INVALID_STATE"
+        )
+
+    current_status = fm.get("status", "draft")
+
+    if current_status == CYCLE_READY:
+        return CortexOUT.work(
+            f"cycle {cycle_id} already in ready state",
+            cycle_id=cycle_id,
+            status=CYCLE_READY,
+            no_op=True,
+        )
+    if current_status == CYCLE_ACTIVE:
+        return CortexOUT.work(
+            f"cycle {cycle_id} is active (already matured)",
+            cycle_id=cycle_id,
+            status=CYCLE_ACTIVE,
+            no_op=True,
+        )
+    if current_status == CYCLE_CLOSED:
+        return CortexOUT.error(
+            f"cycle {cycle_id} is closed; cannot mature",
+            code="INVALID_STATE",
+        )
+    if current_status not in (CYCLE_DRAFT, CYCLE_OPEN):
+        return CortexOUT.error(
+            f"cycle {cycle_id} has unexpected status {current_status!r}; "
+            f"expected draft or open",
+            code="INVALID_STATE",
+        )
+
+    fm["status"] = CYCLE_READY
+    fm["matured_at"] = _now_iso()
+    fm["matured_by"] = ctx.agent_id
+    _write_cycle_manifest(cdir, fm)
+
+    cortex_path = cdir / "cycle.cortex"
+    if cortex_path.exists():
+        try:
+            cfm, body = _parse_cortex_file(cortex_path)
+            if cfm:
+                cfm["status"] = CYCLE_READY
+                cfm["matured_at"] = _now_iso()
+                write_cortex_pair(cdir, "cycle", cfm, body)
+        except Exception:
+            pass
+
+    sync_brain(
+        root,
+        "cycle.mature",
+        focus=f"Ciclo {cycle_id} madurado",
+        detail=f"cycle {cycle_id} transitioned draft -> ready by {ctx.agent_id}",
+    )
+
+    return CortexOUT.work(
+        f"cycle.mature ok id={cycle_id} status=ready",
+        cycle_id=cycle_id,
+        status=CYCLE_READY,
+        matured_by=ctx.agent_id,
+        instruction=(
+            f"Cycle {cycle_id} is now ready. "
+            "You can create blueprints with blueprint.create."
+        ),
     )
 
 
@@ -162,14 +358,8 @@ def close_cycle(
     path: str | None = None,
     ctx: PermissionContext | None = None,
 ) -> CortexOUT:
-    """Close a cycle with automatic lesson generation.
-
-    1. Checks for open tasks.
-    2. Scans completed and failed tasks for patterns.
-    3. Auto-generates LESSONS in the project brain.
-    4. Records cycle closure evidence in brain PULSE.
-    5. Writes cycle summary with metrics.
-    """
+    """Close a cycle with automatic lesson generation."""
+    ctx = enforce_ctx(ctx, "cycle.close")
     root = find_project_root(start=path)
     if root is None:
         return CortexOUT.error("no project initialized", code="NOT_FOUND")
@@ -181,7 +371,6 @@ def close_cycle(
     tasks_dir = cdir / TASKS_DIR
     now = _now_iso()
 
-    # 1. Scan all tasks in the cycle
     open_tasks = []
     completed = []
     failed = []
@@ -203,7 +392,6 @@ def close_cycle(
         except Exception:
             continue
 
-    # 2. Block if there are open tasks (unless forced via a full summary)
     if open_tasks and not summary:
         return CortexOUT.work(
             f"cycle {cycle_id} has {len(open_tasks)} open tasks: {', '.join(open_tasks)}. "
@@ -213,7 +401,6 @@ def close_cycle(
             hint="Provide a summary to force-close with open tasks.",
         )
 
-    # 3. Auto-generate lessons from completed/failed tasks
     lessons = []
     if failed:
         lessons.append(
@@ -228,12 +415,9 @@ def close_cycle(
             f"lesson:\"Completed tasks show effective cycle planning\"}}"
         )
 
-    # 4. Update brain with lessons and closure evidence
     if lessons:
         try:
             from ..state import read_brain, write_brain_sections
-            # find_project_root returns .arqux/ path; read_brain/write_brain_sections
-            # expect the project root (parent of .arqux/).
             project_dir = root.parent
             fm, sections, _ = read_brain(project_dir)
             existing = sections.get("LESSONS", "").strip()
@@ -241,7 +425,6 @@ def close_cycle(
                 f"- [{now}] {l}" for l in lessons
             )
             sections["LESSONS"] = (existing + "\n" + new_lessons).strip() if existing else new_lessons
-            # Also add to PULSE
             pulse = sections.get("PULSE", "").strip()
             closure_entry = (
                 f"- [{now}] AUD:{cycle_id}_close{{kind:\"cycle\", "
@@ -253,8 +436,6 @@ def close_cycle(
         except Exception:
             pass
 
-    # 5. Scan learning candidates. This proposes elevations only; it never
-    # applies LNG->KNW changes without Architect approval.
     learning_scan: dict[str, Any] = {
         "status": "not_run",
         "candidates": [],
@@ -290,7 +471,6 @@ def close_cycle(
             "candidates": [],
         }
 
-    # 6. Write cycle.cortex with metrics
     fm = {
         "id": cycle_id,
         "status": CYCLE_CLOSED,
@@ -317,6 +497,12 @@ def close_cycle(
     )
     write_cortex_pair(cdir, "cycle", fm, body)
 
+    manifest_fm = _read_cycle_manifest(cdir)
+    if manifest_fm is not None:
+        manifest_fm["status"] = CYCLE_CLOSED
+        manifest_fm["closed_at"] = now
+        _write_cycle_manifest(cdir, manifest_fm)
+
     sync_brain(root, "cycle.close", focus="Ciclo cerrado", metrics={"cycles_closed": 1}, detail=f"cycle {cycle_id} closed")
 
     return CortexOUT.work(
@@ -333,8 +519,3 @@ def close_cycle(
         learning_candidates=len(learning_scan.get("candidates", [])),
         instruction="Review cortex.learn candidates; apply elevations only with Architect approval.",
     )
-
-
-def _now_iso() -> str:
-    import time
-    return time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())

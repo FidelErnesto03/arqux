@@ -5,8 +5,8 @@ from __future__ import annotations
 from arqux.handlers import REGISTRY, handler_count, list_handlers
 
 
-def test_handler_count_is_71() -> None:
-    assert handler_count() == 71
+def test_handler_count_is_72() -> None:
+    assert handler_count() == 72
 
 
 def test_mutating_handler_count_is_51() -> None:
@@ -21,7 +21,7 @@ def test_mutating_handler_count_is_51() -> None:
     }
     excluded = session_only | utility
     mutating = [name for name in list_handlers() if name not in excluded]
-    assert len(mutating) == 51
+    assert len(mutating) == 52
 
 
 def test_handler_names_follow_module_convention() -> None:
@@ -48,7 +48,7 @@ def test_module_handler_counts() -> None:
     expected = {
         "blueprint": 18,
         "cortex": 14,
-        "cycle": 4,
+        "cycle": 5,
         "evidence": 3,
         "identity": 1,
         "project": 5,
