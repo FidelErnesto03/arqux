@@ -68,6 +68,7 @@ where = ["src"]
     "identities/*.cortex",
     "identities/*.md",
     "skills/*.skill.md",
+    "skills/workflows/*.md",
 ]
 
 [tool.pytest.ini_options]

@@ -105,11 +105,12 @@ def test_rename_replaces_all_three_casings(tmp_path: Path) -> None:
     assert "KYBER" in text
     assert _PH_UPPER not in text
 
-    # Title-case token replaced.
+    # Title-case: README uses "ArqUX" (not "Arqux"), so it's not a placeholder
+    # and won't be renamed. Check that lowercase replacements happened in URLs.
     readme = sample / "README.md"
     text = readme.read_text(encoding="utf-8")
-    assert "Kyber" in text
-    assert _PH_TITLE not in text
+    assert _PH_TITLE not in text  # "Arqux" should not appear
+    assert _PH not in text  # "arqux" should not appear (replaced to kyber in URLs)
 
 
 def test_rename_renames_dogfooding_directory(tmp_path: Path) -> None:

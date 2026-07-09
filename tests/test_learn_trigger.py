@@ -13,6 +13,22 @@ def _setup_project(workspace_root: Path, ctx) -> Path:
     project_dir = workspace_root / "my-app"
     project_dir.mkdir()
     project.init_project(name="my-app", path=str(project_dir), ctx=ctx)
+    # Create identity file for the test agent so record_lesson_handler can find it
+    identity_dir = workspace_root / ".arqux" / "identities"
+    identity_dir.mkdir(parents=True, exist_ok=True)
+    identity_file = identity_dir / f"{ctx.agent_id}.cortex"
+    identity_file.write_text(
+        "$0\n"
+        "# -- $0: IDENTITY GLOSSARY --\n"
+        "# IDN   | identity   | attrs      | B | Semantic | Agent identity\n"
+        "# LNG   | lesson     | attrs      | M | Episodic | Behavioral lessons\n"
+        "\n"
+        "$1: IDENTITY\n"
+        "IDN:test_governor{name:\"test-governor\", role:\"governor\"}\n"
+        "\n"
+        "$5: BEHAVIORAL LESSONS\n",
+        encoding="utf-8",
+    )
     return project_dir
 
 
