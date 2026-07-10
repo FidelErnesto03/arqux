@@ -96,7 +96,7 @@ def sync_brain(
 
     ts = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
     current_text = f"{event}: {detail}" if detail else event
-    wrk_value = f"phase:active, current:{current_text}, blocked:no, updated:{ts}"
+    wrk_value = f"phase:current, current:{current_text}, blocked:no, updated:{ts}"
 
     try:
         # 1. Update WRK:current (ACTIVE_CONTEXT §8)
@@ -104,7 +104,7 @@ def sync_brain(
             str(brain_path),
             "$8/WRK:current",
             set_={
-                "phase": "active",
+                "phase": "current",
                 "current": current_text,
                 "blocked": "no",
                 "updated": ts,
@@ -152,12 +152,23 @@ def _update_metrics(
 
     for key, value in metrics.items():
         try:
+            # BC-2 fix: provide canonical status:"current" + name + topic + content
+            # to satisfy codec-cortex 0.5.0 E032_CRITICAL_SIGIL_INCOMPLETE for KNW.
+            # Map tasks_active -> status:"current"; tasks_done -> status:"done".
+            knw_status = "done" if key == "tasks_done" else "current"
             crud_add(
                 str(brain_path),
                 section="$6",
                 sigil="KNW",
                 name=key,
-                value={"value": str(value), "updated": ts},
+                value={
+                    "name": key,
+                    "value": str(value),
+                    "updated": ts,
+                    "topic": "metrics",
+                    "content": f"metric {key}={value}",
+                    "status": knw_status,
+                },
                 create_section=False,
                 force=True,
             )

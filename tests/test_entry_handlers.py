@@ -60,7 +60,9 @@ def test_entry_add_and_read(tmp_path: Path) -> None:
     f.write_text(_SAMPLE)
     add = entry_add_handler(str(f), "$3", "OBJ", "goal2", 'goal:"Second", status:"current", success:"verified", survive:"work"', force=True, ctx=_CONTEXT)
     assert add.profile == "OUT-WORK", str(add.fields)
-    get = entry_get_handler(str(f), "OBJ:goal2", ctx=_CONTEXT)
+    # Entry is stored with _XXXX suffix — the returned name includes it
+    stored_name = add.fields.get("name", "goal2_0001")
+    get = entry_get_handler(str(f), f"OBJ:{stored_name}", ctx=_CONTEXT)
     assert get.profile == "OUT-WORK"
     assert get.fields.get("count", 0) == 1
 
@@ -84,7 +86,7 @@ def test_entry_delete(tmp_path: Path) -> None:
     get = entry_get_handler(str(f), "OBJ:*", ctx=_CONTEXT)
     names = [e["name"] for e in get.fields.get("entries", [])]
     assert "goal1" not in names
-    assert "goal2" in names
+    assert any(n.startswith("goal2") for n in names)
 
 
 def test_entry_list_all(tmp_path: Path) -> None:

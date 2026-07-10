@@ -5,8 +5,8 @@ from __future__ import annotations
 from arqux.handlers import REGISTRY, handler_count, list_handlers
 
 
-def test_handler_count_is_72() -> None:
-    assert handler_count() == 72
+def test_handler_count_is_73() -> None:
+    assert handler_count() == 73
 
 
 def test_mutating_handler_count_is_51() -> None:
@@ -14,6 +14,7 @@ def test_mutating_handler_count_is_51() -> None:
     utility = {
         "cortex.read", "cortex.write", "cortex.verify", "cortex.render",
         "cortex.render.diagram", "cortex.render.validate_file",
+        "cortex.file.validate",
         "cortex.learn", "cortex.learn.elevate",
         "identity.record", "skill.import", "skill.convert", "skill.record",
         "skill.evolve", "skill.list", "blueprint.read", "blueprint.list",
@@ -47,7 +48,7 @@ def test_each_handler_has_spec() -> None:
 def test_module_handler_counts() -> None:
     expected = {
         "blueprint": 18,
-        "cortex": 14,
+        "cortex": 15,
         "cycle": 5,
         "evidence": 3,
         "identity": 1,

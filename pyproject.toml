@@ -28,11 +28,9 @@ classifiers = [
 dependencies = [
     # MCP runtime — Model Context Protocol server primitives.
     "mcp>=1.0.0",
-    # CODEC-CORTEX — information codec for AI agents (CORTEX/HCORTEX, learning engine).
-    # If codec-cortex is not yet published to PyPI at the required version,
-    # install from source:
-    #   pip install git+https://github.com/FidelErnesto03/codec-cortex.git
-    "codec-cortex>=0.3.0",
+    # CODEC-CORTEX v0.5.0+ — information codec for AI agents (CORTEX/HCORTEX, learning engine).
+    # v0.5.0+ required: introduces SchemaResolver, ensure_in_glossary, E032/E023 validation.
+    "codec-cortex>=0.5.0",
     # Utilities.
     "pydantic>=2.0.0",
     "click>=8.1.0",

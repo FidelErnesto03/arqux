@@ -204,32 +204,27 @@ def context_set(
 ) -> CortexOUT:
     """Set the current session context pointer.
 
-    Validates that the project exists, stores a lightweight context entry
-    in ``.arqux/context.cortex``, and returns the formatted header string.
+    Locates the workspace from *path* (or CWD), resolves the target project
+    from meta-brain.cortex, validates it has a brain.cortex, and stores a
+    lightweight context entry in the workspace's ``.arqux/context.cortex``.
     The context file is overwritten on each call (one context per workspace).
     """
-    root = find_project_root(start=path)
-    if root is None:
-        return CortexOUT.error("no project initialized", code="NOT_FOUND")
+    # Phase 1: locate workspace (from path or CWD)
+    ws_root = find_workspace_root(start=path)
+    if ws_root is None:
+        return CortexOUT.error("no workspace root found", code="NOT_FOUND")
 
     agent = (ctx or PermissionContext.from_env()).agent_id
 
-    # Validate that the target project exists
-    # If path was given, resolve relative to the found project root
-    if path:
-        project_root = root.parent / project if project else root.parent
-    else:
-        # No explicit path: try to resolve project via meta-brain
-        ws_root = find_workspace_root()
-        if ws_root is None:
-            return CortexOUT.error("no workspace root found", code="NOT_FOUND")
-        project_root = _resolve_project_from_meta_brain(ws_root, project)
-
+    # Phase 2: resolve target project from meta-brain
+    project_root = _resolve_project_from_meta_brain(ws_root, project)
     if project_root is None:
         return CortexOUT.error(
-            f"project {project!r} not found — provide explicit path=",
+            f"project {project!r} not found — is it registered in meta-brain?",
             code="NOT_FOUND",
         )
+
+    # Phase 3: validate target project has a brain.cortex
     project_brain = project_root / ARQUX_DIR / BRAIN_CORTEX
     if not project_brain.exists():
         return CortexOUT.error(
@@ -237,10 +232,8 @@ def context_set(
             code="NOT_FOUND",
         )
 
-    arqux_dir = root / ARQUX_DIR
-    arqux_dir.mkdir(parents=True, exist_ok=True)
-    context_path = arqux_dir / CONTEXT_CORTEX
-
+    # Phase 4: write context at workspace level (single source of truth)
+    context_path = ws_root / CONTEXT_CORTEX
     blp_part = f' blp="{_escape_ses_value(blp)}"' if blp else ""
     entry = (
         f'CTX:{agent} project="{_escape_ses_value(project)}"'
@@ -267,12 +260,12 @@ def context_set(
 def context_get(
     path: str | None = None,
 ) -> CortexOUT:
-    """Read the current context pointer from ``.arqux/context.cortex``."""
-    root = find_project_root(start=path)
-    if root is None:
-        return CortexOUT.error("no project initialized", code="NOT_FOUND")
+    """Read the current context pointer from the workspace ``.arqux/context.cortex``."""
+    ws_root = find_workspace_root(start=path)
+    if ws_root is None:
+        return CortexOUT.error("no workspace root found", code="NOT_FOUND")
 
-    context_path = root / ARQUX_DIR / CONTEXT_CORTEX
+    context_path = ws_root / CONTEXT_CORTEX
     if not context_path.exists():
         return CortexOUT.error("no context set", code="NOT_FOUND")
 

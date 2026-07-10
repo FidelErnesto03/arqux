@@ -680,6 +680,11 @@ def find_project_root(start: Path | str | None = None) -> Path | None:
     cursor = Path(start or os.getcwd()).resolve()
     target_dir = ARQUX_DIR
 
+    # BC-6 fix: if start path itself ends with /.arqux, we are already inside
+    # the .arqux/ directory — return it directly (no double nesting).
+    if cursor.name == target_dir and (cursor / BRAIN_CORTEX).exists():
+        return cursor
+
     while True:
         candidate = cursor / target_dir / BRAIN_CORTEX
         if candidate.exists():

@@ -73,7 +73,16 @@ def release(agent_id: str, path: str | None = None, ctx: PermissionContext | Non
     Removes the agent from the workspace's agents index via the handler.
     Other agents continue operating. Does NOT mutate any project state —
     project sessions are released via `project.unbind`.
+
+    BC-7 fix: ALWAYS clear ARQUX_AGENT_ID/ARQUX_AGENT_ROLE env vars on
+    release, regardless of whether the workspace is found or whether
+    the env var matched agent_id. The release semantic is "no agent is
+    active after release", so unconditionally pop.
     """
+    # BC-7 fix: clear env vars FIRST, before any early return.
+    os.environ.pop(f"{PRODUCT_NAME_UPPER}_AGENT_ID", None)
+    os.environ.pop(f"{PRODUCT_NAME_UPPER}_AGENT_ROLE", None)
+
     root = find_workspace_root(start=path)
     if root is None:
         # Still allow release if the workspace was never initialized.
@@ -84,11 +93,6 @@ def release(agent_id: str, path: str | None = None, ctx: PermissionContext | Non
         lines = agents_path.read_text(encoding="utf-8").splitlines()
         kept = [ln for ln in lines if f"agent={agent_id}" not in ln]
         agents_path.write_text("\n".join(kept) + "\n", encoding="utf-8")
-
-    # Clear env vars if they belonged to this agent.
-    if os.environ.get(f"{PRODUCT_NAME_UPPER}_AGENT_ID") == agent_id:
-        os.environ.pop(f"{PRODUCT_NAME_UPPER}_AGENT_ID", None)
-        os.environ.pop(f"{PRODUCT_NAME_UPPER}_AGENT_ROLE", None)
 
     return CortexOUT.work(
         f"protocol.release ok agent={agent_id}",

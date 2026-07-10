@@ -75,7 +75,7 @@ def test_sync_brain_updates_wrk(brain_project: Path) -> None:
     val = wrk_entries[0]["value"]
     assert val["event"] == "test.event"
     assert val["current"] == "test.event: test detail"
-    assert val["phase"] == "active"
+    assert val["phase"] == "current"  # BC-2 fix: canonical status
 
 
 def test_sync_brain_updates_fcs(brain_project: Path) -> None:

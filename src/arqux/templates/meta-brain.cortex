@@ -16,24 +16,31 @@ $0
 # min=minimum rec=recovery wrk=work full=full
 # ok=success fail=failure part=partial
 
+# Canonical sigil declarations (codec-cortex 0.5.0+ compliance)
+GSIG:IDN{name:"identity", type:"attrs", risk:"B", layer:"Semantic", description:"Agent identity descriptor"}
+GSIG:DOM{name:"domain", type:"attrs", risk:"B", layer:"Semantic", description:"Workspace domain metadata"}
+GSIG:FCS{name:"focus", type:"attrs", risk:"H", layer:"Working", description:"Default attention anchor"}
+GSIG:KNW{name:"knowledge", type:"attrs", risk:"B", layer:"Semantic", description:"Workspace-level knowledge"}
+# Statuses canonical: blocked, current, deprecated, done, experimental, future, planned, specification
+# status: current
 
 $1: META-BRAIN
 
-IDN:workspace{root:"<workspace-root>", governor:"alfred", created:"<timestamp>", projects:0, cycles_active:0, blueprints:"0"}
+IDN:workspace{name:"workspace", root:"<workspace-root>", governor:"alfred", created:"<timestamp>", projects:0, cycles_active:0, blueprints:"0", status:"current"}
 
 $2: PROJECTS
 
-DOM:arqux{name:"<workspace-name>", path:".", domain:"workspace", status:"active", cycle:"none", handlers:"0", tests:"0", skills:"", cycle_status:"none", blueprints_done:"0", blueprints_draft:"0", updated:"<timestamp>", last_event:"init", blueprints_cancelled:"0", blueprints_completed:"0"}
+DOM:arqux{name:"arqux", path:".", domain:"workspace", status:"current", cycle:"none", handlers:"0", tests:"0", skills:"", cycle_status:"none", blueprints_done:"0", blueprints_draft:"0", updated:"<timestamp>", last_event:"init", blueprints_cancelled:"0", blueprints_completed:"0"}
 
 $3: FOCUS
 
-FCS:current{what:"Workspace initialized", priority:"medium", status:"current", survive:"work", updated:"<timestamp>"}
+FCS:current{name:"current", what:"Workspace initialized", priority:"medium", status:"current", survive:"work", updated:"<timestamp>"}
 
 $4: AGENTS
 
-IDN:alfred{role:"governor", status:"active", adopted:"<timestamp>"}
-IDN:jarvis{role:"executor", status:"active", adopted:"<timestamp>"}
+IDN:alfred{name:"alfred", role:"governor", status:"current", adopted:"<timestamp>"}
+IDN:jarvis{name:"jarvis", role:"executor", status:"current", adopted:"<timestamp>"}
 
 $5: KNOWLEDGE
 
-KNW:workspace_access{topic:"workspace_access", status:"active", content:"Agents operating under Arqux governance have full access to all projects within the workspace."}
+KNW:workspace_access{name:"workspace_access", topic:"workspace_access", status:"current", content:"Agents operating under Arqux governance have full access to all projects within the workspace."}

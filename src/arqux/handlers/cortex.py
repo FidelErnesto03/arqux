@@ -1,18 +1,12 @@
 """
 `cortex` module — generic .cortex file operations using CODEC-CORTEX.
 
-These are UTILITY handlers (outside the 24-handler governance budget) that
-expose CODEC-CORTEX as MCP tools for reading, writing, verifying, and
-rendering arbitrary .cortex files that ARE NOT governance state.
-
-For governance state (brain.cortex, manifest.cortex, tasks, etc.), use the
-governance handlers (workspace.*, project.*, cycle.*, task.*, evidence.*).
-
 Handlers:
     cortex.read     — read and parse a .cortex file
     cortex.write    — write (atomically) a .cortex file from CORTEX source text
     cortex.verify   — validate a .cortex file's structure
     cortex.render   — render a .cortex file to HCORTEX READ markdown
+    cortex.file.validate — detect and optionally rename duplicate entries
 """
 
 from __future__ import annotations
@@ -25,6 +19,19 @@ from ..cortex_out import CortexOUT
 from ..permissions import PermissionContext, enforce_ctx, HMAC_REQUIRED
 from ..state import cortex_read, cortex_write, cortex_verify, cortex_render
 from ..sync import sync_brain
+
+
+# ---------------------------------------------------------------------------
+# SectionCounter — in-memory sequential counter per (file, section)
+# ---------------------------------------------------------------------------
+
+_section_counter: dict[str, int] = {}
+
+def _next_number(path: str, section: str) -> str:
+    """Increment and return the next zero-padded 4-digit suffix for *section* in *path*."""
+    key = f"{path}:::{section}"
+    _section_counter[key] = _section_counter.get(key, 0) + 1
+    return f"_{_section_counter[key]:04d}"
 
 
 def read_handler(
@@ -518,11 +525,18 @@ def entry_add_handler(
     force: bool = False,
     ctx: PermissionContext | None = None,
 ) -> CortexOUT:
-    """Add a new entry to a .cortex file."""
+    """Add a new entry to a .cortex file.
+
+    Automatically appends a sequential _XXXX suffix to the name
+    (per-section counter) to prevent silent overwrites.
+    """
     from ..state import crud_add
 
+    suffix = _next_number(path, section)
+    numbered_name = f"{name}{suffix}"
+
     try:
-        result = crud_add(path, section, sigil, name, value, create_section=create_section, force=force)
+        result = crud_add(path, section, sigil, numbered_name, value, create_section=create_section, force=force)
     except FileNotFoundError:
         return CortexOUT.error(f"file not found: {path}", code="NOT_FOUND")
     except Exception as exc:
@@ -531,8 +545,8 @@ def entry_add_handler(
     if "error" in result:
         return CortexOUT.error(result["error"], code="CRUD_ERROR")
     return CortexOUT.work(
-        f"entry.add ok path={path} {sigil}:{name} in {section}",
-        path=path, section=section, sigil=sigil, name=name,
+        f"entry.add ok path={path} {sigil}:{numbered_name} in {section}",
+        path=path, section=section, sigil=sigil, name=numbered_name,
         bytes_written=result.get("bytes_written"),
         backup=result.get("backup"),
     )
@@ -672,3 +686,108 @@ def entry_list_handler(
         count=len(result["entries"]),
         entries=result["entries"],
     )
+
+
+# ---------------------------------------------------------------------------
+# cortex.file.validate — detect and optionally rename duplicate entries
+# ---------------------------------------------------------------------------
+
+
+def file_validate_handler(
+    path: str,
+    fix: bool = False,
+    ctx: PermissionContext | None = None,
+) -> CortexOUT:
+    """Scan a .cortex file for duplicate entry names and optionally fix them.
+
+    Groups entries by (section, sigil, name). When multiple entries share
+    the same name in the same section, they are flagged as duplicates.
+    With fix=true, duplicates are renamed with a _XXXX suffix.
+    """
+    from ..state import _cc_parser, _cc_validator, _cc_transactions
+    from pathlib import Path
+    from collections import defaultdict
+    import re as _re
+
+    target = Path(path)
+    if not target.exists():
+        return CortexOUT.error(f"file not found: {path}", code="NOT_FOUND")
+
+    try:
+        text = target.read_text(encoding="utf-8")
+        doc = _cc_parser.parse_cortex(text, path=str(path))
+    except Exception as exc:
+        return CortexOUT.error(str(exc), code="PARSE_ERROR")
+
+    def _strip_suffix(n: str) -> str:
+        return _re.sub(r"_\d{4}$", "", n)
+
+    # Group by (section, sigil, base_name)
+    groups: dict[tuple[str, str, str], list] = defaultdict(list)
+    for sec in doc.sections:
+        for entry in sec.entries or []:
+            base = _strip_suffix(entry.name)
+            groups[(sec.id, entry.sigil, base)].append({
+                "section": sec.id,
+                "sigil": entry.sigil,
+                "name": entry.name,
+                "base": base,
+                "entry": entry,
+            })
+
+    duplicates = {k: v for k, v in groups.items() if len(v) > 1}
+    if not duplicates:
+        return CortexOUT.work(
+            f"file.validate ok — 0 duplicates found in {path}",
+            path=path, fix=fix, total_duplicates=0,
+        )
+
+    # Build rename report
+    report = []
+    for (sec_id, sigil, base), entries in sorted(duplicates.items()):
+        for idx, e in enumerate(entries):
+            new_name = f"{base}_{idx + 1:04d}"
+            if e["name"] != new_name:
+                report.append({
+                    "section": sec_id,
+                    "sigil": sigil,
+                    "old_name": e["name"],
+                    "new_name": new_name,
+                })
+
+    if not fix:
+        return CortexOUT.work(
+            f"file.validate ok — {len(report)} duplicate(s) detected (dry-run, fix=false)",
+            path=path, fix=fix, total_duplicates=len(report),
+            duplicates=report,
+        )
+
+    # Fix: rename in AST, validate, write
+    for r in report:
+        for sec in doc.sections:
+            if sec.id != r["section"]:
+                continue
+            for ent in sec.entries or []:
+                if ent.name == r["old_name"]:
+                    ent.name = r["new_name"]
+                    break
+
+    diags = _cc_validator.validate(doc)
+    errors = [d for d in diags if d.get("severity") == "error"]
+    if errors:
+        return CortexOUT.error(
+            f"Validation failed after rename ({len(errors)} errors)",
+            code="VALIDATION_FAILED",
+        )
+
+    try:
+        result = _cc_transactions.atomic_write_cortex(doc, str(target), force=True)
+        return CortexOUT.work(
+            f"file.validate ok — {len(report)} duplicate(s) renamed",
+            path=path, fix=fix, total_duplicates=len(report),
+            renamed=report,
+            bytes_written=result.bytes_written,
+            backup=result.backup,
+        )
+    except Exception as exc:
+        return CortexOUT.error(str(exc), code="WRITE_ERROR")
