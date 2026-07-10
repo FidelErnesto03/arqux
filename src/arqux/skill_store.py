@@ -6,7 +6,7 @@ Implements the procedural line of BLP-038's three-lines architecture:
     AdaptedStore   → skills/             (local adaptations, read/write)
     SkillRepository → resolves by priority: Adapted > Original > Native
 
-The sigil ``STP`` is enriched with provenance metadata in §0 METADATA:
+The sigil ``STP`` is enriched with provenance metadata in ARQX:artifact:
     kind              : native | inherited | adapted
     source            : URL/path of the upstream (for inherited)
     upstream_version  : version tag of the upstream (for inherited)
@@ -35,9 +35,9 @@ from .constants import (
 )
 from .formats import (
     CortexArtifact,
+    _ARQUX_GLOSSARY_TEXT,
     read_cortex_artifact,
-    render_metadata_block,
-    strip_metadata_block,
+    render_arqux_section,
 )
 from .migrator import migrate_skill_file
 
@@ -118,9 +118,9 @@ class OriginalStore:
         """
         self.base_path.mkdir(parents=True, exist_ok=True)
         path = self.base_path / f"{name}.skill.md"
-        # Render §0 METADATA + content.
-        metadata_block = render_metadata_block(declaration.to_metadata())
-        full_content = metadata_block + "\n\n" + content
+        # Compose CORTEX document: $0 glossary + $0.1 arqux metadata + content.
+        arqux_section = render_arqux_section(declaration.to_metadata())
+        full_content = f"$0\n\n{_ARQUX_GLOSSARY_TEXT}\n{arqux_section}\n\n{content}\n"
         path.write_text(full_content, encoding="utf-8")
         logger.info("OriginalStore.save: %s", path)
         return path
@@ -131,7 +131,6 @@ class OriginalStore:
         if not path.exists():
             raise SkillNotFoundError(f"Original skill not found: {path}")
         artifact = read_cortex_artifact(path)
-        content = strip_metadata_block(artifact.payload)
         return SkillContract(
             declaration=STPDeclaration(
                 level=artifact.metadata.level.value,
@@ -141,7 +140,7 @@ class OriginalStore:
                 source=artifact.metadata.source,
                 upstream_version=artifact.metadata.upstream_version,
             ),
-            content=content,
+            content=artifact.payload,
             path=path,
         )
 
@@ -201,8 +200,8 @@ class AdaptedStore:
             else:
                 declaration = STPDeclaration(name=name, kind="native")
 
-        metadata_block = render_metadata_block(declaration.to_metadata())
-        full_content = metadata_block + "\n\n" + content
+        arqux_section = render_arqux_section(declaration.to_metadata())
+        full_content = f"$0\n\n{_ARQUX_GLOSSARY_TEXT}\n{arqux_section}\n\n{content}\n"
         path.write_text(full_content, encoding="utf-8")
         logger.info("AdaptedStore.save: %s (kind=%s)", path, declaration.kind)
         return path
@@ -212,7 +211,13 @@ class AdaptedStore:
         if not path.exists():
             raise SkillNotFoundError(f"Adapted skill not found: {path}")
         artifact = read_cortex_artifact(path)
-        content = strip_metadata_block(artifact.payload)
+        raw = path.read_text(encoding="utf-8")
+        # Strip ARQX preamble ($0 glossary + $0.1 metadata) to extract
+        # the actual skill body: everything after the metadata block.
+        # Format: $0\n\nGLOSSARY\n$0.1: ARQUX METADATA\n\nARQX:artifact{...}\n\nBODY
+        parts = raw.split("ARQX:artifact")[-1] if "ARQX:artifact" in raw else ""
+        body_parts = parts.split("\n\n", 1) if parts else []
+        skill_body = body_parts[-1].strip() if body_parts else raw.strip()
         contract = SkillContract(
             declaration=STPDeclaration(
                 level=artifact.metadata.level.value,
@@ -222,7 +227,7 @@ class AdaptedStore:
                 source=artifact.metadata.source,
                 upstream_version=artifact.metadata.upstream_version,
             ),
-            content=content,
+            content=skill_body,
             path=path,
             original_ref=artifact.metadata.source,
         )
@@ -286,7 +291,7 @@ class SkillRepository:
                     usage=artifact.metadata.usage.value,
                     kind=artifact.metadata.kind.value,
                 ),
-                content=strip_metadata_block(artifact.payload),
+                content=artifact.payload,
                 path=native_path,
             )
         raise SkillNotFoundError(

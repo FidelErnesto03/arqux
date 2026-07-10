@@ -1,5 +1,7 @@
 $0
 
+# ARQX   | artifact   | attrs      | B | Semantic       | ArqUX artifact metadata
+
 # -- $0: ARQUX UPGRADE GLOSSARY --
 # IDN | identity   | attrs      | B | Semantic       | Procedure identity
 # STP | step       | attrs      | M | Working        | Upgrade step
@@ -16,6 +18,10 @@ GSIG:LNG{name:"lesson", type:"attrs", risk:"M", layer:"Episodic", description:"P
 # status: current, blocked, deprecated, planned
 # survive: min, work, full, recovery
 
+
+$0.1: ARQUX METADATA
+
+ARQX:artifact{level:0, name:"upgrade", usage:"config", kind:"native"}
 $1: UPGRADE PROCEDURE
 
 IDN:upgrade{

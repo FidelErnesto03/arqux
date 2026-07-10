@@ -1,6 +1,6 @@
 """Structural and semantic validators for .cortex artifacts (BLP-036/037).
 
-The validation layer sits AFTER §0 METADATA validation (BLP-035) and BEFORE
+The validation layer sits AFTER ARQX:artifact metadata validation (BLP-035) and BEFORE
 handlers return artifacts to MCP/CLI clients. It uses the *Strategy* pattern:
 ``ValidatorFactory.get_validator(level)`` returns the validator appropriate
 for the artifact's level.

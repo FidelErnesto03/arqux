@@ -50,11 +50,11 @@ class TestLessonStoreCapture:
         store.ensure_container()
         assert lessons_path.exists()
         content = lessons_path.read_text(encoding="utf-8")
-        # §0 METADATA injected (BLP-035 integration).
-        assert "§0 METADATA" in content
-        assert 'level: 0' in content
-        assert 'usage: "lesson"' in content
-        assert 'agent: "jarvis"' in content
+        # ARQX:artifact injected (BLP-041 integration).
+        assert "ARQX:artifact" in content
+        assert "level:0" in content
+        assert 'usage:"lesson"' in content
+        assert 'agent:"jarvis"' in content
 
     def test_ensure_container_idempotent(self, lessons_path: Path) -> None:
         store = LessonStore(lessons_path, agent="jarvis")

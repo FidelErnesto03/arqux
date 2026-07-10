@@ -1501,16 +1501,40 @@ def _has_learning_recorded(root: Path, bp_id: str) -> bool:
 
 
 def _record_to_brain(root: Path, bp_id: str, outcome: str, evidence: str) -> None:
-    """Record Blueprint outcome in brain PULSE."""
+    """Record Blueprint outcome in brain PULSE using CODEC-CORTEX (BLP-042)."""
     try:
-        fm, sections, _ = read_brain(root)
-        pulse = sections.get("PULSE", "").strip()
-        entry = (
-            f"- [{_now_iso()}] AUD:{bp_id}_{outcome}{{kind:\"blueprint\", "
-            f"evidence:{evidence!r}}}"
-        )
-        sections["PULSE"] = (pulse + "\n" + entry).strip() if pulse else entry
-        write_brain_sections(root, fm, sections)
+        brain_path = root / ".arqux" / "brain.cortex"
+        if not brain_path.exists():
+            return
+
+        from cortex.core.parser import parse_cortex
+        from cortex.core.writer import write_cortex
+        from cortex.core.ast import Entry
+
+        text = brain_path.read_text(encoding="utf-8")
+        doc = parse_cortex(text)
+
+        # Find PULSE section (usually $11 or latest section).
+        pulse_sec = None
+        for sec in doc.sections:
+            if "PULSE" in sec.title.upper() or sec.id == "$11":
+                pulse_sec = sec
+                break
+        if pulse_sec is None:
+            return
+
+        pulse_sec.entries.append(Entry(
+            section=pulse_sec.id,
+            sigil="AUD", name=f"{bp_id}_{outcome}", type="attrs",
+            value={
+                "kind": "blueprint",
+                "evidence": evidence,
+                "date": _now_iso(),
+            },
+        ))
+
+        cortex_text = write_cortex(doc)
+        brain_path.write_text(cortex_text, encoding="utf-8")
     except Exception:
         pass
 

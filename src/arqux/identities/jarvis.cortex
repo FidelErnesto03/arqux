@@ -1,15 +1,8 @@
-# §0 METADATA{
-#   level: 1,
-#   name: "jarvis",
-#   usage: "identity",
-#   kind: "native",
-#   agent: "jarvis"
-# }
-
 $0
 
 # -- $0: ARQUX AGENT IDENTITY GLOSSARY --
 # Sigil | Name | Type | Risk | Cognitive Layer | Description
+# ARQX   | artifact   | attrs      | B | Semantic       | ArqUX artifact metadata
 # IDN   | identity   | attrs      | B | Semantic       | Agent identity descriptor
 # AXM   | axiom      | attrs      | H | Prefrontal     | Non-negotiable principles (body field holds the axiom text)
 # LIM   | limit      | attrs      | M | Prefrontal     | Hard limits and boundaries
@@ -31,6 +24,10 @@ GSIG:DESC{name:"description", type:"attrs", risk:"B", layer:"Semantic", descript
 # AXM and DESC use 'attrs' type with 'body' field (instead of 'cuerpo')
 # to satisfy SchemaResolver.ALWAYS_REQUIRED = frozenset({"name"}).
 
+
+$0.1: ARQUX METADATA
+
+ARQX:artifact{level:1, name:"jarvis", usage:"identity", kind:"native"}
 $1: IDENTITY
 
 IDN:jarvis{name:"Jarvis", role:"executor", default_agent:"false",

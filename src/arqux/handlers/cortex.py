@@ -143,6 +143,7 @@ def render_handler(
 
 def record_lesson_handler(
     lesson: str, kind: str | None = None, cause: str | None = None,
+    prevention: str | None = None,
     agent_id: str | None = None,
     path: str | None = None, ctx: PermissionContext | None = None,
 ) -> CortexOUT:
@@ -150,13 +151,22 @@ def record_lesson_handler(
     enforce_ctx(ctx, "identity.record", require_hmac=os.environ.get("ARQUX_STRICT_SECURITY") == "1")
     if agent_id and ctx and agent_id != ctx.agent_id:
         return CortexOUT.error("PERMISSION_DENIED", code="FORBIDDEN")
-    return record_lesson_handler_legacy(lesson=lesson, kind=kind, cause=cause, agent_id=agent_id, path=path, ctx=ctx)
+    return record_lesson_handler_legacy(
+        lesson=lesson,
+        kind=kind or "behavioral",
+        cause=cause or "",
+        prevention=prevention or "",
+        agent_id=agent_id or (ctx.agent_id if ctx else "alfred"),
+        path=path or "",
+        ctx=ctx,
+    )
 
 
 def record_lesson_handler_legacy(
     lesson: str,
     kind: str = "behavioral",
     cause: str = "",
+    prevention: str = "",
     agent_id: str = "",
     path: str = "",
     ctx: PermissionContext | None = None,
@@ -168,6 +178,8 @@ def record_lesson_handler_legacy(
 
     This is how identities evolve — each significant behavioral lesson
     becomes a permanent part of the agent's identity.
+
+    BLP-042: prevention is REQUIRED. No fallback bypass.
     """
     from ..constants import ARQUX_DIR
     import re
@@ -202,11 +214,11 @@ def record_lesson_handler_legacy(
         from ..state import crud_add
 
         # Generate a lesson name from the lesson text (strip leading non-alnum).
-        first_word = lesson.lstrip(" -").lower().split()[0] if lesson.split() else "lesson"
+        first_word = lesson.lstrip(" -\"").lower().split()[0] if lesson.split() else "lesson"
         name = re.sub(r"[^a-z0-9]", "_", first_word)[:30] or "lesson"
 
-        # Build the LNG entry value as a structured dict.
-        value = {"type": kind, "cause": cause, "lesson": lesson}
+        # Build the LNG entry value as a structured dict — includes prevention.
+        value = {"type": kind, "cause": cause, "lesson": lesson, "prevention": prevention}
 
         # Use crud_add for atomic, validated insertion.
         result = crud_add(
@@ -216,28 +228,9 @@ def record_lesson_handler_legacy(
             force=True,
         )
         if "error" in result:
-            # Non-bypassable errors (pre-existing identity file issues).
-            # Fall back to direct string append.
-            raise_ = result.get("non_bypassable")
-            if not raise_:
-                return CortexOUT.error(result["error"], code="CRUD_ERROR")
-            text = identity_file.read_text(encoding="utf-8")
-            escaped_lesson = lesson.replace('"', '\\"')
-            escaped_cause = cause.replace('"', '\\"')
-            entry = f'LNG:{name}{{type:"{kind}", cause:"{escaped_cause}", lesson:"{escaped_lesson}"}}'
-            if "$5:" in text:
-                sec5_end = text.find("\n$6:")
-                if sec5_end == -1:
-                    sec5_end = len(text)
-                text = text[:sec5_end] + f"\n{entry}\n" + text[sec5_end:]
-            else:
-                sec6_pos = text.find("\n$6:")
-                if sec6_pos != -1:
-                    insert_at = text.rfind("\n", 0, sec6_pos) + 1
-                    text = text[:insert_at] + f"\n$5: BEHAVIORAL LESSONS\n\n{entry}\n" + text[insert_at:]
-                else:
-                    text += f"\n\n$5: BEHAVIORAL LESSONS\n\n{entry}\n"
-            identity_file.write_text(text, encoding="utf-8")
+            # BLP-042: No bypass. If CODEC-CORTEX rejects, propagate error.
+            return CortexOUT.error(result["error"], code="CRUD_ERROR")
+        migrated = True
     except Exception as exc:  # noqa: BLE001
         return CortexOUT.error(str(exc), code="IDENTITY_UPDATE_ERROR")
 

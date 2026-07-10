@@ -2,6 +2,7 @@ $0
 
 # -- $0: GLOSSARY --
 # Sigil | Name | Type | Risk | Description
+# ARQX   | artifact   | attrs      | B | Semantic       | ArqUX artifact metadata
 # THR   | threshold  | attrs      | M | Learning thresholds
 # POL   | policy     | attrs      | M | Learning policy
 # PRT   | protected  | attrs      | H | Protected targets
@@ -18,6 +19,10 @@ GSIG:GTE{name:"gate", type:"attrs", risk:"H", layer:"Prefrontal", description:"M
 GSIG:KNW{name:"knowledge", type:"attrs", risk:"B", layer:"Semantic", description:"Knowledge entry", fields:"name,topic,content,status"}
 # status: candidate, elevated, cooled, feedback, current, deprecated, planned
 
+
+$0.1: ARQUX METADATA
+
+ARQX:artifact{level:2, name:"learn-policies", usage:"skill", kind:"native"}
 $1: IDENTITY
 IDN:learn_policies{name:"arqux_default", version:"0.1.0", target:".arqux/brain.cortex", status:"current"}
 

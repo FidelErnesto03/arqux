@@ -37,8 +37,6 @@ from .constants import (
 from .formats import (
     CortexArtifact,
     read_cortex_artifact,
-    strip_metadata_block,
-    validate_metadata,
 )
 
 logger = logging.getLogger(__name__)
@@ -113,11 +111,10 @@ def _parse_contract_attrs(attrs_text: str) -> dict[str, str]:
 def _extract_contracts(payload: str) -> list[dict[str, str]]:
     """Extract all AXM/LIM sigils from a <agent>.cortex payload.
 
-    Searches the entire payload (after stripping §0 METADATA). Returns a list
-    of dicts with keys: sigil, name, status, body, ... (whatever attrs each
-    sigil carries).
+    Searches the entire payload (ARQX:artifact in $0.1 is metadata, not content).
+    Returns a list of dicts with keys: sigil, name, status, body, ...
     """
-    body = strip_metadata_block(payload)
+    body = payload
     contracts: list[dict[str, str]] = []
     for m in _CONTRACT_RE.finditer(body):
         attrs = _parse_contract_attrs(m.group("attrs"))

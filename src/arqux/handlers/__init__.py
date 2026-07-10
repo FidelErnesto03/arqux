@@ -541,6 +541,7 @@ _register(_spec(
             "lesson": {"type": "string", "description": "Lesson text"},
             "kind": {"type": "string", "description": "Lesson kind: behavioral/process/format/rule/infrastructure", "default": "behavioral"},
             "cause": {"type": "string", "description": "What caused this lesson", "default": ""},
+            "prevention": {"type": "string", "description": "How to prevent this lesson from recurring. Required for LNG entries."},
             "agent_id": {"type": "string", "description": "Agent identifier (default: current agent)"},
             "path": {"type": "string", "description": "Path to search up from for .arqux/identities/"},
         },
