@@ -1,3 +1,11 @@
+# §0 METADATA{
+#   level: 1,
+#   name: "heimdall",
+#   usage: "identity",
+#   kind: "native",
+#   agent: "heimdall"
+# }
+
 $0
 
 # -- $0: ARQUX AGENT IDENTITY GLOSSARY --

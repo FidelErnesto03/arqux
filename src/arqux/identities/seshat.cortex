@@ -1,3 +1,11 @@
+# §0 METADATA{
+#   level: 1,
+#   name: "seshat",
+#   usage: "identity",
+#   kind: "native",
+#   agent: "seshat"
+# }
+
 $0
 
 # -- $0: ARQUX AGENT IDENTITY GLOSSARY --

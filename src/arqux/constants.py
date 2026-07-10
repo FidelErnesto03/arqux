@@ -11,7 +11,10 @@ canonical surface to swap. After running `scripts/rename-product.py <name>`:
 from __future__ import annotations
 
 import os
+from dataclasses import dataclass
+from enum import Enum
 from pathlib import Path
+from typing import Any
 
 # --- Identity --------------------------------------------------------------
 
@@ -183,3 +186,218 @@ IDENTITIES_DIR: Path = PACKAGE_ROOT / "identities"
 def env(var: str, default: str | None = None) -> str | None:
     """Read an environment variable prefixed with the product name."""
     return os.environ.get(f"{ARQUX_ENV_PREFIX}{var}", default)
+
+
+# === BLP-035 / BLP-036 / BLP-037 / BLP-040: Cortex artifact identity ========
+#
+# §0 METADATA is the technical "birth certificate" of every .cortex file:
+#   level  → architectural level (0=PACKAGE, 1=BEHAVIORAL, 2=SKILL, 3=BRAIN)
+#   name   → canonical artifact name (e.g. "brain", "jarvis", "owasp-top10")
+#   usage  → semantic role (state|skill|identity|lesson|config)
+#   kind   → provenance (native|inherited|adapted)
+#
+# It is declared (not inferred): every .cortex file MUST carry an explicit
+# §0 METADATA block. Files without it degrade to NIVEL 0 + Warning W001.
+# The block is implemented as a comment-prefixed prelude so CODEC-CORTEX's
+# parser ignores it, while ArqUX's ``formats.validate_metadata()`` extracts
+# it with a regex.
+
+
+class CortexLevel(Enum):
+    """Architectural level of a .cortex artifact (BLP-035)."""
+    PACKAGE = 0       # Level 0: lessons, configs, raw packages
+    BEHAVIORAL = 1    # Level 1: identity contracts (agents)
+    SKILL = 2         # Level 2: skill files (.skill.md)
+    BRAIN = 3         # Level 3: project brain (brain.cortex)
+
+    @classmethod
+    def from_int(cls, value: int) -> "CortexLevel":
+        try:
+            return cls(value)
+        except ValueError as exc:
+            raise ValueError(f"Invalid level: {value}. Must be 0-3.") from exc
+
+
+class ArtifactKind(Enum):
+    """Provenance of an artifact (BLP-035 / BLP-040)."""
+    NATIVE = "native"          # created inside this workspace
+    INHERITED = "inherited"    # imported from a third-party upstream
+    ADAPTED = "adapted"        # local fork of an inherited artifact
+
+    @classmethod
+    def from_str(cls, value: str) -> "ArtifactKind":
+        for k in cls:
+            if k.value == value:
+                return k
+        raise ValueError(f"Invalid kind: {value!r}. Must be native|inherited|adapted.")
+
+
+class ArtifactUsage(Enum):
+    """Semantic role of an artifact (BLP-035)."""
+    STATE = "state"        # project brain / live state
+    SKILL = "skill"        # procedural skill file
+    IDENTITY = "identity"  # agent identity contract
+    LESSON = "lesson"      # raw lesson store (Nivel 0)
+    CONFIG = "config"      # configuration / glossary
+
+    @classmethod
+    def from_str(cls, value: str) -> "ArtifactUsage":
+        for u in cls:
+            if u.value == value:
+                return u
+        raise ValueError(
+            f"Invalid usage: {value!r}. Must be state|skill|identity|lesson|config."
+        )
+
+
+@dataclass(frozen=True)
+class ArtifactMetadata:
+    """Technical identity of a .cortex artifact (BLP-035).
+
+    The §0 METADATA block declares level, name, usage, kind. Optional fields
+    (agent, source, upstream_version) are kept for BLP-038/BLP-040 extensions.
+    """
+    level: CortexLevel
+    name: str
+    usage: ArtifactUsage
+    kind: ArtifactKind
+    # Optional provenance fields (BLP-038 conductual / BLP-040 procedural):
+    agent: str | None = None
+    source: str | None = None
+    upstream_version: str | None = None
+
+    @staticmethod
+    def default(level: int = 0) -> "ArtifactMetadata":
+        """Return a default metadata for the given level.
+
+        Used when a .cortex file lacks §0 METADATA — the file degrades to
+        NIVEL 0 (PACKAGE) with a default identity and emits W001_NO_METADATA.
+        """
+        return ArtifactMetadata(
+            level=CortexLevel.from_int(level),
+            name="<unknown>",
+            usage=ArtifactUsage.CONFIG,
+            kind=ArtifactKind.NATIVE,
+        )
+
+    def to_dict(self) -> dict[str, Any]:
+        d: dict[str, Any] = {
+            "level": self.level.value,
+            "name": self.name,
+            "usage": self.usage.value,
+            "kind": self.kind.value,
+        }
+        if self.agent is not None:
+            d["agent"] = self.agent
+        if self.source is not None:
+            d["source"] = self.source
+        if self.upstream_version is not None:
+            d["upstream_version"] = self.upstream_version
+        return d
+
+
+# === BLP-036: BrainSection enum (13 canonical sections $0..$12) ============
+
+class BrainSection(Enum):
+    """Canonical 13 sections of a Level-3 Brain artifact (BLP-036).
+
+    Maps to niveles-cortex-arqux.md v3.0: $0 METADATA through $12 ISSUES.
+    The enum value is the section identifier used in the .cortex file
+    (with the leading ``$``).
+    """
+    METADATA = "$0"
+    IDENTITY = "$1"
+    KNOWLEDGE = "$2"
+    FOCUS = "$3"
+    OBJECTIVES = "$4"
+    STATE = "$5"
+    LESSONS = "$6"
+    DECISIONS = "$7"
+    AXIOMS = "$8"
+    LIMITS = "$9"
+    HANDOFF = "$10"
+    CONCURRENCY = "$11"
+    ISSUES = "$12"
+
+    @property
+    def number(self) -> int:
+        """Numeric section index (0..12)."""
+        return int(self.value[1:])
+
+    @classmethod
+    def all_ids(cls) -> list[str]:
+        """Return the 13 canonical section ids in order."""
+        return [s.value for s in cls]
+
+
+#: Mapping from BrainSection → human-readable title (for structural validation).
+BRAIN_SECTION_TITLES: dict[str, str] = {
+    "$0": "METADATA",
+    "$1": "IDENTITY",
+    "$2": "KNOWLEDGE",
+    "$3": "FOCUS",
+    "$4": "OBJECTIVES",
+    "$5": "STATE",
+    "$6": "LESSONS",
+    "$7": "DECISIONS",
+    "$8": "AXIOMS",
+    "$9": "LIMITS",
+    "$10": "HANDOFF",
+    "$11": "CONCURRENCY",
+    "$12": "ISSUES",
+}
+
+
+# === BLP-037: Active-state status whitelist/blacklist =======================
+
+#: Statuses that count as "vigente" (alive) for FCS/OBJ semantic validation.
+#: A project brain with at least one FCS in these states is NOT zombie.
+VALID_STATUSES: frozenset[str] = frozenset({
+    "current",
+    "active",
+    "pending",
+    "blocked",
+    "paused",
+})
+
+#: Statuses that count as "inerte" (dead) for FCS/OBJ semantic validation.
+#: A project brain where ALL FCS/OBJ are in these states is zombie.
+INVALID_STATUSES: frozenset[str] = frozenset({
+    "done",
+    "archived",
+    "dropped",
+    "cancelled",
+})
+
+
+# === BLP-035 warning codes ==================================================
+
+#: Warning code emitted when a .cortex file lacks §0 METADATA.
+W001_NO_METADATA: str = "W001_NO_METADATA"
+
+#: Warning code emitted when a Brain artifact has fewer than 8 active sections.
+W002_INCOMPLETE_BRAIN: str = "W002_INCOMPLETE_BRAIN"
+
+#: Warning code emitted when a behavioral lesson has expired (BLP-038).
+W003_LEARNING_DEBT_BEHAVIORAL: str = "W003_LEARNING_DEBT_BEHAVIORAL"
+
+#: Warning code emitted when an inherited skill is stale vs upstream (BLP-040).
+W004_STALE_INHERITED_SKILL: str = "W004_STALE_INHERITED_SKILL"
+
+#: Warning code emitted when an AdaptedStore entry lacks original_ref (BLP-040).
+W005_MISSING_ORIGINAL_REF: str = "W005_MISSING_ORIGINAL_REF"
+
+
+# === BLP-037 / BLP-036 error codes ==========================================
+
+#: BRAIN without any active FCS (CRITICAL).
+E024_LEVEL3_MISSING_FOCUS: str = "E024_LEVEL3_MISSING_FOCUS"
+
+#: BRAIN section is malformed (e.g. misnamed sigil).
+E026_MISSING_SECTION: str = "E026_MISSING_SECTION"
+
+#: BRAIN section has a sigil with wrong naming.
+E027_MALFORMED_SECTION: str = "E027_MALFORMED_SECTION"
+
+#: BRAIN with no active objectives (HIGH).
+E028_NO_ACTIVE_OBJECTIVES: str = "E028_NO_ACTIVE_OBJECTIVES"
