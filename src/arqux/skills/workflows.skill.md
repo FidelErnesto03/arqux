@@ -43,3 +43,4 @@ IDN:w08{ name:"Blueprint Lifecycle", file:"workflows/w08-blueprint-lifecycle.md"
 
 IDN:w09{ name:"CRUD Write Blocked", file:"workflows/w09-crud-blocked.md", purpose:"Diagnose and resolve E032/E034 non-bypassable validation errors on brain writes.", trigger:"E015_ATOMIC_WRITE_FAILED con errores E032/E034." }
 IDN:w10{ name:"Identity Handoff", file:"workflows/w10-identity-handoff.md", purpose:"Detect agent identity from greeting and enable hot handoff between identities.", trigger:"Arquitecto saluda con nombre de agente o solicita handoff." }
+IDN:w11{ name:"Cortex File Repair — Backup & Rewrite", file:"workflows/w11-cortex-file-repair.md", purpose:"Repair .cortex files with blocking validation errors (E032/E034/E008) using BLP-042 backup→rewrite protocol.", trigger:"cortex verify --strict reveals blocking errors, or w09 auto-repair fails repeatedly." }
