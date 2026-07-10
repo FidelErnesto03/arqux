@@ -609,19 +609,50 @@ class LessonStore:
     # --- Container initialization ---
 
     def ensure_container(self) -> None:
-        """Create the file with §0 METADATA if it does not exist."""
+        """Create the file with ARQX:artifact metadata if it does not exist.
+
+        Uses CortexDocument + write_cortex() from CODEC-CORTEX (BLP-042).
+        No write_text() bypass.
+        """
         if self.path.exists():
             return
         self.path.parent.mkdir(parents=True, exist_ok=True)
-        # Write an empty container with §0 METADATA + minimal $0 glossary.
-        body = (
-            f"$0\n"
-            f"GSIG:LNG:lesson|attrs|M|Episodic|Learned lesson or pattern\n\n"
-            f"$1: LESSONS\n"
-        )
-        self.path.write_text(body, encoding="utf-8")
-        # Migrate (inject §0 METADATA). Idempotent.
-        migrate_lessons_file(self.path, agent=self.agent)
+
+        if not _HAS_CLE:
+            # Degradación controlada si CODEC-CORTEX no está disponible.
+            body = (
+                f"$0\n"
+                f"GSIG:LNG:lesson|attrs|M|Episodic|Learned lesson or pattern\n\n"
+                f"$1: LESSONS\n"
+            )
+            self.path.write_text(body, encoding="utf-8")
+            return
+
+        from cortex.core.ast import CortexDocument, Section, Entry, SigilDef
+
+        doc = CortexDocument()
+        # $0 glossary
+        sec0 = Section(id="$0", title="")
+        doc.sections.append(sec0)
+        doc.glossary.add_sigil(SigilDef(
+            sigil="LNG", name="lesson", type="attrs",
+            risk="M", layer="Episodic",
+            description="Learned lesson or pattern",
+        ))
+        # $0.1: ARQUX METADATA
+        sec01 = Section(id="$0.1", title="ARQUX METADATA")
+        sec01.entries.append(Entry(
+            "$0.1", sigil="ARQX", name="artifact", type="attrs",
+            value={"level": 0, "name": f"{self.agent}-lessons",
+                   "usage": "lesson", "kind": "native", "agent": self.agent},
+        ))
+        doc.sections.append(sec01)
+        # $1: LESSONS
+        sec1 = Section(id="$1", title="LESSONS")
+        doc.sections.append(sec1)
+
+        cortex_text = write_cortex(doc)
+        self.path.write_text(cortex_text, encoding="utf-8")
 
     # --- Capture (BLP-038 §9 Captura) ---
 

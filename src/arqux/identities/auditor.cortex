@@ -1,15 +1,8 @@
-# §0 METADATA{
-#   level: 1,
-#   name: "auditor",
-#   usage: "identity",
-#   kind: "native",
-#   agent: "auditor"
-# }
-
 $0
 
 # -- $0: ARQUX ROLE IDENTITY GLOSSARY --
 # Sigil | Name | Type | Risk | Cognitive Layer | Description
+# ARQX   | artifact   | attrs      | B | Semantic       | ArqUX artifact metadata
 # IDN   | identity   | attrs      | B | Semantic       | Role identity descriptor
 # AXM   | axiom      | attrs      | H | Prefrontal     | Role principles (body field holds the axiom text)
 # LIM   | limit      | attrs      | M | Prefrontal     | Role boundaries
@@ -27,6 +20,10 @@ GSIG:DESC{name:"description", type:"attrs", risk:"B", layer:"Semantic", descript
 
 # NOTE: Level-1 file (identity contract). No live-state sigils (E023).
 
+
+$0.1: ARQUX METADATA
+
+ARQX:artifact{level:1, name:"auditor", usage:"identity", kind:"native"}
 $1: IDENTITY
 
 IDN:auditor{name:"Auditor Role", role:"auditor",

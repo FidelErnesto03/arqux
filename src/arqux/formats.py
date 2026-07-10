@@ -5,7 +5,7 @@ All .cortex output passes through ``cortex.core.writer.write_cortex()`` for
 canonical formatting — single-line attrs, body preservation, valid $0 glossary.
 
 Design (sigil mapping):
-  Metadata (fm)         → $1 IDN:governor{...}
+  ArqUX metadata       → $0.1 ARQX:artifact{level, name, usage, kind}
   FOCUS                 → $2 FCS:current{...}
   OBJECTIVES            → $3 OBJ:<name>{...}
   SESSIONS              → $4 SES:<agent>{...}
@@ -47,49 +47,53 @@ from .constants import (
 logger = logging.getLogger(__name__)
 
 
-# === BLP-035: §0 METADATA declaration layer ================================
+# === BLP-041: ARQX metadata sigil in $0.1 ==================================
 #
-# Every .cortex file carries an explicit §0 METADATA block at the top,
-# declaring level (0-3), name, usage, and kind. The block is rendered as a
-# comment-prefixed prelude so CODEC-CORTEX's parser ignores it, while ArqUX
-# extracts it with the regex below.
+# Every .cortex file carries an ARQX:artifact entry in section $0.1 declaring
+# level (0-3), name, usage, and kind. The ARQX sigil is declared in the $0
+# pipe-table so CODEC-CORTEX recognises it as a valid attrs sigil.
 #
 # Example:
 #
-#     # §0 METADATA{
-#     #   level: 3,
-#     #   name: "brain",
-#     #   usage: "state",
-#     #   kind: "native"
-#     # }
+#     $0
 #
-# When the block is missing, validate_metadata() returns ArtifactMetadata.default(0)
-# and emits a W001_NO_METADATA warning — the framework degrades gracefully
-# rather than failing.
+#     # ARQX | artifact | attrs | B | Semantic | ArqUX artifact metadata
+#     # IDN  | identity  | attrs | B | Semantic | Actor identity
+#     ...
+#
+#     $0.1: ARQUX METADATA
+#
+#     ARQX:artifact{level:3, name:"brain", usage:"state", kind:"native"}
+#
+# When the entry is missing, read_arqux_metadata() returns ArtifactMetadata.default(0)
+# and emits a W001_NO_METADATA warning — the framework degrades gracefully.
+#
+# Legacy §0 METADATA blocks (# §0 METADATA{...}) are still detected during
+# migration via _LEGACY_METADATA_RE as a fallback.
 
-#: Regex matching the §0 METADATA prelude (comment-prefixed, multi-line).
-#:
-#: Accepts both the canonical form ``# §0 METADATA{...}`` (one attribute per
-#: line, each line prefixed with ``#``) and a compact single-line form
-#: ``# §0 METADATA{level: 3, name: "brain"}``. The body capture is non-greedy
-#: up to the first ``}`` and may span newlines.
-_METADATA_RE = re.compile(
+#: Regex matching the legacy §0 METADATA comment block (pre-BLP-041).
+_LEGACY_METADATA_RE = re.compile(
     r"#\s*§0\s*METADATA\s*\{(?P<body>[^}]*)\}",
     re.DOTALL,
 )
 
-#: Required fields in §0 METADATA.
+#: Required fields in ARQX:artifact metadata.
 _REQUIRED_METADATA_FIELDS: tuple[str, ...] = ("level", "name", "usage", "kind")
+
+#: Section name for ArqUX metadata.
+_ARQUX_META_SECTION = "$0.1"
+_ARQUX_META_TITLE = "ARQUX METADATA"
+_ARQUX_META_SIGIL = "ARQX"
+_ARQUX_META_ENTRY = "artifact"
 
 
 @dataclass
 class CortexArtifact:
-    """A parsed .cortex artifact with its metadata and raw payload (BLP-035).
+    """A parsed .cortex artifact with its metadata and raw payload.
 
-    ``metadata`` is the validated ArtifactMetadata extracted from §0 METADATA
-    (or ArtifactMetadata.default(0) + W001 warning when missing).
-    ``payload`` is the raw file content (without §0 METADATA, in the same
-    form CODEC-CORTEX expects to parse).
+    ``metadata`` is the validated ArtifactMetadata extracted from ARQX:artifact
+    in ``$0.1`` (or ArtifactMetadata.default(0) + W001 warning when missing).
+    ``payload`` is the raw file content as read from disk.
     ``filename`` is the file's stem (e.g. "brain" for "brain.cortex").
     ``path`` is the source path if loaded from disk, else None.
     """
@@ -104,14 +108,68 @@ class CortexArtifact:
         return self.metadata.level
 
 
-def _coerce_metadata_value(raw: str) -> Any:
-    """Coerce a raw §0 METADATA value string into a Python value.
+# ---------------------------------------------------------------------------
+# ARQX metadata reader (BLP-041): uses CODEC-CORTEX parser
+# ---------------------------------------------------------------------------
 
-    Handles:
-    - quoted strings: ``"brain"`` → ``brain``
-    - integers: ``3`` → ``3``
-    - bare strings: ``native`` → ``native``
+
+def _read_arqux_from_ast(text: str) -> Optional[dict[str, Any]]:
+    """Parse ``text`` with CODEC-CORTEX and extract ARQX:artifact attrs.
+
+    Returns the parsed attrs dict, or None if no ARQX:artifact entry found
+    in ``$0.1`` (or if CODEC-CORTEX parser is unavailable).
     """
+    try:
+        from cortex.core.parser import parse_cortex
+        doc = parse_cortex(text)
+        for sec in doc.sections:
+            if sec.id == _ARQUX_META_SECTION:
+                for entry in sec.entries:
+                    if entry.sigil == _ARQUX_META_SIGIL and entry.name == _ARQUX_META_ENTRY:
+                        if isinstance(entry.value, dict):
+                            return entry.value
+                        return None
+        return None
+    except Exception:
+        return None
+
+
+def _read_legacy_metadata(text: str) -> Optional[dict[str, Any]]:
+    """Fallback: extract metadata from legacy ``# §0 METADATA{...}`` block."""
+    match = _LEGACY_METADATA_RE.search(text)
+    if not match:
+        return None
+    body = match.group("body")
+    result: dict[str, Any] = {}
+    raw_lines = body.split("\n")
+    parts: list[str] = []
+    for line in raw_lines:
+        line = line.strip()
+        if not line:
+            continue
+        if line.startswith("#"):
+            line = line.lstrip("#").strip()
+        if not line:
+            continue
+        sub_parts = _split_respecting_quotes(line)
+        parts.extend(sub_parts)
+    for part in parts:
+        part = part.strip().rstrip(",").strip()
+        if not part:
+            continue
+        if ":" not in part:
+            continue
+        key, _, value = part.partition(":")
+        key = key.strip()
+        value = value.strip().rstrip(",").strip()
+        if not key:
+            continue
+        result[key] = _coerce_metadata_value(value)
+    return result if result else None
+
+
+def _coerce_metadata_value(raw: str) -> Any:
+    """Coerce a raw metadata value string into a Python value."""
     raw = raw.strip()
     if (raw.startswith('"') and raw.endswith('"')) or (
         raw.startswith("'") and raw.endswith("'")
@@ -124,79 +182,8 @@ def _coerce_metadata_value(raw: str) -> Any:
     return raw
 
 
-def _parse_metadata_section(raw_content: str) -> Optional[dict[str, Any]]:
-    """Extract and parse the §0 METADATA prelude from a .cortex file.
-
-    Returns a dict of {field: value} when the block is present and parseable,
-    or ``None`` when the block is absent.
-
-    Raises ``ValueError`` when the block is present but malformed (e.g.
-    a ``key:val`` pair without a colon).
-
-    The canonical form is one attribute per line, each prefixed with ``#``::
-
-        # §0 METADATA{
-        #   level: 3,
-        #   name: "brain",
-        #   usage: "state",
-        #   kind: "native"
-        # }
-
-    A compact single-line form is also accepted::
-
-        # §0 METADATA{level: 3, name: "brain", usage: "state", kind: "native"}
-    """
-    match = _METADATA_RE.search(raw_content)
-    if not match:
-        return None
-
-    body = match.group("body")
-    result: dict[str, Any] = {}
-
-    # Strategy: split on newlines first (canonical multi-line form), then
-    # for each non-empty line, optionally split on commas to support the
-    # compact single-line form. This handles both:
-    #   "#   level: 3,"        → one entry per line
-    #   "level: 3, name: 'x'"  → multiple entries per line
-    raw_lines = body.split("\n")
-    parts: list[str] = []
-    for line in raw_lines:
-        line = line.strip()
-        if not line:
-            continue
-        # Strip leading '#' and surrounding whitespace.
-        if line.startswith("#"):
-            line = line.lstrip("#").strip()
-        if not line:
-            continue
-        # Now line is either "key:val" or "key:val, key2:val2, ...".
-        # Split on commas respecting quotes.
-        sub_parts = _split_respecting_quotes(line)
-        parts.extend(sub_parts)
-
-    for part in parts:
-        part = part.strip().rstrip(",").strip()
-        if not part:
-            continue
-        if ":" not in part:
-            raise ValueError(
-                f"§0 METADATA malformed entry (no colon): {part!r}"
-            )
-        key, _, value = part.partition(":")
-        key = key.strip()
-        value = value.strip().rstrip(",").strip()
-        if not key:
-            raise ValueError(f"§0 METADATA malformed entry (empty key): {part!r}")
-        result[key] = _coerce_metadata_value(value)
-
-    return result
-
-
 def _split_respecting_quotes(text: str) -> list[str]:
-    """Split ``text`` on commas, respecting quoted substrings.
-
-    Used by ``_parse_metadata_section`` for the compact single-line form.
-    """
+    """Split ``text`` on commas, respecting quoted substrings."""
     parts: list[str] = []
     buf: list[str] = []
     in_quote = False
@@ -220,48 +207,31 @@ def _split_respecting_quotes(text: str) -> list[str]:
     return parts
 
 
-def validate_metadata(raw_content: str) -> ArtifactMetadata:
-    """Validate and extract §0 METADATA from a .cortex file (BLP-035).
+def read_arqux_metadata(text: str) -> ArtifactMetadata:
+    """Extract ArtifactMetadata from CODEC-CORTEX text.
 
-    Behaviour:
-    - If §0 METADATA is absent, returns ``ArtifactMetadata.default(level=0)``
-      and emits a ``W001_NO_METADATA`` warning via the module logger.
-    - If §0 METADATA is present but missing a required field, raises
-      ``ValueError``.
-    - If §0 METADATA has an invalid ``level`` (outside 0-3), raises
-      ``ValueError``.
-    - If §0 METADATA has an invalid ``usage`` or ``kind``, raises
-      ``ValueError``.
+    Tries:
+    1. CODEC-CORTEX parser → ARQX:artifact in $0.1 (BLP-041 format)
+    2. Legacy regex → # §0 METADATA{...} (pre-BLP-041 format, for migration)
 
-    Required fields: ``level``, ``name``, ``usage``, ``kind``.
-    Optional fields: ``agent``, ``source``, ``upstream_version``.
+    Falls back to ``ArtifactMetadata.default(level=0)`` + W001 warning.
     """
-    data = _parse_metadata_section(raw_content)
-
+    data = _read_arqux_from_ast(text)
     if data is None:
-        logger.warning("%s: file lacks §0 METADATA — degrading to NIVEL 0", W001_NO_METADATA)
+        data = _read_legacy_metadata(text)
+    if data is None:
+        logger.warning("%s: file lacks ARQX metadata — degrading to NIVEL 0", W001_NO_METADATA)
         return ArtifactMetadata.default(level=0)
-
     for field_name in _REQUIRED_METADATA_FIELDS:
         if field_name not in data:
-            raise ValueError(
-                f"§0 METADATA missing required field: {field_name!r}"
-            )
-
+            raise ValueError(f"ARQX metadata missing required field: {field_name!r}")
     level_raw = data["level"]
-    if isinstance(level_raw, str):
-        if not level_raw.isdigit():
-            raise ValueError(f"Invalid level: {level_raw!r}. Must be an integer 0-3.")
-        level_int = int(level_raw)
-    else:
-        level_int = int(level_raw)
+    level_int = int(level_raw) if isinstance(level_raw, str) else int(level_raw)
     if level_int not in {0, 1, 2, 3}:
         raise ValueError(f"Invalid level: {level_int}. Must be 0-3.")
-
     name = str(data["name"])
     if not name:
-        raise ValueError("§0 METADATA field 'name' must be a non-empty string")
-
+        raise ValueError("ARQX metadata field 'name' must be a non-empty string")
     return ArtifactMetadata(
         level=CortexLevel.from_int(level_int),
         name=name,
@@ -273,67 +243,61 @@ def validate_metadata(raw_content: str) -> ArtifactMetadata:
     )
 
 
-def strip_metadata_block(raw_content: str) -> str:
-    """Return ``raw_content`` with the §0 METADATA prelude removed.
+def render_arqux_section(metadata: ArtifactMetadata) -> str:
+    """Render ``$0.1`` section with ``ARQX:artifact{...}`` entry.
 
-    Used to obtain the CODEC-CORTEX-pure payload (the part after §0 METADATA).
-    If no §0 METADATA is present, returns the input unchanged.
+    Returns the section text including header and entry.
     """
-    return _METADATA_RE.sub("", raw_content, count=1).lstrip("\n")
-
-
-def render_metadata_block(metadata: ArtifactMetadata) -> str:
-    """Render an ArtifactMetadata as a ``# §0 METADATA{...}`` comment block.
-
-    The block is always multi-line, one attribute per ``#``-prefixed line.
-    """
-    lines = ["# §0 METADATA{"]
     d = metadata.to_dict()
+    parts_list: list[str] = []
     for key in ("level", "name", "usage", "kind"):
         val = d[key]
         if isinstance(val, str):
-            lines.append(f'#   {key}: "{val}",')
+            parts_list.append(f'{key}:"{val}"')
         else:
-            lines.append(f"#   {key}: {val},")
-    # Optional fields
+            parts_list.append(f"{key}:{val}")
     for opt_key in ("agent", "source", "upstream_version"):
         val = d.get(opt_key)
         if val is not None:
-            lines.append(f'#   {opt_key}: "{val}",')
-    # Strip trailing comma from the last attribute.
-    lines[-1] = lines[-1].rstrip(",")
-    lines.append("# }")
-    return "\n".join(lines)
+            parts_list.append(f'{opt_key}:"{val}"')
+    body = ", ".join(parts_list)
+    entry = f"{_ARQUX_META_SIGIL}:{_ARQUX_META_ENTRY}{{{body}}}"
+    header = f"{_ARQUX_META_SECTION}: {_ARQUX_META_TITLE}"
+    return f"\n{header}\n\n{entry}\n"
+
+
+def has_arqux_metadata(text: str) -> bool:
+    """Return True if the text has ARQX:artifact in $0.1 (or legacy metadata)."""
+    if _read_arqux_from_ast(text) is not None:
+        return True
+    return _LEGACY_METADATA_RE.search(text) is not None
 
 
 def read_cortex_artifact(path: str | Path) -> CortexArtifact:
-    """Read a .cortex file from disk and return a CortexArtifact (BLP-035).
+    """Read a .cortex file and return a CortexArtifact.
 
-    This is the canonical read entry point that performs §0 METADATA
-    validation BEFORE returning the payload. Equivalent to the BLP-035
-    ``read_cortex_pair()`` (the existing codebase uses ``write_cortex_pair()``
-    for the write side; this function is the symmetric reader).
+    Uses ``read_arqux_metadata()`` for metadata extraction (supports both
+    BLP-041 ARQX:artifact in $0.1 and legacy §0 METADATA block).
 
-    The returned CortexArtifact carries:
-    - ``metadata``: validated ArtifactMetadata (or default(0) + W001 warning)
-    - ``payload``: raw file content WITH §0 METADATA preserved (so callers
-      that need to write back can do so losslessly). Use
-      ``strip_metadata_block(artifact.payload)`` to obtain the CODEC-CORTEX
-      payload.
+    Returns:
+    - ``metadata``: validated ArtifactMetadata (or default(0) + W001)
+    - ``payload``: raw file content
     - ``filename``: file stem
     - ``path``: source Path
-    - ``warnings``: list of warning codes (e.g. ``["W001_NO_METADATA"]``)
+    - ``warnings``: warning codes (e.g. ``["W001_NO_METADATA"]``)
     """
     p = Path(path)
     raw = p.read_text(encoding="utf-8")
-    data = _parse_metadata_section(raw)
-    if data is None:
+    if _read_arqux_from_ast(raw) is not None:
+        metadata = read_arqux_metadata(raw)
+        warnings = []
+    elif _LEGACY_METADATA_RE.search(raw) is not None:
+        metadata = read_arqux_metadata(raw)
+        warnings = []
+    else:
         warnings = [W001_NO_METADATA]
         metadata = ArtifactMetadata.default(level=0)
-        logger.warning("%s: %s lacks §0 METADATA — degrading to NIVEL 0", W001_NO_METADATA, p)
-    else:
-        warnings = []
-        metadata = validate_metadata(raw)
+        logger.warning("%s: %s lacks ARQX metadata — degrading to NIVEL 0", W001_NO_METADATA, p)
     return CortexArtifact(
         metadata=metadata,
         payload=raw,
@@ -346,6 +310,7 @@ def read_cortex_artifact(path: str | Path) -> CortexArtifact:
 # --- Glossary definitions ---------------------------------------------------
 
 _SIGIL_DEFS: list[dict[str, str]] = [
+    {"sigil": "ARQX", "name": "artifact",    "type": "attrs",     "risk": "B", "layer": "Semantic",     "desc": "ArqUX artifact metadata"},
     {"sigil": "IDN", "name": "identity",     "type": "attrs",     "risk": "B", "layer": "Semantic",     "desc": "Actor identity"},
     {"sigil": "FCS", "name": "focus",        "type": "attrs",     "risk": "H", "layer": "Working",      "desc": "Active attention anchor"},
     {"sigil": "OBJ", "name": "objective",    "type": "attrs",     "risk": "H", "layer": "Working",      "desc": "Active goal with success criterion"},
@@ -367,6 +332,7 @@ _SIGIL_DEFS: list[dict[str, str]] = [
 
 _ARQUX_GLOSSARY_TEXT = """# -- $0: ARQUX GOVERNANCE GLOSSARY --
 # Sigil | Name | Type | Risk | Cognitive Layer | Description
+# ARQX  | artifact  | attrs      | B | Semantic       | ArqUX artifact metadata
 # IDN   | identity   | attrs      | B | Semantic       | Actor identity
 # FCS   | focus      | attrs      | H | Working        | Active attention anchor
 # OBJ   | objective  | attrs      | H | Working        | Active goal with success criterion
@@ -549,6 +515,20 @@ def _build_doc(stem: str, frontmatter: dict, body):
             risk=sdef["risk"], layer=sdef["layer"],
             description=sdef["desc"],
         ))
+
+    # $0.1: ARQUX METADATA — inject ARQX:artifact from frontmatter
+    level = frontmatter.get("level", 2)
+    name = frontmatter.get("name", stem)
+    usage = frontmatter.get("usage", "state")
+    kind = frontmatter.get("kind", "native")
+    _add_section(doc, "$0.1", "ARQUX METADATA", [
+        _entry("$0.1", "ARQX", "artifact", {
+            "level": level,
+            "name": name,
+            "usage": usage,
+            "kind": kind,
+        }),
+    ])
 
     if stem == "brain":
         _build_brain_doc(doc, frontmatter, body)
@@ -883,9 +863,32 @@ def _build_fallback(stem: str, frontmatter: dict, body: str) -> str:
 # --- Legacy string-based builders (fallback) ---------------------------------
 
 
+def _add_arqux_meta_section(parts: list[str], frontmatter: dict, default_name: str = "artifact") -> None:
+    """Append ``$0.1: ARQUX METADATA`` + ``ARQX:artifact{...}`` to parts list.
+
+    Reads level/name/usage/kind from frontmatter, falls back to defaults.
+    """
+    level = frontmatter.get("level", 2)
+    name = frontmatter.get("name", default_name)
+    usage = frontmatter.get("usage", "state")
+    kind = frontmatter.get("kind", "native")
+    entries: list[str] = []
+    vals: list[str] = []
+    vals.append(f'level:{level}')
+    vals.append(f'name:"{name}"')
+    vals.append(f'usage:"{usage}"')
+    vals.append(f'kind:"{kind}"')
+    parts.append("")
+    parts.append("$0.1: ARQUX METADATA")
+    parts.append("")
+    parts.append(f"ARQX:artifact{{{', '.join(vals)}}}")
+    parts.append("")
+
+
 def brain_from_model(frontmatter: dict, sections: dict[str, str]) -> str:
     now = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
     parts = ["$0", "", _ARQUX_GLOSSARY_TEXT, ""]
+    _add_arqux_meta_section(parts, frontmatter, "brain")
     id_attrs = {
         "level": str(frontmatter.get("level", 2)),
         "project": frontmatter.get("project", "unknown"),
@@ -960,6 +963,7 @@ def brain_from_model(frontmatter: dict, sections: dict[str, str]) -> str:
 
 def manifest_to_cortex(manifest: dict) -> str:
     parts = ["$0", "", _ARQUX_GLOSSARY_TEXT, ""]
+    _add_arqux_meta_section(parts, manifest, "manifest")
     parts.append(_fmt_section(1, "WORKSPACE", [_fmt_entry("IDN", "workspace", {
         "version": manifest.get("version", "1.0.0"),
         "product": manifest.get("product", "arqux"),
@@ -972,6 +976,7 @@ def manifest_to_cortex(manifest: dict) -> str:
 
 def meta_brain_to_cortex(brain: dict) -> str:
     parts = ["$0", "", _ARQUX_GLOSSARY_TEXT, ""]
+    _add_arqux_meta_section(parts, brain, "meta-brain")
     lessons = brain.get("lessons", [])
     parts.append(_fmt_section(1, "META-BRAIN", [_fmt_entry("KNW", "meta", {
         "topic": "cross-project knowledge",
@@ -983,6 +988,7 @@ def meta_brain_to_cortex(brain: dict) -> str:
 
 def projects_to_cortex(projects: list[dict]) -> str:
     parts = ["$0", "", _ARQUX_GLOSSARY_TEXT, ""]
+    _add_arqux_meta_section(parts, {"name": "projects", "usage": "state", "kind": "native", "level": 2}, "projects")
     entries = []
     for i, p in enumerate(projects):
         entries.append(_fmt_entry("DOM", f"p{i+1:03d}", {
@@ -994,6 +1000,7 @@ def projects_to_cortex(projects: list[dict]) -> str:
 
 def task_to_cortex(frontmatter: dict, body: str) -> str:
     parts = ["$0", "", _ARQUX_GLOSSARY_TEXT, ""]
+    _add_arqux_meta_section(parts, frontmatter, frontmatter.get("id", "task"))
     parts.append(_fmt_section(1, "TASK", [_fmt_entry("WRK", "task", {
         "id": frontmatter.get("id", ""), "status": frontmatter.get("status", "draft"),
         "governor": frontmatter.get("governor", ""), "assignee": frontmatter.get("assignee", ""),
@@ -1050,6 +1057,7 @@ def task_to_cortex(frontmatter: dict, body: str) -> str:
 
 def cycle_to_cortex(cycle: dict) -> str:
     parts = ["$0", "", _ARQUX_GLOSSARY_TEXT, ""]
+    _add_arqux_meta_section(parts, cycle, cycle.get("id", "cycle"))
     parts.append(_fmt_section(1, "CYCLE", [_fmt_entry("WRK", "cycle", {
         "id": cycle.get("id", ""), "name": cycle.get("name", "?"),
         "status": cycle.get("status", "open"), "created": cycle.get("created", ""),

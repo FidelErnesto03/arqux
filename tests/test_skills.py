@@ -45,11 +45,11 @@ class TestOriginalStore:
         path = store.save("owasp-top10", "# OWASP Top 10\n", decl)
         assert path.exists()
         content = path.read_text(encoding="utf-8")
-        assert "§0 METADATA" in content
-        assert "level: 2" in content
-        assert 'kind: "inherited"' in content
-        assert 'source: "https://owasp.org/Top10/"' in content
-        assert 'upstream_version: "2021"' in content
+        assert "ARQX:artifact" in content
+        assert 'name:"owasp-top10"' in content
+        assert 'kind:"inherited"' in content
+        assert 'source:"https://owasp.org/Top10/"' in content
+        assert 'upstream_version:"2021"' in content
 
     def test_get_returns_contract(self, arqux_root: Path) -> None:
         store = OriginalStore(arqux_root)
@@ -85,7 +85,7 @@ class TestAdaptedStore:
         store = AdaptedStore(arqux_root)
         path = store.save("my-skill", "# My Skill\n")
         content = path.read_text(encoding="utf-8")
-        assert 'kind: "native"' in content
+        assert 'kind:"native"' in content
 
     def test_save_adapted_with_original_ref(self, arqux_root: Path) -> None:
         store = AdaptedStore(arqux_root)
@@ -94,8 +94,8 @@ class TestAdaptedStore:
             original_ref="/skills/originals/owasp.skill.md",
         )
         content = path.read_text(encoding="utf-8")
-        assert 'kind: "adapted"' in content
-        assert 'source: "/skills/originals/owasp.skill.md"' in content
+        assert 'kind:"adapted"' in content
+        assert 'source:"/skills/originals/owasp.skill.md"' in content
 
     def test_get_adapted_returns_contract(self, arqux_root: Path) -> None:
         store = AdaptedStore(arqux_root)

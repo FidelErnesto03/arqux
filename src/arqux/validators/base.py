@@ -73,12 +73,10 @@ class BaseValidator:
 
         Returns the raw text between ``$N`` and the next ``$`` section
         marker (or end-of-file). If the section is absent, returns "".
-        The §0 METADATA prelude (if present) is stripped before scanning.
         """
         import re
-        from ..formats import strip_metadata_block
 
-        body = strip_metadata_block(payload)
+        body = payload
         # Find the section header: "$N" or "$N: TITLE" on its own line.
         # We use a tolerant regex that matches "$3", "$3:", "$3: FOCUS", etc.
         pattern = re.compile(

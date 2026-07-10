@@ -211,7 +211,7 @@ def cmd_migrate(
     path: str, level: int, name: str, usage: str, kind: str,
     agent: str | None, source: str | None, upstream_version: str | None,
 ):
-    """Inject §0 METADATA into a .cortex file (BLP-035). Idempotent."""
+    """Inject ARQX:artifact into a .cortex file (BLP-041). Idempotent."""
     from .migrator import migrate_file
 
     migrated = migrate_file(
@@ -227,7 +227,7 @@ def cmd_migrate(
 @click.argument("path", type=click.Path(exists=True))
 @click.option("--strict", is_flag=True, help="Fail on warnings too")
 def cmd_validate(path: str, strict: bool):
-    """Validate a .cortex file: §0 METADATA + structural + semantic (BLP-035/036/037)."""
+    """Validate a .cortex file: ARQX:artifact + structural + semantic (BLP-035/036/037)."""
     from .formats import read_cortex_artifact
     from .validators import ValidatorFactory
 

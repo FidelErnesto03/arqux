@@ -188,19 +188,19 @@ def env(var: str, default: str | None = None) -> str | None:
     return os.environ.get(f"{ARQUX_ENV_PREFIX}{var}", default)
 
 
-# === BLP-035 / BLP-036 / BLP-037 / BLP-040: Cortex artifact identity ========
+# === BLP-041: ARQX:artifact sigil in $0.1 ====================================
 #
-# §0 METADATA is the technical "birth certificate" of every .cortex file:
+# ARQX:artifact is an attrs entry in section $0.1 of every .cortex file,
+# declaring:
 #   level  → architectural level (0=PACKAGE, 1=BEHAVIORAL, 2=SKILL, 3=BRAIN)
 #   name   → canonical artifact name (e.g. "brain", "jarvis", "owasp-top10")
 #   usage  → semantic role (state|skill|identity|lesson|config)
 #   kind   → provenance (native|inherited|adapted)
 #
-# It is declared (not inferred): every .cortex file MUST carry an explicit
-# §0 METADATA block. Files without it degrade to NIVEL 0 + Warning W001.
-# The block is implemented as a comment-prefixed prelude so CODEC-CORTEX's
-# parser ignores it, while ArqUX's ``formats.validate_metadata()`` extracts
-# it with a regex.
+# It is declared (not inferred): every .cortex file MUST carry an ARQX:artifact
+# entry. Files without it degrade to NIVEL 0 + Warning W001.
+# The ARQX sigil is registered in the $0 pipe-table so CODEC-CORTEX recognizes
+# it as a valid attrs sigil. Section $0.1 (not $0) avoids E033.
 
 
 class CortexLevel(Enum):
@@ -252,10 +252,11 @@ class ArtifactUsage(Enum):
 
 @dataclass(frozen=True)
 class ArtifactMetadata:
-    """Technical identity of a .cortex artifact (BLP-035).
+    """Technical identity of a .cortex artifact (BLP-041).
 
-    The §0 METADATA block declares level, name, usage, kind. Optional fields
-    (agent, source, upstream_version) are kept for BLP-038/BLP-040 extensions.
+    The ARQX:artifact entry in $0.1 declares level, name, usage, kind.
+    Optional fields (agent, source, upstream_version) are kept for
+    BLP-038/BLP-040 extensions.
     """
     level: CortexLevel
     name: str
@@ -270,7 +271,7 @@ class ArtifactMetadata:
     def default(level: int = 0) -> "ArtifactMetadata":
         """Return a default metadata for the given level.
 
-        Used when a .cortex file lacks §0 METADATA — the file degrades to
+        Used when a .cortex file lacks ARQX:artifact — the file degrades to
         NIVEL 0 (PACKAGE) with a default identity and emits W001_NO_METADATA.
         """
         return ArtifactMetadata(
@@ -301,7 +302,8 @@ class ArtifactMetadata:
 class BrainSection(Enum):
     """Canonical 13 sections of a Level-3 Brain artifact (BLP-036).
 
-    Maps to niveles-cortex-arqux.md v3.0: $0 METADATA through $12 ISSUES.
+    Maps to niveles-cortex-arqux.md v3.0: $0 through $12 ISSUES.
+    ArqUX metadata lives in $0.1 (BLP-041), not $0.
     The enum value is the section identifier used in the .cortex file
     (with the leading ``$``).
     """
@@ -332,7 +334,7 @@ class BrainSection(Enum):
 
 #: Mapping from BrainSection → human-readable title (for structural validation).
 BRAIN_SECTION_TITLES: dict[str, str] = {
-    "$0": "METADATA",
+    "$0": "GLOSSARY",
     "$1": "IDENTITY",
     "$2": "KNOWLEDGE",
     "$3": "FOCUS",
@@ -372,7 +374,7 @@ INVALID_STATUSES: frozenset[str] = frozenset({
 
 # === BLP-035 warning codes ==================================================
 
-#: Warning code emitted when a .cortex file lacks §0 METADATA.
+#: Warning code emitted when a .cortex file lacks ARQX:artifact.
 W001_NO_METADATA: str = "W001_NO_METADATA"
 
 #: Warning code emitted when a Brain artifact has fewer than 8 active sections.

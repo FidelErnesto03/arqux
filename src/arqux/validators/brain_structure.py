@@ -25,7 +25,6 @@ from ..constants import (
     E027_MALFORMED_SECTION,
     W002_INCOMPLETE_BRAIN,
 )
-from ..formats import strip_metadata_block
 from .base import BaseValidator, ValidationError, ValidationResult
 
 
@@ -43,8 +42,7 @@ class BrainStructureValidator(BaseValidator):
             # Not a BRAIN — nothing to validate here.
             return ValidationResult(is_valid=True)
 
-        payload = artifact.payload
-        body = strip_metadata_block(payload)
+        body = artifact.payload
 
         # Collect every section header present in the body.
         present: dict[int, str] = {}  # {section_num: title}

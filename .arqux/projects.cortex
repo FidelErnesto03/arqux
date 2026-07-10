@@ -3,6 +3,7 @@ $0
 # -- $0: MINIMAL LOCAL GLOSSARY --
 # Required: every .cortex artifact must be locally self-contained.
 # Sigil | Name | Type | Risk | Cognitive Layer | Description
+# ARQX   | artifact   | attrs      | B | Semantic       | ArqUX artifact metadata
 # PRJ   | project    | attrs      | B | Semantic       | Project reference
 #
 # Types:
@@ -18,6 +19,10 @@ $0
 # ok=success fail=failure part=partial
 
 
+
+$0.1: ARQUX METADATA
+
+ARQX:artifact{level:2, name:"projects", usage:"state", kind:"native"}
 $1: PROJECTS
 
 PRJ:arqux{path:"/home/vatrox/workspace/ARQUX", domain:"Framework Arqux (dogfooding)", survive:"work"}

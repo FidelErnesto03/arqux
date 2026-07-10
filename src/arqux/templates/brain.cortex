@@ -1,10 +1,3 @@
-# §0 METADATA{
-#   level: 3,
-#   name: "brain",
-#   usage: "state",
-#   kind: "native"
-# }
-
 ---
 level: 2
 project: <project-name>
@@ -48,3 +41,19 @@ concurrently share a single project mind.
 
 # CONCURRENCY
 (optimistic-locking state — brain_version bumps on every write. Do not edit by hand)
+
+$0
+
+# -- $0: ARQUX GLOSSARY --
+# Sigil | Name | Type | Risk | Cognitive Layer | Description
+# ARQX   | artifact   | attrs      | B | Semantic       | ArqUX artifact metadata
+# IDN   | identity   | attrs      | B | Semantic       | Actor / workspace identity
+# FCS   | focus      | attrs      | H | Working        | Active attention anchor
+# OBJ   | objective  | attrs      | H | Working        | Active goal
+# WRK   | work       | attrs      | B | Working        | Current execution / action
+# LNG   | lesson     | attrs      | M | Episodic       | Learned lesson
+
+$0.1: ARQUX METADATA
+
+ARQX:artifact{level:3, name:"brain", usage:"state", kind:"native"}
+

@@ -1,15 +1,9 @@
-# §0 METADATA{
-#   level: 3,
-#   name: "meta-brain",
-#   usage: "state",
-#   kind: "native"
-# }
-
 $0
 
 # -- $0: MINIMAL LOCAL GLOSSARY --
 # Required: every .cortex artifact must be locally self-contained.
 # Sigil | Name | Type | Risk | Cognitive Layer | Description
+# ARQX   | artifact   | attrs      | B | Semantic       | ArqUX artifact metadata
 #
 # Types:
 # relación = canonical type
@@ -31,6 +25,10 @@ GSIG:KNW{name:"knowledge", type:"attrs", risk:"B", layer:"Semantic", description
 # Statuses canonical: blocked, current, deprecated, done, experimental, future, planned, specification
 # status: current
 
+
+$0.1: ARQUX METADATA
+
+ARQX:artifact{level:3, name:"meta-brain", usage:"state", kind:"native"}
 $1: META-BRAIN
 
 IDN:workspace{name:"workspace", root:"<workspace-root>", governor:"alfred", created:"<timestamp>", projects:0, cycles_active:0, blueprints:"0", status:"current"}

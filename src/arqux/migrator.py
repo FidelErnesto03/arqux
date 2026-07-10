@@ -1,13 +1,9 @@
-"""Migrator for §0 METADATA (BLP-035).
+"""Migrator for ARQX:artifact in $0.1 (BLP-041).
 
-Injects a ``# §0 METADATA{...}`` prelude into existing .cortex files that
-pre-date BLP-035. The migrator is IDEMPOTENT: re-running it on an already
-migrated file is a no-op (the file is left untouched).
+Injects a ``$0.1: ARQUX METADATA`` section with ``ARQX:artifact{...}`` entry
+into existing .cortex files. Replaces legacy ``# §0 METADATA{...}`` blocks.
 
-Migration contract (BLP-035 §7 Rule 2 — Immutability):
-    The §0 METADATA block, once written, cannot be modified except by an
-    official migration. This module ONLY adds the block when absent; it
-    never edits or removes an existing block.
+The migrator is IDEMPOTENT: re-running on an already migrated file is a no-op.
 
 Usage as a library::
 
@@ -18,23 +14,59 @@ Usage as a library::
 
 Usage from the CLI::
 
-    arqux migrate --path .arqux/brain.cortex --level 3 \
+    arqux migrate --path .arqux/brain.cortex --level 3 \\
         --name brain --usage state --kind native
 """
 from __future__ import annotations
 
 import logging
+import re
 from pathlib import Path
 
 from .constants import ArtifactKind, ArtifactMetadata, ArtifactUsage, CortexLevel
-from .formats import _METADATA_RE, render_metadata_block
+from .formats import (
+    _LEGACY_METADATA_RE,
+    _read_arqux_from_ast,
+    has_arqux_metadata,
+    render_arqux_section,
+)
+
+# ARQX pipe-table declaration line to inject if missing.
+_ARQX_PIPE_LINE = "# ARQX   | artifact   | attrs      | B | Semantic       | ArqUX artifact metadata"
 
 logger = logging.getLogger(__name__)
 
 
-def has_metadata_block(raw_content: str) -> bool:
-    """Return True if ``raw_content`` already contains a §0 METADATA prelude."""
-    return _METADATA_RE.search(raw_content) is not None
+def _inject_arqux_glossary_line(text: str) -> str:
+    """Ensure ``# ARQX | artifact | ...`` is in the $0 pipe-table."""
+    if re.search(r"^#\s*ARQX\s+\|", text, re.MULTILINE):
+        return text  # already present
+    # Find the first pipe-table line (after "# Sigil | Name | ...") and insert ARQX after it
+    pipe_header_match = re.search(
+        r"^#\s*Sigil\s+\|\s*Name.*$", text, re.MULTILINE
+    )
+    if pipe_header_match:
+        line_end = text.index("\n", pipe_header_match.start())
+        return (
+            text[: line_end + 1]
+            + _ARQX_PIPE_LINE + "\n"
+            + text[line_end + 1 :]
+        )
+    # No pipe table — append after the $0 header line
+    sec0_match = re.search(r"^\$0", text, re.MULTILINE)
+    if sec0_match:
+        line_end = text.index("\n", sec0_match.start())
+        return (
+            text[: line_end + 1]
+            + "\n" + _ARQX_PIPE_LINE + "\n"
+            + text[line_end + 1 :]
+        )
+    return text
+
+
+def _remove_legacy_metadata(text: str) -> str:
+    """Strip the first ``# §0 METADATA{...}`` block from ``text``."""
+    return _LEGACY_METADATA_RE.sub("", text, count=1).lstrip("\n")
 
 
 def migrate_file(
@@ -48,21 +80,26 @@ def migrate_file(
     source: str | None = None,
     upstream_version: str | None = None,
 ) -> bool:
-    """Inject §0 METADATA at the top of ``filepath`` if absent.
+    """Inject ARQX:artifact in $0.1 if absent.
 
     Returns True if migration was performed, False if the file already had
-    a §0 METADATA block (no-op).
-
-    The file is left byte-identical below the inserted block — only the
-    prelude is added. This preserves round-tripping with CODEC-CORTEX.
+    ARQX metadata (no-op).
     """
     p = Path(filepath)
     if not p.exists():
         raise FileNotFoundError(f"Cannot migrate non-existent file: {p}")
 
     content = p.read_text(encoding="utf-8")
-    if has_metadata_block(content):
-        logger.info("migrate_file: %s already has §0 METADATA — skip", p)
+
+    # Already has ARQX:artifact in $0.1 → ensure glossary too, then skip
+    if _read_arqux_from_ast(content) is not None:
+        # Check if ARQX is declared in glossary; inject if missing
+        if not re.search(r"^#\s*ARQX\s+\|", content, re.MULTILINE):
+            content = _inject_arqux_glossary_line(content)
+            p.write_text(content, encoding="utf-8")
+            logger.info("migrate_file: %s — injected ARQX glossary line", p)
+            return True
+        logger.info("migrate_file: %s already has ARQX:artifact — skip", p)
         return False
 
     metadata = ArtifactMetadata(
@@ -74,10 +111,27 @@ def migrate_file(
         source=source,
         upstream_version=upstream_version,
     )
-    block = render_metadata_block(metadata)
-    new_content = block + "\n\n" + content
+    section_text = render_arqux_section(metadata)
+
+    # Strip legacy §0 METADATA if present
+    stripped = _remove_legacy_metadata(content)
+
+    # Ensure ARQX is declared in the $0 pipe-table glossary
+    stripped = _inject_arqux_glossary_line(stripped)
+
+    # Find insertion point: after $0 glossary, before $1 (or end)
+    # Look for first section header after $0 (e.g. "$1", "$2", etc.)
+    sec_match = re.search(r"^\$[1-9]", stripped, re.MULTILINE)
+    if sec_match:
+        # Insert before $1
+        insert_pos = sec_match.start()
+        new_content = stripped[:insert_pos] + section_text + stripped[insert_pos:]
+    else:
+        # No other sections → append
+        new_content = stripped.rstrip("\n") + "\n" + section_text + "\n"
+
     p.write_text(new_content, encoding="utf-8")
-    logger.info("migrate_file: injected §0 METADATA into %s (level=%d, name=%s)", p, level, name)
+    logger.info("migrate_file: injected ARQX:artifact into %s (level=%d, name=%s)", p, level, name)
     return True
 
 
@@ -136,7 +190,7 @@ def migrate_lessons_file(
     """Migrate an agent's ``<agent>.lessons.cortex`` to NIVEL 0 (PACKAGE).
 
     Used by BLP-038 when creating behavioral lesson stores. The ``agent``
-    field is recorded in §0 METADATA so the file self-identifies its owner.
+    field is recorded in ARQX:artifact so the file self-identifies its owner.
     """
     return migrate_file(
         lessons_path,

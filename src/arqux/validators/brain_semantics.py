@@ -24,7 +24,6 @@ from ..constants import (
     INVALID_STATUSES,
     VALID_STATUSES,
 )
-from ..formats import strip_metadata_block
 from .base import BaseValidator, ValidationResult
 
 
