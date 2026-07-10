@@ -1,3 +1,10 @@
+# §0 METADATA{
+#   level: 3,
+#   name: "meta-brain",
+#   usage: "state",
+#   kind: "native"
+# }
+
 $0
 
 # -- $0: MINIMAL LOCAL GLOSSARY --

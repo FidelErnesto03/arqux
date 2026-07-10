@@ -194,3 +194,240 @@ def cmd_handlers():
 
     for name in sorted(list_handlers()):
         click.echo(name)
+
+
+# === BLP-035: migrate ======================================================
+
+@main.command("migrate")
+@click.argument("path", type=click.Path(exists=True))
+@click.option("--level", type=int, required=True, help="0=PACKAGE, 1=BEHAVIORAL, 2=SKILL, 3=BRAIN")
+@click.option("--name", required=True, help="Canonical artifact name")
+@click.option("--usage", required=True, help="state|skill|identity|lesson|config")
+@click.option("--kind", default="native", help="native|inherited|adapted")
+@click.option("--agent", default=None, help="Optional agent name (lessons)")
+@click.option("--source", default=None, help="Optional upstream source URL")
+@click.option("--upstream-version", default=None, help="Optional upstream version")
+def cmd_migrate(
+    path: str, level: int, name: str, usage: str, kind: str,
+    agent: str | None, source: str | None, upstream_version: str | None,
+):
+    """Inject §0 METADATA into a .cortex file (BLP-035). Idempotent."""
+    from .migrator import migrate_file
+
+    migrated = migrate_file(
+        path, level=level, name=name, usage=usage, kind=kind,
+        agent=agent, source=source, upstream_version=upstream_version,
+    )
+    click.echo(f"{'MIGRATED' if migrated else 'ALREADY_HAS_METADATA'}: {path}")
+
+
+# === BLP-035: validate =====================================================
+
+@main.command("validate")
+@click.argument("path", type=click.Path(exists=True))
+@click.option("--strict", is_flag=True, help="Fail on warnings too")
+def cmd_validate(path: str, strict: bool):
+    """Validate a .cortex file: §0 METADATA + structural + semantic (BLP-035/036/037)."""
+    from .formats import read_cortex_artifact
+    from .validators import ValidatorFactory
+
+    artifact = read_cortex_artifact(path)
+    click.echo(f"File: {path}")
+    click.echo(f"Level: {artifact.metadata.level.name} ({artifact.metadata.level.value})")
+    click.echo(f"Name:  {artifact.metadata.name}")
+    click.echo(f"Usage: {artifact.metadata.usage.value}")
+    click.echo(f"Kind:  {artifact.metadata.kind.value}")
+    if artifact.warnings:
+        click.echo(f"Metadata warnings: {', '.join(artifact.warnings)}")
+
+    result = ValidatorFactory.validate(artifact)
+    click.echo(f"\nValidation: {'PASS' if result.is_valid else 'FAIL'}")
+    for err in result.errors:
+        click.echo(f"  [{err.severity.upper()}] {err.code}: {err.message}")
+    for w in result.warnings:
+        click.echo(f"  [WARN] {w.code}: {w.message}")
+
+    if not result.is_valid or (strict and (result.errors or result.warnings)):
+        sys.exit(1)
+
+
+# === BLP-038: elevate ======================================================
+
+@main.command("elevate")
+@click.option("--source", required=True, help="Source container path")
+@click.option("--target", required=True, help="Target container path/section")
+@click.option("--type", "contract_type", required=True,
+              help="AXIOM|LIMIT (behavioral), CNST|CLAIM (procedural), KNW (contextual)")
+@click.option("--lesson-id", required=True, help="Lesson sigil name to elevate")
+@click.option("--line", default="behavioral",
+              type=click.Choice(["behavioral", "procedural", "contextual"]))
+@click.option("--agent", default=None, help="Agent name (required for behavioral)")
+@click.option("--apply", is_flag=True, help="Apply the elevation (default is dry-run)")
+def cmd_elevate(
+    source: str, target: str, contract_type: str, lesson_id: str,
+    line: str, agent: str | None, apply: bool,
+):
+    """Elevate a lesson via the unified motor (BLP-038).
+
+    Default is dry-run. Pass --apply to actually write.
+    """
+    from .learning import elevate
+
+    try:
+        result = elevate(
+            source=source, target=target, contract_type=contract_type,
+            lesson_id=lesson_id, line=line, agent=agent,
+            dry_run=not apply, apply=apply,
+        )
+        click.echo(json.dumps(result, indent=2, default=str))
+    except Exception as exc:
+        click.echo(f"ERROR: {type(exc).__name__}: {exc}", err=True)
+        sys.exit(1)
+
+
+# === BLP-039: identity =====================================================
+
+@main.group("identity")
+def cmd_identity_group():
+    """Manage agent identities (BLP-039)."""
+    pass
+
+
+@cmd_identity_group.command("resolve")
+@click.argument("name")
+@click.option("--identities-dir", default=None, help="Override identities directory")
+def cmd_identity_resolve(name: str, identities_dir: str | None):
+    """Resolve an agent identity by name."""
+    from .identity import IdentityManager
+
+    im = IdentityManager(identities_dir=identities_dir) if identities_dir else IdentityManager()
+    try:
+        ctx = im.bind_to_session(name)
+        click.echo(f"Agent: {ctx.agent}")
+        click.echo(f"Identity: {ctx.identity.path}")
+        click.echo(f"Level: {ctx.identity.metadata.level.name}")
+        axm = ctx.contracts_by_type("AXM")
+        lim = ctx.contracts_by_type("LIM")
+        click.echo(f"AXM contracts: {len(axm)}")
+        for c in axm:
+            click.echo(f"  - {c.get('name', '?')}: {c.get('body', '')[:80]}")
+        click.echo(f"LIM contracts: {len(lim)}")
+        for c in lim:
+            click.echo(f"  - {c.get('name', '?')}: {c.get('body', '')[:80]}")
+    except Exception as exc:
+        click.echo(f"ERROR: {type(exc).__name__}: {exc}", err=True)
+        sys.exit(1)
+
+
+@cmd_identity_group.command("elevate")
+@click.option("--agent", required=True, help="Agent name (e.g. jarvis)")
+@click.option("--lesson-id", required=True, help="Lesson sigil name (e.g. lsn-042)")
+@click.option("--type", "contract_type", required=True,
+              type=click.Choice(["AXIOM", "LIMIT"]))
+@click.option("--pattern", default="", help="Lesson pattern (becomes AXM/LIM body)")
+@click.option("--evidence-ref", default="", help="Optional evidence reference")
+@click.option("--identities-dir", default=None, help="Override identities directory")
+def cmd_identity_elevate(
+    agent: str, lesson_id: str, contract_type: str,
+    pattern: str, evidence_ref: str, identities_dir: str | None,
+):
+    """Inject an AXM/LIM into an agent's identity (BLP-039 / BLP-038)."""
+    from .identity import IdentityManager
+
+    im = IdentityManager(identities_dir=identities_dir) if identities_dir else IdentityManager()
+    try:
+        result = im.elevate_to_identity(
+            agent=agent, lesson_id=lesson_id, contract_type=contract_type,
+            pattern=pattern, evidence_ref=evidence_ref,
+        )
+        click.echo(json.dumps(result, indent=2))
+    except Exception as exc:
+        click.echo(f"ERROR: {type(exc).__name__}: {exc}", err=True)
+        sys.exit(1)
+
+
+@cmd_identity_group.command("list")
+@click.option("--identities-dir", default=None, help="Override identities directory")
+def cmd_identity_list(identities_dir: str | None):
+    """List known agent identities."""
+    from .identity import IdentityManager
+
+    im = IdentityManager(identities_dir=identities_dir) if identities_dir else IdentityManager()
+    for name in im.list_identities():
+        click.echo(name)
+
+
+# === BLP-040: skill ========================================================
+
+@main.group("skill")
+def cmd_skill_group():
+    """Manage skills with provenance (BLP-040)."""
+    pass
+
+
+@cmd_skill_group.command("import")
+@click.argument("name")
+@click.option("--source", required=True, help="Upstream source URL/path")
+@click.option("--content", default=None, help="Inline content (alternative to --from-file)")
+@click.option("--from-file", default=None, help="Read content from file")
+@click.option("--upstream-version", default=None, help="Upstream version tag")
+@click.option("--arqux-root", default=None, help="Override .arqux/ root path")
+def cmd_skill_import(
+    name: str, source: str, content: str | None, from_file: str | None,
+    upstream_version: str | None, arqux_root: str | None,
+):
+    """Import a third-party skill (BLP-040)."""
+    from .skill_store import SkillRepository
+
+    if content is None and from_file:
+        content = Path(from_file).read_text(encoding="utf-8")
+    if content is None:
+        click.echo("ERROR: provide --content or --from-file", err=True)
+        sys.exit(1)
+
+    root = Path(arqux_root) if arqux_root else Path.cwd() / ".arqux"
+    repo = SkillRepository(root)
+    result = repo.import_skill(
+        source=source, name=name, content=content,
+        upstream_version=upstream_version,
+    )
+    click.echo(json.dumps(result, indent=2))
+
+
+@cmd_skill_group.command("list")
+@click.option("--arqux-root", default=None, help="Override .arqux/ root path")
+def cmd_skill_list(arqux_root: str | None):
+    """List all skills with provenance (BLP-040)."""
+    from .skill_store import SkillRepository
+
+    root = Path(arqux_root) if arqux_root else Path.cwd() / ".arqux"
+    repo = SkillRepository(root)
+    skills = repo.list_all()
+    if not skills:
+        click.echo("(no skills found)")
+        return
+    for s in skills:
+        click.echo(f"{s['name']:30s}  {s['kind']:10s}  {s['store']:10s}  {s['path']}")
+
+
+@cmd_skill_group.command("resolve")
+@click.argument("name")
+@click.option("--arqux-root", default=None, help="Override .arqux/ root path")
+def cmd_skill_resolve(name: str, arqux_root: str | None):
+    """Resolve a skill by priority: Adapted > Original > Native (BLP-040)."""
+    from .skill_store import SkillRepository
+
+    root = Path(arqux_root) if arqux_root else Path.cwd() / ".arqux"
+    repo = SkillRepository(root)
+    try:
+        contract = repo.resolve(name)
+        click.echo(f"Name:   {contract.declaration.name}")
+        click.echo(f"Kind:   {contract.declaration.kind}")
+        click.echo(f"Path:   {contract.path}")
+        if contract.original_ref:
+            click.echo(f"Original: {contract.original_ref}")
+        if contract.warnings:
+            click.echo(f"Warnings: {', '.join(contract.warnings)}")
+    except Exception as exc:
+        click.echo(f"ERROR: {type(exc).__name__}: {exc}", err=True)
+        sys.exit(1)

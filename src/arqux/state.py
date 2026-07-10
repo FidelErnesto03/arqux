@@ -784,18 +784,32 @@ def read_brain(project_root: Path) -> tuple[dict[str, Any], dict[str, str], str]
             sections: dict[str, str] = {}
 
             # Map section titles to Arqux brain section names.
+            # BLP-036: the canonical Level-3 brain has 13 sections ($0..$12).
+            # We accept both the legacy 9-section form and the v3.0 13-section
+            # form. Sections not in the legacy tuple are still extracted
+            # (so future BLPs can read them) but are not required.
             sect_map = {
-                "IDENTITY": None,
-                "FOCUS": "FOCUS",
-                "OBJECTIVES": "OBJECTIVES",
-                "SESSIONS": "SESSIONS",
-                "HANDOFFS": "HANDOFFS",
-                "PULSE": "PULSE",
-                "LESSONS": "LESSONS",
-                "ACTIVE_CONTEXT": "ACTIVE_CONTEXT",
-                "RISKS": "RISKS",
-                "KNOWLEDGE": "KNOWLEDGE",
-                "CONCURRENCY": None,
+                # Legacy / canonical sections (mapped to handler keys).
+                "IDENTITY": None,           # $1 — extracts metadata
+                "FOCUS": "FOCUS",           # $3
+                "OBJECTIVES": "OBJECTIVES", # $4
+                "SESSIONS": "SESSIONS",     # $4 (legacy) — kept for back-compat
+                "HANDOFFS": "HANDOFFS",     # $5 / $10 (canonical)
+                "PULSE": "PULSE",           # $6 (legacy) / $5 STATE (canonical)
+                "LESSONS": "LESSONS",       # $6 / $7 (legacy)
+                "ACTIVE_CONTEXT": "ACTIVE_CONTEXT",  # $5 STATE (canonical)
+                "RISKS": "RISKS",           # $9
+                "KNOWLEDGE": "KNOWLEDGE",   # $2
+                "CONCURRENCY": None,        # $11 — extracts metadata
+                # New canonical sections (BLP-036) — preserved but not
+                # yet exposed as legacy handler keys.
+                "METADATA": None,
+                "STATE": "ACTIVE_CONTEXT",
+                "DECISIONS": "DECISIONS",
+                "AXIOMS": "AXIOMS",
+                "LIMITS": "LIMITS",
+                "HANDOFF": "HANDOFFS",
+                "ISSUES": "ISSUES",
             }
 
             for sec in doc.sections:

@@ -29,9 +29,319 @@ Design (sigil mapping):
 """
 from __future__ import annotations
 
+import logging
 import re
 import time
-from typing import Any
+from dataclasses import dataclass, field
+from pathlib import Path
+from typing import Any, Optional
+
+from .constants import (
+    ArtifactKind,
+    ArtifactMetadata,
+    ArtifactUsage,
+    CortexLevel,
+    W001_NO_METADATA,
+)
+
+logger = logging.getLogger(__name__)
+
+
+# === BLP-035: §0 METADATA declaration layer ================================
+#
+# Every .cortex file carries an explicit §0 METADATA block at the top,
+# declaring level (0-3), name, usage, and kind. The block is rendered as a
+# comment-prefixed prelude so CODEC-CORTEX's parser ignores it, while ArqUX
+# extracts it with the regex below.
+#
+# Example:
+#
+#     # §0 METADATA{
+#     #   level: 3,
+#     #   name: "brain",
+#     #   usage: "state",
+#     #   kind: "native"
+#     # }
+#
+# When the block is missing, validate_metadata() returns ArtifactMetadata.default(0)
+# and emits a W001_NO_METADATA warning — the framework degrades gracefully
+# rather than failing.
+
+#: Regex matching the §0 METADATA prelude (comment-prefixed, multi-line).
+#:
+#: Accepts both the canonical form ``# §0 METADATA{...}`` (one attribute per
+#: line, each line prefixed with ``#``) and a compact single-line form
+#: ``# §0 METADATA{level: 3, name: "brain"}``. The body capture is non-greedy
+#: up to the first ``}`` and may span newlines.
+_METADATA_RE = re.compile(
+    r"#\s*§0\s*METADATA\s*\{(?P<body>[^}]*)\}",
+    re.DOTALL,
+)
+
+#: Required fields in §0 METADATA.
+_REQUIRED_METADATA_FIELDS: tuple[str, ...] = ("level", "name", "usage", "kind")
+
+
+@dataclass
+class CortexArtifact:
+    """A parsed .cortex artifact with its metadata and raw payload (BLP-035).
+
+    ``metadata`` is the validated ArtifactMetadata extracted from §0 METADATA
+    (or ArtifactMetadata.default(0) + W001 warning when missing).
+    ``payload`` is the raw file content (without §0 METADATA, in the same
+    form CODEC-CORTEX expects to parse).
+    ``filename`` is the file's stem (e.g. "brain" for "brain.cortex").
+    ``path`` is the source path if loaded from disk, else None.
+    """
+    metadata: ArtifactMetadata
+    payload: str
+    filename: str = ""
+    path: Optional[Path] = None
+    warnings: list[str] = field(default_factory=list)
+
+    @property
+    def level(self) -> CortexLevel:
+        return self.metadata.level
+
+
+def _coerce_metadata_value(raw: str) -> Any:
+    """Coerce a raw §0 METADATA value string into a Python value.
+
+    Handles:
+    - quoted strings: ``"brain"`` → ``brain``
+    - integers: ``3`` → ``3``
+    - bare strings: ``native`` → ``native``
+    """
+    raw = raw.strip()
+    if (raw.startswith('"') and raw.endswith('"')) or (
+        raw.startswith("'") and raw.endswith("'")
+    ):
+        return raw[1:-1]
+    if raw.isdigit():
+        return int(raw)
+    if raw.lower() in {"true", "false"}:
+        return raw.lower() == "true"
+    return raw
+
+
+def _parse_metadata_section(raw_content: str) -> Optional[dict[str, Any]]:
+    """Extract and parse the §0 METADATA prelude from a .cortex file.
+
+    Returns a dict of {field: value} when the block is present and parseable,
+    or ``None`` when the block is absent.
+
+    Raises ``ValueError`` when the block is present but malformed (e.g.
+    a ``key:val`` pair without a colon).
+
+    The canonical form is one attribute per line, each prefixed with ``#``::
+
+        # §0 METADATA{
+        #   level: 3,
+        #   name: "brain",
+        #   usage: "state",
+        #   kind: "native"
+        # }
+
+    A compact single-line form is also accepted::
+
+        # §0 METADATA{level: 3, name: "brain", usage: "state", kind: "native"}
+    """
+    match = _METADATA_RE.search(raw_content)
+    if not match:
+        return None
+
+    body = match.group("body")
+    result: dict[str, Any] = {}
+
+    # Strategy: split on newlines first (canonical multi-line form), then
+    # for each non-empty line, optionally split on commas to support the
+    # compact single-line form. This handles both:
+    #   "#   level: 3,"        → one entry per line
+    #   "level: 3, name: 'x'"  → multiple entries per line
+    raw_lines = body.split("\n")
+    parts: list[str] = []
+    for line in raw_lines:
+        line = line.strip()
+        if not line:
+            continue
+        # Strip leading '#' and surrounding whitespace.
+        if line.startswith("#"):
+            line = line.lstrip("#").strip()
+        if not line:
+            continue
+        # Now line is either "key:val" or "key:val, key2:val2, ...".
+        # Split on commas respecting quotes.
+        sub_parts = _split_respecting_quotes(line)
+        parts.extend(sub_parts)
+
+    for part in parts:
+        part = part.strip().rstrip(",").strip()
+        if not part:
+            continue
+        if ":" not in part:
+            raise ValueError(
+                f"§0 METADATA malformed entry (no colon): {part!r}"
+            )
+        key, _, value = part.partition(":")
+        key = key.strip()
+        value = value.strip().rstrip(",").strip()
+        if not key:
+            raise ValueError(f"§0 METADATA malformed entry (empty key): {part!r}")
+        result[key] = _coerce_metadata_value(value)
+
+    return result
+
+
+def _split_respecting_quotes(text: str) -> list[str]:
+    """Split ``text`` on commas, respecting quoted substrings.
+
+    Used by ``_parse_metadata_section`` for the compact single-line form.
+    """
+    parts: list[str] = []
+    buf: list[str] = []
+    in_quote = False
+    quote_ch = ""
+    for ch in text:
+        if not in_quote and ch in ('"', "'"):
+            in_quote = True
+            quote_ch = ch
+            buf.append(ch)
+        elif in_quote and ch == quote_ch:
+            in_quote = False
+            quote_ch = ""
+            buf.append(ch)
+        elif not in_quote and ch == ",":
+            parts.append("".join(buf))
+            buf = []
+        else:
+            buf.append(ch)
+    if buf:
+        parts.append("".join(buf))
+    return parts
+
+
+def validate_metadata(raw_content: str) -> ArtifactMetadata:
+    """Validate and extract §0 METADATA from a .cortex file (BLP-035).
+
+    Behaviour:
+    - If §0 METADATA is absent, returns ``ArtifactMetadata.default(level=0)``
+      and emits a ``W001_NO_METADATA`` warning via the module logger.
+    - If §0 METADATA is present but missing a required field, raises
+      ``ValueError``.
+    - If §0 METADATA has an invalid ``level`` (outside 0-3), raises
+      ``ValueError``.
+    - If §0 METADATA has an invalid ``usage`` or ``kind``, raises
+      ``ValueError``.
+
+    Required fields: ``level``, ``name``, ``usage``, ``kind``.
+    Optional fields: ``agent``, ``source``, ``upstream_version``.
+    """
+    data = _parse_metadata_section(raw_content)
+
+    if data is None:
+        logger.warning("%s: file lacks §0 METADATA — degrading to NIVEL 0", W001_NO_METADATA)
+        return ArtifactMetadata.default(level=0)
+
+    for field_name in _REQUIRED_METADATA_FIELDS:
+        if field_name not in data:
+            raise ValueError(
+                f"§0 METADATA missing required field: {field_name!r}"
+            )
+
+    level_raw = data["level"]
+    if isinstance(level_raw, str):
+        if not level_raw.isdigit():
+            raise ValueError(f"Invalid level: {level_raw!r}. Must be an integer 0-3.")
+        level_int = int(level_raw)
+    else:
+        level_int = int(level_raw)
+    if level_int not in {0, 1, 2, 3}:
+        raise ValueError(f"Invalid level: {level_int}. Must be 0-3.")
+
+    name = str(data["name"])
+    if not name:
+        raise ValueError("§0 METADATA field 'name' must be a non-empty string")
+
+    return ArtifactMetadata(
+        level=CortexLevel.from_int(level_int),
+        name=name,
+        usage=ArtifactUsage.from_str(str(data["usage"])),
+        kind=ArtifactKind.from_str(str(data["kind"])),
+        agent=data.get("agent"),
+        source=data.get("source"),
+        upstream_version=data.get("upstream_version"),
+    )
+
+
+def strip_metadata_block(raw_content: str) -> str:
+    """Return ``raw_content`` with the §0 METADATA prelude removed.
+
+    Used to obtain the CODEC-CORTEX-pure payload (the part after §0 METADATA).
+    If no §0 METADATA is present, returns the input unchanged.
+    """
+    return _METADATA_RE.sub("", raw_content, count=1).lstrip("\n")
+
+
+def render_metadata_block(metadata: ArtifactMetadata) -> str:
+    """Render an ArtifactMetadata as a ``# §0 METADATA{...}`` comment block.
+
+    The block is always multi-line, one attribute per ``#``-prefixed line.
+    """
+    lines = ["# §0 METADATA{"]
+    d = metadata.to_dict()
+    for key in ("level", "name", "usage", "kind"):
+        val = d[key]
+        if isinstance(val, str):
+            lines.append(f'#   {key}: "{val}",')
+        else:
+            lines.append(f"#   {key}: {val},")
+    # Optional fields
+    for opt_key in ("agent", "source", "upstream_version"):
+        val = d.get(opt_key)
+        if val is not None:
+            lines.append(f'#   {opt_key}: "{val}",')
+    # Strip trailing comma from the last attribute.
+    lines[-1] = lines[-1].rstrip(",")
+    lines.append("# }")
+    return "\n".join(lines)
+
+
+def read_cortex_artifact(path: str | Path) -> CortexArtifact:
+    """Read a .cortex file from disk and return a CortexArtifact (BLP-035).
+
+    This is the canonical read entry point that performs §0 METADATA
+    validation BEFORE returning the payload. Equivalent to the BLP-035
+    ``read_cortex_pair()`` (the existing codebase uses ``write_cortex_pair()``
+    for the write side; this function is the symmetric reader).
+
+    The returned CortexArtifact carries:
+    - ``metadata``: validated ArtifactMetadata (or default(0) + W001 warning)
+    - ``payload``: raw file content WITH §0 METADATA preserved (so callers
+      that need to write back can do so losslessly). Use
+      ``strip_metadata_block(artifact.payload)`` to obtain the CODEC-CORTEX
+      payload.
+    - ``filename``: file stem
+    - ``path``: source Path
+    - ``warnings``: list of warning codes (e.g. ``["W001_NO_METADATA"]``)
+    """
+    p = Path(path)
+    raw = p.read_text(encoding="utf-8")
+    data = _parse_metadata_section(raw)
+    if data is None:
+        warnings = [W001_NO_METADATA]
+        metadata = ArtifactMetadata.default(level=0)
+        logger.warning("%s: %s lacks §0 METADATA — degrading to NIVEL 0", W001_NO_METADATA, p)
+    else:
+        warnings = []
+        metadata = validate_metadata(raw)
+    return CortexArtifact(
+        metadata=metadata,
+        payload=raw,
+        filename=p.stem,
+        path=p,
+        warnings=warnings,
+    )
+
 
 # --- Glossary definitions ---------------------------------------------------
 

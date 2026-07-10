@@ -1,3 +1,11 @@
+# §0 METADATA{
+#   level: 1,
+#   name: "executor",
+#   usage: "identity",
+#   kind: "native",
+#   agent: "executor"
+# }
+
 $0
 
 # -- $0: ARQUX ROLE IDENTITY GLOSSARY --

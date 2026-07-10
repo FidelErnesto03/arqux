@@ -1,3 +1,10 @@
+# §0 METADATA{
+#   level: 3,
+#   name: "brain",
+#   usage: "state",
+#   kind: "native"
+# }
+
 ---
 level: 2
 project: <project-name>

@@ -1,3 +1,11 @@
+# §0 METADATA{
+#   level: 1,
+#   name: "jarvis",
+#   usage: "identity",
+#   kind: "native",
+#   agent: "jarvis"
+# }
+
 $0
 
 # -- $0: ARQUX AGENT IDENTITY GLOSSARY --
