@@ -24,6 +24,10 @@ AXM:governance_vs_utility{ Handlers fall into two categories: (1) governance han
 
 AXM:no_auth_on_stdio{ For stdio transport, credentials come EXCLUSIVELY from environment variables (ARQUX_AGENT_ID, ARQUX_AGENT_ROLE). Do NOT advertise OAuth, bearer tokens, or custom auth capabilities in the MCP initialize response. This violates the MCP 2025-06-18 spec §Authorization and breaks clients (e.g. Codex) that attempt to negotiate unsupported auth. Transport rule: stdio → env vars, HTTP → OAuth 2.1. }
 
+AXM:codec_cortex_writer{ All .cortex file writes MUST go through CODEC-CORTEX (cortex.core.writer.write_cortex() or CLI cortex add/update/delete). Direct write_text(), open().write(), or string append on .cortex files is FORBIDDEN. If CODEC-CORTEX rejects a write due to incomplete entries (E032/E034), the handler MUST stop and report — NO fallback bypass. }
+AXM:codec_cortex_contract{ Every .cortex file managed by ArqUX must declare its sigil fields in the $0 glossary. The Fields column in the pipe-table defines which fields each sigil requires. When Fields is absent, CODEC-CORTEX applies canonical required fields per sigil. }
+AXM:codec_cortex_compat{ ArqUX maintains evolutionary compatibility with CODEC-CORTEX — no version pinning. All writes use the installed version's write_cortex() API. A CI compatibility test verifies the API contract against the installed version. }
+
 
 $2: MCP CONFIG UNIVERSAL
 
@@ -105,7 +109,7 @@ $5: MCP WIRE PROTOCOL
 AXM:dot_to_underscore{ The MCP protocol requires tool names matching `^[a-zA-Z0-9_-]+$`. Dots (.) in handler names are converted to underscores (_) on the wire. Example: `blueprint.create` → tool name `blueprint_create`. The internal registry preserves dotted names. Both names resolve at runtime. }
 
 
-$6: QUICK REFERENCE — 72 HANDLERS
+$6: QUICK REFERENCE — 73 HANDLERS
 
 HDL:blueprint.ac{ signature:"ac(bp_id, ac_id, status, evidence?, reason?, path?)", purpose:"Verify one AC in §12. Fail triggers auto re-delegate (max 3)." }
 HDL:blueprint.approve{ signature:"approve(bp_id, path?)", purpose:"Auditor approves after cross-verification. State → done." }
@@ -137,12 +141,14 @@ HDL:cortex.read{ signature:"read(path)", purpose:"Read and parse a .cortex file 
 HDL:cortex.render{ signature:"render(path)", purpose:"Render a .cortex file to HCORTEX READ markdown." }
 HDL:cortex.render.diagram{ signature:"render.diagram(source, format?, path?)", purpose:"Render a PlantUML diagram to SVG/PNG." }
 HDL:cortex.render.validate_file{ signature:"render.validate_file(path)", purpose:"Validate all PUML blocks in a file (D1-D5 checklist)." }
+HDL:cortex.file.validate{ signature:"file.validate(path, fix?)", purpose:"Scan a .cortex file for duplicate entry names and optionally fix them." }
 HDL:cortex.verify{ signature:"verify(path)", purpose:"Verify a .cortex file's structure using CODEC-CORTEX." }
 HDL:cortex.write{ signature:"write(path, content, force?)", purpose:"Write (atomically) a .cortex file from CORTEX source text." }
 HDL:cycle.close{ signature:"close(cycle_id, summary, path?)", purpose:"Close a cycle (no new tasks can be added)." }
 HDL:cycle.create{ signature:"create(name, description, path?)", purpose:"Open a new cycle in the active project." }
 HDL:cycle.current{ signature:"current(path?)", purpose:"Get the currently active cycle." }
 HDL:cycle.list{ signature:"list(status?, path?)", purpose:"List cycles in the active project." }
+HDL:cycle.mature{ signature:"mature(cycle_id, path?)", purpose:"Mature a cycle (draft to ready)." }
 HDL:evidence.list{ signature:"list(task_id?, cycle?, since?, limit?, path?)", purpose:"Query the evidence trail." }
 HDL:evidence.read{ signature:"read(event_id, path?)", purpose:"Read a single evidence event by ID." }
 HDL:evidence.record{ signature:"record(task_id, kind, payload, path?)", purpose:"Append an evidence entry to pulse.jsonl." }
