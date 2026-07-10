@@ -36,7 +36,7 @@ FCS:current{what:"BLPs 023-028 eliminados, CYCLE-01 restaurado a 22 BLPs", prior
 
 $3: OBJECTIVES
 
-OBJ:_{goal:"- - - - - - - - - - - - - - - - - - - - - - 20 BLPs completados en CYCLE-01. Sincronia brain.cortex restaurada.", status:"current", success:"", survive:"work"}
+OBJ:_{goal:"- - - - - - - - - - - - - - - - - - - - - - - - - 20 BLPs completados en CYCLE-01. Sincronia brain.cortex restaurada.", status:"current", success:"", survive:"work"}
 
 $4: SESSIONS
 
@@ -55,11 +55,11 @@ $7: LESSONS
 
 $8: ACTIVE_CONTEXT
 
-WRK:current{phase:"active", current:"- cycle=- cycle=- cycle=- cycle=- cycle=- cycle=- cycle=- cycle=- cycle=- cycle=cleanup", blocked:"no", survive:"work"}
+WRK:current{phase:"active", current:"- cycle=- cycle=- cycle=- cycle=- cycle=- cycle=- cycle=- cycle=- cycle=- cycle=- cycle=- cycle=- cycle=cleanup", blocked:"no", survive:"work"}
 
 $9: RISKS
 
-RSK:risk{description:"- - - - - - - - - - - - - - - - - - - - - - Meta-brain DOM valores truncados por comas en parentesis", mitigation:"", severity:"medium"}
+RSK:risk{description:"- - - - - - - - - - - - - - - - - - - - - - - - - Meta-brain DOM valores truncados por comas en parentesis", mitigation:"", severity:"medium"}
 
 $10: KNOWLEDGE
 
