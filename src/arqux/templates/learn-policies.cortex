@@ -6,31 +6,42 @@ $0
 # POL   | policy     | attrs      | M | Learning policy
 # PRT   | protected  | attrs      | H | Protected targets
 # GTE   | gate       | attrs      | H | Mutation gate
+# IDN   | identity   | attrs      | B | Identity descriptor
+# KNW   | knowledge  | attrs      | B | Knowledge entry
+
+# Canonical sigil declarations (codec-cortex 0.5.0+ compliance)
+GSIG:IDN{name:"identity", type:"attrs", risk:"B", layer:"Semantic", description:"Identity descriptor"}
+GSIG:THR{name:"threshold", type:"attrs", risk:"M", layer:"Working", description:"Learning thresholds"}
+GSIG:POL{name:"policy", type:"attrs", risk:"M", layer:"Working", description:"Learning policy"}
+GSIG:PRT{name:"protected", type:"attrs", risk:"H", layer:"Prefrontal", description:"Protected targets"}
+GSIG:GTE{name:"gate", type:"attrs", risk:"H", layer:"Prefrontal", description:"Mutation gate"}
+GSIG:KNW{name:"knowledge", type:"attrs", risk:"B", layer:"Semantic", description:"Knowledge entry", fields:"name,topic,content,status"}
+# status: candidate, elevated, cooled, feedback, current, deprecated, planned
 
 $1: IDENTITY
-IDN:learn_policies{name:"arqux_default", version:"0.1.0", target:".arqux/brain.cortex"}
+IDN:learn_policies{name:"arqux_default", version:"0.1.0", target:".arqux/brain.cortex", status:"current"}
 
 $2: SCORING
-THR:golden_fibonacci{observed:1, repeated:2, pattern:3, candidate:5, ask_user:8, strong_candidate:13, critical:21}
+THR:golden_fibonacci{name:"golden_fibonacci", topic:"scoring", content:"Golden Fibonacci threshold sequence", status:"current", observed:1, repeated:2, pattern:3, candidate:5, ask_user:8, strong_candidate:13, critical:21}
 
 $3: PROTECTED TARGETS
-PRT:critical_sigils{items:"IDN|AXM|CNST:blocking|CLAIM|LIM", mutation:"explicit_user_confirmation"}
+PRT:critical_sigils{name:"critical_sigils", topic:"protection", content:"Sigils that require explicit user confirmation for mutation", status:"current", items:"IDN|AXM|CNST:blocking|CLAIM|LIM", mutation:"explicit_user_confirmation"}
 
 $4: CANDIDATE-DRIVEN LEARNING
-POL:candidate_detection{source:"brain", scan_sigils:"WRK|SES|LNG|RSK|NXT|CLAIM|LIM", action:"score", algorithm:"golden_fibonacci_v1"}
-POL:candidate_elevation{source:"SES|LNG", target:"LNG|KNW", when:"promotion_score>=8", action:"propose", requires:"user_confirmation"}
+POL:candidate_detection{name:"candidate_detection", topic:"learning", content:"Detect learning candidates from brain signals", status:"current", source:"brain", scan_sigils:"WRK|SES|LNG|RSK|NXT|CLAIM|LIM", action:"score", algorithm:"golden_fibonacci_v1"}
+POL:candidate_elevation{name:"candidate_elevation", topic:"learning", content:"Elevate candidates to lessons based on score", status:"current", source:"SES|LNG", target:"LNG|KNW", when:"promotion_score>=8", action:"propose", requires:"user_confirmation"}
 
 $5: POLICY-DRIVEN LEARNING
-POL:auto_ses_to_lng{source:"SES", target:"LNG", when:"promotion_score>=8|user_validated=true", action:"apply", requires:"policy_authorized"}
-POL:auto_lng_to_knw{source:"LNG", target:"KNW", when:"promotion_score>=13|user_validated=true|risk_weight>=8", action:"apply", requires:"admin_policy"}
+POL:auto_ses_to_lng{name:"auto_ses_to_lng", topic:"learning", content:"Auto-promote session events to lessons", status:"current", source:"SES", target:"LNG", when:"promotion_score>=8|user_validated=true", action:"apply", requires:"policy_authorized"}
+POL:auto_lng_to_knw{name:"auto_lng_to_knw", topic:"learning", content:"Auto-promote lessons to knowledge", status:"current", source:"LNG", target:"KNW", when:"promotion_score>=13|user_validated=true|risk_weight>=8", action:"apply", requires:"admin_policy"}
 
 $6: GATES
-GTE:default_mutation{action:"mutate_brain", default:"dry_run_first"}
-GTE:critical_mutation{targets:"IDN|AXM|CNST:blocking|CLAIM|LIM|KNW", default:"block_unless_admin_policy"}
+GTE:default_mutation{name:"default_mutation", topic:"mutation", content:"Default mutation gate", status:"current", action:"mutate_brain", default:"dry_run_first"}
+GTE:critical_mutation{name:"critical_mutation", topic:"mutation", content:"Critical mutation gate", status:"current", targets:"IDN|AXM|CNST:blocking|CLAIM|LIM|KNW", default:"block_unless_admin_policy"}
 
 $7: CONFIGURABLE THRESHOLDS
-KNW:fibonacci_thresholds{ses:1, lng:3, knw:8, auto_knw:13}
-KNW:cooling{half_life_days:7, min_score_to_survive:1}
-KNW:detection{same_sigil_in_window:3, window_hours:72, cross_session:true}
-KNW:feedback{adaptive:true, adjustment_rate:0.1, min_threshold:1, max_threshold:20}
-KNW:protected_patterns{patterns:"CNST:*|!:*|FCS:*|OBJ:*"}
+KNW:fibonacci_thresholds{name:"fibonacci_thresholds", topic:"thresholds", content:"Fibonacci-based promotion thresholds", status:"current", ses:1, lng:3, knw:8, auto_knw:13}
+KNW:cooling{name:"cooling", topic:"decay", content:"Score cooling configuration", status:"current", half_life_days:7, min_score_to_survive:1}
+KNW:detection{name:"detection", topic:"detection", content:"Pattern detection configuration", status:"current", same_sigil_in_window:3, window_hours:72, cross_session:true}
+KNW:feedback{name:"feedback", topic:"feedback", content:"Adaptive feedback loop configuration", status:"current", adaptive:true, adjustment_rate:0.1, min_threshold:1, max_threshold:20}
+KNW:protected_patterns{name:"protected_patterns", topic:"protection", content:"Patterns that cannot be auto-mutated", status:"current", patterns:"CNST:*|!:*|FCS:*|OBJ:*"}

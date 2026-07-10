@@ -496,6 +496,18 @@ _register(_spec(
     },
 ))
 _register(_spec(
+    "cortex.file.validate", cortex.file_validate_handler,
+    "Scan a .cortex file for duplicate entry names and optionally fix them.",
+    {
+        "type": "object",
+        "properties": {
+            "path": {"type": "string", "description": "Path to .cortex file or directory containing .cortex files"},
+            "fix": {"type": "boolean", "default": False, "description": "If true, rename duplicates with _XXXX suffix"},
+        },
+        "required": ["path"],
+    },
+))
+_register(_spec(
     "setup.plantuml", cortex.setup_plantuml_handler,
     "Download and install plantuml.jar to ~/.arqux/bin/.",
     {
