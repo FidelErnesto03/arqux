@@ -5,16 +5,28 @@ $0
 # Sigil | Name | Type | Risk | Cognitive Layer | Description
 # IDN   | identity   | attrs      | B | Semantic       | Agent identity descriptor
 # AXM   | axiom      | cuerpo     | H | Prefrontal     | Non-negotiable principles
+# CNST  | cnst       | attrs      | M | Semantic       | TODO: needs_review
+# CLAIM | claim      | attrs      | M | Semantic       | TODO: needs_review
 # LIM   | limit      | attrs      | M | Prefrontal     | Hard limits and boundaries
+# AUD   | aud        | attrs      | M | Semantic       | TODO: needs_review
 # FCS   | focus      | attrs      | H | Working        | Default attention anchor
 # OBJ   | objective  | attrs      | H | Working        | Standing objectives
+# WRK   | wrk        | attrs      | M | Semantic       | TODO: needs_review
 # LNG   | lesson     | attrs      | M | Episodic       | Behavioral lessons
 # DESC  | description | cuerpo     | B | Semantic       | Agent description and style
 # ARQX  | artifact   | attrs      | B | Semantic       | ArqUX artifact metadata
 #
 # Types:
+# attrs = canonical type
+# bloque = canonical type
+# cuerpo = canonical type
+# attrs-pos = canonical type
+# relación = canonical type
 #
 # Micro-glossary:
+# cur=current pln=planned fut=future blk=blocked
+# min=minimum rec=recovery wrk=work full=full
+# ok=success fail=failure part=partial
 
 
 $0.1: ARQUX METADATA
@@ -23,30 +35,30 @@ ARQX:artifact{level:0, name:"T-002", usage:"state", kind:"native"}
 
 $1: TASK
 
-WRK:task{id:"T-002", status:"done", governor:"hermes", assignee:"hermes", priority:"high", complexity:"complex", cycle:"CYCLE-01", created:"2026-07-08T18:13:10Z", updated:"2026-07-08T18:19:11Z"}
+WRK:task{id:"T-002", status:"done", governor:"hermes", assignee:"hermes", priority:"high", complexity:"complex", cycle:"CYCLE-01", created:"2026-07-08T18:13:10Z", updated:"2026-07-08T18:19:11Z", phase:"active", current:"pending", blocked:"no", survive:"work"}
 
 $2: OBJECTIVE
 
-OBJ:objective{text:"- text=- text=- text=- text=Embed markers <!-- BLP:N --> en BLP_TEMPLATE.md para las 18 secciones y simplificar blueprint.define para usar marcadores como anclas de reemplazo"}
+OBJ:objective{text:"- text=- text=- text=- text=Embed markers <!-- BLP:N --> en BLP_TEMPLATE.md para las 18 secciones y simplificar blueprint.define para usar marcadores como anclas de reemplazo", goal:"pending", status:"active", success:"pending", survive:"work"}
 
 $3: PRECONDITIONS
 
-CNST:pre1{text:"text=text=text=text=BLP_TEMPLATE.md existe y contiene las 18 secciones con formato actual"}
-CNST:pre2{text:"text=text=text=text=blueprint.define usa regex language-dependent que fallan con template en espanol"}
-CNST:pre3{text:"text=text=text=text=Bug de backreference \\1→\\g<1> ya corregido"}
-CNST:pre4{text:"text=text=text=text=BLP-021 existe en estado defined"}
+CNST:pre1{text:"text=text=text=text=BLP_TEMPLATE.md existe y contiene las 18 secciones con formato actual", rule:"pending", severity:"medium", survive:"work"}
+CNST:pre2{text:"text=text=text=text=blueprint.define usa regex language-dependent que fallan con template en espanol", rule:"pending", severity:"medium", survive:"work"}
+CNST:pre3{text:"text=text=text=text=Bug de backreference \\1→\\g<1> ya corregido", rule:"pending", severity:"medium", survive:"work"}
+CNST:pre4{text:"text=text=text=text=BLP-021 existe en estado defined", rule:"pending", severity:"medium", survive:"work"}
 
 $4: ACCEPTANCE
 
-CLAIM:ac1{criterion:"criterion=criterion=criterion=criterion=BLP_TEMPLATE.md tiene marcadores <!-- BLP:N --> en las 18 secciones"}
-CLAIM:ac2{criterion:"criterion=criterion=criterion=criterion=blueprint.define reemplaza contenido entre marcadores en vez de por regex de texto"}
-CLAIM:ac3{criterion:"criterion=criterion=criterion=criterion=Todos los regex actuales en define_blueprint se simplifican a patrones de marcador"}
-CLAIM:ac4{criterion:"criterion=criterion=criterion=criterion=Los marcadores son invisibles en la lectura humana (comentarios HTML)"}
-CLAIM:ac5{criterion:"criterion=criterion=criterion=criterion=blueprint.create preserva los marcadores al copiar el template"}
-CLAIM:ac6{criterion:"criterion=criterion=criterion=criterion=Cada subseccion en $6 tiene su propio marcador (BLP:6.1, BLP:6.2)"}
-CLAIM:ac7{criterion:"criterion=criterion=criterion=criterion=Tests existentes de blueprint.create y define siguen pasando"}
-CLAIM:ac8{criterion:"criterion=criterion=criterion=criterion=BLP-021 se puede re-definir correctamente con el nuevo template"}
+CLAIM:ac1{criterion:"criterion=criterion=criterion=criterion=BLP_TEMPLATE.md tiene marcadores <!-- BLP:N --> en las 18 secciones", statement:"pending", evidence:"pending", status:"active"}
+CLAIM:ac2{criterion:"criterion=criterion=criterion=criterion=blueprint.define reemplaza contenido entre marcadores en vez de por regex de texto", statement:"pending", evidence:"pending", status:"active"}
+CLAIM:ac3{criterion:"criterion=criterion=criterion=criterion=Todos los regex actuales en define_blueprint se simplifican a patrones de marcador", statement:"pending", evidence:"pending", status:"active"}
+CLAIM:ac4{criterion:"criterion=criterion=criterion=criterion=Los marcadores son invisibles en la lectura humana (comentarios HTML)", statement:"pending", evidence:"pending", status:"active"}
+CLAIM:ac5{criterion:"criterion=criterion=criterion=criterion=blueprint.create preserva los marcadores al copiar el template", statement:"pending", evidence:"pending", status:"active"}
+CLAIM:ac6{criterion:"criterion=criterion=criterion=criterion=Cada subseccion en $6 tiene su propio marcador (BLP:6.1, BLP:6.2)", statement:"pending", evidence:"pending", status:"active"}
+CLAIM:ac7{criterion:"criterion=criterion=criterion=criterion=Tests existentes de blueprint.create y define siguen pasando", statement:"pending", evidence:"pending", status:"active"}
+CLAIM:ac8{criterion:"criterion=criterion=criterion=criterion=BLP-021 se puede re-definir correctamente con el nuevo template", statement:"pending", evidence:"pending", status:"active"}
 
 $5: EVIDENCE
 
-AUD:evidence{text:"BLP_TEMPLATE.md actualizado con 21 marcadores. blueprint.define simplificado a _replace_marker(). BLP-021 creado con marcadores y definido correctamente. Template sincronizado a workspace .arqux/templates/."}
+AUD:evidence{text:"BLP_TEMPLATE.md actualizado con 21 marcadores. blueprint.define simplificado a _replace_marker(). BLP-021 creado con marcadores y definido correctamente. Template sincronizado a workspace .arqux/templates/.", event:"pending", evidence:"pending", result:"pending", date:"pending"}

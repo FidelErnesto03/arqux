@@ -5,16 +5,28 @@ $0
 # Sigil | Name | Type | Risk | Cognitive Layer | Description
 # IDN   | identity   | attrs      | B | Semantic       | Agent identity descriptor
 # AXM   | axiom      | cuerpo     | H | Prefrontal     | Non-negotiable principles
+# CNST  | cnst       | attrs      | M | Semantic       | TODO: needs_review
+# CLAIM | claim      | attrs      | M | Semantic       | TODO: needs_review
 # LIM   | limit      | attrs      | M | Prefrontal     | Hard limits and boundaries
+# AUD   | aud        | attrs      | M | Semantic       | TODO: needs_review
 # FCS   | focus      | attrs      | H | Working        | Default attention anchor
 # OBJ   | objective  | attrs      | H | Working        | Standing objectives
+# WRK   | wrk        | attrs      | M | Semantic       | TODO: needs_review
 # LNG   | lesson     | attrs      | M | Episodic       | Behavioral lessons
 # DESC  | description | cuerpo     | B | Semantic       | Agent description and style
 # ARQX  | artifact   | attrs      | B | Semantic       | ArqUX artifact metadata
 #
 # Types:
+# attrs = canonical type
+# bloque = canonical type
+# cuerpo = canonical type
+# attrs-pos = canonical type
+# relación = canonical type
 #
 # Micro-glossary:
+# cur=current pln=planned fut=future blk=blocked
+# min=minimum rec=recovery wrk=work full=full
+# ok=success fail=failure part=partial
 
 
 $0.1: ARQUX METADATA
@@ -23,27 +35,27 @@ ARQX:artifact{level:0, name:"T-003", usage:"state", kind:"native"}
 
 $1: TASK
 
-WRK:task{id:"T-003", status:"done", governor:"hermes", assignee:"hermes", priority:"high", complexity:"complex", cycle:"CYCLE-01", created:"2026-07-08T18:33:19Z", updated:"2026-07-08T18:36:45Z"}
+WRK:task{id:"T-003", status:"done", governor:"hermes", assignee:"hermes", priority:"high", complexity:"complex", cycle:"CYCLE-01", created:"2026-07-08T18:33:19Z", updated:"2026-07-08T18:36:45Z", phase:"active", current:"pending", blocked:"no", survive:"work"}
 
 $2: OBJECTIVE
 
-OBJ:objective{text:"- text=- text=- text=Blueprint Marker Discovery — los handlers de blueprint descubren dinamicamente los marcadores <!-- BLP:N --> del template en vez de tener listas internas hardcodeadas"}
+OBJ:objective{text:"- text=- text=- text=Blueprint Marker Discovery — los handlers de blueprint descubren dinamicamente los marcadores <!-- BLP:N --> del template en vez de tener listas internas hardcodeadas", goal:"pending", status:"active", success:"pending", survive:"work"}
 
 $3: PRECONDITIONS
 
-CNST:pre1{text:"text=text=text=BLP_TEMPLATE.md tiene marcadores <!-- BLP:N --> en las 18 secciones + TITLE"}
-CNST:pre2{text:"text=text=text=blueprint.define y update ya usan marcadores pero con referencia hardcodeada a IDs especificos"}
-CNST:pre3{text:"text=text=text=T-002 completo: define y update usan marcadores con preservacion de header"}
+CNST:pre1{text:"text=text=text=BLP_TEMPLATE.md tiene marcadores <!-- BLP:N --> en las 18 secciones + TITLE", rule:"pending", severity:"medium", survive:"work"}
+CNST:pre2{text:"text=text=text=blueprint.define y update ya usan marcadores pero con referencia hardcodeada a IDs especificos", rule:"pending", severity:"medium", survive:"work"}
+CNST:pre3{text:"text=text=text=T-002 completo: define y update usan marcadores con preservacion de header", rule:"pending", severity:"medium", survive:"work"}
 
 $4: ACCEPTANCE
 
-CLAIM:ac1{criterion:"criterion=criterion=criterion=blueprint.define descubre marcadores del BLP via escaner <!-- BLP: --> en vez de usar lista interna"}
-CLAIM:ac2{criterion:"criterion=criterion=criterion=blueprint.update usa marcador descubierto dinamicamente en vez de mapeo section_number → marker_id"}
-CLAIM:ac3{criterion:"criterion=criterion=criterion=El escaner de marcadores es una funcion compartida (scan_markers) usada por create, define y update"}
-CLAIM:ac4{criterion:"criterion=criterion=criterion=blueprint.create guarda el mapa de marcadores en frontmatter (blp_markers@) para referencia rapida"}
-CLAIM:ac5{criterion:"criterion=criterion=criterion=Handler no tiene hardcodeados section_titles ni mapeos de idioma"}
-CLAIM:ac6{criterion:"criterion=criterion=criterion=Compatibilidad hacia atras con BLPs que no tienen marcadores (fallback a metodo legacy)"}
+CLAIM:ac1{criterion:"criterion=criterion=criterion=blueprint.define descubre marcadores del BLP via escaner <!-- BLP: --> en vez de usar lista interna", statement:"pending", evidence:"pending", status:"active"}
+CLAIM:ac2{criterion:"criterion=criterion=criterion=blueprint.update usa marcador descubierto dinamicamente en vez de mapeo section_number → marker_id", statement:"pending", evidence:"pending", status:"active"}
+CLAIM:ac3{criterion:"criterion=criterion=criterion=El escaner de marcadores es una funcion compartida (scan_markers) usada por create, define y update", statement:"pending", evidence:"pending", status:"active"}
+CLAIM:ac4{criterion:"criterion=criterion=criterion=blueprint.create guarda el mapa de marcadores en frontmatter (blp_markers@) para referencia rapida", statement:"pending", evidence:"pending", status:"active"}
+CLAIM:ac5{criterion:"criterion=criterion=criterion=Handler no tiene hardcodeados section_titles ni mapeos de idioma", statement:"pending", evidence:"pending", status:"active"}
+CLAIM:ac6{criterion:"criterion=criterion=criterion=Compatibilidad hacia atras con BLPs que no tienen marcadores (fallback a metodo legacy)", statement:"pending", evidence:"pending", status:"active"}
 
 $5: EVIDENCE
 
-AUD:evidence{text:"scan_markers() implementada. create_blueprint escanea y guarda blp_markers@ en frontmatter. update_blueprint valida contra el mapa y acepta marker IDs directos (BLP:3). Define ya no es necesario como paso separado — update es el unico mecanismo de modificacion de secciones."}
+AUD:evidence{text:"scan_markers() implementada. create_blueprint escanea y guarda blp_markers@ en frontmatter. update_blueprint valida contra el mapa y acepta marker IDs directos (BLP:3). Define ya no es necesario como paso separado — update es el unico mecanismo de modificacion de secciones.", event:"pending", evidence:"pending", result:"pending", date:"pending"}

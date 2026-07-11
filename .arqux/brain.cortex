@@ -4,17 +4,30 @@ $0
 # Required: every .cortex artifact must be locally self-contained.
 # Sigil | Name | Type | Risk | Cognitive Layer | Description
 # IDN   | identity   | attrs      | B | Semantic       | Agent identity descriptor
+# KNW   | knw        | attrs      | M | Semantic       | TODO: needs_review
 # AXM   | axiom      | cuerpo     | H | Prefrontal     | Non-negotiable principles
 # LIM   | limit      | attrs      | M | Prefrontal     | Hard limits and boundaries
+# AUD   | aud        | attrs      | M | Semantic       | TODO: needs_review
+# RSK   | rsk        | attrs      | M | Semantic       | TODO: needs_review
 # FCS   | focus      | attrs      | H | Working        | Default attention anchor
 # OBJ   | objective  | attrs      | H | Working        | Standing objectives
+# WRK   | wrk        | attrs      | M | Semantic       | TODO: needs_review
 # LNG   | lesson     | attrs      | M | Episodic       | Behavioral lessons
 # DESC  | description | cuerpo     | B | Semantic       | Agent description and style
+# ERR   | err        | attrs      | M | Semantic       | TODO: needs_review
 # ARQX  | artifact   | attrs      | B | Semantic       | ArqUX artifact metadata
 #
 # Types:
+# attrs = canonical type
+# bloque = canonical type
+# cuerpo = canonical type
+# attrs-pos = canonical type
+# relación = canonical type
 #
 # Micro-glossary:
+# cur=current pln=planned fut=future blk=blocked
+# min=minimum rec=recovery wrk=work full=full
+# ok=success fail=failure part=partial
 
 
 $0.1: ARQUX METADATA
@@ -31,7 +44,7 @@ FCS:current{what:"Verificar ACs y aprobar", priority:"medium", status:"current",
 
 $3: OBJECTIVES
 
-OBJ:_{goal:"- - - - - - - - 20 BLPs completados en CYCLE-01. Sincronia brain.cortex restaurada.", status:"current", success:"", survive:"work"}
+OBJ:_{goal:"- - - - - - - - 20 BLPs completados en CYCLE-01. Sincronia brain.cortex restaurada.", status:"current", success:"pending", survive:"work"}
 
 $4: SESSIONS
 
@@ -54,7 +67,7 @@ WRK:current{phase:"active", current:"- cycle=- cycle=- cycle=- cycle=- cycle=- c
 
 $9: RISKS
 
-RSK:risk{description:"- - - - - - - - Meta-brain DOM valores truncados por comas en parentesis", mitigation:"", severity:"medium"}
+RSK:risk{description:"- - - - - - - - Meta-brain DOM valores truncados por comas en parentesis", mitigation:"pending", severity:"medium", risk:"pending", impact:"pending", status:"active", survive:"work"}
 
 $10: KNOWLEDGE
 
