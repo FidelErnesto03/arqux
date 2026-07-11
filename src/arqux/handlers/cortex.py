@@ -765,14 +765,14 @@ def file_validate_handler(
                     ent.name = r["new_name"]
                     break
 
-    diags = _cc_validator.validate(doc)
-    errors = [d for d in diags if d.get("severity") == "error"]
-    if errors:
-        return CortexOUT.error(
-            f"Validation failed after rename ({len(errors)} errors)",
-            code="VALIDATION_FAILED",
-        )
-
+    # Use atomic_write with force=True instead of validate+abort.
+    # atomic_write internally validates AND auto-repairs E032/E034
+    # (missing required fields like LNG:prevention, OBJ:success) when
+    # force=True.  This allows duplicate rename to proceed even when the
+    # file has legacy entries with incomplete metadata.
+    #
+    # Non-repairable errors (E033: ARQX in $0, E001: structural) are still
+    # rejected by atomic_write's internal non-bypassable check.
     try:
         result = _cc_transactions.atomic_write_cortex(doc, str(target), force=True)
         return CortexOUT.work(
@@ -783,4 +783,4 @@ def file_validate_handler(
             backup=result.backup,
         )
     except Exception as exc:
-        return CortexOUT.error(str(exc), code="WRITE_ERROR")
+        return CortexOUT.error(str(exc), code="VALIDATION_FAILED")
