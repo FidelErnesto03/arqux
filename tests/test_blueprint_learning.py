@@ -6,8 +6,6 @@ import os
 from pathlib import Path
 
 from arqux.handlers import blueprint, cycle, project, workspace
-from arqux.permissions import PermissionContext
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -18,7 +16,6 @@ def _setup_blueprint(workspace_root: Path, ctx) -> tuple[Path, Path]:
     workspace.init_workspace(path=str(workspace_root), ctx=ctx)
     project_dir = workspace_root / "my-app"
     project_dir.mkdir()
-    from arqux.handlers import project
     project.init_project(name="my-app", path=str(project_dir), ctx=ctx)
     cwd = os.getcwd()
     try:

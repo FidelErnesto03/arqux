@@ -10,13 +10,10 @@ from arqux.constants import W005_MISSING_ORIGINAL_REF
 from arqux.skill_store import (
     AdaptedStore,
     OriginalStore,
-    SkillContract,
-    SkillImportError,
     SkillNotFoundError,
     SkillRepository,
     STPDeclaration,
 )
-
 
 # --- Fixtures ---------------------------------------------------------------
 

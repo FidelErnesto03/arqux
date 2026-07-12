@@ -12,14 +12,13 @@ from pathlib import Path
 
 import pytest
 
-from arqux import constants
-from arqux.permissions import PermissionContext
 from arqux.constants import (
     PRODUCT_NAME_UPPER,
     ROLE_AUDITOR,
     ROLE_EXECUTOR,
     ROLE_GOVERNOR,
 )
+from arqux.permissions import PermissionContext
 
 
 @pytest.fixture

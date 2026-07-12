@@ -17,14 +17,10 @@ Usage:
 
 from __future__ import annotations
 
-import os
 import shutil
 import subprocess
 import tempfile
 from pathlib import Path
-
-from .constants import ARQUX_DIR
-
 
 _PLANTUML_JAR = "plantuml.jar"
 _BIN_DIR = Path.home() / ".arqux" / "bin"
@@ -127,7 +123,6 @@ def render_blueprint_diagrams(blueprint_path: Path, output_dir: Path = None) -> 
         puml_body = re.sub(r'@startuml.*?\n', '', puml_body)
         puml_body = re.sub(r'@enduml', '', puml_body)
 
-        filename = f"{blueprint_path.stem}_{section_title}"
         ok, path = render_puml(puml_body, format="svg", output_dir=out_dir)
         if ok:
             results[section_title] = path

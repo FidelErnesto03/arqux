@@ -15,7 +15,6 @@ from click.testing import CliRunner
 
 from arqux.security import hash_cortex, inject_hash_header
 
-
 VALID_CORTEX = """$0
 # Sigil | Name | Type | Risk | Cognitive Layer | Description
 # IDN   | identity  | attrs | B | Semantic | Actor identity

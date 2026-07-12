@@ -10,14 +10,12 @@ from __future__ import annotations
 
 import os
 from pathlib import Path
-from typing import Any
 
-from ...constants import ARQUX_DIR, IDENTITIES_DIR
+from ...constants import IDENTITIES_DIR
 from ...cortex_out import CortexOUT
 from ...permissions import PermissionContext
 from ...pulse import append_pulse_to_brain, next_pulse_event_id
 from ...state import find_project_root, find_workspace_root
-
 
 DEFAULT_AGENT = "alfred"
 

@@ -19,12 +19,12 @@ Design:
 
 from __future__ import annotations
 
-import os
 import re
 import threading
-from contextlib import contextmanager
+from collections.abc import Generator
+from contextlib import contextmanager, suppress
 from pathlib import Path
-from typing import Generator, IO
+from typing import IO
 
 # --- Platform detection ----------------------------------------------------
 
@@ -90,10 +90,8 @@ def file_lock(
         try:
             yield fh
         finally:
-            try:
+            with suppress(OSError):
                 fcntl.flock(fh.fileno(), fcntl.LOCK_UN)
-            except OSError:
-                pass
             fh.close()
     else:
         # Fallback: threading.Lock (in-process only).

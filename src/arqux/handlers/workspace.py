@@ -10,26 +10,19 @@ from __future__ import annotations
 
 import os
 from pathlib import Path
-from typing import Any
 
 from ..constants import (
-    CYCLE_OPEN,
-    MANIFEST_CORTEX,
+    ARQUX_DIR,
     META_BRAIN_CORTEX,
     OUT_AUDIT,
     OUT_MIN,
-    OUT_WORK,
-    PRODUCT_NAME,
     PROJECTS_CORTEX,
     ROLE_GOVERNOR,
-    ARQUX_DIR,
-    ARQUX_VERSION,
 )
 from ..cortex_out import CortexOUT
 from ..permissions import PermissionContext, promote_first_governor
 from ..state import (
     find_workspace_root,
-    write_manifest,
     write_meta_brain,
     write_projects_index,
 )
@@ -204,7 +197,7 @@ def _now_iso() -> str:
 
 
 handler_schemas = [
-    dict(name="workspace.init", fn=init_workspace, description="Initialize .arqux/ at the workspace root.", input_schema={"type": "object", "properties": {"path": {"type": "string", "description": "Path to initialize as workspace root. Defaults to cwd."}}}),
-    dict(name="workspace.status", fn=status, description="Workspace status (OUT-MIN by default). Use --dashboard for rich output.", input_schema={"type": "object", "properties": {"verbose": {"type": "boolean", "default": False}, "dashboard": {"type": "boolean", "default": False, "description": "Show visual workspace dashboard."}, "path": {"type": "string", "description": "Path to workspace root. Defaults to cwd."}}}),
-    dict(name="workspace.lessons", fn=lessons, description="List lessons elevated to the meta-brain.", input_schema={"type": "object", "properties": {"project": {"type": "string", "description": "Filter lessons by source project."}, "path": {"type": "string", "description": "Path to workspace root. Defaults to cwd."}}}),
+    {"name": "workspace.init", "fn": init_workspace, "description": "Initialize .arqux/ at the workspace root.", "input_schema": {"type": "object", "properties": {"path": {"type": "string", "description": "Path to initialize as workspace root. Defaults to cwd."}}}},
+    {"name": "workspace.status", "fn": status, "description": "Workspace status (OUT-MIN by default). Use --dashboard for rich output.", "input_schema": {"type": "object", "properties": {"verbose": {"type": "boolean", "default": False}, "dashboard": {"type": "boolean", "default": False, "description": "Show visual workspace dashboard."}, "path": {"type": "string", "description": "Path to workspace root. Defaults to cwd."}}}},
+    {"name": "workspace.lessons", "fn": lessons, "description": "List lessons elevated to the meta-brain.", "input_schema": {"type": "object", "properties": {"project": {"type": "string", "description": "Filter lessons by source project."}, "path": {"type": "string", "description": "Path to workspace root. Defaults to cwd."}}}},
 ]

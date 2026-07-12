@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import os
 from pathlib import Path
 
 import pytest
@@ -10,7 +9,6 @@ import pytest
 from arqux.handlers.context import detect_handler, full_handler
 from arqux.handlers.identity import get_handler
 from arqux.permissions import PermissionContext
-
 
 _CONTEXT = PermissionContext(agent_id="test", role="governor")
 

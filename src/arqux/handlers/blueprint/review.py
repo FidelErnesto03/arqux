@@ -6,12 +6,10 @@ complete, approve, ac, re_delegate, block_for_architect, fail, cancel
 from __future__ import annotations
 
 import re
-from typing import Any
 
 from ...cortex_out import CortexOUT
 from ...permissions import PermissionContext
 from ...sync import sync_brain
-
 from ._helpers import (
     BP_BLOCKED,
     BP_CANCELLED,
@@ -34,7 +32,6 @@ from ._helpers import (
     _validate_execution_complete,
     _write_blueprint,
 )
-
 
 # ---------------------------------------------------------------------------
 # blueprint.complete

@@ -14,8 +14,9 @@ modules (handlers/blueprint/ and handlers/cortex/).
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Any, Callable
+from typing import Any
 
 # Note: handlers/blueprint.py and handlers/cortex.py are 1-line stub shims
 # that re-export from handlers/blueprint/ and handlers/cortex/ packages.
@@ -24,7 +25,7 @@ from typing import Any, Callable
 # New code should import directly from the package:
 #   from arqux.handlers.blueprint.manage import create
 #   from arqux.handlers.cortex.entries import add_entry
-from . import cycle, evidence, project, protocol, session, task, workspace, cortex, skill, blueprint
+from . import blueprint, cortex, cycle, evidence, project, protocol, session, skill, task, workspace
 from . import context as context_pkg
 from . import identity as identity_pkg
 

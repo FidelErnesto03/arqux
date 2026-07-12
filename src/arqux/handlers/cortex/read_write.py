@@ -3,12 +3,10 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any
 
 from ...cortex_out import CortexOUT
 from ...permissions import PermissionContext
-from ...state import cortex_read, cortex_write, cortex_verify, cortex_render
-
+from ...state import cortex_read, cortex_render, cortex_verify, cortex_write
 
 # ---------------------------------------------------------------------------
 # SectionCounter — in-memory sequential counter per (file, section)
@@ -89,7 +87,7 @@ def read_handler(
         result = cortex_read(src_path)
     except FileNotFoundError:
         return CortexOUT.error(f"file not found: {path}", code="NOT_FOUND")
-    except RuntimeError as exc:
+    except RuntimeError:
         # CODEC-CORTEX unavailable — fall back to raw text so the handler
         # is still useful in degraded environments.
         return CortexOUT.work(

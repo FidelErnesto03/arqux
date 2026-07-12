@@ -1,3 +1,4 @@
+# ruff: noqa: F401
 """Learning engine — package split.
 
 Submodules:
@@ -12,21 +13,14 @@ from __future__ import annotations
 
 # Shared helpers ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 from ._common import (
-    POLICY_FILENAME,
     _HAS_CLE,
+    POLICY_FILENAME,
     _build_brain_doc,
     _hash_text,
     _load_policies,
     _resolve_policy_path,
     _resolve_project_root,
     logger,
-)
-
-# Scanning ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-from ._scan import (
-    build_profile,
-    list_candidates,
-    scan_brain,
 )
 
 # Contextual elevation ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -36,22 +30,28 @@ from ._elevate import (
     _validate_elevation_payload,
     elevate_candidate,
 )
-
-# Behavioral learning — models & exceptions ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-from ._models import (
-    Lesson,
-    LessonNotFoundError,
-    InsufficientConfidenceError,
-    InvalidLessonStatusError,
-    ContainerIdentityError,
-    AgentIdentityError,
-)
-
 from ._lesson import (
     DEFAULT_MIN_CONFIDENCE,
     DEFAULT_MIN_OCCURRENCES,
     DEFAULT_TTL_CYCLES,
     LessonStore,
+)
+
+# Behavioral learning — models & exceptions ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+from ._models import (
+    AgentIdentityError,
+    ContainerIdentityError,
+    InsufficientConfidenceError,
+    InvalidLessonStatusError,
+    Lesson,
+    LessonNotFoundError,
+)
+
+# Scanning ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+from ._scan import (
+    build_profile,
+    list_candidates,
+    scan_brain,
 )
 
 # Unified three-line API ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

@@ -11,19 +11,14 @@ import time as _time
 from pathlib import Path
 from typing import Any
 
-from ...concurrency import next_blueprint_id_safe  # noqa: F401 — re-exported for API compat
-
 from ...constants import (
     ARQUX_DIR,
     BLUEPRINTS_DIR,
     CYCLES_DIR,
-    OUT_WORK,
 )
-from ...cortex_out import CortexOUT
 from ...permissions import PermissionContext
-from ...state import find_project_root, read_brain
 from ...pulse import append_pulse_to_brain, next_pulse_event_id
-from ...sync import sync_brain
+from ...state import find_project_root, read_brain
 
 # ---------------------------------------------------------------------------
 # Constants
@@ -325,9 +320,9 @@ def _record_to_brain(root: Path, bp_id: str, outcome: str, evidence: str) -> Non
         if not brain_path.exists():
             return
 
+        from cortex.core.ast import Entry
         from cortex.core.parser import parse_cortex
         from cortex.core.writer import write_cortex
-        from cortex.core.ast import Entry
 
         text = brain_path.read_text(encoding="utf-8")
         doc = parse_cortex(text)

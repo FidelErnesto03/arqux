@@ -3,21 +3,19 @@ from __future__ import annotations
 
 import fcntl
 import re
+from collections.abc import Callable
 from pathlib import Path
-from typing import Any, Callable
 
-from ...constants import ARQUX_DIR, W003_LEARNING_DEBT_BEHAVIORAL
+from ...constants import W003_LEARNING_DEBT_BEHAVIORAL
 from ._common import _HAS_CLE, logger
 from ._models import (
-    Lesson,
-    LessonNotFoundError,
+    _LNG_RE,
     InsufficientConfidenceError,
     InvalidLessonStatusError,
-    ContainerIdentityError,
-    AgentIdentityError,
-    _LNG_RE,
-    _parse_lng_attrs,
+    Lesson,
+    LessonNotFoundError,
     _now_epoch,
+    _parse_lng_attrs,
 )
 
 # --- LessonStore (Nivel 0 behavioral container) ------------------------------
@@ -94,14 +92,14 @@ class LessonStore:
         if not _HAS_CLE:
             # Degradación controlada si CODEC-CORTEX no está disponible.
             body = (
-                f"$0\n"
-                f"GSIG:LNG:lesson|attrs|M|Episodic|Learned lesson or pattern\n\n"
-                f"$1: LESSONS\n"
+                "$0\n"
+                "GSIG:LNG:lesson|attrs|M|Episodic|Learned lesson or pattern\n\n"
+                "$1: LESSONS\n"
             )
             self.path.write_text(body, encoding="utf-8")
             return
 
-        from cortex.core.ast import CortexDocument, Section, Entry, SigilDef
+        from cortex.core.ast import CortexDocument, Entry, Section, SigilDef
 
         doc = CortexDocument()
         # $0 glossary

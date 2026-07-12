@@ -20,14 +20,12 @@ from __future__ import annotations
 import os
 import re
 from pathlib import Path
-from typing import Any
 
 from ..constants import TEMPLATES_DIR
 from ..cortex_out import CortexOUT
 from ..permissions import PermissionContext
 from ..pulse import append_pulse_to_brain, next_pulse_event_id
 from ..state import find_project_root, find_workspace_root
-
 
 TEMPLATE_NAME = "BLP_TEMPLATE.md"
 

@@ -11,6 +11,7 @@ file + rename).
 
 from __future__ import annotations
 
+import contextlib
 import os
 import re
 import tempfile
@@ -23,7 +24,6 @@ from ...cortex_out import CortexOUT
 from ...permissions import PermissionContext
 from ...pulse import append_pulse_to_brain, next_pulse_event_id
 from ...state import find_project_root
-
 
 # ---------------------------------------------------------------------------
 # synthesize
@@ -94,7 +94,7 @@ def synthesize_blueprint(
             code="INVALID_ARGS",
         )
 
-    sections_skipped = [sid for sid in sections.keys() if f"BLP:{sid}" not in valid_ids]
+    sections_skipped = [sid for sid in sections if f"BLP:{sid}" not in valid_ids]
     sections_to_write = {sid: body for sid, body in sections.items()
                          if f"BLP:{sid}" in valid_ids}
     if not sections_to_write:
@@ -154,7 +154,7 @@ def _parse_content_sections(content: str) -> dict[str, str]:
     pattern = re.compile(r"\$(\d+(?:\.\d+)?):\s*\{")
     matches = list(pattern.finditer(text))
     if matches:
-        for i, m in enumerate(matches):
+        for _i, m in enumerate(matches):
             sid = m.group(1)
             start = m.end() - 1  # position of the opening brace
             body = _extract_brace_body(text, start)
@@ -260,7 +260,7 @@ def _find_or_create_blueprint(
     bp_path = bp_dir / f"{bp_id}.md"
 
     # Use the template as the starting body.
-    from ...blueprint.template import _resolve_template, TEMPLATE_NAME
+    from ...blueprint.template import _resolve_template
     template_path = _resolve_template(path=str(root.parent))
     if template_path and template_path.exists():
         body = template_path.read_text(encoding="utf-8")
@@ -361,10 +361,8 @@ def _atomic_write(bp_path: Path, fm: dict[str, Any], body: str) -> int:
             f.write(content)
         os.replace(tmp_path, bp_path)
     except Exception:
-        try:
+        with contextlib.suppress(OSError):
             os.unlink(tmp_path)
-        except OSError:
-            pass
         raise
 
     return len(content)

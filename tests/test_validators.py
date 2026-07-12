@@ -2,26 +2,20 @@
 
 from __future__ import annotations
 
-import pytest
-
 from arqux.constants import (
+    E026_MISSING_SECTION,
+    E027_MALFORMED_SECTION,
+    W002_INCOMPLETE_BRAIN,
     ArtifactKind,
     ArtifactMetadata,
     ArtifactUsage,
     CortexLevel,
-    E026_MISSING_SECTION,
-    E027_MALFORMED_SECTION,
-    W002_INCOMPLETE_BRAIN,
 )
 from arqux.formats import CortexArtifact
 from arqux.validators import (
     BrainStructureValidator,
-    InvalidValidatorError,
-    ValidationResult,
     ValidatorFactory,
 )
-from arqux.validators.base import BaseValidator, ValidationError
-
 
 # --- Fixtures ---------------------------------------------------------------
 

@@ -8,7 +8,7 @@ from pathlib import Path
 
 from ...constants import ARQUX_DIR
 from ...cortex_out import CortexOUT
-from ...permissions import PermissionContext, enforce_ctx, HMAC_REQUIRED
+from ...permissions import PermissionContext, enforce_ctx
 from ...state import crud_add, find_project_root
 
 
@@ -134,7 +134,11 @@ def learn_scan_handler(
 
     Returns scored entries and elevation candidates.
     """
-    from ...learning import _resolve_project_root, list_candidates, scan_brain  # lazy: allow monkeypatch
+    from ...learning import (  # lazy: allow monkeypatch
+        _resolve_project_root,
+        list_candidates,
+        scan_brain,
+    )
 
     root = _resolve_project_root(path)
     if root is None:

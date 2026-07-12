@@ -18,32 +18,32 @@ __all__ = [
 ]
 
 handler_schemas = [
-    dict(
-        name="context.detect",
-        fn=detect_handler,
-        description=(
+    {
+        "name": "context.detect",
+        "fn": detect_handler,
+        "description": (
             "Scan upward from a path for a .arqux/ directory. "
             "Returns {found: bool, path: str|null, kind: 'project'|'workspace'|null}."
         ),
-        input_schema={
+        "input_schema": {
             "type": "object",
             "properties": {
                 "path": {"type": "string", "description": "Starting path. Defaults to cwd."},
             },
         },
-    ),
-    dict(
-        name="context.full",
-        fn=full_handler,
-        description=(
+    },
+    {
+        "name": "context.full",
+        "fn": full_handler,
+        "description": (
             "Return the full project context: project name, available "
             "cycles, current cycle, agents bound, skills available."
         ),
-        input_schema={
+        "input_schema": {
             "type": "object",
             "properties": {
                 "path": {"type": "string", "description": "Starting path. Defaults to cwd."},
             },
         },
-    ),
+    },
 ]

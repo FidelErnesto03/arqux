@@ -10,14 +10,10 @@ Covers:
 
 from __future__ import annotations
 
-import hashlib
-import hmac
 import os
 import time
-from pathlib import Path
 
 import pytest
-
 
 # ---------------------------------------------------------------------------
 # generate_secret
@@ -443,7 +439,7 @@ def test_secure_write_cortex_no_hash(tmp_path) -> None:
     from arqux.security import secure_write_cortex
 
     f = tmp_path / "nohash.cortex"
-    result = secure_write_cortex(f, "$0: test\nbody", inject_hash=False)
+    secure_write_cortex(f, "$0: test\nbody", inject_hash=False)
     content = f.read_text(encoding="utf-8")
     assert "$INTEGRITY" not in content
 
@@ -469,7 +465,7 @@ def test_generate_signing_keypair() -> None:
 
 def test_sign_cortex_and_verify() -> None:
     """sign_cortex produces content with $SIGNATURE and $SIGNER headers."""
-    from arqux.security import generate_signing_keypair, sign_cortex, _HAS_CRYPTOGRAPHY
+    from arqux.security import _HAS_CRYPTOGRAPHY, generate_signing_keypair, sign_cortex
 
     if not _HAS_CRYPTOGRAPHY:
         pytest.skip("cryptography package not installed")
@@ -485,10 +481,10 @@ def test_sign_cortex_and_verify() -> None:
 def test_verify_cortex_signature_ok(tmp_path) -> None:
     """verify_cortex_signature returns True for a properly signed file."""
     from arqux.security import (
+        _HAS_CRYPTOGRAPHY,
         generate_signing_keypair,
         sign_cortex,
         verify_cortex_signature,
-        _HAS_CRYPTOGRAPHY,
     )
 
     if not _HAS_CRYPTOGRAPHY:
@@ -506,11 +502,11 @@ def test_verify_cortex_signature_ok(tmp_path) -> None:
 def test_verify_cortex_signature_wrong_signer(tmp_path) -> None:
     """verify_cortex_signature raises SignatureError when signer mismatches."""
     from arqux.security import (
+        _HAS_CRYPTOGRAPHY,
         SignatureError,
         generate_signing_keypair,
         sign_cortex,
         verify_cortex_signature,
-        _HAS_CRYPTOGRAPHY,
     )
 
     if not _HAS_CRYPTOGRAPHY:
@@ -528,10 +524,10 @@ def test_verify_cortex_signature_wrong_signer(tmp_path) -> None:
 def test_verify_cortex_signature_no_header(tmp_path) -> None:
     """verify_cortex_signature raises SignatureError when headers are missing."""
     from arqux.security import (
+        _HAS_CRYPTOGRAPHY,
         SignatureError,
         generate_signing_keypair,
         verify_cortex_signature,
-        _HAS_CRYPTOGRAPHY,
     )
 
     if not _HAS_CRYPTOGRAPHY:
@@ -548,10 +544,10 @@ def test_verify_cortex_signature_no_header(tmp_path) -> None:
 def test_verify_cortex_signature_too_short(tmp_path) -> None:
     """verify_cortex_signature raises SignatureError for file too short."""
     from arqux.security import (
+        _HAS_CRYPTOGRAPHY,
         SignatureError,
         generate_signing_keypair,
         verify_cortex_signature,
-        _HAS_CRYPTOGRAPHY,
     )
 
     if not _HAS_CRYPTOGRAPHY:
@@ -568,10 +564,10 @@ def test_verify_cortex_signature_too_short(tmp_path) -> None:
 def test_secure_write_cortex_signed(tmp_path) -> None:
     """secure_write_cortex with sign_with produces signed + hashed file."""
     from arqux.security import (
+        _HAS_CRYPTOGRAPHY,
         generate_signing_keypair,
         secure_write_cortex,
         verify_cortex,
-        _HAS_CRYPTOGRAPHY,
     )
 
     if not _HAS_CRYPTOGRAPHY:

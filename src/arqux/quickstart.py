@@ -6,7 +6,7 @@ import os
 import shutil
 from pathlib import Path
 
-from .constants import ARQUX_DIR, PRODUCT_NAME, PRODUCT_NAME_TITLE
+from .constants import ARQUX_DIR
 from .cortex_out import CortexOUT
 from .state import find_workspace_root
 
@@ -36,7 +36,7 @@ def quickstart(path: str | None = None) -> CortexOUT:
     3. Identity configuration
     """
     target = Path(path or os.getcwd()).resolve()
-    arqux_dir = target / ARQUX_DIR
+    target / ARQUX_DIR
     ws_root = find_workspace_root(start=path)
 
     steps: list[str] = []
@@ -45,7 +45,7 @@ def quickstart(path: str | None = None) -> CortexOUT:
     if not already_governed:
         from .handlers.workspace import init_workspace
 
-        result = init_workspace(path=str(target), verbose=False)
+        init_workspace(path=str(target), verbose=False)
         steps.append(f"✅ Workspace initialized at {target}")
         ws_root = find_workspace_root(start=path)
     else:

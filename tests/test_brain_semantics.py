@@ -2,15 +2,13 @@
 
 from __future__ import annotations
 
-import pytest
-
 from arqux.constants import (
+    E024_LEVEL3_MISSING_FOCUS,
+    E028_NO_ACTIVE_OBJECTIVES,
     ArtifactKind,
     ArtifactMetadata,
     ArtifactUsage,
     CortexLevel,
-    E024_LEVEL3_MISSING_FOCUS,
-    E028_NO_ACTIVE_OBJECTIVES,
 )
 from arqux.formats import CortexArtifact
 from arqux.validators import BrainActiveStateValidator, ValidatorFactory
@@ -19,7 +17,6 @@ from arqux.validators.brain_semantics import (
     _is_inerte,
     _is_vigente,
 )
-
 
 # --- Fixtures ---------------------------------------------------------------
 

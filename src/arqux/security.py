@@ -39,22 +39,25 @@ from __future__ import annotations
 
 import hashlib
 import hmac
-import json
 import os
 import secrets
 import time
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
 # Optional Ed25519 support (only if 'cryptography' is installed).
 try:
     from cryptography.hazmat.primitives.asymmetric.ed25519 import (
-        Ed25519PrivateKey, Ed25519PublicKey,
+        Ed25519PrivateKey,
+        Ed25519PublicKey,
     )
     from cryptography.hazmat.primitives.serialization import (
-        Encoding, PrivateFormat, PublicFormat, NoEncryption,
         BestAvailableEncryption,
+        Encoding,
+        NoEncryption,
+        PrivateFormat,
+        PublicFormat,
     )
     _HAS_CRYPTOGRAPHY = True
 except ImportError:
@@ -133,7 +136,7 @@ class AgentIdentity:
     secret: str
 
     @classmethod
-    def from_env(cls, agent_id: str | None = None) -> "AgentIdentity | None":
+    def from_env(cls, agent_id: str | None = None) -> AgentIdentity | None:
         """Load agent identity from environment variables.
 
         Reads:
@@ -189,7 +192,7 @@ def sign_request(
         payload = payload.encode("utf-8")
     ts = timestamp if timestamp is not None else int(time.time())
     payload_hash = hashlib.sha256(payload).hexdigest()
-    message = f"{agent.agent_id}|{handler}|{ts}|{payload_hash}".encode("utf-8")
+    message = f"{agent.agent_id}|{handler}|{ts}|{payload_hash}".encode()
     return hmac.new(agent.secret.encode("utf-8"), message, hashlib.sha256).hexdigest()
 
 
@@ -242,7 +245,7 @@ def verify_request(
     if isinstance(payload, str):
         payload = payload.encode("utf-8")
     payload_hash = hashlib.sha256(payload).hexdigest()
-    message = f"{agent_id}|{handler}|{timestamp}|{payload_hash}".encode("utf-8")
+    message = f"{agent_id}|{handler}|{timestamp}|{payload_hash}".encode()
     expected = hmac.new(secret.encode("utf-8"), message, hashlib.sha256).hexdigest()
 
     if not hmac.compare_digest(expected, signature):
@@ -652,10 +655,7 @@ def secure_write_cortex(
     path = Path(file_path)
     path.parent.mkdir(parents=True, exist_ok=True)
 
-    if isinstance(content, bytes):
-        content_str = content.decode("utf-8")
-    else:
-        content_str = content
+    content_str = content.decode("utf-8") if isinstance(content, bytes) else content
 
     # 1. Sign first (signature covers content without headers).
     if sign_with:

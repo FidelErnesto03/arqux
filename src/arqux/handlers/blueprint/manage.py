@@ -6,11 +6,9 @@ update, gate, task
 from __future__ import annotations
 
 import re
-from typing import Any
 
 from ...cortex_out import CortexOUT
 from ...permissions import PermissionContext
-
 from ._helpers import (
     BP_DONE,
     BP_IN_PROGRESS,
@@ -27,7 +25,6 @@ from ._helpers import (
     _resolve_root,
     _write_blueprint,
 )
-
 
 # ---------------------------------------------------------------------------
 # blueprint.update

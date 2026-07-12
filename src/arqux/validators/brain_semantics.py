@@ -26,7 +26,6 @@ from ..constants import (
 )
 from .base import BaseValidator, ValidationResult
 
-
 # Regex matching a sigil entry: SIGIL:name{attrs}
 _SIGIL_ENTRY_RE = re.compile(
     r"(?P<sigil>[A-Z]+):(?P<name>[^\s{]+)\s*\{(?P<attrs>[^}]*)\}",

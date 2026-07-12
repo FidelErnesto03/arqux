@@ -24,15 +24,12 @@ import logging
 import re
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Optional, Protocol
+from typing import Any, Protocol
 
 from .constants import (
     ARQUX_DIR,
-    ArtifactKind,
-    ArtifactMetadata,
-    ArtifactUsage,
-    CortexLevel,
     IDENTITIES_DIR,
+    CortexLevel,
 )
 from .formats import (
     CortexArtifact,
@@ -300,7 +297,7 @@ class IdentityManager:
         body_text = body if body is not None else pattern
         attrs_parts = [
             f'name:"{lesson_id}"',
-            f'status:"current"',
+            'status:"current"',
             f'body:"{body_text}"',
             f'source_lesson:"{lesson_id}"',
         ]

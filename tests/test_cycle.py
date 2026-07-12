@@ -5,7 +5,6 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
-from arqux.constants import ARQUX_DIR, CYCLES_DIR
 from arqux.handlers import cycle, project, workspace
 
 

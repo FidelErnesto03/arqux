@@ -25,7 +25,6 @@ import pytest
 from arqux.handlers.cortex import verify_handler
 from arqux.permissions import PermissionContext
 
-
 # --- Fixtures ---------------------------------------------------------------
 
 REPO_ROOT = Path(__file__).parent.parent
@@ -205,10 +204,10 @@ def test_brain_after_task_complete_no_w002(
     Validates BC-2 fix: tasks_active should have status:"current",
     tasks_done should have status:"done" (NOT "active").
     """
-    from arqux.handlers.workspace import init_workspace
-    from arqux.handlers.project import init_project
     from arqux.handlers.cycle import create_cycle, mature_cycle
-    from arqux.handlers.task import create_task, claim_task, complete_task
+    from arqux.handlers.project import init_project
+    from arqux.handlers.task import claim_task, complete_task, create_task
+    from arqux.handlers.workspace import init_workspace
     from arqux.state import find_project_root
 
     # Init workspace + project + cycle + task + complete
@@ -231,7 +230,7 @@ def test_brain_after_task_complete_no_w002(
     diagnostics = (result.fields or {}).get("diagnostics", []) or []
     w002_diags = [d for d in diagnostics if "W002" in d]
     assert not w002_diags, (
-        f"brain.cortex has W002 diagnostics after task.complete (BC-2 not fixed):\n"
+        "brain.cortex has W002 diagnostics after task.complete (BC-2 not fixed):\n"
         + "\n".join(f"  - {d}" for d in w002_diags)
     )
 
@@ -241,9 +240,10 @@ def test_brain_after_task_complete_no_w002(
 def test_protocol_release_clears_env_vars(tmp_path: Path, governor_ctx: PermissionContext) -> None:
     """BC-7 fix: protocol.release must clear ARQUX_AGENT_ID/ROLE."""
     import os
+
     from arqux.constants import PRODUCT_NAME_UPPER
-    from arqux.handlers.workspace import init_workspace
     from arqux.handlers.protocol import adopt, release
+    from arqux.handlers.workspace import init_workspace
 
     init_workspace(path=str(tmp_path / ".arqux"), ctx=governor_ctx)
     adopt(agent_id="test-agent", role="executor")

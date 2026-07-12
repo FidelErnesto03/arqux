@@ -27,7 +27,6 @@ from .constants import ArtifactKind, ArtifactMetadata, ArtifactUsage, CortexLeve
 from .formats import (
     _LEGACY_METADATA_RE,
     _read_arqux_from_ast,
-    has_arqux_metadata,
     render_arqux_section,
 )
 

@@ -21,12 +21,10 @@ from arqux.constants import (
     ROLE_GOVERNOR,
 )
 from arqux.permissions import (
-    GOVERNOR_ONLY,
     HMAC_REQUIRED,
     PermissionContext,
     PermissionDenied,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helpers

@@ -113,7 +113,6 @@ class TestFixBakFiles:
 
         # Mock git ls-files to return our .bak file.
         import subprocess
-        from unittest.mock import patch
         def mock_run(cmd, **kwargs):
             class R:
                 stdout = ".arqux/brain.cortex.bak\n" if "ls-files" in cmd else ""

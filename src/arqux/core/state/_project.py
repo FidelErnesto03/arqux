@@ -9,9 +9,7 @@ from pathlib import Path
 from typing import Any
 
 from ...constants import ARQUX_DIR, BRAIN_CORTEX, META_BRAIN_CORTEX
-
 from . import _HAS_CODEC_CORTEX, _cc_parser
-
 
 #: Name of the session context file inside ``.arqux/``.
 CONTEXT_CORTEX: str = "context.cortex"
@@ -81,7 +79,6 @@ def parse_cortex_file(path: Path) -> tuple[dict[str, Any], str]:
                 target = sigil_section_map.get(sec_title, sec_title)
                 if target is None:
                     continue
-                fm_key = f"sec_{target}"
                 body_parts.append(f"# {target}")
                 body_parts.append("")
                 for entry in sec.entries:

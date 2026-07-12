@@ -6,10 +6,10 @@ paths by calling handlers directly (not through the CLI).
 
 from __future__ import annotations
 
-import os
 import re
 from pathlib import Path
 
+from arqux.handlers.blueprint._read import list_blueprints, read_blueprint
 from arqux.handlers.blueprint.lifecycle import (
     assign_blueprint,
     claim_blueprint,
@@ -28,10 +28,6 @@ from arqux.handlers.blueprint.review import (
     fail_blueprint,
     re_delegate_blueprint,
 )
-from arqux.handlers.blueprint._read import list_blueprints, read_blueprint
-from arqux.constants import ROLE_GOVERNOR, ROLE_EXECUTOR
-from arqux.permissions import PermissionContext
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -74,10 +70,7 @@ def _set_fm(proj_root: Path, bp_id: str, key: str, value) -> None:
     bp_file = _bp_path(proj_root, bp_id)
     text = bp_file.read_text(encoding="utf-8")
     pattern = rf"^{re.escape(key)}:\s*.+$"
-    if isinstance(value, bool):
-        replacement = f"{key}: {str(value).lower()}"
-    else:
-        replacement = f'{key}: "{value}"'
+    replacement = f"{key}: {str(value).lower()}" if isinstance(value, bool) else f'{key}: "{value}"'
 
     if re.search(pattern, text, re.MULTILINE):
         text = re.sub(pattern, replacement, text, count=1, flags=re.MULTILINE)

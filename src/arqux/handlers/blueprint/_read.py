@@ -2,18 +2,13 @@
 
 from __future__ import annotations
 
-from pathlib import Path
-from typing import Any
-
 from ...constants import (
     BLUEPRINTS_DIR,
     CYCLES_DIR,
 )
 from ...cortex_out import CortexOUT
 from ...permissions import PermissionContext
-
-from ._helpers import _find_blueprint, _resolve_root, _read_blueprint
-
+from ._helpers import _find_blueprint, _read_blueprint, _resolve_root
 
 # ---------------------------------------------------------------------------
 # blueprint.read

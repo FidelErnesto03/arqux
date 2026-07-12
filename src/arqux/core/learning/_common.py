@@ -6,7 +6,7 @@ import logging
 from pathlib import Path
 from typing import Any
 
-from ...constants import ARQUX_DIR, BRAIN_CORTEX
+from ...constants import ARQUX_DIR
 
 logger = logging.getLogger(__name__)
 
@@ -15,11 +15,11 @@ try:
     from cortex.core.ast import CortexDocument, Entry
     from cortex.core.parser import parse_cortex
     from cortex.core.writer import write_cortex
+    from cortex.learning.candidates import detect_candidates
+    from cortex.learning.elevation import apply_patch, plan_patch, render_diff
+    from cortex.learning.errors import LearningError
     from cortex.learning.index import rebuild_index
     from cortex.learning.policy import parse_policy_document
-    from cortex.learning.candidates import detect_candidates
-    from cortex.learning.elevation import plan_patch, apply_patch, render_diff
-    from cortex.learning.errors import LearningError
 
     _HAS_CLE = True
 except ImportError:
@@ -81,9 +81,10 @@ def _build_brain_doc(project_root: Path) -> CortexDocument | None:
     Uses the existing ``formats._build_brain_doc()`` to convert sections
     dict → CortexDocument so the learning engine can process it.
     """
-    from ...state import read_brain
-    from ...formats import _build_brain_doc as _build_doc
     from cortex.core.ast import CortexDocument as CDoc
+
+    from ...formats import _build_brain_doc as _build_doc
+    from ...state import read_brain
 
     fm, sections, _ = read_brain(project_root)
     doc = CDoc()

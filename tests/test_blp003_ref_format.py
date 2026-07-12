@@ -4,9 +4,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from arqux.handlers.cortex import ref_handler, format_handler
+from arqux.handlers.cortex import format_handler, ref_handler
 from arqux.permissions import PermissionContext
-
 
 _CONTEXT = PermissionContext(agent_id="test", role="governor")
 

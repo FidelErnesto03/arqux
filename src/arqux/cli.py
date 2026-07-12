@@ -22,14 +22,12 @@ from __future__ import annotations
 import json
 import sys
 from pathlib import Path
-from typing import Any, Sequence
+from typing import Any
 
 import click
 
 from . import __version__
-from .constants import PRODUCT_NAME, PRODUCT_NAME_TITLE
-
-
+from .constants import PRODUCT_NAME
 
 
 def _call_handler(name: str, raw_args: list[str]) -> str:
@@ -107,9 +105,9 @@ def cmd_init(path: str | None, verbose: bool):
 @click.option("--dashboard", is_flag=True, help="Show visual workspace dashboard.")
 def cmd_status(path: str | None, verbose: bool, dashboard: bool):
     """Print workspace + project + cycle status."""
-    from .handlers.workspace import status as ws_status
-    from .handlers.project import status as pr_status
     from .handlers.cycle import current_cycle
+    from .handlers.project import status as pr_status
+    from .handlers.workspace import status as ws_status
 
     if dashboard:
         result = ws_status(dashboard=True, path=path)
@@ -171,7 +169,7 @@ def cmd_cortex_verify(path: str):
         0 — integrity verified
         1 — tamper detected or no $INTEGRITY header
     """
-    from .security import verify_cortex, TamperError
+    from .security import TamperError, verify_cortex
     try:
         verify_cortex(path)
         click.echo(f"OK: {path} integrity verified")

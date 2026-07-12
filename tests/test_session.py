@@ -5,7 +5,7 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
-from arqux.handlers import session, workspace, project
+from arqux.handlers import project, session, workspace
 
 
 def _setup_project(workspace_root: Path, ctx) -> Path:

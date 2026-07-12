@@ -41,7 +41,7 @@ class ValidationResult:
                                              section=section,
                                              severity="warning"))
 
-    def merge(self, other: "ValidationResult") -> None:
+    def merge(self, other: ValidationResult) -> None:
         self.errors.extend(other.errors)
         self.warnings.extend(other.warnings)
         if not other.is_valid:
@@ -90,8 +90,5 @@ class BaseValidator:
         # Find the next $-section marker after `start`.
         next_section = re.search(r"^\s*\$\d+\s*:?\s*[A-Z_]*\s*$", body[start:],
                                  re.MULTILINE)
-        if next_section:
-            end = start + next_section.start()
-        else:
-            end = len(body)
+        end = start + next_section.start() if next_section else len(body)
         return body[start:end].strip()

@@ -6,14 +6,12 @@ from pathlib import Path
 from typing import Any
 
 from ...constants import ARQUX_DIR, IDENTITIES_DIR
-from ._common import _HAS_CLE, _resolve_project_root
+from ._common import _resolve_project_root
 from ._elevate import elevate_candidate
 from ._lesson import (
     AgentIdentityError,
     ContainerIdentityError,
     InsufficientConfidenceError,
-    Lesson,
-    LessonNotFoundError,
     LessonStore,
 )
 
