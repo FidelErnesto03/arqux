@@ -8,7 +8,7 @@ Handlers:
 
 from __future__ import annotations
 
-from .get import get_handler, DEFAULT_AGENT
+from .get import DEFAULT_AGENT, get_handler
 
 __all__ = [
     "get_handler",
@@ -17,14 +17,14 @@ __all__ = [
 ]
 
 handler_schemas = [
-    dict(
-        name="identity.get",
-        fn=get_handler,
-        description=(
+    {
+        "name": "identity.get",
+        "fn": get_handler,
+        "description": (
             "Return agent identity data from .arqux/identities/<agent>.cortex "
             "or the packaged identities. Default agent_id is 'alfred'."
         ),
-        input_schema={
+        "input_schema": {
             "type": "object",
             "properties": {
                 "agent_id": {
@@ -34,5 +34,5 @@ handler_schemas = [
                 "path": {"type": "string", "description": "Starting path for resolving the project/workspace root."},
             },
         },
-    ),
+    },
 ]

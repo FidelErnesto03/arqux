@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from . import _HAS_CODEC_CORTEX, _cc_parser, _cc_renderer, _cc_validator, _cc_writer
+from . import _cc_parser, _cc_validator, _cc_writer
 from ._crud import requires_codec_cortex
 
 
@@ -84,7 +84,8 @@ def migrate_cortex_file(path: Path, *, dry_run: bool = False) -> bool:
         pass
 
     # Build a new clean CortexDocument from scratch.
-    from cortex.core.ast import CortexDocument, Section, Entry as CEntry, SigilDef
+    from cortex.core.ast import CortexDocument, Section, SigilDef
+    from cortex.core.ast import Entry as CEntry
 
     new_doc = CortexDocument()
 

@@ -8,13 +8,13 @@ Submodules:
 
 from __future__ import annotations
 
+from .parse_content import parse_content_entry
 from .sigils import (
     SIGIL_CACHE,
     get_sigil,
     list_sigils,
     register_sigil,
 )
-from .parse_content import parse_content_entry
 
 __all__ = [
     "SIGIL_CACHE",

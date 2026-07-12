@@ -18,17 +18,16 @@ from pathlib import Path
 import pytest
 
 from arqux.core.state._crud import (
+    cortex_read,
+    cortex_verify,
+    cortex_write,
     crud_add,
     crud_delete,
     crud_list,
     crud_move,
     crud_read,
     crud_update,
-    cortex_read,
-    cortex_verify,
-    cortex_write,
 )
-
 
 VALID_CORTEX = """$0
 # Sigil | Name | Type | Risk | Cognitive Layer | Description

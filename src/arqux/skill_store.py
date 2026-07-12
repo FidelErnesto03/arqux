@@ -21,25 +21,22 @@ Architectural blocking rules (BLP-040 §16):
 from __future__ import annotations
 
 import logging
-import shutil
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 from .constants import (
+    W005_MISSING_ORIGINAL_REF,
     ArtifactKind,
     ArtifactMetadata,
     ArtifactUsage,
     CortexLevel,
-    W005_MISSING_ORIGINAL_REF,
 )
 from .formats import (
-    CortexArtifact,
     _ARQUX_GLOSSARY_TEXT,
     read_cortex_artifact,
     render_arqux_section,
 )
-from .migrator import migrate_skill_file
 
 logger = logging.getLogger(__name__)
 
@@ -62,8 +59,8 @@ class STPDeclaration:
     name: str = ""
     usage: str = "skill"
     kind: str = "native"  # native | inherited | adapted
-    source: Optional[str] = None
-    upstream_version: Optional[str] = None
+    source: str | None = None
+    upstream_version: str | None = None
 
     def to_metadata(self) -> ArtifactMetadata:
         return ArtifactMetadata(
@@ -82,7 +79,7 @@ class SkillContract:
     declaration: STPDeclaration
     content: str
     path: Path
-    original_ref: Optional[str] = None  # set for adapted skills
+    original_ref: str | None = None  # set for adapted skills
     warnings: list[str] = field(default_factory=list)
 
     @property
@@ -177,9 +174,9 @@ class AdaptedStore:
         self,
         name: str,
         content: str,
-        original_ref: Optional[str] = None,
+        original_ref: str | None = None,
         *,
-        declaration: Optional[STPDeclaration] = None,
+        declaration: STPDeclaration | None = None,
     ) -> Path:
         """Persist an adapted (or native) skill.
 
@@ -344,7 +341,7 @@ class SkillRepository:
         name: str,
         content: str,
         *,
-        upstream_version: Optional[str] = None,
+        upstream_version: str | None = None,
     ) -> dict[str, Any]:
         """Import a third-party skill (BLP-040 T-040.5).
 
@@ -379,7 +376,7 @@ class SkillRepository:
 
     # --- Internals ---
 
-    def _resolve_native(self, name: str) -> Optional[Path]:
+    def _resolve_native(self, name: str) -> Path | None:
         """Resolve a packaged native .skill.md by name.
 
         Looks in ``arqux/skills/<name>.skill.md`` (the framework's bundled

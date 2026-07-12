@@ -25,7 +25,6 @@ from pathlib import Path
 
 import pytest
 
-
 # Construct placeholder tokens via concatenation so the rename script
 # (which replaces the literal `arqux`) does not corrupt these
 # constants. After rename, these still evaluate to the original placeholders.

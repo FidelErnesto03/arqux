@@ -8,17 +8,16 @@ Uses temp file + rename for atomicity. Supports dry_run mode.
 
 from __future__ import annotations
 
+import contextlib
 import os
 import tempfile
 from pathlib import Path
-from typing import Any
 
-from ...cortex_out import CortexOUT
 from ...cortex.parse_content import parse_content_entry
+from ...cortex_out import CortexOUT
 from ...permissions import PermissionContext
 from ...pulse import append_pulse_to_brain, next_pulse_event_id
 from ...state import find_project_root
-
 
 VALID_TRANSFORMS = ("reseccionar", "resigilar")
 
@@ -107,10 +106,8 @@ def migrate_handler(
             f.write(migrated_text)
         os.replace(tmp_path, target)
     except Exception:
-        try:
+        with contextlib.suppress(OSError):
             os.unlink(tmp_path)
-        except OSError:
-            pass
         raise
 
     _record_pulse(source_path, ctx, transform=transform, target=target_path)

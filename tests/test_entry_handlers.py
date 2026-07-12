@@ -5,15 +5,13 @@ from __future__ import annotations
 from pathlib import Path
 
 from arqux.handlers.cortex import (
-    entry_get_handler,
     entry_add_handler,
-    entry_update_handler,
     entry_delete_handler,
-    entry_move_handler,
+    entry_get_handler,
     entry_list_handler,
+    entry_update_handler,
 )
 from arqux.permissions import PermissionContext
-
 
 _CONTEXT = PermissionContext(agent_id="test", role="governor")
 

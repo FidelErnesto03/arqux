@@ -5,14 +5,12 @@ from __future__ import annotations
 from pathlib import Path
 
 from arqux.state import (
-    crud_read,
     crud_add,
-    crud_update,
     crud_delete,
-    crud_move,
     crud_list,
+    crud_read,
+    crud_update,
 )
-
 
 _SAMPLE_CORTEX = """$0
 
@@ -117,6 +115,6 @@ def test_crud_read_not_found(tmp_path: Path) -> None:
     f = tmp_path / "nonexistent.cortex"
     try:
         crud_read(f, "FCS:*")
-        assert False, "should raise"
+        raise AssertionError("should raise")
     except FileNotFoundError:
         pass

@@ -22,11 +22,11 @@ from __future__ import annotations
 import enum
 import os
 import warnings
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Any, Callable, TypeVar
+from typing import Any, TypeVar
 
 from .constants import (
-    PERMISSION_DENIED,
     PRODUCT_NAME_UPPER,
     ROLE_AUDITOR,
     ROLE_EXECUTOR,
@@ -48,7 +48,7 @@ class Role(str, enum.Enum):
     AUDITOR = ROLE_AUDITOR
 
     @classmethod
-    def from_string(cls, value: str) -> "Role":
+    def from_string(cls, value: str) -> Role:
         """Parse a role from its string representation.
 
         Raises:
@@ -62,7 +62,7 @@ class Role(str, enum.Enum):
             )
 
     @classmethod
-    def from_env(cls) -> "Role":
+    def from_env(cls) -> Role:
         """Load role from ARQUX_AGENT_ROLE env var (defaults to GOVERNOR)."""
         prefix = f"{PRODUCT_NAME_UPPER}_"
         role_str = os.environ.get(f"{prefix}AGENT_ROLE", ROLE_GOVERNOR)
@@ -173,7 +173,7 @@ class PermissionContext:
     verified: bool = False  # True if HMAC signature has been verified
 
     @classmethod
-    def from_env(cls) -> "PermissionContext":
+    def from_env(cls) -> PermissionContext:
         prefix = f"{PRODUCT_NAME_UPPER}_"
         agent_id = os.environ.get(f"{prefix}AGENT_ID", "anonymous")
         role = os.environ.get(f"{prefix}AGENT_ROLE", ROLE_GOVERNOR)
@@ -296,10 +296,7 @@ class PermissionContext:
     @staticmethod
     def _matches_prefix(handler: str, prefixes: tuple[str, ...]) -> bool:
         """Check if handler matches any prefix (exact or starts-with)."""
-        for p in prefixes:
-            if handler == p or handler.startswith(p + "."):
-                return True
-        return False
+        return any(handler == p or handler.startswith(p + ".") for p in prefixes)
 
 
 def deny(role: str, handler: str, reason: str = "not_allowed") -> PermissionDenied:
@@ -310,11 +307,11 @@ def deny(role: str, handler: str, reason: str = "not_allowed") -> PermissionDeni
 
 
 def enforce_ctx(
-    ctx: "PermissionContext | None",
+    ctx: PermissionContext | None,
     handler: str,
     *,
     require_hmac: bool = False,
-) -> "PermissionContext":
+) -> PermissionContext:
     """Ensure a valid PermissionContext is available for a handler.
 
     If ctx is None, loads from env. Then runs role check.
@@ -367,6 +364,6 @@ def require_role(*allowed_roles: Role) -> Callable[[F], F]:
     def decorator(fn: F) -> F:
         # We rely on the handler calling enforce_ctx() inside.
         # The decorator just adds metadata that can be introspected.
-        setattr(fn, "_required_roles", set(r.value for r in allowed_roles))
+        fn._required_roles = {r.value for r in allowed_roles}
         return fn
     return decorator

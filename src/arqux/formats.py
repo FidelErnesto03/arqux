@@ -29,19 +29,23 @@ Design (sigil mapping):
 """
 from __future__ import annotations
 
+import contextlib
 import logging
 import re
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Optional
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from cortex.core.ast import Entry
 
 from .constants import (
+    W001_NO_METADATA,
     ArtifactKind,
     ArtifactMetadata,
     ArtifactUsage,
     CortexLevel,
-    W001_NO_METADATA,
 )
 
 logger = logging.getLogger(__name__)
@@ -100,7 +104,7 @@ class CortexArtifact:
     metadata: ArtifactMetadata
     payload: str
     filename: str = ""
-    path: Optional[Path] = None
+    path: Path | None = None
     warnings: list[str] = field(default_factory=list)
 
     @property
@@ -113,7 +117,7 @@ class CortexArtifact:
 # ---------------------------------------------------------------------------
 
 
-def _read_arqux_from_ast(text: str) -> Optional[dict[str, Any]]:
+def _read_arqux_from_ast(text: str) -> dict[str, Any] | None:
     """Parse ``text`` with CODEC-CORTEX and extract ARQX:artifact attrs.
 
     Returns the parsed attrs dict, or None if no ARQX:artifact entry found
@@ -134,7 +138,7 @@ def _read_arqux_from_ast(text: str) -> Optional[dict[str, Any]]:
         return None
 
 
-def _read_legacy_metadata(text: str) -> Optional[dict[str, Any]]:
+def _read_legacy_metadata(text: str) -> dict[str, Any] | None:
     """Fallback: extract metadata from legacy ``# §0 METADATA{...}`` block."""
     match = _LEGACY_METADATA_RE.search(text)
     if not match:
@@ -288,10 +292,7 @@ def read_cortex_artifact(path: str | Path) -> CortexArtifact:
     """
     p = Path(path)
     raw = p.read_text(encoding="utf-8")
-    if _read_arqux_from_ast(raw) is not None:
-        metadata = read_arqux_metadata(raw)
-        warnings = []
-    elif _LEGACY_METADATA_RE.search(raw) is not None:
+    if _read_arqux_from_ast(raw) is not None or _LEGACY_METADATA_RE.search(raw) is not None:
         metadata = read_arqux_metadata(raw)
         warnings = []
     else:
@@ -461,13 +462,8 @@ def _parse_attrs(text: str) -> dict[str, Any]:
             elif value == 'false':
                 value = False
             else:
-                try:
-                    if '.' in value:
-                        value = float(value)
-                    else:
-                        value = int(value)
-                except (ValueError, TypeError):
-                    pass
+                with contextlib.suppress(ValueError, TypeError):
+                    value = float(value) if '.' in value else int(value)
         result[key] = value
     return result
 
@@ -500,7 +496,7 @@ def _build_doc(stem: str, frontmatter: dict, body):
     Returns a document that, when passed to write_cortex(), produces
     canonical single-line attrs with valid $0 glossary.
     """
-    from cortex.core.ast import CortexDocument, Section, Entry, SigilDef
+    from cortex.core.ast import CortexDocument, Section, SigilDef
 
     doc = CortexDocument()
 
@@ -872,7 +868,6 @@ def _add_arqux_meta_section(parts: list[str], frontmatter: dict, default_name: s
     name = frontmatter.get("name", default_name)
     usage = frontmatter.get("usage", "state")
     kind = frontmatter.get("kind", "native")
-    entries: list[str] = []
     vals: list[str] = []
     vals.append(f'level:{level}')
     vals.append(f'name:"{name}"')
@@ -1049,7 +1044,6 @@ def task_to_cortex(frontmatter: dict, body: str) -> str:
     for key in ("NOTE", "EVIDENCE"):
         content = sections.get(key, "")
         if content:
-            import json
             parts.append(_fmt_section(sec_num, key, [_fmt_entry("AUD", key.lower(), {"text": content})]))
             sec_num += 1
     return "\n".join(parts) + "\n"

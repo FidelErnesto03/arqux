@@ -22,11 +22,9 @@ from typing import Any
 
 from ..constants import (
     ARQUX_DIR,
-    CYCLES_DIR,
     CYCLE_CLOSED,
     CYCLE_OPEN,
-    OUT_WORK,
-    TASKS_DIR,
+    CYCLES_DIR,
     TASK_BLOCKED,
     TASK_CANCELLED,
     TASK_DONE,
@@ -34,6 +32,7 @@ from ..constants import (
     TASK_IN_PROGRESS,
     TASK_OPEN,
     TASK_REVIEW,
+    TASKS_DIR,
 )
 from ..cortex_out import CortexOUT
 from ..permissions import PermissionContext, enforce_ctx
@@ -41,11 +40,12 @@ from ..state import (
     cycle_dir,
     find_project_root,
     next_cycle_id,
-    parse_cortex_file as _parse_cortex_file,
     write_cortex_pair,
 )
+from ..state import (
+    parse_cortex_file as _parse_cortex_file,
+)
 from ..sync import sync_brain
-
 
 # --- Cycle states (NEW in v0.4.0) -----------------------------------------
 # Previously cycles only had "open" and "closed" states. The MANIFEST.md
@@ -441,7 +441,7 @@ def close_cycle(
         "candidates": [],
     }
     try:
-        from ..learning import scan_brain, list_candidates
+        from ..learning import list_candidates, scan_brain
 
         project_dir = root.parent
         scan = scan_brain(project_dir, verbose=True)
@@ -522,9 +522,9 @@ def close_cycle(
 
 
 handler_schemas = [
-    dict(name="cycle.create", fn=create_cycle, description="Open a new cycle in the active project.", input_schema={"type": "object", "properties": {"name": {"type": "string"}, "description": {"type": "string"}, "path": {"type": "string", "description": "Path to project root. Defaults to cwd."}}}),
-    dict(name="cycle.list", fn=list_cycles, description="List cycles in the active project.", input_schema={"type": "object", "properties": {"status": {"type": "string", "enum": ["open", "closed"]}, "path": {"type": "string", "description": "Path to project root. Defaults to cwd."}}}),
-    dict(name="cycle.current", fn=current_cycle, description="Get the currently active cycle.", input_schema={"type": "object", "properties": {"path": {"type": "string", "description": "Path to project root. Defaults to cwd."}}}),
-    dict(name="cycle.mature", fn=mature_cycle, description="Mature a cycle (draft → ready).", input_schema={"type": "object", "properties": {"cycle_id": {"type": "string"}, "path": {"type": "string", "description": "Path to project root. Defaults to cwd."}}}),
-    dict(name="cycle.close", fn=close_cycle, description="Close a cycle (no new tasks can be added).", input_schema={"type": "object", "properties": {"cycle_id": {"type": "string"}, "summary": {"type": "string"}, "path": {"type": "string", "description": "Path to project root. Defaults to cwd."}}, "required": ["cycle_id"]}),
+    {"name": "cycle.create", "fn": create_cycle, "description": "Open a new cycle in the active project.", "input_schema": {"type": "object", "properties": {"name": {"type": "string"}, "description": {"type": "string"}, "path": {"type": "string", "description": "Path to project root. Defaults to cwd."}}}},
+    {"name": "cycle.list", "fn": list_cycles, "description": "List cycles in the active project.", "input_schema": {"type": "object", "properties": {"status": {"type": "string", "enum": ["open", "closed"]}, "path": {"type": "string", "description": "Path to project root. Defaults to cwd."}}}},
+    {"name": "cycle.current", "fn": current_cycle, "description": "Get the currently active cycle.", "input_schema": {"type": "object", "properties": {"path": {"type": "string", "description": "Path to project root. Defaults to cwd."}}}},
+    {"name": "cycle.mature", "fn": mature_cycle, "description": "Mature a cycle (draft → ready).", "input_schema": {"type": "object", "properties": {"cycle_id": {"type": "string"}, "path": {"type": "string", "description": "Path to project root. Defaults to cwd."}}}},
+    {"name": "cycle.close", "fn": close_cycle, "description": "Close a cycle (no new tasks can be added).", "input_schema": {"type": "object", "properties": {"cycle_id": {"type": "string"}, "summary": {"type": "string"}, "path": {"type": "string", "description": "Path to project root. Defaults to cwd."}}, "required": ["cycle_id"]}},
 ]

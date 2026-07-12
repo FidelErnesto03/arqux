@@ -8,22 +8,18 @@ import pytest
 
 from arqux.constants import (
     ARQUX_DIR,
-    ArtifactKind,
-    ArtifactMetadata,
-    ArtifactUsage,
     CortexLevel,
 )
 from arqux.formats import CortexArtifact
 from arqux.identity import (
     DEFAULT_AGENT,
+    KNOWN_AGENTS,
     IdentityManager,
     IdentityNotFoundError,
     InvalidContractTypeError,
-    KNOWN_AGENTS,
     SessionContext,
     _extract_contracts,
 )
-
 
 # --- Fixtures ---------------------------------------------------------------
 

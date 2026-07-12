@@ -230,8 +230,8 @@ body here
 def test_call_blueprint_list(tmp_path) -> None:
     """arqux call blueprint.list returns data without error."""
     from arqux.cli import main
-    from arqux.handlers.workspace import init_workspace
     from arqux.handlers.project import init_project
+    from arqux.handlers.workspace import init_workspace
 
     init_workspace(path=str(tmp_path))
     # blueprint.list requires a project to be initialized
@@ -368,8 +368,8 @@ def test_status_with_path(tmp_path) -> None:
 def test_call_with_json_arg(tmp_path) -> None:
     """arqux call with JSON value in arg works."""
     from arqux.cli import main
-    from arqux.handlers.workspace import init_workspace
     from arqux.handlers.project import init_project
+    from arqux.handlers.workspace import init_workspace
 
     init_workspace(path=str(tmp_path))
     project_dir = tmp_path / "myproject"

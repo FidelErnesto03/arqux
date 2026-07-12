@@ -6,7 +6,6 @@ import time
 from dataclasses import dataclass
 from typing import Any
 
-
 # --- Exceptions (BLP-038 §10) ------------------------------------------------
 
 class LessonNotFoundError(Exception):

@@ -8,10 +8,8 @@ Usage:
 from __future__ import annotations
 
 import hashlib
-import os
 import shutil
 import tarfile
-import tempfile
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -33,10 +31,7 @@ EXCLUDE_PATTERNS = (
 
 def _should_exclude(name: str) -> bool:
     import fnmatch
-    for pat in EXCLUDE_PATTERNS:
-        if fnmatch.fnmatch(name, pat):
-            return True
-    return False
+    return any(fnmatch.fnmatch(name, pat) for pat in EXCLUDE_PATTERNS)
 
 
 def _timestamp() -> str:

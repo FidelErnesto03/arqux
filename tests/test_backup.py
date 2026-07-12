@@ -16,7 +16,7 @@ from pathlib import Path
 
 import pytest
 
-from arqux.backup import backup, restore, _compute_sha256, _should_exclude
+from arqux.backup import _compute_sha256, _should_exclude, backup, restore
 from arqux.handlers.workspace import init_workspace
 
 
@@ -95,7 +95,7 @@ class TestRestore:
         assert not (workspace_with_state / ".arqux").exists()
 
         # Restore
-        result = restore(str(backup_file))
+        restore(str(backup_file))
         assert (workspace_with_state / ".arqux").exists()
         assert (workspace_with_state / ".arqux" / "sentinel.txt").exists()
 

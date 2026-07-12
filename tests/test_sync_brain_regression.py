@@ -13,8 +13,8 @@ from pathlib import Path
 
 import pytest
 
-from arqux.handlers.workspace import init_workspace
 from arqux.handlers.project import init_project
+from arqux.handlers.workspace import init_workspace
 from arqux.sync import sync_brain
 
 

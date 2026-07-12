@@ -9,7 +9,6 @@ import pytest
 from arqux.handlers import cortex as cortex_handlers
 from arqux.permissions import PermissionContext
 
-
 # --- Fixtures ---------------------------------------------------------------
 
 @pytest.fixture

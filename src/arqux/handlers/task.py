@@ -17,16 +17,13 @@ from typing import Any
 
 from ..constants import (
     CYCLES_DIR,
-    OUT_WORK,
-    TASKS_DIR,
     TASK_BLOCKED,
-    TASK_CANCELLED,
     TASK_DONE,
     TASK_DRAFT,
     TASK_IN_PROGRESS,
     TASK_OPEN,
-    TASK_REVIEW,
     TASK_TRANSITIONS,
+    TASKS_DIR,
 )
 from ..cortex_out import CortexOUT
 from ..permissions import PermissionContext
@@ -34,9 +31,10 @@ from ..state import (
     cycle_dir,
     find_project_root,
     next_task_id,
-    parse_cortex_file as _parse_cortex_file,
-    task_path,
     write_cortex_pair,
+)
+from ..state import (
+    parse_cortex_file as _parse_cortex_file,
 )
 from ..sync import sync_brain
 
@@ -229,10 +227,7 @@ def complete_task(
 
     fm["status"] = TASK_DONE
     fm["updated"] = _now_iso()
-    if evidence:
-        new_body = body.rstrip() + f"\n\n# EVIDENCE\n{evidence}\n"
-    else:
-        new_body = body
+    new_body = body.rstrip() + f"\n\n# EVIDENCE\n{evidence}\n" if evidence else body
     write_cortex_pair(path.parent, task_id, fm, new_body)
 
     # Record in the brain's PULSE section (not a separate file).
@@ -573,12 +568,12 @@ def _record_run_pulse(
 
 
 handler_schemas = [
-    dict(name="task.create", fn=create_task, description="Create a governed task in the current cycle. Accepts a 'content' CORTEX entry string (BLP-009) with keys obj, pre[], proc[], ac[], blk[], assignee, complexity, priority — parsed values override individual params (merge rule: content wins).", input_schema={"type": "object", "properties": {"obj": {"type": "string"}, "pre": {"type": "array", "items": {"type": "string"}}, "proc": {"type": "array", "items": {"type": "string"}}, "ac": {"type": "array", "items": {"type": "string"}}, "blk": {"type": "array", "items": {"type": "string"}}, "assignee": {"type": "string"}, "complexity": {"type": "string", "enum": ["simple", "standard", "complex"]}, "priority": {"type": "string", "enum": ["low", "medium", "high"]}, "content": {"type": "string", "description": "CORTEX entry string with keys obj,pre[],proc[],ac[],blk[],assignee,complexity,priority. Lists as key:[v1,v2,v3]. Parsed values override individual params (BLP-009)."}, "path": {"type": "string", "description": "Path to project root. Defaults to cwd."}}, "required": ["obj"]}),
-    dict(name="task.claim", fn=claim_task, description="An executor claims a task → status: in_progress.", input_schema={"type": "object", "properties": {"task_id": {"type": "string"}, "path": {"type": "string", "description": "Path to project root. Defaults to cwd."}}, "required": ["task_id"]}),
-    dict(name="task.update", fn=update_task, description="Update task progress, optionally change status.", input_schema={"type": "object", "properties": {"task_id": {"type": "string"}, "note": {"type": "string"}, "status": {"type": "string"}, "path": {"type": "string", "description": "Path to project root. Defaults to cwd."}}, "required": ["task_id", "note"]}),
-    dict(name="task.complete", fn=complete_task, description="Mark a task done and record evidence.", input_schema={"type": "object", "properties": {"task_id": {"type": "string"}, "evidence": {"type": "string"}, "path": {"type": "string", "description": "Path to project root. Defaults to cwd."}}, "required": ["task_id"]}),
-    dict(name="task.fail", fn=fail_task, description="Mark a task blocked and record the cause.", input_schema={"type": "object", "properties": {"task_id": {"type": "string"}, "reason": {"type": "string"}, "path": {"type": "string", "description": "Path to project root. Defaults to cwd."}}, "required": ["task_id", "reason"]}),
-    dict(name="task.read", fn=read_task, description="Read a task (CORTEX or HCORTEX format).", input_schema={"type": "object", "properties": {"task_id": {"type": "string"}, "format": {"type": "string", "enum": ["cortex", "hcortex"], "default": "cortex"}, "path": {"type": "string", "description": "Path to project root. Defaults to cwd."}}, "required": ["task_id"]}),
-    dict(name="task.list", fn=list_tasks, description="List tasks with filters.", input_schema={"type": "object", "properties": {"status": {"type": "string"}, "assignee": {"type": "string"}, "cycle": {"type": "string"}, "path": {"type": "string", "description": "Path to project root. Defaults to cwd."}}}),
-    dict(name="task.run", fn=run_task, description="Run a governed task: verify preconditions, execute procedure steps, mark complete or fail (BLP-010 meta-handler). Supports dry_run mode.", input_schema={"type": "object", "properties": {"task_id": {"type": "string"}, "content": {"type": "string", "description": "CORTEX content with keys task_id, evidence, fail_reason."}, "dry_run": {"type": "boolean", "default": False, "description": "If true, report what would happen without modifying state."}, "path": {"type": "string"}}, "required": ["task_id"]}),
+    {"name": "task.create", "fn": create_task, "description": "Create a governed task in the current cycle. Accepts a 'content' CORTEX entry string (BLP-009) with keys obj, pre[], proc[], ac[], blk[], assignee, complexity, priority — parsed values override individual params (merge rule: content wins).", "input_schema": {"type": "object", "properties": {"obj": {"type": "string"}, "pre": {"type": "array", "items": {"type": "string"}}, "proc": {"type": "array", "items": {"type": "string"}}, "ac": {"type": "array", "items": {"type": "string"}}, "blk": {"type": "array", "items": {"type": "string"}}, "assignee": {"type": "string"}, "complexity": {"type": "string", "enum": ["simple", "standard", "complex"]}, "priority": {"type": "string", "enum": ["low", "medium", "high"]}, "content": {"type": "string", "description": "CORTEX entry string with keys obj,pre[],proc[],ac[],blk[],assignee,complexity,priority. Lists as key:[v1,v2,v3]. Parsed values override individual params (BLP-009)."}, "path": {"type": "string", "description": "Path to project root. Defaults to cwd."}}, "required": ["obj"]}},
+    {"name": "task.claim", "fn": claim_task, "description": "An executor claims a task → status: in_progress.", "input_schema": {"type": "object", "properties": {"task_id": {"type": "string"}, "path": {"type": "string", "description": "Path to project root. Defaults to cwd."}}, "required": ["task_id"]}},
+    {"name": "task.update", "fn": update_task, "description": "Update task progress, optionally change status.", "input_schema": {"type": "object", "properties": {"task_id": {"type": "string"}, "note": {"type": "string"}, "status": {"type": "string"}, "path": {"type": "string", "description": "Path to project root. Defaults to cwd."}}, "required": ["task_id", "note"]}},
+    {"name": "task.complete", "fn": complete_task, "description": "Mark a task done and record evidence.", "input_schema": {"type": "object", "properties": {"task_id": {"type": "string"}, "evidence": {"type": "string"}, "path": {"type": "string", "description": "Path to project root. Defaults to cwd."}}, "required": ["task_id"]}},
+    {"name": "task.fail", "fn": fail_task, "description": "Mark a task blocked and record the cause.", "input_schema": {"type": "object", "properties": {"task_id": {"type": "string"}, "reason": {"type": "string"}, "path": {"type": "string", "description": "Path to project root. Defaults to cwd."}}, "required": ["task_id", "reason"]}},
+    {"name": "task.read", "fn": read_task, "description": "Read a task (CORTEX or HCORTEX format).", "input_schema": {"type": "object", "properties": {"task_id": {"type": "string"}, "format": {"type": "string", "enum": ["cortex", "hcortex"], "default": "cortex"}, "path": {"type": "string", "description": "Path to project root. Defaults to cwd."}}, "required": ["task_id"]}},
+    {"name": "task.list", "fn": list_tasks, "description": "List tasks with filters.", "input_schema": {"type": "object", "properties": {"status": {"type": "string"}, "assignee": {"type": "string"}, "cycle": {"type": "string"}, "path": {"type": "string", "description": "Path to project root. Defaults to cwd."}}}},
+    {"name": "task.run", "fn": run_task, "description": "Run a governed task: verify preconditions, execute procedure steps, mark complete or fail (BLP-010 meta-handler). Supports dry_run mode.", "input_schema": {"type": "object", "properties": {"task_id": {"type": "string"}, "content": {"type": "string", "description": "CORTEX content with keys task_id, evidence, fail_reason."}, "dry_run": {"type": "boolean", "default": False, "description": "If true, report what would happen without modifying state."}, "path": {"type": "string"}}, "required": ["task_id"]}},
 ]

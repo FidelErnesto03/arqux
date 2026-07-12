@@ -11,7 +11,6 @@ from ._common import (
     _hash_text,
     _load_policies,
     _resolve_policy_path,
-    _resolve_project_root,
     detect_candidates,
     rebuild_index,
 )

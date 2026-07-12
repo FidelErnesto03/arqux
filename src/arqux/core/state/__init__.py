@@ -1,3 +1,4 @@
+# ruff: noqa: F401
 """State persistence and discovery helpers.
 
 The framework persists state via CODEC-CORTEX (`.cortex` + `.md`).
@@ -19,11 +20,14 @@ import json
 import os
 import re
 import time
+from collections.abc import Iterable
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Iterable
+from typing import Any
 
+from ... import formats
 from ...constants import (
+    ARQUX_DIR,
     BRAIN_CORTEX,
     BRAIN_SECTION_ACTIVE_CONTEXT,
     BRAIN_SECTION_CONCURRENCY,
@@ -41,9 +45,7 @@ from ...constants import (
     PRODUCT_NAME_UPPER,
     PROJECTS_CORTEX,
     TASKS_DIR,
-    ARQUX_DIR,
 )
-from ... import formats
 
 #: Name of the session context file inside ``.arqux/``.
 CONTEXT_CORTEX: str = "context.cortex"
@@ -55,14 +57,14 @@ _codec_cortex = None  # type: ignore[assignment]
 
 try:
     import cortex.core.ast as _cc_ast
+    import cortex.core.lexer as _cc_lexer
     import cortex.core.parser as _cc_parser
-    import cortex.core.writer as _cc_writer
     import cortex.core.validator as _cc_validator
+    import cortex.core.writer as _cc_writer
     import cortex.crud.mutations as _cc_mutations
     import cortex.crud.selectors as _cc_selectors
     import cortex.crud.transactions as _cc_transactions
     import cortex.hcortex.read_renderer as _cc_renderer
-    import cortex.core.lexer as _cc_lexer
 
     _HAS_CODEC_CORTEX = True
     _codec_cortex = True  # sentinel
@@ -72,62 +74,57 @@ except ImportError:
 
 # --- Import and re-export submodules ---------------------------------------
 
+from ._brain import (
+    _bump_concurrency,
+    _initial_brain_body,
+    _now_iso,
+    _resolve_brain_path,
+    append_to_brain_section,
+    brain_version,
+    cycle_dir,
+    ensure_brain_section,
+    next_cycle_id,
+    next_task_id,
+    read_brain,
+    task_path,
+    write_brain,
+    write_brain_sections,
+    write_manifest,
+    write_meta_brain,
+    write_projects_index,
+)
 from ._crud import (
-    requires_codec_cortex,
-    cortex_read,
-    cortex_write,
-    cortex_verify,
-    cortex_render,
     _parse_and_mutate,
-    crud_read,
+    cortex_read,
+    cortex_render,
+    cortex_verify,
+    cortex_write,
     crud_add,
-    crud_update,
     crud_delete,
-    crud_move,
     crud_list,
+    crud_move,
+    crud_read,
+    crud_update,
+    requires_codec_cortex,
 )
-
-from ._render import (
-    write_cortex_pair,
-    _render_governance_cortex,
-    _write_md_twin,
-    _render_cortex,
-    _render_hcortex,
-    _yaml_value,
-)
-
 from ._migrate import (
     migrate_cortex_file,
 )
-
 from ._parse import (
     parse_brain_sections,
     rebuild_brain_body,
 )
-
-from ._brain import (
-    _resolve_brain_path,
-    read_brain,
-    write_brain_sections,
-    ensure_brain_section,
-    append_to_brain_section,
-    _bump_concurrency,
-    brain_version,
-    write_manifest,
-    write_meta_brain,
-    write_projects_index,
-    write_brain,
-    _initial_brain_body,
-    cycle_dir,
-    task_path,
-    next_task_id,
-    next_cycle_id,
-    _now_iso,
-)
-
 from ._project import (
-    parse_cortex_file,
     WorkspaceRoot,
-    find_workspace_root,
     find_project_root,
+    find_workspace_root,
+    parse_cortex_file,
+)
+from ._render import (
+    _render_cortex,
+    _render_governance_cortex,
+    _render_hcortex,
+    _write_md_twin,
+    _yaml_value,
+    write_cortex_pair,
 )

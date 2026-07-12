@@ -13,9 +13,6 @@ brain the single source of truth for every agent working concurrently.
 
 from __future__ import annotations
 
-from pathlib import Path
-from typing import Any
-
 from ..constants import CYCLES_DIR
 from ..cortex_out import CortexOUT
 from ..permissions import PermissionContext
@@ -118,7 +115,7 @@ def read_evidence(
 
 
 handler_schemas = [
-    dict(name="evidence.record", fn=record_evidence, description="Append an evidence entry to pulse.jsonl.", input_schema={"type": "object", "properties": {"task_id": {"type": "string"}, "kind": {"type": "string", "enum": ["note", "artifact", "decision", "metric", "blocker"]}, "payload": {"type": "string"}, "path": {"type": "string", "description": "Path to project root. Defaults to cwd."}}, "required": ["task_id", "kind", "payload"]}),
-    dict(name="evidence.list", fn=list_evidence, description="Query the evidence trail.", input_schema={"type": "object", "properties": {"task_id": {"type": "string"}, "cycle": {"type": "string"}, "since": {"type": "string"}, "limit": {"type": "integer", "default": 100}, "path": {"type": "string", "description": "Path to project root. Defaults to cwd."}}}),
-    dict(name="evidence.read", fn=read_evidence, description="Read a single evidence event by ID.", input_schema={"type": "object", "properties": {"event_id": {"type": "string"}, "path": {"type": "string", "description": "Path to project root. Defaults to cwd."}}, "required": ["event_id"]}),
+    {"name": "evidence.record", "fn": record_evidence, "description": "Append an evidence entry to pulse.jsonl.", "input_schema": {"type": "object", "properties": {"task_id": {"type": "string"}, "kind": {"type": "string", "enum": ["note", "artifact", "decision", "metric", "blocker"]}, "payload": {"type": "string"}, "path": {"type": "string", "description": "Path to project root. Defaults to cwd."}}, "required": ["task_id", "kind", "payload"]}},
+    {"name": "evidence.list", "fn": list_evidence, "description": "Query the evidence trail.", "input_schema": {"type": "object", "properties": {"task_id": {"type": "string"}, "cycle": {"type": "string"}, "since": {"type": "string"}, "limit": {"type": "integer", "default": 100}, "path": {"type": "string", "description": "Path to project root. Defaults to cwd."}}}},
+    {"name": "evidence.read", "fn": read_evidence, "description": "Read a single evidence event by ID.", "input_schema": {"type": "object", "properties": {"event_id": {"type": "string"}, "path": {"type": "string", "description": "Path to project root. Defaults to cwd."}}, "required": ["event_id"]}},
 ]

@@ -15,15 +15,15 @@ Configuration for markdown previewers:
 from __future__ import annotations
 
 import base64
+import contextlib
 import http.server
-import os
 import subprocess
 import sys
 import tempfile
 import threading
 from pathlib import Path
 
-from .plantuml import _find_jar, _BIN_DIR, setup_plantuml
+from .plantuml import _BIN_DIR, _find_jar, setup_plantuml
 
 
 class PlantUMLHandler(http.server.BaseHTTPRequestHandler):
@@ -147,8 +147,6 @@ Java: str | None = None
 
 def _render(source: str, fmt: str) -> tuple[bool, bytes | str]:
     """Render PUML to bytes."""
-    import subprocess
-    import tempfile
 
     puml_file = Path(tempfile.mktemp(suffix=".puml"))
     out_dir = Path(tempfile.mkdtemp())
@@ -165,14 +163,10 @@ def _render(source: str, fmt: str) -> tuple[bool, bytes | str]:
         return False, str(e)
     finally:
         import shutil
-        try:
+        with contextlib.suppress(Exception):
             shutil.rmtree(out_dir, ignore_errors=True)
-        except Exception:
-            pass
-        try:
+        with contextlib.suppress(Exception):
             puml_file.unlink()
-        except Exception:
-            pass
 
 
 def start_server(port: int = 9876, setup: bool = True) -> http.server.HTTPServer:

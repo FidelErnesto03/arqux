@@ -11,7 +11,6 @@ from arqux.handlers.cortex import (
 )
 from arqux.permissions import PermissionContext
 
-
 _CONTEXT = PermissionContext(agent_id="test", role="governor")
 
 _SAMPLE = """$0

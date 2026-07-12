@@ -11,7 +11,6 @@ from ._common import (
     _hash_text,
     _load_policies,
     _resolve_policy_path,
-    _resolve_project_root,
     detect_candidates,
     plan_patch,
     rebuild_index,
@@ -147,7 +146,6 @@ def elevate_candidate(
             }
 
         from ...state import read_brain, write_brain_sections
-        from ...formats import _build_brain_doc as _build_doc
 
         fm, sections, _ = read_brain(project_root)
         knw_line = f"{new_sigil}:{new_name} " + " ".join(f'{k}="{v}"' for k, v in new_value.items())

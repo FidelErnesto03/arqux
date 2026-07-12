@@ -15,17 +15,13 @@ and $0 is updated accordingly.
 
 from __future__ import annotations
 
-import os
 import re
 from pathlib import Path
-from typing import Any
 
-from ..constants import ARQUX_DIR
 from ..cortex_out import CortexOUT
 from ..permissions import PermissionContext
-from ..state import find_workspace_root, find_project_root
+from ..state import find_project_root, find_workspace_root
 from ..sync import sync_brain
-
 
 SKILL_DIR = "skills"
 ORIGINALS_DIR = "skills/originals"
@@ -190,7 +186,7 @@ def convert_skill(
     raw = src.read_text(encoding="utf-8")
 
     lines = raw.splitlines()
-    title = lines[0].lstrip("#").strip() if lines else name
+    lines[0].lstrip("#").strip() if lines else name
     first_lines = [l for l in lines[1:8] if l.startswith("#")]
     description = " ".join(l.lstrip("#").strip() for l in first_lines) or f"Imported skill: {name}"
 
@@ -328,7 +324,7 @@ def evolve_skill(
     # Find the target ADA
     lines = adapt_section.splitlines()
     target_line = None
-    for i, line in enumerate(lines):
+    for _i, line in enumerate(lines):
         if adaptation_id in line and '"active"' in line:
             target_line = line
             break
@@ -721,11 +717,11 @@ def install_skill(
 
 
 handler_schemas = [
-    dict(name="skill.import", fn=import_skill, description="Acquire a skill from external source, store original in originals/. Accepts content as CORTEX with keys source, name, body (BLP-009).", input_schema={"type": "object", "properties": {"source": {"type": "string", "description": "Origin (marketplace, platform, url:...)"}, "name": {"type": "string", "description": "Skill name (e.g. oracle-apex)"}, "content": {"type": "string", "description": "Raw skill content, or CORTEX entry 'source:...,name:...,body:...' (BLP-009). Omit to get instructions first."}, "path": {"type": "string", "description": "Path to workspace/project root"}}, "required": ["source", "name"]}),
-    dict(name="skill.convert", fn=convert_skill, description="Convert a skill from original format to CORTEX ultra-dense.", input_schema={"type": "object", "properties": {"name": {"type": "string", "description": "Skill name"}, "path": {"type": "string"}}, "required": ["name"]}),
-    dict(name="skill.record", fn=record_adaptation, description="Record a deviation (ADA) when a skill does not match the real context.", input_schema={"type": "object", "properties": {"name": {"type": "string", "description": "Skill name"}, "expected": {"type": "string", "description": "What the skill says"}, "actual": {"type": "string", "description": "What was actually done"}, "reason": {"type": "string", "description": "Why the deviation occurred"}, "path": {"type": "string"}}, "required": ["name", "expected", "actual", "reason"]}),
-    dict(name="skill.evolve", fn=evolve_skill, description="Apply an approved adaptation to a skill. Default is dry-run.", input_schema={"type": "object", "properties": {"name": {"type": "string", "description": "Skill name"}, "adaptation_id": {"type": "string", "description": "Adaptation entry selector"}, "apply": {"type": "boolean", "default": False, "description": "If true, apply the evolution"}, "path": {"type": "string"}}, "required": ["name", "adaptation_id"]}),
-    dict(name="skill.edit", fn=edit_skill, description="Edit (read, write, or section-edit) a skill file in .arqux/skills/. Without content: returns the skill content. With content but no section: atomically replaces the entire skill file. With content and section: replaces only that CORTEX section (e.g. $0, $1, $2.1). Accepts content as CORTEX with keys name, body, section (BLP-009).", input_schema={"type": "object", "properties": {"name": {"type": "string", "description": "Skill name (e.g. handlers)"}, "content": {"type": "string", "description": "New content, or CORTEX entry 'name:...,body:...,section:...' (BLP-009). Omit to read current content."}, "section": {"type": "string", "description": "Section ID to replace (e.g. $0, $1, $2.1). Only valid with content."}, "path": {"type": "string", "description": "Path to workspace/project root"}}, "required": ["name"]}),
-    dict(name="skill.list", fn=list_skills, description="List all available skills in .arqux/skills/.", input_schema={"type": "object", "properties": {"path": {"type": "string"}}}),
-    dict(name="skill.install", fn=install_skill, description="Install a skill: import + validate + register in brain.cortex $6/SKL (BLP-010 meta-handler). Supports dry_run mode.", input_schema={"type": "object", "properties": {"source": {"type": "string", "description": "Skill source."}, "name": {"type": "string", "description": "Skill name."}, "content": {"type": "string", "description": "CORTEX content with keys source, name, body."}, "dry_run": {"type": "boolean", "default": False, "description": "If true, report what would happen without modifying state."}, "path": {"type": "string"}}, "required": ["source", "name"]}),
+    {"name": "skill.import", "fn": import_skill, "description": "Acquire a skill from external source, store original in originals/. Accepts content as CORTEX with keys source, name, body (BLP-009).", "input_schema": {"type": "object", "properties": {"source": {"type": "string", "description": "Origin (marketplace, platform, url:...)"}, "name": {"type": "string", "description": "Skill name (e.g. oracle-apex)"}, "content": {"type": "string", "description": "Raw skill content, or CORTEX entry 'source:...,name:...,body:...' (BLP-009). Omit to get instructions first."}, "path": {"type": "string", "description": "Path to workspace/project root"}}, "required": ["source", "name"]}},
+    {"name": "skill.convert", "fn": convert_skill, "description": "Convert a skill from original format to CORTEX ultra-dense.", "input_schema": {"type": "object", "properties": {"name": {"type": "string", "description": "Skill name"}, "path": {"type": "string"}}, "required": ["name"]}},
+    {"name": "skill.record", "fn": record_adaptation, "description": "Record a deviation (ADA) when a skill does not match the real context.", "input_schema": {"type": "object", "properties": {"name": {"type": "string", "description": "Skill name"}, "expected": {"type": "string", "description": "What the skill says"}, "actual": {"type": "string", "description": "What was actually done"}, "reason": {"type": "string", "description": "Why the deviation occurred"}, "path": {"type": "string"}}, "required": ["name", "expected", "actual", "reason"]}},
+    {"name": "skill.evolve", "fn": evolve_skill, "description": "Apply an approved adaptation to a skill. Default is dry-run.", "input_schema": {"type": "object", "properties": {"name": {"type": "string", "description": "Skill name"}, "adaptation_id": {"type": "string", "description": "Adaptation entry selector"}, "apply": {"type": "boolean", "default": False, "description": "If true, apply the evolution"}, "path": {"type": "string"}}, "required": ["name", "adaptation_id"]}},
+    {"name": "skill.edit", "fn": edit_skill, "description": "Edit (read, write, or section-edit) a skill file in .arqux/skills/. Without content: returns the skill content. With content but no section: atomically replaces the entire skill file. With content and section: replaces only that CORTEX section (e.g. $0, $1, $2.1). Accepts content as CORTEX with keys name, body, section (BLP-009).", "input_schema": {"type": "object", "properties": {"name": {"type": "string", "description": "Skill name (e.g. handlers)"}, "content": {"type": "string", "description": "New content, or CORTEX entry 'name:...,body:...,section:...' (BLP-009). Omit to read current content."}, "section": {"type": "string", "description": "Section ID to replace (e.g. $0, $1, $2.1). Only valid with content."}, "path": {"type": "string", "description": "Path to workspace/project root"}}, "required": ["name"]}},
+    {"name": "skill.list", "fn": list_skills, "description": "List all available skills in .arqux/skills/.", "input_schema": {"type": "object", "properties": {"path": {"type": "string"}}}},
+    {"name": "skill.install", "fn": install_skill, "description": "Install a skill: import + validate + register in brain.cortex $6/SKL (BLP-010 meta-handler). Supports dry_run mode.", "input_schema": {"type": "object", "properties": {"source": {"type": "string", "description": "Skill source."}, "name": {"type": "string", "description": "Skill name."}, "content": {"type": "string", "description": "CORTEX content with keys source, name, body."}, "dry_run": {"type": "boolean", "default": False, "description": "If true, report what would happen without modifying state."}, "path": {"type": "string"}}, "required": ["source", "name"]}},
 ]

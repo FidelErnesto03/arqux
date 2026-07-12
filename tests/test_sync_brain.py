@@ -9,7 +9,6 @@ from pathlib import Path
 
 import pytest
 
-
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
@@ -127,14 +126,8 @@ def test_sync_brain_does_not_change_read_only_handlers() -> None:
     We grep the handler source files for 'from ..sync import' to ensure
     only the intended mutating handlers import it.
     """
-    import os
 
     handler_dir = Path(__file__).resolve().parent.parent / "src" / "arqux" / "handlers"
-    read_only_modules = {
-        "cortex",  # some cortex handlers are read-write, skip for now
-        "session",
-        "evidence",  # evidence.read/list are read-only
-    }
 
     for fpath in sorted(handler_dir.glob("*.py")):
         stem = fpath.stem

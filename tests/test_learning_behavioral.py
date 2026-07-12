@@ -6,10 +6,9 @@ from pathlib import Path
 
 import pytest
 
-from arqux.constants import ARQUX_DIR, W003_LEARNING_DEBT_BEHAVIORAL
+from arqux.constants import ARQUX_DIR
 from arqux.learning import (
     AgentIdentityError,
-    BlueprintDraft,
     ContainerIdentityError,
     InsufficientConfidenceError,
     InvalidLessonStatusError,
@@ -18,7 +17,6 @@ from arqux.learning import (
     LessonStore,
     elevate,
 )
-
 
 # --- Fixtures ---------------------------------------------------------------
 

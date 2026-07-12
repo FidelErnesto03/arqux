@@ -15,7 +15,6 @@ import pytest
 
 from arqux.migrator import migrate_file
 
-
 SAMPLE_CORTEX_NO_META = """$0
 
 # Sigil | Name | Type | Risk | Cognitive Layer | Description
@@ -73,7 +72,7 @@ class TestMigrateFile:
         migrate_file(cortex_no_meta, level=3, name="test", usage="state", kind="native")
         content_after_first = cortex_no_meta.read_text(encoding="utf-8")
         # Second migration should be no-op.
-        migrated = migrate_file(cortex_no_meta, level=3, name="test", usage="state", kind="native")
+        migrate_file(cortex_no_meta, level=3, name="test", usage="state", kind="native")
         content_after_second = cortex_no_meta.read_text(encoding="utf-8")
         # Idempotent: content should be the same (or False meaning already migrated).
         assert content_after_first == content_after_second
@@ -157,7 +156,7 @@ class TestMigrateFile:
 
     def test_migrate_preserves_original_content(self, cortex_no_meta: Path) -> None:
         """Migration should preserve original sigil entries."""
-        original = cortex_no_meta.read_text(encoding="utf-8")
+        cortex_no_meta.read_text(encoding="utf-8")
         migrate_file(cortex_no_meta, level=3, name="test", usage="state", kind="native")
         migrated = cortex_no_meta.read_text(encoding="utf-8")
         # The IDN:agent entry should still be present.

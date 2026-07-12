@@ -15,17 +15,13 @@ sessions live in the project brain (see `project.bind`).
 from __future__ import annotations
 
 import os
-from pathlib import Path
-from typing import Any
 
 from ..constants import (
-    OUT_WORK,
     PRODUCT_NAME_UPPER,
-    ARQUX_DIR,
 )
 from ..cortex_out import CortexOUT
 from ..permissions import PermissionContext
-from ..state import find_workspace_root, write_cortex_pair, parse_cortex_file
+from ..state import find_workspace_root
 
 
 def adopt(
@@ -133,8 +129,8 @@ def _now_iso() -> str:
 
 
 handler_schemas = [
-    dict(name="protocol.adopt", fn=adopt, description="Onboard an agent with a role.", input_schema={"type": "object", "properties": {"agent_id": {"type": "string"}, "role": {"type": "string", "enum": ["governor", "executor", "auditor"]}, "path": {"type": "string", "description": "Path to workspace root. Defaults to cwd."}}, "required": ["agent_id", "role"]}),
-    dict(name="protocol.release", fn=release, description="Fully detach an agent (clean exit, no orphans).", input_schema={"type": "object", "properties": {"agent_id": {"type": "string"}, "path": {"type": "string", "description": "Path to workspace root. Defaults to cwd."}}, "required": ["agent_id"]}),
-    dict(name="protocol.pause", fn=pause, description="Suspend governance for the current session without losing state.", input_schema={"type": "object", "properties": {}}),
-    dict(name="protocol.resume", fn=resume, description="Resume governance after a pause.", input_schema={"type": "object", "properties": {}}),
+    {"name": "protocol.adopt", "fn": adopt, "description": "Onboard an agent with a role.", "input_schema": {"type": "object", "properties": {"agent_id": {"type": "string"}, "role": {"type": "string", "enum": ["governor", "executor", "auditor"]}, "path": {"type": "string", "description": "Path to workspace root. Defaults to cwd."}}, "required": ["agent_id", "role"]}},
+    {"name": "protocol.release", "fn": release, "description": "Fully detach an agent (clean exit, no orphans).", "input_schema": {"type": "object", "properties": {"agent_id": {"type": "string"}, "path": {"type": "string", "description": "Path to workspace root. Defaults to cwd."}}, "required": ["agent_id"]}},
+    {"name": "protocol.pause", "fn": pause, "description": "Suspend governance for the current session without losing state.", "input_schema": {"type": "object", "properties": {}}},
+    {"name": "protocol.resume", "fn": resume, "description": "Resume governance after a pause.", "input_schema": {"type": "object", "properties": {}}},
 ]

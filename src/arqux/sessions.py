@@ -8,11 +8,10 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from .constants import BRAIN_SECTION_HANDOFFS, BRAIN_SECTION_SESSIONS
+from .constants import BRAIN_SECTION_SESSIONS
 from .state import (
     _bump_concurrency,
     _now_iso,
-    append_to_brain_section,
     crud_add,
     crud_update,
     find_project_root,
@@ -31,7 +30,7 @@ def _brain_cortex_path(project_root: Path) -> Path:
 
 def _bump_brain_concurrency(brain_path: Path, agent_id: str) -> None:
     """Bump the ERR:concurrency version after a mutation."""
-    from .state import crud_update, crud_read
+    from .state import crud_read
     try:
         result = crud_read(str(brain_path), "$11/ERR:concurrency")
         entries = result.get("entries", [])

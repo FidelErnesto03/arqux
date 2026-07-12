@@ -7,11 +7,11 @@ from pathlib import Path
 import pytest
 
 from arqux.constants import (
+    W001_NO_METADATA,
     ArtifactKind,
     ArtifactMetadata,
     ArtifactUsage,
     CortexLevel,
-    W001_NO_METADATA,
 )
 from arqux.formats import (
     CortexArtifact,
@@ -25,7 +25,6 @@ from arqux.migrator import (
     migrate_file,
     migrate_identity_files,
 )
-
 
 # --- Fixtures ---------------------------------------------------------------
 

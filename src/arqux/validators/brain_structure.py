@@ -19,14 +19,13 @@ from typing import Any
 
 from ..constants import (
     BRAIN_SECTION_TITLES,
-    BrainSection,
-    CortexLevel,
     E026_MISSING_SECTION,
     E027_MALFORMED_SECTION,
     W002_INCOMPLETE_BRAIN,
+    BrainSection,
+    CortexLevel,
 )
-from .base import BaseValidator, ValidationError, ValidationResult
-
+from .base import BaseValidator, ValidationResult
 
 _SECTION_HEADER_RE = re.compile(
     r"^\s*\$(?P<num>\d+)\s*:?\s*(?P<title>[A-Z_][A-Z_]*)?\s*$",

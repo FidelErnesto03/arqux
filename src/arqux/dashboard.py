@@ -2,16 +2,14 @@
 
 from __future__ import annotations
 
-import os
 import re
 from pathlib import Path
 
 from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
-from rich.text import Text
 
-from .constants import ARQUX_DIR, META_BRAIN_CORTEX, OUT_WORK
+from .constants import ARQUX_DIR, META_BRAIN_CORTEX
 from .cortex_out import CortexOUT
 from .state import find_workspace_root
 
@@ -114,7 +112,6 @@ def build_dashboard(path: str | None = None) -> CortexOUT:
     out_lines: list[str] = []
 
     # --- Section 1: Workspace info ---
-    ws_name = ws_root.parent.name
     meta_ok = (ws_root / META_BRAIN_CORTEX).exists()
     info_table = Table(show_header=False, box=None)
     info_table.add_column("Key", style="cyan")

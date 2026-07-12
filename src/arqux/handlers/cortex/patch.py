@@ -10,16 +10,12 @@ Supports ``dry_run=True`` to report what would happen without executing.
 
 from __future__ import annotations
 
-import os
-import tempfile
 from pathlib import Path
-from typing import Any
 
 from ...cortex_out import CortexOUT
-from ...cortex.parse_content import parse_content_entry
 from ...permissions import PermissionContext
 from ...pulse import append_pulse_to_brain, next_pulse_event_id
-from ...state import find_project_root, crud_update
+from ...state import crud_update, find_project_root
 
 
 def patch_handler(

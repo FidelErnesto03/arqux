@@ -20,10 +20,8 @@ Returns OUT-WORK with the sigil definition or OUT-ERROR with code
 
 from __future__ import annotations
 
-from typing import Any
-
-from ...cortex_out import CortexOUT
 from ...cortex.sigils import get_sigil, list_sigils
+from ...cortex_out import CortexOUT
 from ...permissions import PermissionContext
 from ...pulse import append_pulse_to_brain, next_pulse_event_id
 from ...state import find_project_root

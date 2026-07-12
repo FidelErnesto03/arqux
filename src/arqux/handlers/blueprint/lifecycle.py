@@ -7,17 +7,14 @@ from __future__ import annotations
 
 import re
 from pathlib import Path
-from typing import Any
 
 from ...constants import CYCLES_DIR
 from ...cortex_out import CortexOUT
 from ...permissions import PermissionContext
 from ...sync import sync_brain
-
 from ._helpers import (
     BLUEPRINT_TEMPLATE,
     BP_BLOCKED,
-    BP_CANCELLED,
     BP_DEFINED,
     BP_DRAFT,
     BP_IN_PROGRESS,
@@ -39,7 +36,6 @@ from ._helpers import (
     next_blueprint_id_safe,
     scan_markers,
 )
-
 
 # ---------------------------------------------------------------------------
 # blueprint.create
@@ -204,7 +200,7 @@ def define_blueprint(
                 code="TEMPLATE_MISSING",
             )
         valid_ids = set(tmpl_result.fields.get("markers", {}).keys())
-        unknown = [sid for sid in sections.keys() if sid not in valid_ids]
+        unknown = [sid for sid in sections if sid not in valid_ids]
         if unknown:
             return CortexOUT.error(
                 f"unknown section IDs: {unknown}. Valid IDs: {sorted(valid_ids)}",
@@ -219,7 +215,6 @@ def define_blueprint(
 
     # Apply filled sections to body by replacing template placeholders.
     # Use regex-based section replacement for robustness.
-    import re
     new_body = body
 
     # --- Marker-based section replacement ---

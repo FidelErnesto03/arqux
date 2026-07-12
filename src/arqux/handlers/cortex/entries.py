@@ -8,13 +8,12 @@ from collections import defaultdict
 from pathlib import Path
 from typing import Any
 
-from ...cortex_out import CortexOUT
 from ...cortex.parse_content import parse_content_entry
+from ...cortex_out import CortexOUT
 from ...permissions import PermissionContext
 from ...state import (
     _cc_parser,
     _cc_transactions,
-    _cc_validator,
     crud_add,
     crud_delete,
     crud_list,
@@ -330,7 +329,6 @@ def file_validate_handler(
     the same name in the same section, they are flagged as duplicates.
     With fix=true, duplicates are renamed with a _XXXX suffix.
     """
-    from pathlib import Path
 
     target = Path(path)
     if not target.exists():

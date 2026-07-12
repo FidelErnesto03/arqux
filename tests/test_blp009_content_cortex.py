@@ -9,15 +9,12 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
-
-from arqux.handlers.task import create_task
-from arqux.handlers.skill import import_skill, edit_skill, convert_skill
 from arqux.handlers.cycle import create_cycle, mature_cycle
 from arqux.handlers.project import init_project
+from arqux.handlers.skill import convert_skill, edit_skill, import_skill
+from arqux.handlers.task import create_task
 from arqux.handlers.workspace import init_workspace
 from arqux.permissions import PermissionContext
-
 
 _CONTEXT = PermissionContext(agent_id="test-governor", role="governor")
 
@@ -122,7 +119,7 @@ def test_skill_import_with_content_cortex_form(tmp_path: Path) -> None:
     """skill.import accepts content as CORTEX with source, name, body keys."""
     proj_root = _bootstrap_env(tmp_path)
     # Use the workspace .arqux/ for skill storage.
-    ws_arqux = proj_root.parent / ".arqux"
+    proj_root.parent / ".arqux"
 
     result = import_skill(
         source="dummy-source",

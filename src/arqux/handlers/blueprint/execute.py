@@ -9,15 +9,13 @@ Supports dry_run mode.
 from __future__ import annotations
 
 import re
-from pathlib import Path
-from typing import Any
 
-from ...cortex_out import CortexOUT
 from ...cortex.parse_content import parse_content_entry
+from ...cortex_out import CortexOUT
 from ...permissions import PermissionContext
 from ...pulse import append_pulse_to_brain, next_pulse_event_id
 from ...state import find_project_root
-from ._helpers import _find_blueprint, _read_blueprint
+from ._helpers import _find_blueprint
 
 
 def execute_blueprint(

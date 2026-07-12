@@ -196,7 +196,7 @@ def _sync_meta_brain(
 ) -> None:
     """Sync metrics to meta-brain DOM:arqux entry."""
     try:
-        from arqux.state import find_workspace_root, crud_update
+        from arqux.state import crud_update, find_workspace_root
 
         search_start = project_root.parent if project_root.name == ".arqux" else project_root
 

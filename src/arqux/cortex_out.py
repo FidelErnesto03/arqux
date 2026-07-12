@@ -41,28 +41,28 @@ class CortexOUT:
     message: str = ""
 
     @classmethod
-    def profile(cls, profile: str, message: str = "", **fields: Any) -> "CortexOUT":
+    def profile(cls, profile: str, message: str = "", **fields: Any) -> CortexOUT:
         """Build a CORTEX-OUT response with the given profile."""
         return cls(profile=profile, fields=dict(fields), message=message)
 
     @classmethod
-    def min(cls, message: str = "", **fields: Any) -> "CortexOUT":
+    def min(cls, message: str = "", **fields: Any) -> CortexOUT:
         return cls(profile=OUT_MIN, fields=dict(fields), message=message)
 
     @classmethod
-    def work(cls, message: str = "", **fields: Any) -> "CortexOUT":
+    def work(cls, message: str = "", **fields: Any) -> CortexOUT:
         return cls(profile=OUT_WORK, fields=dict(fields), message=message)
 
     @classmethod
-    def audit(cls, message: str = "", **fields: Any) -> "CortexOUT":
+    def audit(cls, message: str = "", **fields: Any) -> CortexOUT:
         return cls(profile=OUT_AUDIT, fields=dict(fields), message=message)
 
     @classmethod
-    def full(cls, message: str = "", **fields: Any) -> "CortexOUT":
+    def full(cls, message: str = "", **fields: Any) -> CortexOUT:
         return cls(profile=OUT_FULL, fields=dict(fields), message=message)
 
     @classmethod
-    def error(cls, message: str = "", **fields: Any) -> "CortexOUT":
+    def error(cls, message: str = "", **fields: Any) -> CortexOUT:
         return cls(profile=OUT_ERROR, fields=dict(fields), message=message)
 
     def to_text(self) -> str:

@@ -2,13 +2,13 @@
 
 from __future__ import annotations
 
-import hashlib
 import os
 import re
 import subprocess
-from dataclasses import dataclass, field
+from collections.abc import Callable
+from dataclasses import dataclass
 from pathlib import Path
-from typing import Callable, Literal
+from typing import Literal
 
 from .constants import ARQUX_DIR, BRAIN_CORTEX, META_BRAIN_CORTEX, PRODUCT_NAME
 from .cortex_out import CortexOUT
@@ -111,7 +111,7 @@ def check_metadata_section(arqux_dir: Path) -> CheckResult:
         ("brain.cortex", arqux_dir / BRAIN_CORTEX, "project"),
     ]
     issues: list[str] = []
-    for name, path, ctx in cortex_files:
+    for name, path, _ctx in cortex_files:
         if not path.exists():
             continue
         try:
@@ -385,7 +385,7 @@ def run_all(path: str | None = None, fix: bool = False) -> CortexOUT:
     # Apply fixes if requested
     fix_results: list[str] = []
     if fix:
-        for name, fn in fixes.items():
+        for _name, fn in fixes.items():
             fix_results.append(fn(arqux_dir))
 
     passed = sum(1 for c in checks if c.status == "pass")

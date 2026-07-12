@@ -211,7 +211,7 @@ class CortexLevel(Enum):
     BRAIN = 3         # Level 3: project brain (brain.cortex)
 
     @classmethod
-    def from_int(cls, value: int) -> "CortexLevel":
+    def from_int(cls, value: int) -> CortexLevel:
         try:
             return cls(value)
         except ValueError as exc:
@@ -225,7 +225,7 @@ class ArtifactKind(Enum):
     ADAPTED = "adapted"        # local fork of an inherited artifact
 
     @classmethod
-    def from_str(cls, value: str) -> "ArtifactKind":
+    def from_str(cls, value: str) -> ArtifactKind:
         for k in cls:
             if k.value == value:
                 return k
@@ -241,7 +241,7 @@ class ArtifactUsage(Enum):
     CONFIG = "config"      # configuration / glossary
 
     @classmethod
-    def from_str(cls, value: str) -> "ArtifactUsage":
+    def from_str(cls, value: str) -> ArtifactUsage:
         for u in cls:
             if u.value == value:
                 return u
@@ -268,7 +268,7 @@ class ArtifactMetadata:
     upstream_version: str | None = None
 
     @staticmethod
-    def default(level: int = 0) -> "ArtifactMetadata":
+    def default(level: int = 0) -> ArtifactMetadata:
         """Return a default metadata for the given level.
 
         Used when a .cortex file lacks ARQX:artifact — the file degrades to

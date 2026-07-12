@@ -6,7 +6,6 @@ from pathlib import Path
 
 import pytest
 
-
 MINIMAL_SKILL = """\
 $0
 

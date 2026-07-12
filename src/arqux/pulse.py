@@ -10,9 +10,7 @@ from __future__ import annotations
 
 import re
 from pathlib import Path
-from typing import Any
 
-from .constants import BRAIN_SECTION_PULSE
 from .state import _now_iso, crud_add, crud_read, find_project_root
 
 

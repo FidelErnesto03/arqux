@@ -2,13 +2,10 @@
 
 from __future__ import annotations
 
-import os
-import tempfile
 from pathlib import Path
 
 import pytest
 
-from arqux.constants import ROLE_GOVERNOR
 from arqux.permissions import PermissionContext
 
 
@@ -72,7 +69,7 @@ class TestInvalidCortex:
 
     def test_verify_detects_missing_header(self, tmp_path: Path) -> None:
         """verify_cortex detects missing integrity header."""
-        from arqux.security import verify_cortex, TamperError
+        from arqux.security import TamperError, verify_cortex
 
         cortex_file = tmp_path / "bad.cortex"
         cortex_file.write_text("$0\nbroken entry\n")

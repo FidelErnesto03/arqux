@@ -9,7 +9,7 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
-from arqux.constants import BRAIN_CORTEX, ARQUX_DIR
+from arqux.constants import ARQUX_DIR, BRAIN_CORTEX
 from arqux.handlers import project, workspace
 
 

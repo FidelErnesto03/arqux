@@ -3,18 +3,15 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any
 
 from . import (
-    _HAS_CODEC_CORTEX,
-    _cc_parser,
-    _cc_validator,
-    _cc_renderer,
     _cc_mutations,
+    _cc_parser,
+    _cc_renderer,
     _cc_selectors,
     _cc_transactions,
+    _cc_validator,
 )
-
 
 # --- CODEC-CORTEX dependency ------------------------------------------------
 
@@ -201,7 +198,7 @@ def crud_read(path: str | Path, selector: str) -> dict:
         raise FileNotFoundError(str(path))
     text = path.read_text(encoding="utf-8")
     doc = _cc_parser.parse_cortex(text, path=str(path))
-    sel = _cc_selectors.parse_selector(selector)
+    _cc_selectors.parse_selector(selector)
     entries = _cc_selectors.select(doc, selector)
     return {
         "path": str(path),

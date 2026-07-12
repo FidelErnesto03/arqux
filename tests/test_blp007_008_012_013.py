@@ -5,17 +5,14 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
-
-from arqux.blueprint.template import parse_blp_template, list_template_sections
+from arqux.blueprint.template import parse_blp_template
 from arqux.handlers.blueprint import define_blueprint, synthesize_blueprint
 from arqux.handlers.blueprint.lifecycle import create_blueprint
 from arqux.handlers.cycle import create_cycle, mature_cycle
 from arqux.handlers.project import init_project
-from arqux.handlers.workspace import init_workspace
 from arqux.handlers.session import bootstrap
+from arqux.handlers.workspace import init_workspace
 from arqux.permissions import PermissionContext
-
 
 _CONTEXT = PermissionContext(agent_id="test-governor", role="governor")
 
@@ -61,7 +58,7 @@ def test_parse_blp_template_no_hardcoded_ids() -> None:
     result = parse_blp_template()
     markers = result.fields.get("markers", {})
     # All marker IDs start with BLP: prefix.
-    for sid in markers.keys():
+    for sid in markers:
         assert sid.startswith("BLP:"), f"unexpected marker ID: {sid}"
 
 

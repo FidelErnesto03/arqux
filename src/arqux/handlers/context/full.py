@@ -14,10 +14,7 @@ from pathlib import Path
 from typing import Any
 
 from ...constants import (
-    ARQUX_DIR,
-    BRAIN_CORTEX,
     CYCLES_DIR,
-    META_BRAIN_CORTEX,
 )
 from ...cortex_out import CortexOUT
 from ...permissions import PermissionContext

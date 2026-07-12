@@ -82,10 +82,10 @@ def test_parse_pulse_line_invalid() -> None:
 
 def test_append_pulse_to_brain(tmp_path) -> None:
     """append_pulse_to_brain writes an entry and next_pulse_event_id advances."""
-    from arqux.handlers.workspace import init_workspace
-    from arqux.handlers.project import init_project
     from arqux.handlers.cycle import create_cycle, mature_cycle
-    from arqux.pulse import next_pulse_event_id, append_pulse_to_brain, read_pulse_from_brain
+    from arqux.handlers.project import init_project
+    from arqux.handlers.workspace import init_workspace
+    from arqux.pulse import append_pulse_to_brain, next_pulse_event_id, read_pulse_from_brain
 
     ws = tmp_path / "ws"
     ws.mkdir()

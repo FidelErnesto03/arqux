@@ -13,9 +13,6 @@ import subprocess
 import tempfile
 from pathlib import Path
 
-import pytest
-
-
 WORKFLOW_COUNT = 11
 EXPECTED_WORKFLOWS = [
     "w01-workspace-init.md",
