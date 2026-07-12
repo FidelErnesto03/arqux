@@ -54,43 +54,27 @@ def _strict_mode():
 class TestGovernanceHandlersUniversal:
     """Governance handlers are accessible by all roles."""
 
+    # P0-B PATCH: GOVERNANCE_HANDLERS now contains only NON-MUTATING handlers.
+    # Mutating handlers (blueprint.create, task.fail, cortex.write, etc.) are
+    # in MUTATING_HANDLERS and auditor is denied — see TestAuditorCannotMutate.
     GOVERNANCE_HANDLERS = [
-        "cycle.create",
-        "cycle.mature",
-        "cycle.close",
-        "task.create",
-        "task.claim",
-        "task.update",
-        "task.complete",
-        "task.fail",
+        # Read-only governance handlers (auditor can invoke)
         "task.read",
         "task.list",
-        "blueprint.create",
         "blueprint.read",
         "blueprint.list",
-        "blueprint.claim",
-        "blueprint.update",
-        "blueprint.complete",
-        "blueprint.fail",
-        "evidence.record",
         "evidence.list",
         "evidence.read",
         "cortex.read",
-        "cortex.write",
         "cortex.verify",
         "cortex.learn",
-        "session.context.set",
-        "session.resume",
-        "project.bind",
-        "project.unbind",
-        "protocol.adopt",
-        "protocol.release",
-        "identity.record",
         "skill.list",
         "workspace.status",
         "workspace.lessons",
         "project.status",
         "project.lessons",
+        "cycle.list",
+        "cycle.current",
     ]
 
     @pytest.mark.parametrize("handler", GOVERNANCE_HANDLERS)

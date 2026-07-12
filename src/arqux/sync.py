@@ -1,21 +1,9 @@
-"""
-PATCH: src/arqux/sync.py
-========================
+"""sync_brain — update brain.cortex after handler mutations.
 
-This file REPLACES the existing sync.py to fix:
-    - MEDIO-1: sync_brain path doble (GAP-001 auto-reconocido)
+v0.4.3 (patched): cleaned up stale PATCH: docstring (P1-K).
 
-CHANGES vs original:
-    1. `sync_brain()` now uses `state._resolve_brain_path()` to correctly
-       resolve brain.cortex location, instead of hardcoded
-       `project_root / ".arqux" / "brain.cortex"`.
-    2. Handles both cases: `project_root` is the actual project root
-       (has .arqux/ subdir) OR `project_root` IS the .arqux/ directory.
-    3. The "brain.cortex not found at .arqux/.arqux/brain.cortex" warning
-       is eliminated.
-
-NOTE: The function signature and behavior are unchanged. This is a pure
-      bug fix. Existing callers do not need to be updated.
+This module is fail-silent: any error is logged and swallowed.
+It never interrupts the calling handler.
 """
 
 from __future__ import annotations
@@ -63,15 +51,10 @@ def sync_brain(
         logger.warning("sync_brain: project_root is None, skipping")
         return
 
-    # FIX GAP-001: Use _resolve_brain_path to correctly find brain.cortex.
-    # Previously this was hardcoded as `project_root / ".arqux" / "brain.cortex"`,
-    # which produced `.arqux/.arqux/brain.cortex` when project_root was already
-    # the .arqux/ directory (the common case from find_project_root).
     try:
         from arqux.state import _resolve_brain_path
         brain_path = _resolve_brain_path(project_root)
     except ImportError:
-        # Fallback: manual resolution matching _resolve_brain_path logic.
         from arqux.constants import ARQUX_DIR, BRAIN_CORTEX
         if project_root.name == ARQUX_DIR:
             brain_path = project_root / BRAIN_CORTEX
@@ -87,7 +70,6 @@ def sync_brain(
         )
         return
 
-    # Use the CRUD layer from state.py for atomic writes.
     try:
         from arqux.state import crud_update
     except ImportError:
@@ -98,7 +80,6 @@ def sync_brain(
     current_text = f"{event}: {detail}" if detail else event
 
     try:
-        # 1. Update WRK:current (ACTIVE_CONTEXT §8)
         crud_update(
             str(brain_path),
             "$8/WRK:current",
@@ -114,7 +95,6 @@ def sync_brain(
     except Exception:
         logger.exception("sync_brain: failed to update WRK:current @ $8 (continuing)")
 
-    # 2. Update FCS:current if focus is provided (FOCUS §2)
     if focus:
         try:
             crud_update(
@@ -132,7 +112,6 @@ def sync_brain(
         except Exception:
             logger.exception("sync_brain: failed to update FCS:current @ $2 (continuing)")
 
-    # 3. Update metrics + meta-brain if provided
     if metrics:
         _update_metrics(brain_path, metrics, ts)
         _sync_meta_brain(project_root, metrics, event, ts)
@@ -151,9 +130,6 @@ def _update_metrics(
 
     for key, value in metrics.items():
         try:
-            # BC-2 fix: provide canonical status:"current" + name + topic + content
-            # to satisfy codec-cortex 0.5.0 E032_CRITICAL_SIGIL_INCOMPLETE for KNW.
-            # Map tasks_active -> status:"current"; tasks_done -> status:"done".
             knw_status = "done" if key == "tasks_done" else "current"
             crud_add(
                 str(brain_path),
@@ -183,8 +159,6 @@ def _count_blueprints(root: Path) -> dict[str, int]:
         "blocked": 0,
     }
 
-    # FIX GAP-001: Try .arqux/cycles first (project root), then cycles/
-    # (already in .arqux/). This handles both call conventions.
     cycles_dir = root / ".arqux" / "cycles"
     if not cycles_dir.is_dir():
         cycles_dir = root / "cycles"
@@ -203,12 +177,7 @@ def _count_blueprints(root: Path) -> dict[str, int]:
 
 
 def _count_tests(root: Path) -> int:
-    """Count test files (*.py) in the tests/ directory of the project.
-
-    Handles both call conventions: root is .arqux/ or project root.
-    Returns 0 if tests/ directory doesn't exist.
-    """
-    # If root is .arqux/, the project root is the parent
+    """Count test files (*.py) in the tests/ directory of the project."""
     project_root = root.parent if root.name == ".arqux" else root
     tests_dir = project_root / "tests"
     if not tests_dir.is_dir():
@@ -229,8 +198,6 @@ def _sync_meta_brain(
     try:
         from arqux.state import find_workspace_root, crud_update
 
-        # FIX GAP-001: find_workspace_root expects a project root (with .arqux/),
-        # but project_root may already BE the .arqux/ dir. Handle both.
         search_start = project_root.parent if project_root.name == ".arqux" else project_root
 
         ws_root = find_workspace_root(start=search_start)
@@ -245,7 +212,6 @@ def _sync_meta_brain(
 
         dom_updates: dict[str, Any] = {"updated": ts, "last_event": event}
 
-        # Count blueprints from filesystem for accurate counts
         try:
             bp_counts = _count_blueprints(project_root)
             dom_updates["blueprints_done"] = str(bp_counts.get("done", 0))
@@ -259,14 +225,12 @@ def _sync_meta_brain(
                 if key in metrics:
                     dom_updates[key] = str(metrics[key])
 
-        # Count tests and handlers from filesystem for accurate metrics
         try:
             test_count = _count_tests(project_root)
             dom_updates["tests"] = str(test_count)
         except Exception:
             logger.debug("sync_brain: failed to count tests, using metric values (continuing)")
 
-        # Merge remaining metrics from the metrics dict
         for key, value in metrics.items():
             if key in ("handlers", "tasks_done", "tasks_active", "cycles_closed"):
                 dom_updates[key] = str(value)

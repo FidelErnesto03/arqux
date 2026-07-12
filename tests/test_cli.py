@@ -82,21 +82,24 @@ def test_init_verbose(tmp_path) -> None:
 
 
 def test_call_unknown_handler() -> None:
-    """arqux call with unknown handler returns error message."""
+    """P1-A: arqux call with unknown handler exits non-zero."""
     from arqux.cli import main
 
     runner = CliRunner()
     result = runner.invoke(main, ["call", "nonexistent.handler"])
-    assert result.exit_code == 0  # click doesn't raise, but output contains ERROR
+    # P1-A PATCH: unknown handler must exit non-zero
+    assert result.exit_code != 0
     assert "ERROR" in result.output or "unknown handler" in result.output.lower()
 
 
-def test_call_workspace_status() -> None:
-    """arqux call workspace.status returns status output."""
+def test_call_workspace_status(tmp_path) -> None:
+    """arqux call workspace.status returns status output (needs workspace)."""
     from arqux.cli import main
+    from arqux.handlers.workspace import init_workspace
 
+    init_workspace(path=str(tmp_path))
     runner = CliRunner()
-    result = runner.invoke(main, ["call", "workspace.status"])
+    result = runner.invoke(main, ["call", "workspace.status", f"path={tmp_path}"])
     assert result.exit_code == 0
     # Should return some text (CORTEX-OUT format)
     assert len(result.output.strip()) > 0
@@ -122,23 +125,34 @@ def test_status_command() -> None:
 # ---------------------------------------------------------------------------
 
 
-def test_call_with_key_value_args() -> None:
-    """arqux call workspace.status path=/tmp works."""
+def test_call_with_key_value_args(tmp_path) -> None:
+    """arqux call workspace.status path=X works (needs workspace)."""
     from arqux.cli import main
+    from arqux.handlers.workspace import init_workspace
 
+    init_workspace(path=str(tmp_path))
     runner = CliRunner()
-    result = runner.invoke(main, ["call", "workspace.status", "path=/tmp"])
+    result = runner.invoke(main, ["call", "workspace.status", f"path={tmp_path}"])
     assert result.exit_code == 0
 
 
-def test_call_with_underscore_name() -> None:
-    """arqux call workspace_status resolves to workspace.status."""
+def test_call_with_underscore_name(tmp_path) -> None:
+    """P0-F: arqux call workspace_status resolves to workspace.status.
+
+    The test must initialize a workspace first — workspace.status returns
+    OUT-ERROR if no workspace is found, which would make the assertion fail.
+    """
     from arqux.cli import main
+    from arqux.handlers.workspace import init_workspace
+
+    # Initialize workspace in tmp_path.
+    init_workspace(path=str(tmp_path))
 
     runner = CliRunner()
-    result = runner.invoke(main, ["call", "workspace_status"])
+    result = runner.invoke(main, ["call", "workspace_status", f"path={tmp_path}"])
     assert result.exit_code == 0
     assert "ERROR" not in result.output.upper()
+    assert "workspace" in result.output.lower()
 
 
 # ---------------------------------------------------------------------------
@@ -213,12 +227,19 @@ body here
 # ---------------------------------------------------------------------------
 
 
-def test_call_blueprint_list() -> None:
+def test_call_blueprint_list(tmp_path) -> None:
     """arqux call blueprint.list returns data without error."""
     from arqux.cli import main
+    from arqux.handlers.workspace import init_workspace
+    from arqux.handlers.project import init_project
 
+    init_workspace(path=str(tmp_path))
+    # blueprint.list requires a project to be initialized
+    project_dir = tmp_path / "myproject"
+    project_dir.mkdir()
+    init_project(name="myproject", path=str(project_dir))
     runner = CliRunner()
-    result = runner.invoke(main, ["call", "blueprint.list"])
+    result = runner.invoke(main, ["call", "blueprint.list", f"path={project_dir}"])
     assert result.exit_code == 0
 
 
@@ -344,12 +365,19 @@ def test_status_with_path(tmp_path) -> None:
 # ---------------------------------------------------------------------------
 
 
-def test_call_with_json_arg() -> None:
+def test_call_with_json_arg(tmp_path) -> None:
     """arqux call with JSON value in arg works."""
     from arqux.cli import main
+    from arqux.handlers.workspace import init_workspace
+    from arqux.handlers.project import init_project
 
+    init_workspace(path=str(tmp_path))
+    project_dir = tmp_path / "myproject"
+    project_dir.mkdir()
+    init_project(name="myproject", path=str(project_dir))
     runner = CliRunner()
     result = runner.invoke(main, [
         "call", "blueprint.list",
+        f"path={project_dir}",
     ])
     assert result.exit_code == 0

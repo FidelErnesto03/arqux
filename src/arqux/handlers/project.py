@@ -35,6 +35,7 @@ def init_project(
     path: str | None = None,
     seed: str | None = None,
     verbose: bool = False,
+    cycle: str | None = None,
     ctx: PermissionContext | None = None,
 ) -> CortexOUT:
     """Initialize `.<product>/` in a project directory and register it in the workspace.
@@ -76,6 +77,13 @@ def init_project(
         if ws_root is not None:
             _update_meta_brain(ws_root, name, str(target), seed)
 
+        # P1-D: auto-create cycle if specified.
+        if cycle:
+            try:
+                from .cycle import create_cycle
+                create_cycle(name=cycle, path=str(target), ctx=ctx)
+            except Exception:
+                pass  # cycle creation is best-effort
         return CortexOUT.work(
             f"project.init ok name={name} path={gov_dir} brain=seeded",
             project=name,
@@ -383,7 +391,7 @@ def _now_iso() -> str:
 
 
 handler_schemas = [
-    dict(name="project.init", fn=init_project, description="Initialize .arqux/ in a project directory and register it in the\nworkspace.", input_schema={"type": "object", "properties": {"name": {"type": "string", "description": "Project name"}, "path": {"type": "string", "description": "Path to project root. Defaults to cwd."}, "seed": {"type": "string", "description": "Optional pre-prepared brain.cortex CORTEX content.\nWhen provided, writes it directly as brain.cortex in one step.\nUse when the agent has already studied the project context\nand can provide FCS, OBJ, RSK, KNW, etc. directly."}}, "required": ["name"]}),
+    dict(name="project.init", fn=init_project, description="Initialize .arqux/ in a project directory and register it in the\nworkspace.", input_schema={"type": "object", "properties": {"name": {"type": "string", "description": "Project name"}, "path": {"type": "string", "description": "Path to project root. Defaults to cwd."}, "seed": {"type": "string", "description": "Optional pre-prepared brain.cortex CORTEX content.\nWhen provided, writes it directly as brain.cortex in one step.\nUse when the agent has already studied the project context\nand can provide FCS, OBJ, RSK, KNW, etc. directly."}, "cycle": {"type": "string", "description": "Optional cycle name to auto-create after project init (P1-D)."}}, "required": ["name"]}),
     dict(name="project.bind", fn=bind, description="Bind an agent identity to the current project with a role.", input_schema={"type": "object", "properties": {"agent_id": {"type": "string"}, "role": {"type": "string", "enum": ["governor", "executor", "auditor"]}, "path": {"type": "string", "description": "Path to project root. Defaults to cwd."}}, "required": ["agent_id", "role"]}),
     dict(name="project.unbind", fn=unbind, description="Release an agent binding from the current project.", input_schema={"type": "object", "properties": {"agent_id": {"type": "string"}, "path": {"type": "string", "description": "Path to project root. Defaults to cwd."}}, "required": ["agent_id"]}),
     dict(name="project.status", fn=status, description="Active project status (cycles, tasks, agents).", input_schema={"type": "object", "properties": {"path": {"type": "string", "description": "Path to project root. Defaults to cwd."}}}),
