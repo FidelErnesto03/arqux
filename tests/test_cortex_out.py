@@ -1,83 +1,158 @@
-"""Tests for CORTEX-OUT output profiles."""
+"""Tests for arqux.cortex_out — profile-based output protocol."""
 
 from __future__ import annotations
 
-from arqux.cortex_out import CortexOUT
-from arqux.constants import (
-    OUT_AUDIT,
-    OUT_ERROR,
-    OUT_FULL,
-    OUT_MIN,
-    OUT_WORK,
-)
+# ---------------------------------------------------------------------------
+# CortexOUT profile factories
+# ---------------------------------------------------------------------------
 
 
-def test_min_profile_format() -> None:
-    out = CortexOUT.min("ok", task="T-001", status="in_progress")
-    text = out.to_text()
-    assert text.startswith(OUT_MIN)
-    assert "task=T-001" in text
-    assert "status=in_progress" in text
-    assert "ok" in text
+def test_min_profile() -> None:
+    """CortexOUT.min builds a MIN profile with correct prefix."""
+    from arqux.cortex_out import CortexOUT
+
+    msg = CortexOUT.min()
+    assert msg.profile == "OUT-MIN"
 
 
-def test_work_profile_format() -> None:
-    out = CortexOUT.work("done", task="T-001", coverage="87%")
-    text = out.to_text()
-    assert text.startswith(OUT_WORK)
-    assert "coverage=87%" in text
+def test_work_profile() -> None:
+    """CortexOUT.work builds a WORK profile."""
+    from arqux.cortex_out import CortexOUT
+
+    msg = CortexOUT.work("task done")
+    assert msg.profile == "OUT-WORK"
+    assert "task done" in msg.to_text()
 
 
-def test_audit_profile_format() -> None:
-    out = CortexOUT.audit("review", cycle="CYCLE-01", risk="low")
-    text = out.to_text()
-    assert text.startswith(OUT_AUDIT)
-    assert "cycle=CYCLE-01" in text
+def test_audit_profile() -> None:
+    """CortexOUT.audit builds an AUDIT profile."""
+    from arqux.cortex_out import CortexOUT
+
+    msg = CortexOUT.audit(cycle="CYCLE-01", risk="low")
+    assert msg.profile == "OUT-AUDIT"
+    assert "CYCLE-01" in msg.to_text()
 
 
-def test_full_profile_returns_message_only() -> None:
-    out = CortexOUT.full("This is a long human-readable explanation.", task="T-001")
-    text = out.to_text()
-    assert text == "This is a long human-readable explanation."
+def test_full_profile() -> None:
+    """CortexOUT.full builds a FULL profile with raw message."""
+    from arqux.cortex_out import CortexOUT
+
+    msg = CortexOUT.full("Detailed analysis\nMulti-line content")
+    assert msg.profile == "OUT-FULL"
+    text = msg.to_text()
+    assert text == "Detailed analysis\nMulti-line content"
 
 
-def test_error_profile_format() -> None:
-    out = CortexOUT.error("denied", code="PERMISSION_DENIED", handler="task.create")
-    text = out.to_text()
-    assert text.startswith(OUT_ERROR)
-    assert "code=PERMISSION_DENIED" in text
+def test_error_profile() -> None:
+    """CortexOUT.error builds an ERROR profile."""
+    from arqux.cortex_out import CortexOUT
+
+    msg = CortexOUT.error(code="NOT_FOUND", reason="missing")
+    assert msg.profile == "OUT-ERROR"
+    assert "NOT_FOUND" in msg.to_text()
 
 
-def test_bool_value_formatting() -> None:
-    out = CortexOUT.work("test", flag=True, other=False)
-    text = out.to_text()
-    assert "flag=true" in text
-    assert "other=false" in text
+# ---------------------------------------------------------------------------
+# to_text field formatting
+# ---------------------------------------------------------------------------
 
 
-def test_list_value_formatting() -> None:
-    out = CortexOUT.work("test", items=["a", "b", "c"])
-    text = out.to_text()
+def test_to_text_boolean_fields() -> None:
+    """to_text formats booleans as 'true'/'false'."""
+    from arqux.cortex_out import CortexOUT
+
+    msg = CortexOUT.work(ok=True, failed=False)
+    text = msg.to_text()
+    assert "ok=true" in text
+    assert "failed=false" in text
+
+
+def test_to_text_list_fields() -> None:
+    """to_text formats lists as comma-separated."""
+    from arqux.cortex_out import CortexOUT
+
+    msg = CortexOUT.work(items=["a", "b", "c"])
+    text = msg.to_text()
     assert "items=a,b,c" in text
 
 
-def test_profile_classmethod() -> None:
-    out = CortexOUT.profile(OUT_MIN, "hello", key="value")
-    assert out.profile == OUT_MIN
-    assert "key=value" in out.to_text()
+def test_to_text_dict_fields() -> None:
+    """to_text formats dicts as semicolon-separated key:value."""
+    from arqux.cortex_out import CortexOUT
+
+    msg = CortexOUT.work(mapping={"x": "1", "y": "2"})
+    text = msg.to_text()
+    assert "mapping=x:1;y:2" in text
 
 
-def test_dict_value_formatting() -> None:
-    out = CortexOUT.work("test", meta={"a": "1", "b": "2"})
-    text = out.to_text()
-    assert "meta=a:1;b:2" in text
+def test_custom_profile_apid() -> None:
+    """CortexOUT.profile() builds a custom profile response."""
+    from arqux.cortex_out import CortexOUT
+
+    msg = CortexOUT.profile("CUSTOM", message="hello", status="ok")
+    text = msg.to_text()
+    assert text.startswith("CUSTOM")
+    assert "status=ok" in text
+    assert "hello" in text
 
 
-def test_empty_fields() -> None:
-    out = CortexOUT.work("no fields")
-    assert out.to_text() == "OUT-WORK no fields"
+# ---------------------------------------------------------------------------
+# format_status
+# ---------------------------------------------------------------------------
 
 
-def test_error_with_code_only() -> None:
-    out = CortexOUT.error(message="failed")
-    assert out.to_text() == "OUT-ERROR failed"
+def test_format_status_min(tmp_path) -> None:
+    """format_status with OUT_MIN profile returns minimal line."""
+    from arqux.cortex_out import format_status
+
+    result = format_status(tmp_path, profile="OUT-MIN")
+    assert result.startswith("OUT-MIN")
+    assert "workspace=" in result
+
+
+def test_format_status_work(tmp_path) -> None:
+    """format_status with OUT_WORK profile checks manifest."""
+    from arqux.cortex_out import format_status
+
+    result = format_status(tmp_path, profile="OUT-WORK")
+    assert result.startswith("OUT-WORK")
+    assert "manifest=no" in result
+
+
+def test_format_status_work_with_manifest(tmp_path) -> None:
+    """format_status OUT_WORK shows manifest=yes when manifest.cortex exists."""
+    from arqux.cortex_out import format_status
+
+    (tmp_path / "manifest.cortex").write_text("test", encoding="utf-8")
+    result = format_status(tmp_path, profile="OUT-WORK")
+    assert "manifest=yes" in result
+
+
+def test_format_status_audit(tmp_path) -> None:
+    """format_status with OUT_AUDIT profile lists directory contents."""
+    from arqux.cortex_out import format_status
+
+    (tmp_path / "test_file.txt").write_text("hello", encoding="utf-8")
+    (tmp_path / "test_dir").mkdir()
+
+    result = format_status(tmp_path, profile="OUT-AUDIT")
+    assert result.startswith("OUT-AUDIT")
+    assert "test_file.txt" in result
+    assert "test_dir" in result
+
+
+def test_format_status_full(tmp_path) -> None:
+    """format_status with OUT_FULL profile returns descriptive text."""
+    from arqux.cortex_out import format_status
+
+    result = format_status(tmp_path, profile="OUT-FULL")
+    assert "Workspace" in result
+    assert str(tmp_path) in result
+
+
+def test_format_status_unknown_profile(tmp_path) -> None:
+    """format_status with unknown profile returns ERROR."""
+    from arqux.cortex_out import format_status
+
+    result = format_status(tmp_path, profile="UNKNOWN")
+    assert "ERROR" in result

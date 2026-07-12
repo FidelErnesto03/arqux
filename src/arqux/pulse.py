@@ -8,6 +8,7 @@ Both are append-only operations on the brain sections dict.
 
 from __future__ import annotations
 
+import re
 from pathlib import Path
 from typing import Any
 

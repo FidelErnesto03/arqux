@@ -96,7 +96,6 @@ def sync_brain(
 
     ts = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
     current_text = f"{event}: {detail}" if detail else event
-    wrk_value = f"phase:current, current:{current_text}, blocked:no, updated:{ts}"
 
     try:
         # 1. Update WRK:current (ACTIVE_CONTEXT §8)
@@ -113,7 +112,7 @@ def sync_brain(
             force=True,
         )
     except Exception:
-        logger.exception("sync_brain: failed to update WRK:current (continuing)")
+        logger.exception("sync_brain: failed to update WRK:current @ $8 (continuing)")
 
     # 2. Update FCS:current if focus is provided (FOCUS §2)
     if focus:
@@ -131,7 +130,7 @@ def sync_brain(
                 force=True,
             )
         except Exception:
-            logger.exception("sync_brain: failed to update FCS:current (continuing)")
+            logger.exception("sync_brain: failed to update FCS:current @ $2 (continuing)")
 
     # 3. Update metrics + meta-brain if provided
     if metrics:
@@ -203,6 +202,23 @@ def _count_blueprints(root: Path) -> dict[str, int]:
     return counts
 
 
+def _count_tests(root: Path) -> int:
+    """Count test files (*.py) in the tests/ directory of the project.
+
+    Handles both call conventions: root is .arqux/ or project root.
+    Returns 0 if tests/ directory doesn't exist.
+    """
+    # If root is .arqux/, the project root is the parent
+    project_root = root.parent if root.name == ".arqux" else root
+    tests_dir = project_root / "tests"
+    if not tests_dir.is_dir():
+        return 0
+    try:
+        return len(list(tests_dir.glob("*.py")))
+    except Exception:
+        return 0
+
+
 def _sync_meta_brain(
     project_root: Path,
     metrics: dict[str, Any],
@@ -229,6 +245,7 @@ def _sync_meta_brain(
 
         dom_updates: dict[str, Any] = {"updated": ts, "last_event": event}
 
+        # Count blueprints from filesystem for accurate counts
         try:
             bp_counts = _count_blueprints(project_root)
             dom_updates["blueprints_done"] = str(bp_counts.get("done", 0))
@@ -242,9 +259,16 @@ def _sync_meta_brain(
                 if key in metrics:
                     dom_updates[key] = str(metrics[key])
 
+        # Count tests and handlers from filesystem for accurate metrics
+        try:
+            test_count = _count_tests(project_root)
+            dom_updates["tests"] = str(test_count)
+        except Exception:
+            logger.debug("sync_brain: failed to count tests, using metric values (continuing)")
+
+        # Merge remaining metrics from the metrics dict
         for key, value in metrics.items():
-            if key in ("handlers", "tests",
-                       "tasks_done", "tasks_active", "cycles_closed"):
+            if key in ("handlers", "tasks_done", "tasks_active", "cycles_closed"):
                 dom_updates[key] = str(value)
 
         crud_update(
@@ -254,4 +278,4 @@ def _sync_meta_brain(
             force=True,
         )
     except Exception:
-        logger.exception("sync_brain: failed to sync meta-brain (continuing)")
+        logger.exception("sync_brain: failed to sync meta-brain @ DOM:arqux (continuing)")

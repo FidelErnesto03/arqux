@@ -380,3 +380,14 @@ def _load_task(root: Path, task_id: str) -> tuple[Path | None, dict[str, Any], s
 def _now_iso() -> str:
     import time
     return time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+
+
+handler_schemas = [
+    dict(name="task.create", fn=create_task, description="Create a governed task in the current cycle.", input_schema={"type": "object", "properties": {"obj": {"type": "string"}, "pre": {"type": "array", "items": {"type": "string"}}, "proc": {"type": "array", "items": {"type": "string"}}, "ac": {"type": "array", "items": {"type": "string"}}, "blk": {"type": "array", "items": {"type": "string"}}, "assignee": {"type": "string"}, "complexity": {"type": "string", "enum": ["simple", "standard", "complex"]}, "priority": {"type": "string", "enum": ["low", "medium", "high"]}, "path": {"type": "string", "description": "Path to project root. Defaults to cwd."}}, "required": ["obj"]}),
+    dict(name="task.claim", fn=claim_task, description="An executor claims a task → status: in_progress.", input_schema={"type": "object", "properties": {"task_id": {"type": "string"}, "path": {"type": "string", "description": "Path to project root. Defaults to cwd."}}, "required": ["task_id"]}),
+    dict(name="task.update", fn=update_task, description="Update task progress, optionally change status.", input_schema={"type": "object", "properties": {"task_id": {"type": "string"}, "note": {"type": "string"}, "status": {"type": "string"}, "path": {"type": "string", "description": "Path to project root. Defaults to cwd."}}, "required": ["task_id", "note"]}),
+    dict(name="task.complete", fn=complete_task, description="Mark a task done and record evidence.", input_schema={"type": "object", "properties": {"task_id": {"type": "string"}, "evidence": {"type": "string"}, "path": {"type": "string", "description": "Path to project root. Defaults to cwd."}}, "required": ["task_id"]}),
+    dict(name="task.fail", fn=fail_task, description="Mark a task blocked and record the cause.", input_schema={"type": "object", "properties": {"task_id": {"type": "string"}, "reason": {"type": "string"}, "path": {"type": "string", "description": "Path to project root. Defaults to cwd."}}, "required": ["task_id", "reason"]}),
+    dict(name="task.read", fn=read_task, description="Read a task (CORTEX or HCORTEX format).", input_schema={"type": "object", "properties": {"task_id": {"type": "string"}, "format": {"type": "string", "enum": ["cortex", "hcortex"], "default": "cortex"}, "path": {"type": "string", "description": "Path to project root. Defaults to cwd."}}, "required": ["task_id"]}),
+    dict(name="task.list", fn=list_tasks, description="List tasks with filters.", input_schema={"type": "object", "properties": {"status": {"type": "string"}, "assignee": {"type": "string"}, "cycle": {"type": "string"}, "path": {"type": "string", "description": "Path to project root. Defaults to cwd."}}}),
+]

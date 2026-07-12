@@ -97,11 +97,17 @@ def cmd_init(path: str | None, verbose: bool):
 @main.command("status")
 @click.option("--path", default=None, help="Path to check.")
 @click.option("--verbose", is_flag=True, help="Verbose output.")
-def cmd_status(path: str | None, verbose: bool):
+@click.option("--dashboard", is_flag=True, help="Show visual workspace dashboard.")
+def cmd_status(path: str | None, verbose: bool, dashboard: bool):
     """Print workspace + project + cycle status."""
     from .handlers.workspace import status as ws_status
     from .handlers.project import status as pr_status
     from .handlers.cycle import current_cycle
+
+    if dashboard:
+        result = ws_status(dashboard=True, path=path)
+        click.echo(result.to_text())
+        return
 
     ws = ws_status(verbose=verbose, path=path)
     click.echo(ws.to_text())
@@ -141,6 +147,26 @@ def cmd_call(handler: str, args: tuple[str, ...]):
     """
     result = _call_handler(handler, list(args))
     click.echo(result)
+
+
+@main.command("doctor")
+@click.option("--fix", is_flag=True, help="Apply automatic repairs.")
+def cmd_doctor(fix: bool):
+    """Diagnose workspace/project health and optionally repair (BLP-007)."""
+    from .doctor import run_all
+
+    result = run_all(fix=fix)
+    click.echo(result.to_text())
+
+
+@main.command("quickstart")
+@click.option("--path", default=None, help="Directory to bootstrap (default: cwd)")
+def cmd_quickstart(path: str | None):
+    """Interactive workspace onboarding for new agents (BLP-008)."""
+    from .quickstart import quickstart as qs
+
+    result = qs(path=path)
+    click.echo(result.to_text())
 
 
 @main.command("setup-plantuml")
@@ -194,6 +220,27 @@ def cmd_handlers():
 
     for name in sorted(list_handlers()):
         click.echo(name)
+
+
+# === BLP-011: backup / restore =============================================
+
+@main.command("backup")
+def cmd_backup():
+    """Create a timestamped .tar.gz backup of .arqux/ with sha256 (BLP-011)."""
+    from .backup import backup as do_backup
+
+    result = do_backup()
+    click.echo(result.to_text())
+
+
+@main.command("restore")
+@click.argument("backup_file", type=click.Path(exists=True))
+def cmd_restore(backup_file: str):
+    """Restore .arqux/ from a backup file (BLP-011)."""
+    from .backup import restore as do_restore
+
+    result = do_restore(backup_file)
+    click.echo(result.to_text())
 
 
 # === BLP-035: migrate ======================================================

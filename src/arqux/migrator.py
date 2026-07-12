@@ -1,6 +1,6 @@
 """Migrator for ARQX:artifact in $0.1 (BLP-041).
 
-Injects a ``$0.1: ARQUX METADATA`` section with ``ARQX:artifact{...}`` entry
+Injects a ``$19: ARQUX METADATA`` section with ``ARQX:artifact{...}`` entry
 into existing .cortex files. Replaces legacy ``# §0 METADATA{...}`` blocks.
 
 The migrator is IDEMPOTENT: re-running on an already migrated file is a no-op.
