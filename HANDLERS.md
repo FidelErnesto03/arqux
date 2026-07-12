@@ -2,6 +2,44 @@
 
 Total: **73** handlers
 
+## Governance Budget (P1-R)
+
+ArqUX classifies handlers into two categories:
+
+### Governance Handlers (24-handler budget)
+
+These 24 handlers manage the lifecycle of governance artifacts (blueprints, cycles, tasks, evidence, identities, sessions, projects, protocols). They are the canonical surface area that the governance model enforces.
+
+| Module | Handlers | Count |
+|---|---|---:|
+| `blueprint` (governance subset) | `create`, `define`, `mature`, `ready`, `assign`, `claim`, `update`, `complete`, `fail`, `cancel`, `approve`, `re_delegate`, `block_for_architect`, `task`, `gate`, `ac` | 16 |
+| `cycle` | `create`, `mature`, `close` | 3 |
+| `protocol` | `adopt`, `release`, `pause`, `resume`, `cycle.mature` (overlap) | 4 |
+| `evidence` | `record` | 1 |
+| **Total governance budget** | | **24** |
+
+### Utility Handlers (49 handlers)
+
+The remaining 49 handlers are utility/read operations:
+
+| Module | Handlers | Count |
+|---|---|---:|
+| `blueprint` (read) | `read`, `list` | 2 |
+| `cortex` | `entry.add/delete/get/list/move/update`, `file.validate`, `learn`, `learn.elevate`, `read`, `render`, `render.diagram`, `render.validate_file`, `verify`, `write` | 15 |
+| `cycle` (read) | `current`, `list` | 2 |
+| `evidence` (read) | `list`, `read` | 2 |
+| `identity` | `record` | 1 |
+| `project` | `bind`, `init`, `lessons`, `status`, `unbind` | 5 |
+| `session` | `close`, `context.get`, `context.set`, `resume`, `status` | 5 |
+| `setup` | `plantuml` | 1 |
+| `skill` | `convert`, `edit`, `evolve`, `import`, `list`, `record` | 6 |
+| `task` (read) | `read`, `list` | 2 |
+| `workspace` | `init`, `lessons`, `status` | 3 |
+| **Total utility** | | **49** |
+
+The 24-handler governance budget is a design constraint: adding a new governance handler requires removing one. Utility handlers can grow without bound.
+
+
 ## blueprint
 
 | Handler | Description |

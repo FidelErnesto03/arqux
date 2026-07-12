@@ -30,13 +30,26 @@ htmlcov/
 .mypy_cache/
 .ruff_cache/
 
+# Coverage reports (P1-H)
+coverage.xml
+*.coverage
+*.cover
+
 # Backup / artifact files
 *.bak
 *.bak-*
+*.orig
 # Governance runtime (pulse logs may contain local state)
 .arqux/cycles/*/pulse.jsonl.bak
+
+# P1-I: Governance runtime state — should NOT be committed.
+# Only .arqux/.gitkeep should be tracked.
+.arqux/*
+!.arqux/.gitkeep
 
 # OS
 Thumbs.db
 desktop.ini
-uv.lock
+
+# P2-13: Lock files SHOULD be tracked for reproducibility.
+# (uv.lock removed from .gitignore — should be committed)

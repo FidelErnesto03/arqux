@@ -170,6 +170,18 @@ def _parse_and_mutate(
         result = _cc_transactions.atomic_write_cortex(doc, str(path), force=force)
     except Exception as e:
         return {"error": f"Atomic write failed: {e}", "non_bypassable": True}
+
+    # P1-P: Auto-sign .cortex files with $INTEGRITY header after successful write.
+    # NOTE: Auto-signing is intentionally disabled here because codec-cortex
+    # writes files with its own format and re-reading them with $INTEGRITY
+    # header prepended breaks subsequent parses. Auto-signing should be
+    # applied at a higher level (e.g. via `arqux cortex-verify --sign` CLI
+    # or post-commit hook). See EVIDENCE.md §5.1 for file-level integrity.
+    #
+    # To re-enable auto-signing in the future, ensure codec-cortex can
+    # tolerate a `# $INTEGRITY: sha256:...` header line at the top of files
+    # (or strip it before parsing).
+
     return {
         "path": str(path),
         "bytes_written": result.bytes_written,

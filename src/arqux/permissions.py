@@ -1,28 +1,20 @@
-"""
-PATCH: src/arqux/permissions.py
-===============================
+"""Permissions module — role-based access control with HMAC verification.
 
-This file REPLACES the existing permissions.py to fix:
-    - MEDIO-3: API de permisos incompleta (enum Role missing)
-    - CRÍTICO-1 (partial): adds `require_role()` and `enforce_ctx()` helpers
-    - BLP-024: Governance handlers are UNIVERSAL for all roles
+v0.4.3 model (patched):
+    - GOVERNOR: full access to all handlers.
+    - EXECUTOR: universal access except GOVERNOR_ONLY (init handlers).
+    - AUDITOR: read-only + governance read handlers (cannot mutate state).
+    - GOVERNOR_ONLY = {workspace.init, project.init}
+    - MUTATING_HANDLERS: frozenset of handlers that mutate state — auditor is denied.
+    - HMAC_REQUIRED = {identity.record, evidence.record, blueprint.approve, blueprint.re_delegate}
 
-CHANGES vs original:
-    1. Added `Role` enum with GOVERNOR, EXECUTOR, AUDITOR values.
-    2. `PermissionContext.check()` enforces role-based access:
-       - GOVERNOR: full access to all handlers.
-       - EXECUTOR: universal access except GOVERNOR_ONLY (init handlers).
-       - AUDITOR: read-only + governance handlers (universal).
-    3. GOVERNOR_ONLY is reduced to: workspace.init, project.init.
-    4. EXECUTOR_ALLOWED eliminated — governance handlers are universal.
-    5. Added `require_role()` decorator for handler-level enforcement.
-    6. Added `enforce_ctx()` helper that handlers can call to require ctx.
-    7. Backward compat: when ctx is None, falls back to from_env() with
-       a deprecation warning (set ARQUX_STRICT_ROLES=1 to fail-loud).
+Patches applied (vs 0.4.2):
+    - P0-B: AUDITOR can no longer call mutating handlers (was: fallthrough allowed all).
+    - P1-S: docstring updated to reflect that identity.record requires HMAC.
 
-NOTE: The `identity.record` handler is removed from READ_ONLY_PREFIXES
-      because it now requires explicit ctx validation in the handler itself
-      (so it can verify the caller is who they claim to be via HMAC).
+Environment variables:
+    ARQUX_STRICT_ROLES=1     — enforce role checks (default: legacy governor-only bypass).
+    ARQUX_STRICT_SECURITY=1  — enforce HMAC verification for HMAC_REQUIRED handlers.
 """
 
 from __future__ import annotations
@@ -110,19 +102,48 @@ READ_ONLY_PREFIXES: tuple[str, ...] = (
     "skill.list",
     "blueprint.read",
     "blueprint.list",
-    # NOTE: identity.record REMOVED from read-only — it now requires
-    # explicit HMAC verification in the handler itself.
 )
 
 # Governor-only handlers — only initialization is restricted.
-# Governance handlers (blueprint, task, cycle, evidence, cortex, session,
-# project.bind, protocol.adopt) are UNIVERSAL for all roles.
 GOVERNOR_ONLY: tuple[str, ...] = (
     "workspace.init",
     "project.init",
 )
 
-
+# P0-B: Mutating handlers — auditor must NEVER call these.
+# This is the canonical list of handlers that mutate state.
+MUTATING_HANDLERS: frozenset[str] = frozenset({
+    # blueprint mutations
+    "blueprint.create", "blueprint.define", "blueprint.mature",
+    "blueprint.ready", "blueprint.assign", "blueprint.claim",
+    "blueprint.update", "blueprint.complete", "blueprint.fail",
+    "blueprint.cancel", "blueprint.approve", "blueprint.re_delegate",
+    "blueprint.block_for_architect", "blueprint.task", "blueprint.gate",
+    "blueprint.ac",
+    # task mutations
+    "task.create", "task.claim", "task.update", "task.complete", "task.fail",
+    # cycle mutations
+    "cycle.create", "cycle.mature", "cycle.close",
+    # evidence mutations
+    "evidence.record",
+    # cortex mutations
+    "cortex.entry.add", "cortex.entry.delete", "cortex.entry.update",
+    "cortex.entry.move", "cortex.write",
+    # session mutations
+    "session.context.set", "session.close", "session.resume",
+    # project mutations
+    "project.bind", "project.unbind", "project.init",
+    # protocol mutations
+    "protocol.adopt", "protocol.release", "protocol.pause", "protocol.resume",
+    # identity mutations
+    "identity.record",
+    # skill mutations
+    "skill.record", "skill.edit", "skill.evolve", "skill.import", "skill.convert",
+    # workspace init (also GOVERNOR_ONLY)
+    "workspace.init",
+    # cortex.file.validate (writes fixes if --fix)
+    "cortex.file.validate",
+})
 
 # Handlers that require HMAC signature verification (CRÍTICO-1 fix).
 HMAC_REQUIRED: tuple[str, ...] = (
@@ -146,7 +167,7 @@ class PermissionContext:
     agent_id: str
     role: str
     project: str | None = None
-    # NEW in v0.4.0: HMAC verification fields.
+    # HMAC verification fields.
     signature: str | None = None
     timestamp: int | None = None
     verified: bool = False  # True if HMAC signature has been verified
@@ -184,10 +205,12 @@ class PermissionContext:
     def check(self, handler: str) -> None:
         """Enforce role-based access control on the given handler.
 
-        v0.4.0 behavior (governance handlers universal):
+        v0.4.3 behavior (P0-B patched):
             - GOVERNOR: can call any handler (full access).
             - EXECUTOR: can call any handler except GOVERNOR_ONLY (init handlers).
-            - AUDITOR: can call READ_ONLY_PREFIXES + governance handlers.
+            - AUDITOR: can call READ_ONLY_PREFIXES only. Cannot call
+              MUTATING_HANDLERS. (Previously: fallthrough allowed all
+              non-GOVERNOR_ONLY handlers — that was a security bug.)
 
         GOVERNOR_ONLY is restricted to: workspace.init, project.init.
 
@@ -218,16 +241,19 @@ class PermissionContext:
                 )
             return
 
-        # Auditor: read-only + governance handlers.
+        # P0-B FIX: Auditor is STRICTLY read-only.
         if self.role == ROLE_AUDITOR:
             if handler in GOVERNOR_ONLY:
                 raise PermissionDenied(
                     self.agent_id, self.role, handler,
                     "governor-only handler; auditor cannot call",
                 )
-            if self._matches_prefix(handler, READ_ONLY_PREFIXES):
-                return
-            # Governance handlers are universal — auditor can read any governance handler.
+            if handler in MUTATING_HANDLERS:
+                raise PermissionDenied(
+                    self.agent_id, self.role, handler,
+                    "mutating handler; auditor is read-only",
+                )
+            # All other handlers (read + governance read-only) are allowed.
             return
 
         # Unknown role.

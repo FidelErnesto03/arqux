@@ -4,7 +4,12 @@ Each handler module exposes a ``handler_schemas`` list of dicts with:
     name, fn, description, input_schema
 
 The registry iterates all modules and registers them.
+
 Adding a handler requires removing one (per the fixed-budget principle).
+
+P1-L PATCH (2026-07-12): Documented the stub shims (handlers/blueprint.py
+and handlers/cortex.py) as backward-compat re-exports of the package
+modules (handlers/blueprint/ and handlers/cortex/).
 """
 
 from __future__ import annotations
@@ -12,6 +17,13 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any, Callable
 
+# Note: handlers/blueprint.py and handlers/cortex.py are 1-line stub shims
+# that re-export from handlers/blueprint/ and handlers/cortex/ packages.
+# They exist for backward compatibility with code that imports
+# `from arqux.handlers.blueprint import ...` (pre-refactor style).
+# New code should import directly from the package:
+#   from arqux.handlers.blueprint.manage import create
+#   from arqux.handlers.cortex.entries import add_entry
 from . import cycle, evidence, project, protocol, session, task, workspace, cortex, skill, blueprint
 
 

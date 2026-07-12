@@ -5,9 +5,16 @@ Commands:
     arqux init               — initialize .arqux/ in the current directory.
     arqux status             — print workspace/project/cycle status.
     arqux call <handler>     — call any handler directly (no MCP required).
+    arqux cortex-verify <p>  — verify SHA-256 integrity of a .cortex file.
     arqux setup-plantuml     — download plantuml.jar.
     arqux serve-plantuml     — start PlantUML render server.
     arqux --version
+
+Patches applied (vs 0.4.2):
+    - P1-A: arqux call unknown.handler exits 1 (was 0)
+    - P1-B: arqux call with handler error exits 1 (was 0)
+    - P1-C: arqux status does not silently swallow TypeError
+    - P1-Q: new arqux cortex-verify command
 """
 
 from __future__ import annotations
@@ -112,17 +119,20 @@ def cmd_status(path: str | None, verbose: bool, dashboard: bool):
     ws = ws_status(verbose=verbose, path=path)
     click.echo(ws.to_text())
 
+    # P1-C FIX: do not pass verbose to pr_status (it does not accept it).
     try:
-        pr = pr_status(verbose=verbose, path=path)
+        pr = pr_status(path=path)
         click.echo(pr.to_text())
-    except Exception:
-        pass
+    except Exception as e:
+        if verbose:
+            click.echo(f"[project status unavailable: {e}]", err=True)
 
     try:
         cy = current_cycle(path=path)
         click.echo(cy.to_text())
-    except Exception:
-        pass
+    except Exception as e:
+        if verbose:
+            click.echo(f"[cycle status unavailable: {e}]", err=True)
 
 
 @main.command("serve")
@@ -147,6 +157,30 @@ def cmd_call(handler: str, args: tuple[str, ...]):
     """
     result = _call_handler(handler, list(args))
     click.echo(result)
+    # P1-A/P1-B FIX: non-zero exit code on ERROR.
+    if isinstance(result, str) and (result.startswith("ERROR") or "OUT-ERROR" in result):
+        sys.exit(1)
+
+
+@main.command("cortex-verify")
+@click.argument("path", type=click.Path(exists=True))
+def cmd_cortex_verify(path: str):
+    """Verify SHA-256 integrity of a .cortex file (P1-Q).
+
+    Exit codes:
+        0 — integrity verified
+        1 — tamper detected or no $INTEGRITY header
+    """
+    from .security import verify_cortex, TamperError
+    try:
+        verify_cortex(path)
+        click.echo(f"OK: {path} integrity verified")
+    except TamperError as e:
+        click.echo(f"FAIL: {e}", err=True)
+        sys.exit(1)
+    except Exception as e:
+        click.echo(f"ERROR: {type(e).__name__}: {e}", err=True)
+        sys.exit(1)
 
 
 @main.command("doctor")

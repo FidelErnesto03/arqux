@@ -50,6 +50,10 @@ def init_workspace(
 
     The first agent to call this on a fresh workspace is implicitly promoted
     to governor (bootstrap case).
+
+    P0-A PATCH (2026-07-12): Copy the meta-brain.cortex template directly
+    instead of calling write_meta_brain() with a minimal dict. This preserves
+    the $2/DOM:arqux entry that the brain-sync helper expects.
     """
     target = Path(path or os.getcwd()).resolve()
     gov_dir = target / ARQUX_DIR
@@ -69,16 +73,23 @@ def init_workspace(
         if not agents_dst.exists():
             agents_dst.write_text(agents_tmpl.read_text(encoding="utf-8"), encoding="utf-8")
 
-    # Only create meta-brain if it doesn't already exist (non-destructive).
+    # P0-A FIX: Copy meta-brain template directly (preserves $2/DOM:arqux).
     meta_brain_path = gov_dir / META_BRAIN_CORTEX
     if not meta_brain_path.exists():
-        meta_brain = {
-            "level": 1,
-            "workspace": target.name,
-            "lessons": [],
-            "knowledge": [],
-        }
-        write_meta_brain(gov_dir, meta_brain)
+        meta_tmpl = Path(__file__).resolve().parent.parent / "templates" / META_BRAIN_CORTEX
+        if meta_tmpl.exists():
+            meta_brain_path.write_text(
+                meta_tmpl.read_text(encoding="utf-8"), encoding="utf-8"
+            )
+        else:
+            # Fallback: only if template missing (shouldn't happen in production).
+            meta_brain = {
+                "level": 1,
+                "workspace": target.name,
+                "lessons": [],
+                "knowledge": [],
+            }
+            write_meta_brain(gov_dir, meta_brain)
 
     write_projects_index(gov_dir, [])
 
