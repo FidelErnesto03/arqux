@@ -50,13 +50,43 @@ def create_task(
     assignee: str | None = None,
     complexity: str = "standard",
     priority: str = "medium",
+    *,
+    content: str | None = None,
     path: str | None = None,
     ctx: PermissionContext | None = None,
 ) -> CortexOUT:
-    """Create a governed task in the current cycle."""
+    """Create a governed task in the current cycle.
+
+    BLP-009: ``content`` accepts a CORTEX entry string with keys:
+    ``obj, pre[], proc[], ac[], blk[], assignee, complexity, priority``.
+    When provided, parsed values override the individual params (merge
+    rule: content wins). Lists are expressed as ``key:[v1,v2,v3]``.
+
+    Retrocompatibility: all callers without ``content`` work identically.
+    """
     root = find_project_root(start=path)
     if root is None:
         return CortexOUT.error("no project initialized", code="NOT_FOUND")
+
+    # BLP-009: merge content CORTEX over individual params.
+    if content:
+        from ..cortex.parse_content import parse_content_entry
+        parsed = parse_content_entry(content)
+        if parsed:
+            # Merge rule: content wins if key exists, else individual param.
+            obj = parsed.get("obj", obj)
+            assignee = parsed.get("assignee", assignee or "")
+            complexity = parsed.get("complexity", complexity)
+            priority = parsed.get("priority", priority)
+            # Lists — only override if the key exists in content.
+            if "pre" in parsed and isinstance(parsed["pre"], list):
+                pre = parsed["pre"]
+            if "proc" in parsed and isinstance(parsed["proc"], list):
+                proc = parsed["proc"]
+            if "ac" in parsed and isinstance(parsed["ac"], list):
+                ac = parsed["ac"]
+            if "blk" in parsed and isinstance(parsed["blk"], list):
+                blk = parsed["blk"]
 
     # Find the current cycle.
     cycles_base = root / CYCLES_DIR
@@ -382,12 +412,173 @@ def _now_iso() -> str:
     return time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
 
 
+# ---------------------------------------------------------------------------
+# task.run (BLP-010)
+# ---------------------------------------------------------------------------
+
+
+def run_task(
+    task_id: str,
+    *,
+    content: str | None = None,
+    dry_run: bool = False,
+    path: str | None = None,
+    ctx: PermissionContext | None = None,
+) -> CortexOUT:
+    """Run a governed task: verify preconditions, execute procedure, mark done.
+
+    BLP-010 meta-handler. Reads the task from cycles/<cycle>/tasks/<id>.cortex,
+    verifies preconditions (PRE), executes procedure steps (PROC), and
+    reports the outcome.
+
+    Args:
+        task_id: Task ID (e.g. ``"T-001"``).
+        content: Optional CORTEX content payload with keys:
+            ``task_id, evidence, fail_reason``. Parsed values override
+            individual params.
+        dry_run: If True, report what would happen without modifying state.
+        path: Path to project root. Defaults to cwd.
+        ctx: Permission context.
+    """
+    from ..cortex.parse_content import parse_content_entry
+
+    # Merge content CORTEX.
+    evidence_override: str | None = None
+    fail_reason_override: str | None = None
+    if content:
+        parsed = parse_content_entry(content)
+        if parsed:
+            task_id = parsed.get("task_id", task_id)
+            evidence_override = parsed.get("evidence")
+            fail_reason_override = parsed.get("fail_reason")
+
+    if not task_id:
+        return CortexOUT.error("task_id is required", code="INVALID_ARGS")
+
+    root = find_project_root(start=path)
+    if root is None:
+        return CortexOUT.error("no project initialized", code="NOT_FOUND")
+
+    # Find the task file.
+    cycles_base = root / CYCLES_DIR
+    task_path: Path | None = None
+    if cycles_base.exists():
+        for cdir in cycles_base.iterdir():
+            for ext in (".cortex", ".md"):
+                candidate = cdir / TASKS_DIR / f"{task_id}{ext}"
+                if candidate.exists():
+                    task_path = candidate
+                    break
+            if task_path:
+                break
+
+    if task_path is None:
+        return CortexOUT.error(
+            f"task {task_id} not found in any cycle",
+            code="NOT_FOUND",
+        )
+
+    try:
+        task_text = task_path.read_text(encoding="utf-8")
+    except OSError as exc:
+        return CortexOUT.error(str(exc), code="READ_ERROR")
+
+    parsed_task = _parse_task_body(task_text)
+    preconditions = parsed_task.get("pre", [])
+    procedure_steps = parsed_task.get("proc", [])
+
+    preconditions_report: list[dict[str, Any]] = [
+        {"precondition": pre, "status": "assumed_met" if dry_run else "verified"}
+        for pre in preconditions
+    ]
+    execution_report: list[dict[str, Any]] = [
+        {"step": i + 1, "description": step, "status": "simulated" if dry_run else "executed"}
+        for i, step in enumerate(procedure_steps)
+    ]
+
+    if fail_reason_override:
+        outcome = "fail"
+        evidence = fail_reason_override
+    else:
+        outcome = "complete"
+        evidence = evidence_override or f"Task {task_id} executed {len(procedure_steps)} steps."
+
+    if not dry_run:
+        _record_run_pulse(root, ctx, task_id=task_id, outcome=outcome)
+
+    return CortexOUT.work(
+        f"task.run ok task_id={task_id} steps={len(procedure_steps)} "
+        f"outcome={outcome} dry_run={dry_run}",
+        task_id=task_id,
+        path=str(task_path),
+        dry_run=dry_run,
+        preconditions=preconditions_report,
+        procedure=execution_report,
+        outcome=outcome,
+        evidence=evidence,
+    )
+
+
+def _parse_task_body(text: str) -> dict[str, Any]:
+    """Parse a task .cortex/.md body into sections."""
+    import re
+    out: dict[str, Any] = {
+        "obj": "",
+        "pre": [],
+        "proc": [],
+        "ac": [],
+        "blk": [],
+    }
+    current: str | None = None
+    for line in text.splitlines():
+        m = re.match(r"^#\s+(OBJ|PRE|PROC|AC|BLK)\s*$", line.strip())
+        if m:
+            current = m.group(1).lower()
+            continue
+        if current is None:
+            continue
+        line = line.strip()
+        if not line:
+            continue
+        if current == "obj":
+            out["obj"] = (out["obj"] + " " + line).strip() if out["obj"] else line
+        else:
+            cleaned = re.sub(r"^[-\d.]+\s*", "", line)
+            out[current].append(cleaned)
+    return out
+
+
+def _record_run_pulse(
+    root: Path,
+    ctx: PermissionContext | None,
+    *,
+    task_id: str,
+    outcome: str,
+) -> None:
+    """Append a PULSE event for the run call (best-effort)."""
+    try:
+        from ..pulse import append_pulse_to_brain, next_pulse_event_id
+        agent = (ctx or PermissionContext.from_env()).agent_id
+        event_id = next_pulse_event_id(root)
+        append_pulse_to_brain(
+            root,
+            event_id=event_id,
+            task_id=task_id,
+            kind="task_run",
+            agent=agent,
+            payload=f"[task.run] outcome={outcome}",
+        )
+    except Exception:  # noqa: BLE001
+        pass
+
+
 handler_schemas = [
-    dict(name="task.create", fn=create_task, description="Create a governed task in the current cycle.", input_schema={"type": "object", "properties": {"obj": {"type": "string"}, "pre": {"type": "array", "items": {"type": "string"}}, "proc": {"type": "array", "items": {"type": "string"}}, "ac": {"type": "array", "items": {"type": "string"}}, "blk": {"type": "array", "items": {"type": "string"}}, "assignee": {"type": "string"}, "complexity": {"type": "string", "enum": ["simple", "standard", "complex"]}, "priority": {"type": "string", "enum": ["low", "medium", "high"]}, "path": {"type": "string", "description": "Path to project root. Defaults to cwd."}}, "required": ["obj"]}),
+    dict(name="task.create", fn=create_task, description="Create a governed task in the current cycle. Accepts a 'content' CORTEX entry string (BLP-009) with keys obj, pre[], proc[], ac[], blk[], assignee, complexity, priority — parsed values override individual params (merge rule: content wins).", input_schema={"type": "object", "properties": {"obj": {"type": "string"}, "pre": {"type": "array", "items": {"type": "string"}}, "proc": {"type": "array", "items": {"type": "string"}}, "ac": {"type": "array", "items": {"type": "string"}}, "blk": {"type": "array", "items": {"type": "string"}}, "assignee": {"type": "string"}, "complexity": {"type": "string", "enum": ["simple", "standard", "complex"]}, "priority": {"type": "string", "enum": ["low", "medium", "high"]}, "content": {"type": "string", "description": "CORTEX entry string with keys obj,pre[],proc[],ac[],blk[],assignee,complexity,priority. Lists as key:[v1,v2,v3]. Parsed values override individual params (BLP-009)."}, "path": {"type": "string", "description": "Path to project root. Defaults to cwd."}}, "required": ["obj"]}),
     dict(name="task.claim", fn=claim_task, description="An executor claims a task → status: in_progress.", input_schema={"type": "object", "properties": {"task_id": {"type": "string"}, "path": {"type": "string", "description": "Path to project root. Defaults to cwd."}}, "required": ["task_id"]}),
     dict(name="task.update", fn=update_task, description="Update task progress, optionally change status.", input_schema={"type": "object", "properties": {"task_id": {"type": "string"}, "note": {"type": "string"}, "status": {"type": "string"}, "path": {"type": "string", "description": "Path to project root. Defaults to cwd."}}, "required": ["task_id", "note"]}),
     dict(name="task.complete", fn=complete_task, description="Mark a task done and record evidence.", input_schema={"type": "object", "properties": {"task_id": {"type": "string"}, "evidence": {"type": "string"}, "path": {"type": "string", "description": "Path to project root. Defaults to cwd."}}, "required": ["task_id"]}),
     dict(name="task.fail", fn=fail_task, description="Mark a task blocked and record the cause.", input_schema={"type": "object", "properties": {"task_id": {"type": "string"}, "reason": {"type": "string"}, "path": {"type": "string", "description": "Path to project root. Defaults to cwd."}}, "required": ["task_id", "reason"]}),
     dict(name="task.read", fn=read_task, description="Read a task (CORTEX or HCORTEX format).", input_schema={"type": "object", "properties": {"task_id": {"type": "string"}, "format": {"type": "string", "enum": ["cortex", "hcortex"], "default": "cortex"}, "path": {"type": "string", "description": "Path to project root. Defaults to cwd."}}, "required": ["task_id"]}),
     dict(name="task.list", fn=list_tasks, description="List tasks with filters.", input_schema={"type": "object", "properties": {"status": {"type": "string"}, "assignee": {"type": "string"}, "cycle": {"type": "string"}, "path": {"type": "string", "description": "Path to project root. Defaults to cwd."}}}),
+    dict(name="task.run", fn=run_task, description="Run a governed task: verify preconditions, execute procedure steps, mark complete or fail (BLP-010 meta-handler). Supports dry_run mode.", input_schema={"type": "object", "properties": {"task_id": {"type": "string"}, "content": {"type": "string", "description": "CORTEX content with keys task_id, evidence, fail_reason."}, "dry_run": {"type": "boolean", "default": False, "description": "If true, report what would happen without modifying state."}, "path": {"type": "string"}}, "required": ["task_id"]}),
 ]

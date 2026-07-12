@@ -44,6 +44,11 @@ from .learning import (
     record_lesson_handler_legacy,
 )
 
+from .ref import ref_handler
+from .format import format_handler
+from .patch import patch_handler
+from .migrate import migrate_handler
+
 __all__ = [
     "_next_number",
     "read_handler",
@@ -64,6 +69,10 @@ __all__ = [
     "setup_plantuml_handler",
     "learn_scan_handler",
     "learn_elevate_handler",
+    "ref_handler",
+    "format_handler",
+    "patch_handler",
+    "migrate_handler",
     "handler_schemas",
 ]
 
@@ -71,13 +80,63 @@ handler_schemas = [
     dict(
         name="cortex.read",
         fn=read_handler,
-        description="Read and parse a .cortex file using CODEC-CORTEX.",
+        description=(
+            "Read and parse a .cortex file. mode='cortex' (default) returns "
+            "raw CORTEX entries as dict (canal I); mode='hcortex' renders "
+            "human-readable markdown (canal E)."
+        ),
         input_schema={
             "type": "object",
             "properties": {
                 "path": {"type": "string"},
+                "mode": {
+                    "type": "string",
+                    "enum": ["cortex", "hcortex"],
+                    "default": "cortex",
+                    "description": "Output format: cortex (raw dict, canal I) or hcortex (markdown, canal E).",
+                },
             },
             "required": ["path"],
+        },
+    ),
+    dict(
+        name="cortex.ref",
+        fn=ref_handler,
+        description=(
+            "Return the definition of a CORTEX sigil (name, type, risk, "
+            "layer, description). Reads from local sigil cache."
+        ),
+        input_schema={
+            "type": "object",
+            "properties": {
+                "sigil": {
+                    "type": "string",
+                    "description": "Sigil identifier (case-insensitive), e.g. 'WRK', 'lng'.",
+                },
+                "path": {"type": "string"},
+            },
+            "required": ["sigil"],
+        },
+    ),
+    dict(
+        name="cortex.format",
+        fn=format_handler,
+        description=(
+            "Transform content between CORTEX (machine) and HCORTEX "
+            "(human-readable). target='hcortex' (default) renders sigils "
+            "as readable headers; target='cortex' parses headers back."
+        ),
+        input_schema={
+            "type": "object",
+            "properties": {
+                "content": {"type": "string", "description": "Source text to transform. If omitted, reads from path."},
+                "target": {
+                    "type": "string",
+                    "enum": ["hcortex", "cortex"],
+                    "default": "hcortex",
+                },
+                "path": {"type": "string"},
+            },
         },
     ),
     dict(
@@ -219,12 +278,22 @@ handler_schemas = [
     dict(
         name="cortex.entry.get",
         fn=entry_get_handler,
-        description="Read entries matching a CORTEX selector from a .cortex file.",
+        description=(
+            "Read entries matching a CORTEX selector from a .cortex file. "
+            "format='cortex' returns raw CORTEX entries (canal I); "
+            "format='hcortex' (default) returns parsed dicts (canal E)."
+        ),
         input_schema={
             "type": "object",
             "properties": {
                 "path": {"type": "string", "description": "Path to .cortex file"},
                 "selector": {"type": "string", "description": "CORTEX selector e.g. $2/FCS:current or LNG:*"},
+                "format": {
+                    "type": "string",
+                    "enum": ["cortex", "hcortex"],
+                    "default": "hcortex",
+                    "description": "Output format: cortex (raw entry strings, canal I) or hcortex (parsed dicts, canal E).",
+                },
             },
             "required": ["path", "selector"],
         },
@@ -232,7 +301,11 @@ handler_schemas = [
     dict(
         name="cortex.entry.add",
         fn=entry_add_handler,
-        description="Add a new entry to a .cortex file.",
+        description=(
+            "Add a new entry to a .cortex file. Accepts a 'content' CORTEX "
+            "entry string (BLP-005, canal I) — when provided, fields "
+            "extracted from content override individual params."
+        ),
         input_schema={
             "type": "object",
             "properties": {
@@ -241,6 +314,7 @@ handler_schemas = [
                 "sigil": {"type": "string", "description": "Sigil e.g. LNG"},
                 "name": {"type": "string", "description": "Entry name"},
                 "value": {"type": "string", "description": "Entry value (attrs body or plain text)"},
+                "content": {"type": "string", "description": "CORTEX entry string 'sigil:name{key:val,...}' — overrides sigil/name/value when present (canal I)."},
                 "create_section": {"type": "boolean", "default": False},
                 "force": {"type": "boolean", "default": False},
             },
@@ -295,15 +369,63 @@ handler_schemas = [
     dict(
         name="cortex.entry.list",
         fn=entry_list_handler,
-        description="List entries in a .cortex file, optionally filtered.",
+        description=(
+            "List entries in a .cortex file, optionally filtered. "
+            "format='cortex' returns raw CORTEX entries (canal I); "
+            "format='hcortex' (default) returns parsed dicts (canal E)."
+        ),
         input_schema={
             "type": "object",
             "properties": {
                 "path": {"type": "string", "description": "Path to .cortex file"},
                 "section": {"type": "string", "description": "Filter by section ID"},
                 "sigil": {"type": "string", "description": "Filter by sigil"},
+                "format": {
+                    "type": "string",
+                    "enum": ["cortex", "hcortex"],
+                    "default": "hcortex",
+                    "description": "Output format: cortex (raw entry strings, canal I) or hcortex (parsed dicts, canal E).",
+                },
             },
             "required": ["path"],
+        },
+    ),
+    dict(
+        name="cortex.patch",
+        fn=patch_handler,
+        description=(
+            "Patch multiple entries in a .cortex file from a CORTEX content "
+            "payload (BLP-010 meta-handler). Accepts content as "
+            "'$SELECTOR:{new_body}'. Supports dry_run mode."
+        ),
+        input_schema={
+            "type": "object",
+            "properties": {
+                "path": {"type": "string", "description": "Path to .cortex file."},
+                "content": {"type": "string", "description": "CORTEX content with selectors and new bodies."},
+                "dry_run": {"type": "boolean", "default": False},
+            },
+            "required": ["path", "content"],
+        },
+    ),
+    dict(
+        name="cortex.migrate",
+        fn=migrate_handler,
+        description=(
+            "Migrate a .cortex file by applying a named transform "
+            "(reseccionar|resigilar). Writes atomically (BLP-010 meta-handler). "
+            "Supports dry_run mode."
+        ),
+        input_schema={
+            "type": "object",
+            "properties": {
+                "source_path": {"type": "string"},
+                "target_path": {"type": "string"},
+                "transform": {"type": "string", "enum": ["reseccionar", "resigilar"]},
+                "content": {"type": "string", "description": "CORTEX content with keys source_path, target_path, transform."},
+                "dry_run": {"type": "boolean", "default": False},
+            },
+            "required": ["source_path", "target_path", "transform"],
         },
     ),
 ]

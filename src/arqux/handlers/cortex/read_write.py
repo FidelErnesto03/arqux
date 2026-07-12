@@ -25,26 +25,96 @@ def _next_number(path: str, section: str) -> str:
 
 def read_handler(
     path: str,
+    *,
+    mode: str = "cortex",
     ctx: PermissionContext | None = None,
 ) -> CortexOUT:
     """Read and parse a .cortex file using CODEC-CORTEX.
 
-    Returns sections, glossary, and raw content.
+    Two modes are supported (BLP-004):
+
+    - ``mode="cortex"`` (default, canal I): returns the raw CORTEX
+      entries as a dict — ``{sections: [...], glossary: {...}, raw: str,
+      size_bytes: int}``. This is the canonical form for handler-to-handler
+      communication.
+    - ``mode="hcortex"`` (canal E): renders the file as human-readable
+      HCORTEX markdown. This is the previous behaviour of
+      ``cortex.render`` and is intended for display to the Architect.
+
+    Args:
+        path: Path to the ``.cortex`` file.
+        mode: Output mode — ``"cortex"`` (default) or ``"hcortex"``.
+        ctx: Permission context.
     """
+    if mode not in ("cortex", "hcortex"):
+        return CortexOUT.error(
+            f"invalid mode={mode!r} (must be 'cortex' or 'hcortex')",
+            code="INVALID_ARGS",
+        )
+
+    # Read raw text first — we need it for both modes.
+    src_path = Path(path)
+    if not src_path.exists():
+        return CortexOUT.error(f"file not found: {path}", code="NOT_FOUND")
     try:
-        result = cortex_read(Path(path))
+        raw_text = src_path.read_text(encoding="utf-8")
+    except OSError as exc:
+        return CortexOUT.error(str(exc), code="READ_ERROR")
+
+    if mode == "hcortex":
+        # Render as HCORTEX markdown using cortex.render logic.
+        try:
+            md = cortex_render(src_path)
+        except FileNotFoundError:
+            return CortexOUT.error(f"file not found: {path}", code="NOT_FOUND")
+        except RuntimeError as exc:
+            return CortexOUT.error(
+                f"CODEC-CORTEX not available: {exc}",
+                code="MISSING_DEPENDENCY",
+            )
+        except Exception as exc:  # noqa: BLE001
+            return CortexOUT.error(str(exc), code="RENDER_ERROR")
+
+        return CortexOUT.work(
+            f"cortex.read ok path={path} mode=hcortex bytes={len(md)}",
+            path=path,
+            mode="hcortex",
+            format="hcortex-read",
+            content=md,
+            size_bytes=len(md),
+        )
+
+    # mode == "cortex" — return raw CORTEX entries as a dict.
+    try:
+        result = cortex_read(src_path)
     except FileNotFoundError:
         return CortexOUT.error(f"file not found: {path}", code="NOT_FOUND")
     except RuntimeError as exc:
-        return CortexOUT.error(f"CODEC-CORTEX not available: {exc}", code="MISSING_DEPENDENCY")
+        # CODEC-CORTEX unavailable — fall back to raw text so the handler
+        # is still useful in degraded environments.
+        return CortexOUT.work(
+            f"cortex.read ok path={path} mode=cortex (raw fallback) "
+            f"bytes={len(raw_text)}",
+            path=path,
+            mode="cortex",
+            format="cortex-raw",
+            raw=raw_text,
+            sections=[],
+            glossary={},
+            size_bytes=len(raw_text),
+            degraded=True,
+        )
     except Exception as exc:  # noqa: BLE001
         return CortexOUT.error(str(exc), code="PARSE_ERROR")
 
     return CortexOUT.work(
-        f"cortex.read ok path={path} sections={result['sections']}",
+        f"cortex.read ok path={path} mode=cortex sections={result['sections']}",
         path=str(result["path"]),
+        mode="cortex",
+        format="cortex",
         sections=result["sections"],
         glossary=result["glossary"],
+        raw=raw_text,
         size_bytes=result["size_bytes"],
     )
 
