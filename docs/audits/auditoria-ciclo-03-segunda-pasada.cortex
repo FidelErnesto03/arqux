@@ -1,0 +1,40 @@
+$0
+# auditoria-ciclo-03-segunda-pasada.cortex
+# Segunda pasada: verificación post-correcciones
+# Generado: 2026-07-12
+# Auditor: Heimdall
+
+$0/META:segunda_pasada{type:audit, fase:2, blps_revisados:11, hallazgos_residuales:16, criticos:1, altos:6, medios:9}
+
+$1: RESUMEN
+
+AXM:veredicto{estado:"CORRECCIONES_PARCIALES", detalle:"Los cambios estructurales (§3 precondiciones, §7 canal, §11 aprobación, §18 quality gates) se aplicaron correctamente. Pero persisten inconsistencias internas: múltiples secciones dentro de cada BLP aún usan nomenclatura antigua (mode='cortex'), BLP-012 y BLP-013 están en estado 'defined' con placeholders, y BLP-007 conserva blocked_reason obsoleto."}
+
+$2: HALLAZGOS CRÍTICOS
+
+LNG:SP-01_residual_mode_cortex{severity:HIGH, blps:["BLP-004","BLP-005","BLP-006","BLP-007"], causa:"§7 y §10 fueron corregidos a mode=native, pero §2, §5, §6, §9, §12, §14, §15, §17 aún usan mode='cortex'.", detalle:"BLP-004: §2, §5 título PUML, §9 PUML, §14, §15 R-01, §17. BLP-005: §2, §6, §14, §17. BLP-006: §2, §4, §5 PUML, §6, §12 AC-03, §17. BLP-007: §3 referencia 'BLP-004 mode=cortex'.", fix:"Reemplazo masivo mode='cortex' → mode='native' en secciones no-gobernanza de BLP-004, 005, 006, 007."}
+
+$3: HALLAZGOS ALTOS
+
+LNG:SP-02_blp003_prereq_blp004{severity:HIGH, blp:"BLP-003", causa:"§3 línea 4: 'Es prerequisito para BLP-004' — pero C-02 eliminó esta dependencia.", fix:"Eliminar BLP-004 de la lista de prerequisitos en BLP-003 §3."}
+LNG:SP-03_blp004_mode_native_dict{severity:HIGH, blp:"BLP-004", causa:"§6: 'Mode=native devuelve dict con estructura completa' contradice §7 y §8 que dicen que mode=native devuelve raw text string.", fix:"Corregir §6: 'Mode=native devuelve contenido CORTEX crudo (str) sin parsear.'"}
+LNG:SP-04_blp007_blocked_reason{severity:HIGH, blp:"BLP-007", causa:"Metadato blocked_reason aún presente: 'Scope expandido: incluye fix de blueprint.define + parser compartido. Requiere re-maduración.' Esto quedó obsoleto tras dividir en familia 007.", fix:"Eliminar blocked_reason del BLP-007. El scope ya está acotado."}
+LNG:SP-05_blp007_precondiciones{severity:HIGH, blp:"BLP-007", causa:"§3 referencia 'BLP-004 (cortex.read mode=cortex)' y 'BLP-005 (entry.add content)' en lugar de BLP-013 (007b, parser) y BLP-012 (007a, define fix).", fix:"Actualizar §3: prerequisitos reales son BLP-013 y BLP-012."}
+LNG:SP-06_blp009_diseno_3_handlers{severity:HIGH, blp:"BLP-009", causa:"§8 y §9 (Diseño Técnico y Operacional) solo muestran 3 handlers (task.create, skill.import, skill.edit) pero §2 y §6 cubren 7. §17 dice '3 handlers ganan canal I'.", fix:"Actualizar §8, §9, §17 para reflejar los 7 handlers."}
+LNG:SP-07_blp012_blp013_inmaduros{severity:HIGH, blp:"BLP-012, BLP-013", causa:"Ambos en estado 'defined' con múltiples placeholders: §5, §6, §8, §9, §10, §13 son templates sin rellenar. Quality gates todos ☐. No tienen canal declarado en §7.", fix:"BLP-012 y BLP-013 requieren maduración completa como el resto de BLPs. Mismo tratamiento que BLP-003→010."}
+
+$4: HALLAZGOS MEDIOS
+
+LNG:SP-08_blp008_pulse_jsonl{severity:MEDIUM, blp:"BLP-008", causa:"§8 PUML referencia 'database pulse.jsonl' en lugar de brain.cortex §7 PULSE.", fix:"Actualizar diagrama PUML."}
+LNG:SP-09_blp009_precondicion_blp003{severity:MEDIUM, blp:"BLP-009", causa:"§3 aún depende de BLP-003 (cortex.format). Dependencia artificial — BLP-009 no necesita cortex.format.", fix:"Eliminar dependencia de BLP-003."}
+LNG:SP-10_blp010_precondicion_blp007{severity:MEDIUM, blp:"BLP-010", causa:"§3: 'BLP-007 ejecutado (blueprint.synthesize + fix define)' — fix define está en BLP-012.", fix:"Corregir: 'BLP-007 ejecutado (blueprint.synthesize) + BLP-012 ejecutado (fix define)'."}
+LNG:SP-11_blp012_sin_canal{severity:MEDIUM, blp:"BLP-012", causa:"§7 tiene declaración de canal I pero está incompleta — falta el formato estándar de los demás BLPs.", fix:"Completar §7 con formato estándar."}
+LNG:SP-12_blp013_sin_canal{severity:MEDIUM, blp:"BLP-013", causa:"§7 es placeholder vacío — sin declaración de canal ni reglas.", fix:"parse_blp_template() es utilidad interna sin canal MCP. Declarar explícitamente."}
+LNG:SP-13_blp005_titulo_format_native{severity:MEDIUM, blp:"BLP-005", causa:"Título aún dice 'format=native'. Debería decir 'mode=native' para consistencia.", fix:"Actualizar título."}
+LNG:SP-14_blp007_s13_placeholder{severity:MEDIUM, blp:"BLP-007", causa:"§13 (Validaciones) tiene tabla placeholder con '_Descripción_', '_comando_', '_salida_'.", fix:"Completar §13 con validaciones reales."}
+LNG:SP-15_blp004_s6_inconsistente{severity:MEDIUM, blp:"BLP-004", causa:"§6 mezcla 'Mode=native devuelve dict' (falso) con 'Mode=hcortex devuelve markdown' (correcto).", fix:"Corregir §6."}
+LNG:SP-16_blp006_s4_naming{severity:MEDIUM, blp:"BLP-006", causa:"§4: 'mode=cortex opt-in' debe ser 'mode=native opt-in'.", fix:"Corregir."}
+
+$11: NOTAS
+DESC:heimdall{Las correcciones estructurales de la primera pasada fueron efectivas. Los hallazgos residuales son mayormente naming inconsistente (mode='cortex' → mode='native') en secciones no-gobernanza y BLP-012/013 que necesitan maduración. Recomendación: corregir SP-01 a SP-07 (7 hallazgos HIGH) antes de declarar el ciclo listo para ejecución.}
+ERR:segunda_pasada{version:"1", generated:"2026-07-12", auditor:"Heimdall", hallazgos:16, criticos:0, altos:7, medios:9}
