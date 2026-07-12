@@ -259,6 +259,7 @@ def context_set(
 
 def context_get(
     path: str | None = None,
+    ctx: PermissionContext | None = None,
 ) -> CortexOUT:
     """Read the current context pointer from the workspace ``.arqux/context.cortex``."""
     ws_root = find_workspace_root(start=path)
