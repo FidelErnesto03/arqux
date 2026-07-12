@@ -9,10 +9,12 @@ from ...constants import ARQUX_DIR, IDENTITIES_DIR
 from ._common import _resolve_project_root
 from ._elevate import elevate_candidate
 from ._lesson import (
-    AgentIdentityError,
-    ContainerIdentityError,
     InsufficientConfidenceError,
     LessonStore,
+)
+from ._models import (
+    AgentIdentityError,
+    ContainerIdentityError,
 )
 
 #: Allowed contract types per line.
