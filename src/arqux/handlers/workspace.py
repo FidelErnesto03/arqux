@@ -143,8 +143,12 @@ def init_workspace(
     )
 
 
-def status(verbose: bool = False, path: str | None = None, ctx: PermissionContext | None = None) -> CortexOUT:
+def status(verbose: bool = False, dashboard: bool = False, path: str | None = None, ctx: PermissionContext | None = None) -> CortexOUT:
     """Workspace status. Returns projects, cycles count, governor."""
+    if dashboard:
+        from ..dashboard import build_dashboard
+        return build_dashboard(path=path)
+
     root = find_workspace_root(start=path)
     if root is None:
         return CortexOUT.error("workspace not initialized", code="NOT_FOUND")
@@ -186,3 +190,10 @@ def lessons(project: str | None = None, path: str | None = None, ctx: Permission
 def _now_iso() -> str:
     import time
     return time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+
+
+handler_schemas = [
+    dict(name="workspace.init", fn=init_workspace, description="Initialize .arqux/ at the workspace root.", input_schema={"type": "object", "properties": {"path": {"type": "string", "description": "Path to initialize as workspace root. Defaults to cwd."}}}),
+    dict(name="workspace.status", fn=status, description="Workspace status (OUT-MIN by default). Use --dashboard for rich output.", input_schema={"type": "object", "properties": {"verbose": {"type": "boolean", "default": False}, "dashboard": {"type": "boolean", "default": False, "description": "Show visual workspace dashboard."}, "path": {"type": "string", "description": "Path to workspace root. Defaults to cwd."}}}),
+    dict(name="workspace.lessons", fn=lessons, description="List lessons elevated to the meta-brain.", input_schema={"type": "object", "properties": {"project": {"type": "string", "description": "Filter lessons by source project."}, "path": {"type": "string", "description": "Path to workspace root. Defaults to cwd."}}}),
+]

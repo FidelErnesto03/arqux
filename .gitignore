@@ -30,6 +30,9 @@ htmlcov/
 .mypy_cache/
 .ruff_cache/
 
+# Backup / artifact files
+*.bak
+*.bak-*
 # Governance runtime (pulse logs may contain local state)
 .arqux/cycles/*/pulse.jsonl.bak
 

@@ -521,8 +521,8 @@ def _build_doc(stem: str, frontmatter: dict, body):
     name = frontmatter.get("name", stem)
     usage = frontmatter.get("usage", "state")
     kind = frontmatter.get("kind", "native")
-    _add_section(doc, "$0.1", "ARQUX METADATA", [
-        _entry("$0.1", "ARQX", "artifact", {
+    _add_section(doc, "$19", "ARQUX METADATA", [
+        _entry("$19", "ARQX", "artifact", {
             "level": level,
             "name": name,
             "usage": usage,
@@ -879,7 +879,7 @@ def _add_arqux_meta_section(parts: list[str], frontmatter: dict, default_name: s
     vals.append(f'usage:"{usage}"')
     vals.append(f'kind:"{kind}"')
     parts.append("")
-    parts.append("$0.1: ARQUX METADATA")
+    parts.append("$19: ARQUX METADATA")
     parts.append("")
     parts.append(f"ARQX:artifact{{{', '.join(vals)}}}")
     parts.append("")

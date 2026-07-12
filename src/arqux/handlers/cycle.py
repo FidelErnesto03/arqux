@@ -517,5 +517,14 @@ def close_cycle(
         lessons_generated=len(lessons),
         learning_scan=learning_scan["status"],
         learning_candidates=len(learning_scan.get("candidates", [])),
-        instruction="Review cortex.learn candidates; apply elevations only with Architect approval.",
-    )
+    instruction="Review cortex.learn candidates; apply elevations only with Architect approval.",
+        )
+
+
+handler_schemas = [
+    dict(name="cycle.create", fn=create_cycle, description="Open a new cycle in the active project.", input_schema={"type": "object", "properties": {"name": {"type": "string"}, "description": {"type": "string"}, "path": {"type": "string", "description": "Path to project root. Defaults to cwd."}}}),
+    dict(name="cycle.list", fn=list_cycles, description="List cycles in the active project.", input_schema={"type": "object", "properties": {"status": {"type": "string", "enum": ["open", "closed"]}, "path": {"type": "string", "description": "Path to project root. Defaults to cwd."}}}),
+    dict(name="cycle.current", fn=current_cycle, description="Get the currently active cycle.", input_schema={"type": "object", "properties": {"path": {"type": "string", "description": "Path to project root. Defaults to cwd."}}}),
+    dict(name="cycle.mature", fn=mature_cycle, description="Mature a cycle (draft → ready).", input_schema={"type": "object", "properties": {"cycle_id": {"type": "string"}, "path": {"type": "string", "description": "Path to project root. Defaults to cwd."}}}),
+    dict(name="cycle.close", fn=close_cycle, description="Close a cycle (no new tasks can be added).", input_schema={"type": "object", "properties": {"cycle_id": {"type": "string"}, "summary": {"type": "string"}, "path": {"type": "string", "description": "Path to project root. Defaults to cwd."}}, "required": ["cycle_id"]}),
+]

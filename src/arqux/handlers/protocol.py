@@ -130,3 +130,11 @@ def is_suspended() -> bool:
 def _now_iso() -> str:
     import time
     return time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+
+
+handler_schemas = [
+    dict(name="protocol.adopt", fn=adopt, description="Onboard an agent with a role.", input_schema={"type": "object", "properties": {"agent_id": {"type": "string"}, "role": {"type": "string", "enum": ["governor", "executor", "auditor"]}, "path": {"type": "string", "description": "Path to workspace root. Defaults to cwd."}}, "required": ["agent_id", "role"]}),
+    dict(name="protocol.release", fn=release, description="Fully detach an agent (clean exit, no orphans).", input_schema={"type": "object", "properties": {"agent_id": {"type": "string"}, "path": {"type": "string", "description": "Path to workspace root. Defaults to cwd."}}, "required": ["agent_id"]}),
+    dict(name="protocol.pause", fn=pause, description="Suspend governance for the current session without losing state.", input_schema={"type": "object", "properties": {}}),
+    dict(name="protocol.resume", fn=resume, description="Resume governance after a pause.", input_schema={"type": "object", "properties": {}}),
+]

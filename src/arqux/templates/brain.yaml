@@ -53,7 +53,7 @@ $0
 # WRK   | work       | attrs      | B | Working        | Current execution / action
 # LNG   | lesson     | attrs      | M | Episodic       | Learned lesson
 
-$0.1: ARQUX METADATA
+# $19: ARQUX METADATA
 
 ARQX:artifact{level:3, name:"brain", usage:"state", kind:"native"}
 

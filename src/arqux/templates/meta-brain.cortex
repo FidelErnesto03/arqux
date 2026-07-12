@@ -26,7 +26,7 @@ GSIG:KNW{name:"knowledge", type:"attrs", risk:"B", layer:"Semantic", description
 # status: current
 
 
-$0.1: ARQUX METADATA
+$19: ARQUX METADATA
 
 ARQX:artifact{level:3, name:"meta-brain", usage:"state", kind:"native"}
 $1: META-BRAIN

@@ -214,7 +214,7 @@ class AdaptedStore:
         raw = path.read_text(encoding="utf-8")
         # Strip ARQX preamble ($0 glossary + $0.1 metadata) to extract
         # the actual skill body: everything after the metadata block.
-        # Format: $0\n\nGLOSSARY\n$0.1: ARQUX METADATA\n\nARQX:artifact{...}\n\nBODY
+        # Format: $0\n\nGLOSSARY\n$19: ARQUX METADATA\n\nARQX:artifact{...}\n\nBODY
         parts = raw.split("ARQX:artifact")[-1] if "ARQX:artifact" in raw else ""
         body_parts = parts.split("\n\n", 1) if parts else []
         skill_body = body_parts[-1].strip() if body_parts else raw.strip()

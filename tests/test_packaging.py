@@ -16,7 +16,7 @@ from pathlib import Path
 import pytest
 
 
-WORKFLOW_COUNT = 10
+WORKFLOW_COUNT = 11
 EXPECTED_WORKFLOWS = [
     "w01-workspace-init.md",
     "w02-govern-project.md",
@@ -28,6 +28,7 @@ EXPECTED_WORKFLOWS = [
     "w08-blueprint-lifecycle.md",
     "w09-crud-blocked.md",
     "w10-identity-handoff.md",
+    "w11-cortex-file-repair.md",
 ]
 
 

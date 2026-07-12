@@ -9,12 +9,13 @@
 [![License](https://img.shields.io/badge/license-Apache--2.0-2EC98D?style=flat-square\&labelColor=050807)](LICENSE)
 [![Python](https://img.shields.io/badge/python-3.10%2B-8FE3C0?style=flat-square\&labelColor=050807)](https://www.python.org/)
 [![MCP](https://img.shields.io/badge/MCP-governance%20layer-167A55?style=flat-square\&labelColor=050807)](https://github.com/FidelErnesto03/arqux)
-[![Handlers](https://img.shields.io/badge/MCP%20Handlers-71-purple)](https://github.com/FidelErnesto03/arqux)
+[![Getting Started](https://img.shields.io/badge/Getting%20Started-guide-2EC98D?style=flat-square\&labelColor=050807)](docs/guides/GETTING_STARTED.md)
+[![Handlers](https://img.shields.io/badge/MCP%20Handlers-73-purple)](https://github.com/FidelErnesto03/arqux)
 [![Agents](https://img.shields.io/badge/agents-4-red)](https://github.com/FidelErnesto03/arqux)
 [![CORTEX](https://img.shields.io/badge/CORTEX-persistent%20memory-2EC98D?style=flat-square\&labelColor=050807)](https://github.com/FidelErnesto03/codec-cortex)
-[![Coverage](https://img.shields.io/badge/coverage-61%25-yellow?style=flat-square\&labelColor=050807)](https://github.com/FidelErnesto03/arqux)
+[![Coverage](https://img.shields.io/badge/coverage-71%25-167A55?style=flat-square\&labelColor=050807)](https://github.com/FidelErnesto03/arqux)
 
-**The agent is the interface.**
+**The file is the protocol.**
 
 </div>
 
@@ -24,10 +25,7 @@ Most teams are trying to build critical AI operations on top of temporary chat c
 
 **ArqUX changes the operating model.**
 
-ArqUX defines an **Architectural User Experience** layer where AI agents operate as governed identities instead of uncontrolled assistants: each identity has a role, a behavioral contract, explicit limits, persistent memory, handoff rules, Blueprint-driven work, and verifiable evidence.
-
-**ArqUX is not a chat application.
-It is enterprise infrastructure for operating AI agents under architectural control.**
+ArqUX is not a platform. It's governance infrastructure for your platform. You already have your agent stack — LangChain, CrewAI, Codex, Hermes. ArqUX goes underneath all of them. It decouples agent intelligence from agent governance, so any agent, with any model, on any framework, can operate under the same architectural control.
 
 ---
 
@@ -82,6 +80,40 @@ ArqUX decouples **agent intelligence** from **agent governance**.
 
 The language model is not the center of the system.
 The governed architecture is.
+
+---
+
+## The governed experience
+
+This is what happens when an agent joins an ArqUX workspace.
+
+### 1. Init
+
+```bash
+arqux init
+```
+
+A `.arqux/` directory appears. Inside it: `AGENTS.md` (every agent reads this first), `brain.cortex` (persistent memory), `identities/` (agent contracts), `cycles/` (work organized in cycles), `evidence/pulse.jsonl` (every action, timestamped). No server. No API key. A directory.
+
+### 2. The agent discovers governance
+
+Any agent entering the workspace reads `AGENTS.md`. It learns which project it's in, what cycle is active, which identity to assume, and what rules constrain its behavior. The agent doesn't guess. It reads.
+
+### 3. Work is organized in Blueprints
+
+No more "build this feature" directly from chat. Every piece of work becomes a Blueprint — a structured 18-section document that captures the problem, the solution, the acceptance criteria, and the execution plan. Blueprints are decision maps. They prevent architecture-by-accident.
+
+### 4. Tasks are claimed, executed, verified
+
+An executor claims a task. When done, evidence is recorded — test output, file changes, decisions made. No task is "done" until it leaves a trace.
+
+### 5. Learning becomes institutional
+
+When something goes wrong, the lesson isn't lost in chat scrollback. It's recorded in the agent's identity and elevated to the project brain. The next agent won't repeat the same mistake. The organization keeps the knowledge.
+
+### 6. Any agent can join
+
+Codex. OpenCode. Hermes. Gemini CLI. z.ai. Qwen. They don't share a runtime. They don't share a model. They share `.arqux/`.
 
 ---
 
@@ -264,6 +296,21 @@ ArqUX is the governance layer.
 
 ---
 
+## Two protocols. One governance layer.
+
+ArqUX exposes governance through two complementary protocols.
+
+**Level 1 — File system.** The universal protocol. Any agent that can read and write files can participate. No SDK, no library, no API key. Just read `AGENTS.md` and write to `.cortex` files. Every agent starts here.
+
+**Level 2 — MCP.** The structured protocol. Agents that speak the Model Context Protocol get full governance: create blueprints, claim tasks, record evidence, sync brain state. MCP is the integration channel. ArqUX is the governance layer.
+
+```text
+Level 1 (universal):   Agent reads AGENTS.md, writes brain.cortex
+Level 2 (structured):  Agent calls MCP handlers for full lifecycle
+```
+
+---
+
 ## Quick start
 
 Install ArqUX:
@@ -278,9 +325,14 @@ Initialize a workspace:
 arqux init
 ```
 
-After initialization, the workspace becomes ready for governed agent operation.
+Any agent can now join. Point your agent to the workspace:
 
-The agent can discover context, operate through identities, and persist decisions through ArqUX artifacts.
+```bash
+# Example: OpenCode agent joining an ArqUX workspace
+opencode --instructions "$(cat .arqux/AGENTS.md)"
+```
+
+The agent reads the governance contract. It discovers its identity, the active cycle, and the rules. It reads `brain.cortex` for context. It's ready to work under governance — without installing any ArqUX SDK.
 
 ---
 
@@ -361,20 +413,21 @@ ArqUX is not:
 
 ### Short version
 
-**ArqUX converts AI agents into governed enterprise infrastructure.**
+**ArqUX converts AI agents into governed infrastructure — agnostic of model, framework, or transport.**
 
 ### Technical version
 
-**ArqUX is a governance layer for AI agents, combining identity contracts, MCP operations, Blueprint lifecycles, CORTEX memory, and verifiable evidence.**
+**ArqUX is a governance layer for AI agents, combining identity contracts, MCP operations, Blueprint lifecycles, CORTEX memory, and verifiable evidence. It works through two protocols: file system (universal) and MCP (structured).**
 
 ### Enterprise version
 
-**ArqUX enables organizations to operate AI agents in production without losing control, traceability, or institutional memory.**
+**ArqUX enables organizations to operate AI agents in production without losing control, traceability, or institutional memory. Any agent, any stack.**
 
 ### Manifesto version
 
 **The future of agents is not a smarter chat.
-It is a more accountable architecture.**
+It is a more accountable architecture.
+And it works with the agents you already have.**
 
 ---
 
@@ -456,10 +509,10 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines on how to contribute to Ar
 
 **⬡ ArqUX**
 
-**Architectural User Experience for governed AI agents.**
+**Governance infrastructure for AI agents.**
 
 ```text
-The agent is the interface.
+The file is the protocol.
 The hexagon is the contract.
 ArqUX is the governance layer.
 ```
@@ -468,6 +521,6 @@ ArqUX is the governance layer.
 
 ## Edge Cases
 
-See [docs/edge-cases/](docs/edge-cases/) for documentation on edge cases and extreme scenarios.
+See [docs/reference/edge-cases/](docs/reference/edge-cases/) for documentation on edge cases and extreme scenarios.
 
 </div>

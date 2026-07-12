@@ -373,3 +373,12 @@ def _parse_csv(value: str | None) -> list[str]:
 def _escape_ses_value(value: str) -> str:
     """Escape a value for safe embedding in a SES string."""
     return value.replace('"', "'").replace("\n", " ")
+
+
+handler_schemas = [
+    dict(name="session.close", fn=close, description="Close the current session and write a portable SES entry to brain PULSE.", input_schema={"type": "object", "properties": {"summary": {"type": "string", "description": "Short human-readable summary of what was accomplished."}, "blps": {"type": "string", "description": "Comma-separated active blueprint IDs (e.g. BLP-006,BLP-007)."}, "tasks": {"type": "string", "description": "Comma-separated pending task IDs."}, "decisions": {"type": "string", "description": "Comma-separated key decisions made."}, "gaps": {"type": "string", "description": "Comma-separated detected gaps or pending items."}, "path": {"type": "string", "description": "Path to project root. Defaults to cwd."}}, "required": ["summary"]}),
+    dict(name="session.resume", fn=resume, description="Read the last SES entry from brain PULSE and restore the context.", input_schema={"type": "object", "properties": {"path": {"type": "string", "description": "Path to project root. Defaults to cwd."}}}),
+    dict(name="session.status", fn=status, description="Read SES metadata without restoring full context.", input_schema={"type": "object", "properties": {"path": {"type": "string", "description": "Path to project root. Defaults to cwd."}}}),
+    dict(name="session.context.set", fn=context_set, description="Set the current session context pointer (project + scope + optional BLP). Validates project exists and returns the formatted header.", input_schema={"type": "object", "properties": {"project": {"type": "string", "description": "Project name (e.g. ARQUX)"}, "scope": {"type": "string", "description": "Scope within project (e.g. CYCLE-01)"}, "blp": {"type": "string", "description": "Optional active BLP ID (e.g. BLP-014)"}, "path": {"type": "string", "description": "Path to workspace root. Defaults to cwd."}}, "required": ["project", "scope"]}),
+    dict(name="session.context.get", fn=context_get, description="Read the current context pointer and return the formatted header.", input_schema={"type": "object", "properties": {"path": {"type": "string", "description": "Path to workspace root. Defaults to cwd."}}}),
+]

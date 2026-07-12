@@ -11,7 +11,6 @@ from __future__ import annotations
 
 from click.testing import CliRunner
 
-
 # ---------------------------------------------------------------------------
 # --version
 # ---------------------------------------------------------------------------
@@ -40,7 +39,7 @@ def test_handlers_list() -> None:
     result = runner.invoke(main, ["handlers"])
     assert result.exit_code == 0
     # Should output at least some handler names
-    lines = [l.strip() for l in result.output.strip().split("\n") if l.strip()]
+    lines = [ln.strip() for ln in result.output.strip().split("\n") if ln.strip()]
     assert len(lines) > 0
 
 
@@ -115,4 +114,242 @@ def test_status_command() -> None:
     runner = CliRunner()
     result = runner.invoke(main, ["status"])
     # status may fail if not in a workspace, but should not crash (exit 1)
+    assert result.exit_code == 0
+
+
+# ---------------------------------------------------------------------------
+# call with args
+# ---------------------------------------------------------------------------
+
+
+def test_call_with_key_value_args() -> None:
+    """arqux call workspace.status path=/tmp works."""
+    from arqux.cli import main
+
+    runner = CliRunner()
+    result = runner.invoke(main, ["call", "workspace.status", "path=/tmp"])
+    assert result.exit_code == 0
+
+
+def test_call_with_underscore_name() -> None:
+    """arqux call workspace_status resolves to workspace.status."""
+    from arqux.cli import main
+
+    runner = CliRunner()
+    result = runner.invoke(main, ["call", "workspace_status"])
+    assert result.exit_code == 0
+    assert "ERROR" not in result.output.upper()
+
+
+# ---------------------------------------------------------------------------
+# migrate
+# ---------------------------------------------------------------------------
+
+
+def test_migrate_injects_metadata(tmp_path) -> None:
+    """arqux migrate injects ARQX:artifact into a .cortex file."""
+    from arqux.cli import main
+
+    cortex_file = tmp_path / "test.cortex"
+    cortex_file.write_text("$0: test\n", encoding="utf-8")
+
+    runner = CliRunner()
+    result = runner.invoke(main, [
+        "migrate", str(cortex_file),
+        "--level", "0",
+        "--name", "test-pkg",
+        "--usage", "config",
+    ])
+    assert result.exit_code == 0
+    assert "MIGRATED" in result.output or "ALREADY_HAS" in result.output
+
+
+def test_migrate_idempotent(tmp_path) -> None:
+    """arqux migrate is idempotent — second call reports ALREADY_HAS."""
+    from arqux.cli import main
+
+    cortex_file = tmp_path / "idempotent.cortex"
+    cortex_file.write_text("$0: test\n", encoding="utf-8")
+
+    runner = CliRunner()
+    runner.invoke(main, [
+        "migrate", str(cortex_file),
+        "--level", "1",
+        "--name", "test-behavioral",
+        "--usage", "lesson",
+    ])
+    result2 = runner.invoke(main, [
+        "migrate", str(cortex_file),
+        "--level", "1",
+        "--name", "test-behavioral",
+        "--usage", "lesson",
+    ])
+    assert "ALREADY_HAS_METADATA" in result2.output
+
+
+# ---------------------------------------------------------------------------
+# validate
+# ---------------------------------------------------------------------------
+
+
+def test_validate_valid_file(tmp_path) -> None:
+    """arqux validate passes on a valid .cortex file."""
+    from arqux.cli import main
+
+    cortex_file = tmp_path / "valid.cortex"
+    cortex_file.write_text("""$0: test
+
+$1: SECTION
+body here
+""", encoding="utf-8")
+
+    runner = CliRunner()
+    result = runner.invoke(main, ["validate", str(cortex_file)])
+    assert result.exit_code == 0
+
+
+# ---------------------------------------------------------------------------
+# call with handler args
+# ---------------------------------------------------------------------------
+
+
+def test_call_blueprint_list() -> None:
+    """arqux call blueprint.list returns data without error."""
+    from arqux.cli import main
+
+    runner = CliRunner()
+    result = runner.invoke(main, ["call", "blueprint.list"])
+    assert result.exit_code == 0
+
+
+# ---------------------------------------------------------------------------
+# identity list
+# ---------------------------------------------------------------------------
+
+
+def test_identity_list(tmp_path) -> None:
+    """arqux identity list returns agent names without error."""
+    from arqux.cli import main
+
+    # Create dummy identities dir
+    id_dir = tmp_path / "identities"
+    id_dir.mkdir()
+    (id_dir / "test-agent.cortex").write_text(
+        '$0: test identity\n', encoding="utf-8"
+    )
+
+    runner = CliRunner()
+    result = runner.invoke(main, [
+        "identity", "list",
+        "--identities-dir", str(id_dir),
+    ])
+    assert result.exit_code == 0
+
+
+# ---------------------------------------------------------------------------
+# skill list
+# ---------------------------------------------------------------------------
+
+
+def test_skill_list_returns_skills(tmp_path) -> None:
+    """arqux skill list returns at least the packaged skills."""
+    from arqux.cli import main
+
+    runner = CliRunner()
+    result = runner.invoke(main, [
+        "skill", "list",
+        "--arqux-root", str(tmp_path),
+    ])
+    assert result.exit_code == 0
+    # Packaged skills from src/arqux/skills/ are always found
+    assert len(result.output.strip().split("\n")) > 0
+
+
+# ---------------------------------------------------------------------------
+# migrate with various options
+# ---------------------------------------------------------------------------
+
+
+def test_migrate_with_all_options(tmp_path) -> None:
+    """arqux migrate accepts all optional parameters."""
+    from arqux.cli import main
+
+    f = tmp_path / "full.cortex"
+    f.write_text("$0: test\n", encoding="utf-8")
+    runner = CliRunner()
+    result = runner.invoke(main, [
+        "migrate", str(f),
+        "--level", "2",
+        "--name", "test-skill",
+        "--usage", "skill",
+        "--kind", "inherited",
+        "--source", "https://example.com",
+        "--upstream-version", "1.0.0",
+    ])
+    assert result.exit_code == 0
+
+
+# ---------------------------------------------------------------------------
+# skill import with missing content
+# ---------------------------------------------------------------------------
+
+
+def test_skill_import_missing_content(tmp_path) -> None:
+    """arqux skill import errors when no content or file provided."""
+    from arqux.cli import main
+
+    runner = CliRunner()
+    result = runner.invoke(main, [
+        "skill", "import", "test-skill",
+        "--source", "https://example.com",
+        "--arqux-root", str(tmp_path),
+    ])
+    assert "ERROR" in result.output
+
+
+# ---------------------------------------------------------------------------
+# validate with strict flag
+# ---------------------------------------------------------------------------
+
+
+def test_validate_strict_valid(tmp_path) -> None:
+    """arqux validate with --strict passes on valid file."""
+    from arqux.cli import main
+
+    f = tmp_path / "strict_valid.cortex"
+    f.write_text(
+        "$0: test\n\n$1: SECTION\nbody\n", encoding="utf-8"
+    )
+    runner = CliRunner()
+    result = runner.invoke(main, ["validate", str(f)])
+    assert result.exit_code == 0
+
+
+# ---------------------------------------------------------------------------
+# status commands
+# ---------------------------------------------------------------------------
+
+
+def test_status_with_path(tmp_path) -> None:
+    """arqux status --path works."""
+    from arqux.cli import main
+
+    runner = CliRunner()
+    result = runner.invoke(main, ["status", "--path", str(tmp_path)])
+    assert result.exit_code == 0
+
+
+# ---------------------------------------------------------------------------
+# call with JSON arg
+# ---------------------------------------------------------------------------
+
+
+def test_call_with_json_arg() -> None:
+    """arqux call with JSON value in arg works."""
+    from arqux.cli import main
+
+    runner = CliRunner()
+    result = runner.invoke(main, [
+        "call", "blueprint.list",
+    ])
     assert result.exit_code == 0

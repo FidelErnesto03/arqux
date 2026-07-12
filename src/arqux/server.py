@@ -48,7 +48,7 @@ def _wrap_handler(name: str, handler: Any) -> Any:
             ).to_text()
 
         try:
-            result = await handler(**kwargs) if _is_coro(handler) else handler(**kwargs)
+            result = await handler(**kwargs, ctx=ctx) if _is_coro(handler) else handler(**kwargs, ctx=ctx)
             # Convert to plain string — MCP expects text output
             if hasattr(result, "to_text"):
                 return str(result.to_text())
