@@ -161,10 +161,26 @@ def define_blueprint(
     operational_design: str | None = None,
     risks: list[str] | None = None,
     blocking_rule: str | None = None,
+    *,
+    sections: dict[str, str] | None = None,
     path: str | None = None,
     ctx: PermissionContext | None = None,
 ) -> CortexOUT:
-    """Fill the Blueprint's definition sections. State → defined."""
+    """Fill the Blueprint's definition sections. State → defined.
+
+    BLP-012: in addition to the legacy named parameters, the handler now
+    accepts a ``sections`` dict mapping section IDs (e.g. ``"BLP:3"``)
+    to content strings. This is the same format used by
+    ``blueprint.synthesize`` (BLP-007).
+
+    When both a named parameter and a ``sections`` entry target the same
+    section, the ``sections`` entry wins. The named parameters are kept
+    for backward compatibility.
+
+    The section IDs are validated against ``BLP_TEMPLATE.md`` via
+    ``arqux.blueprint.template.parse_blp_template()`` — unknown IDs are
+    rejected with ``INVALID_ARGS``.
+    """
     root = _resolve_root(path)
     if root is None:
         return CortexOUT.error("no project initialized", code="NOT_FOUND")
@@ -176,6 +192,26 @@ def define_blueprint(
     err = _transition(bp_id, fm.get("status", BP_DRAFT), BP_DEFINED)
     if err:
         return CortexOUT.error(err, code="INVALID_STATE")
+
+    # Validate dynamic sections against the template (BLP-012 / BLP-013).
+    sections = sections or {}
+    if sections:
+        from ...blueprint.template import parse_blp_template
+        tmpl_result = parse_blp_template(path=path)
+        if tmpl_result.profile != "OUT-WORK":
+            return CortexOUT.error(
+                f"cannot validate sections: {tmpl_result.message}",
+                code="TEMPLATE_MISSING",
+            )
+        valid_ids = set(tmpl_result.fields.get("markers", {}).keys())
+        unknown = [sid for sid in sections.keys() if sid not in valid_ids]
+        if unknown:
+            return CortexOUT.error(
+                f"unknown section IDs: {unknown}. Valid IDs: {sorted(valid_ids)}",
+                code="INVALID_ARGS",
+                unknown=unknown,
+                valid_ids=sorted(valid_ids),
+            )
 
     # Update status
     fm["status"] = BP_DEFINED
@@ -257,12 +293,29 @@ def define_blueprint(
     if blocking_rule:
         new_body = _replace_marker(new_body, "BLP:16", blocking_rule[:200])
 
+    # Apply dynamic sections (BLP-012) — these override any named param
+    # above that targeted the same section.
+    sections_written: list[str] = []
+    sections_skipped: list[str] = []
+    for section_id, section_content in (sections or {}).items():
+        if not section_content:
+            sections_skipped.append(section_id)
+            continue
+        before = new_body
+        new_body = _replace_marker(new_body, section_id, section_content)
+        if new_body != before:
+            sections_written.append(section_id)
+        else:
+            sections_skipped.append(section_id)
+
     _write_blueprint(bp_path, fm, new_body)
 
     return CortexOUT.work(
-        f"blueprint.define ok id={bp_id}",
+        f"blueprint.define ok id={bp_id} sections_written={len(sections_written)}",
         blueprint_id=bp_id,
         status=BP_DEFINED,
+        sections_written=sections_written,
+        sections_skipped=sections_skipped,
     )
 
 

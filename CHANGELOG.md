@@ -2,6 +2,42 @@
 
 All notable changes to ArqUX are documented here.
 
+## [0.5.0] — 2026-07-12
+
+### Added
+- **CORTEX-native canal I/E/B**: 13 new MCP handlers (73→86)
+- **New packages**: `arqux/blueprint/`, `arqux/cortex/`, `arqux/handlers/context/`, `arqux/handlers/identity/`
+- **cortex.ref**: Sigil lookup — returns canonical syntax/type/risk/layer for any CODEC-CORTEX sigil
+- **cortex.format**: Bidirectional CORTEX↔HCORTEX transformation
+- **cortex.migrate**: Atomic .cortex file migration with named transforms (reseccionar/resigilar)
+- **cortex.patch**: Multi-entry patching by selector in a single call
+- **cortex.read mode=native**: Raw CORTEX output (canal I), zero parse overhead
+- **cortex.entry.add content=**: Accept raw CORTEX entry string $N:{sigil:name{...}} directly
+- **cortex.entry.get/list format=native**: Return raw CORTEX entries (canal I)
+- **context.detect**: Scan upward for .arqux/ directory
+- **context.full**: Full project context (cycles, agents, skills, brain)
+- **identity.get**: Agent identity from .arqux/identities/ or packaged identities
+- **blueprint.synthesize**: Write 18 BLP sections in 1 call from CORTEX content
+- **blueprint.execute**: Meta-handler — verify preconditions → run §14 tasks → verify §12 ACs → complete
+- **session.bootstrap**: Aggregate context.detect + identity.get + context.full + cycle.current in 1 call
+- **session.handoff**: Serialize session context as CORTEX pulse for target agent
+- **task.run**: Meta-handler — verify preconditions → execute procedure → mark complete/fail
+- **skill.install**: Wrap import + validate + register in brain.cortex
+- **content= parameter**: 6 existing handlers (task.create, skill.import, skill.edit, identity.record, skill.record, session.context.set, session.close) accept CORTEX content strings directly
+- **blueprint-synthesize.skill.md**: Skill for autonomous BLP synthesis
+- **workflows.skill.md**: w08 updated for synthesize flow
+- **Documentation**: 20 new HCORTEX docs (alfred_vision/ + arch_vision/ + audits/)
+- **799 tests** (was 626 in CYCLE-02)
+
+### Changed
+- session.py: Rewritten with bootstrap + handoff + content= support (+344 lines)
+- skill.py: +234 lines — content= in import/edit/record
+- task.py: +195 lines — content= in create, task.run meta-handler
+- handlers/cortex/entries.py: +129 lines — content= add, format= get/list
+- handlers/cortex/read_write.py: +78 lines — mode=native support
+- handlers/blueprint/lifecycle.py: +57 lines — execute meta-handler integration
+- handlers/__init__.py: context + identity package registration
+
 ## [0.4.3] — 2026-07-12
 
 ### Added

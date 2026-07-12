@@ -63,6 +63,9 @@ from .review import (
     re_delegate_blueprint,
 )
 
+from .synthesize import synthesize_blueprint
+from .execute import execute_blueprint
+
 __all__ = [
     # Constants
     "BLUEPRINT_TEMPLATE",
@@ -92,6 +95,10 @@ __all__ = [
     "define_blueprint",
     "mature_blueprint",
     "ready_blueprint",
+    # Synthesize (BLP-007)
+    "synthesize_blueprint",
+    # Execute (BLP-010)
+    "execute_blueprint",
     # Manage
     "gate_blueprint",
     "task_blueprint",
@@ -110,7 +117,7 @@ __all__ = [
 
 handler_schemas = [
     dict(name="blueprint.create", fn=create_blueprint, description="Create a new Blueprint from BLP_TEMPLATE.md in draft state.", input_schema={"type": "object", "properties": {"obj": {"type": "string", "description": "Blueprint objective"}, "cycle": {"type": "string", "description": "Cycle ID. Uses most recent if omitted."}, "path": {"type": "string"}}, "required": ["obj"]}),
-    dict(name="blueprint.define", fn=define_blueprint, description="Fill the Blueprint's definition sections. State → defined.", input_schema={"type": "object", "properties": {"bp_id": {"type": "string"}, "pre": {"type": "array", "items": {"type": "string"}}, "scope": {"type": "string"}, "exclusions": {"type": "string"}, "mandatory_rules": {"type": "array", "items": {"type": "string"}}, "acceptance_criteria": {"type": "array", "items": {"type": "string"}}, "procedure": {"type": "string"}, "validations": {"type": "array", "items": {"type": "object"}}, "technical_design": {"type": "string"}, "operational_design": {"type": "string"}, "risks": {"type": "array", "items": {"type": "string"}}, "blocking_rule": {"type": "string"}, "path": {"type": "string"}}, "required": ["bp_id"]}),
+    dict(name="blueprint.define", fn=define_blueprint, description="Fill the Blueprint's definition sections. State → defined. Accepts a 'sections' dict (BLP-012) mapping section IDs ('BLP:N') to content — section IDs are validated dynamically against BLP_TEMPLATE.md via parse_blp_template().", input_schema={"type": "object", "properties": {"bp_id": {"type": "string"}, "pre": {"type": "array", "items": {"type": "string"}}, "scope": {"type": "string"}, "exclusions": {"type": "string"}, "mandatory_rules": {"type": "array", "items": {"type": "string"}}, "acceptance_criteria": {"type": "array", "items": {"type": "string"}}, "procedure": {"type": "string"}, "validations": {"type": "array", "items": {"type": "object"}}, "technical_design": {"type": "string"}, "operational_design": {"type": "string"}, "risks": {"type": "array", "items": {"type": "string"}}, "blocking_rule": {"type": "string"}, "sections": {"type": "object", "description": "Dynamic dict of section_id (e.g. 'BLP:3') -> content string. Section IDs validated against BLP_TEMPLATE.md (BLP-012)."}, "path": {"type": "string"}}, "required": ["bp_id"]}),
     dict(name="blueprint.mature", fn=mature_blueprint, description="Enter maturation phase. Mode 'live' for synchronous co-design, 'async' (default) for cyclic iteration.", input_schema={"type": "object", "properties": {"bp_id": {"type": "string"}, "mode": {"type": "string", "enum": ["live", "async"], "default": "async", "description": "Maturation mode: 'live' for synchronous co-design, 'async' for cyclic iteration."}, "path": {"type": "string"}}, "required": ["bp_id"]}),
     dict(name="blueprint.gate", fn=gate_blueprint, description="Approve one or all Blueprint quality gates after Architect maturation.", input_schema={"type": "object", "properties": {"bp_id": {"type": "string"}, "gate": {"type": "string", "description": "Quality gate name, or 'all' for maturation gates."}, "path": {"type": "string"}}, "required": ["bp_id"]}),
     dict(name="blueprint.ready", fn=ready_blueprint, description="Architect declares Blueprint ready for execution.", input_schema={"type": "object", "properties": {"bp_id": {"type": "string"}, "path": {"type": "string"}}, "required": ["bp_id"]}),
@@ -127,4 +134,6 @@ handler_schemas = [
     dict(name="blueprint.block_for_architect", fn=block_for_architect, description="Block for Architect manual review after 3rd verification fail.", input_schema={"type": "object", "properties": {"bp_id": {"type": "string"}, "path": {"type": "string"}}, "required": ["bp_id"]}),
     dict(name="blueprint.read", fn=read_blueprint, description="Read a full Blueprint (HCORTEX or CORTEX format).", input_schema={"type": "object", "properties": {"bp_id": {"type": "string"}, "format": {"type": "string", "enum": ["hcortex", "cortex"], "default": "hcortex"}, "path": {"type": "string"}}, "required": ["bp_id"]}),
     dict(name="blueprint.list", fn=list_blueprints, description="List Blueprints with optional filters.", input_schema={"type": "object", "properties": {"cycle": {"type": "string"}, "status": {"type": "string"}, "path": {"type": "string"}}}),
+    dict(name="blueprint.synthesize", fn=synthesize_blueprint, description="Write a Blueprint's content sections in one call from a CORTEX content payload (BLP-007). Validates section IDs against BLP_TEMPLATE.md via parse_blp_template(). Creates the BLP file if it doesn't exist (status=draft). Does NOT change BLP status — only writes content. Writes atomically.", input_schema={"type": "object", "properties": {"bp_id": {"type": "string", "description": "Blueprint ID e.g. 'BLP-007'. Created with status=draft if not exists."}, "content": {"type": "string", "description": "CORTEX content payload. Per-section form: '$N:{body}'. Single-body form: '$0:{1: \"body1\", 2: \"body2\"}'."}, "path": {"type": "string"}}, "required": ["bp_id", "content"]}),
+    dict(name="blueprint.execute", fn=execute_blueprint, description="Execute a Blueprint: verify §3 preconditions, run §14 tasks sequentially, verify §12 ACs, mark complete (BLP-010 meta-handler). Supports dry_run mode.", input_schema={"type": "object", "properties": {"bp_id": {"type": "string", "description": "Blueprint ID."}, "content": {"type": "string", "description": "CORTEX content with keys bp_id, evidence, fail_reason."}, "dry_run": {"type": "boolean", "default": False, "description": "If true, report what would happen without modifying state."}, "path": {"type": "string"}}, "required": ["bp_id"]}),
 ]

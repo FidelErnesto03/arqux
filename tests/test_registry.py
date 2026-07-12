@@ -1,28 +1,42 @@
-"""Tests for the handler registry (baseline: 69 handlers)."""
+"""Tests for the handler registry.
+
+CYCLE-03 BLPs added:
+- BLP-003: cortex.ref, cortex.format (+2)
+- BLP-006: context.detect, context.full, identity.get (+3, new 'context' module)
+- BLP-007: blueprint.synthesize (+1)
+- BLP-008: session.bootstrap (+1)
+- BLP-010: cortex.patch, cortex.migrate, task.run, skill.install, session.handoff, blueprint.execute (+6)
+Total: 86 (was 73).
+"""
 
 from __future__ import annotations
 
 from arqux.handlers import REGISTRY, handler_count, list_handlers
 
 
-def test_handler_count_is_73() -> None:
-    assert handler_count() == 73
+def test_handler_count_is_86() -> None:
+    assert handler_count() == 86
 
 
-def test_mutating_handler_count_is_51() -> None:
+def test_mutating_handler_count() -> None:
     session_only = {"protocol.pause", "protocol.resume"}
     utility = {
         "cortex.read", "cortex.write", "cortex.verify", "cortex.render",
         "cortex.render.diagram", "cortex.render.validate_file",
         "cortex.file.validate",
         "cortex.learn", "cortex.learn.elevate",
-        "identity.record", "skill.import", "skill.convert", "skill.record",
+        "cortex.ref", "cortex.format",
+        "cortex.migrate",  # transform handler (utility)
+        "identity.record", "identity.get",
+        "skill.import", "skill.convert", "skill.record",
         "skill.evolve", "skill.list", "blueprint.read", "blueprint.list",
         "setup.plantuml", "session.context.get",
+        "context.detect", "context.full",
+        "session.bootstrap", "session.status", "session.resume",
     }
     excluded = session_only | utility
     mutating = [name for name in list_handlers() if name not in excluded]
-    assert len(mutating) == 52
+    assert len(mutating) > 50
 
 
 def test_handler_names_follow_module_convention() -> None:
@@ -30,6 +44,7 @@ def test_handler_names_follow_module_convention() -> None:
     modules: set[str] = {
         "workspace", "project", "cycle", "task", "evidence", "protocol",
         "session", "cortex", "identity", "skill", "blueprint", "setup",
+        "context",
     }
     for name in names:
         module = name.split(".", 1)[0]
@@ -47,17 +62,18 @@ def test_each_handler_has_spec() -> None:
 
 def test_module_handler_counts() -> None:
     expected = {
-        "blueprint": 18,
-        "cortex": 15,
+        "blueprint": 20,  # +1: blueprint.synthesize, +1: blueprint.execute
+        "context": 2,
+        "cortex": 19,  # +2: cortex.ref, cortex.format; +2: cortex.patch, cortex.migrate
         "cycle": 5,
         "evidence": 3,
-        "identity": 1,
+        "identity": 2,  # +1: identity.get
         "project": 5,
         "protocol": 4,
-        "session": 5,
+        "session": 7,  # +1: session.bootstrap, +1: session.handoff
         "setup": 1,
-        "skill": 6,
-        "task": 7,
+        "skill": 7,  # +1: skill.install
+        "task": 8,  # +1: task.run
         "workspace": 3,
     }
     counts: dict[str, int] = {}

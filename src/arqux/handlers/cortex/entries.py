@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Any
 
 from ...cortex_out import CortexOUT
+from ...cortex.parse_content import parse_content_entry
 from ...permissions import PermissionContext
 from ...state import (
     _cc_parser,
@@ -27,9 +28,26 @@ from .read_write import _next_number
 def entry_get_handler(
     path: str,
     selector: str,
+    *,
+    format: str = "hcortex",
     ctx: PermissionContext | None = None,
 ) -> CortexOUT:
-    """Read entries matching a CORTEX selector from a .cortex file."""
+    """Read entries matching a CORTEX selector from a .cortex file.
+
+    Two output formats (BLP-005):
+
+    - ``format="hcortex"`` (default, canal E): renders entries as
+      human-readable markdown dicts. This is the legacy behaviour.
+    - ``format="cortex"`` (canal I): returns entries as raw CORTEX
+      entry strings (``SIGIL:name{...}``). Used for handler-to-handler
+      communication.
+    """
+    if format not in ("hcortex", "cortex"):
+        return CortexOUT.error(
+            f"invalid format={format!r} (must be 'hcortex' or 'cortex')",
+            code="INVALID_ARGS",
+        )
+
     try:
         result = crud_read(path, selector)
     except FileNotFoundError:
@@ -37,13 +55,57 @@ def entry_get_handler(
     except Exception as exc:
         return CortexOUT.error(str(exc), code="READ_ERROR")
 
+    entries = result.get("entries", [])
+    if format == "cortex":
+        # Render each entry as a raw CORTEX entry string.
+        entries_out = [_entry_to_cortex(e) for e in entries]
+        return CortexOUT.work(
+            f"entry.get ok path={path} selector={selector} count={len(entries_out)} format=cortex",
+            path=path,
+            selector=selector,
+            format="cortex",
+            count=len(entries_out),
+            entries=entries_out,
+        )
+
+    # Default HCORTEX format (legacy).
     return CortexOUT.work(
-        f"entry.get ok path={path} selector={selector} count={len(result['entries'])}",
+        f"entry.get ok path={path} selector={selector} count={len(entries)}",
         path=path,
         selector=selector,
-        count=len(result["entries"]),
-        entries=result["entries"],
+        format="hcortex",
+        count=len(entries),
+        entries=entries,
     )
+
+
+def _entry_to_cortex(entry: dict[str, Any]) -> str:
+    """Render a parsed entry dict back as a CORTEX entry string."""
+    if not isinstance(entry, dict):
+        return ""
+    sigil = entry.get("sigil", "")
+    name = entry.get("name", "")
+    value = entry.get("value")
+    if isinstance(value, dict):
+        attrs = ", ".join(
+            f'{k}:{_quote_attr(v)}' for k, v in value.items()
+        )
+        return f"{sigil}:{name}{{{attrs}}}"
+    if isinstance(value, str) and value:
+        # cuerpo / bloque entry.
+        return f"{sigil}:{name}{{{value}}}"
+    return f"{sigil}:{name}"
+
+
+def _quote_attr(val: Any) -> str:
+    """Quote a value for CORTEX attrs output."""
+    s = str(val)
+    if s == "":
+        return '""'
+    if any(c in s for c in (" ", ",", '"', "'", "{", "}")):
+        escaped = s.replace('"', '\\"')
+        return f'"{escaped}"'
+    return s
 
 
 def entry_add_handler(
@@ -53,6 +115,7 @@ def entry_add_handler(
     name: str,
     value: str,
     *,
+    content: str | None = None,
     create_section: bool = False,
     force: bool = False,
     ctx: PermissionContext | None = None,
@@ -61,7 +124,30 @@ def entry_add_handler(
 
     Automatically appends a sequential _XXXX suffix to the name
     (per-section counter) to prevent silent overwrites.
+
+    BLP-005: ``content`` accepts a CORTEX entry string of the form
+    ``$N:{sigil:name{key:val,...}}`` or ``sigil:name{key:val,...}``.
+    When provided, fields extracted from ``content`` override the
+    individual ``section``, ``sigil``, ``name`` and ``value`` params
+    (merge rule: content wins).
     """
+    # Merge content CORTEX (canal I) over individual params.
+    if content:
+        parsed = parse_content_entry(content)
+        if parsed:
+            sigil = parsed.get("__sigil__", sigil)
+            name = parsed.get("__name__", name)
+            # Strip the meta keys before serialising the value body.
+            body_keys = {k: v for k, v in parsed.items()
+                         if k not in ("__sigil__", "__name__")}
+            if body_keys:
+                # crud_add expects the attrs body WITHOUT outer braces
+                # (e.g. 'key:val, key2:val2'). The braces are added by
+                # the writer.
+                value = ", ".join(
+                    f'{k}:{_quote_attr(v)}' for k, v in body_keys.items()
+                )
+
     suffix = _next_number(path, section)
     numbered_name = f"{name}{suffix}"
 
@@ -188,9 +274,24 @@ def entry_list_handler(
     *,
     section: str | None = None,
     sigil: str | None = None,
+    format: str = "hcortex",
     ctx: PermissionContext | None = None,
 ) -> CortexOUT:
-    """List entries in a .cortex file, optionally filtered by section or sigil."""
+    """List entries in a .cortex file, optionally filtered by section or sigil.
+
+    BLP-005: ``format`` selects the output representation:
+
+    - ``format="hcortex"`` (default, canal E): returns parsed entry
+      dicts (legacy behaviour).
+    - ``format="cortex"`` (canal I): returns raw CORTEX entry strings
+      for handler-to-handler communication.
+    """
+    if format not in ("hcortex", "cortex"):
+        return CortexOUT.error(
+            f"invalid format={format!r} (must be 'hcortex' or 'cortex')",
+            code="INVALID_ARGS",
+        )
+
     try:
         result = crud_list(path, section=section, sigil=sigil)
     except FileNotFoundError:
@@ -198,11 +299,23 @@ def entry_list_handler(
     except Exception as exc:
         return CortexOUT.error(str(exc), code="LIST_ERROR")
 
+    entries = result.get("entries", [])
+    if format == "cortex":
+        entries_out = [_entry_to_cortex(e) for e in entries]
+        return CortexOUT.work(
+            f"entry.list ok path={path} count={len(entries_out)} format=cortex",
+            path=path, section=section, sigil=sigil,
+            format="cortex",
+            count=len(entries_out),
+            entries=entries_out,
+        )
+
     return CortexOUT.work(
-        f"entry.list ok path={path} count={len(result['entries'])}",
+        f"entry.list ok path={path} count={len(entries)}",
         path=path, section=section, sigil=sigil,
-        count=len(result["entries"]),
-        entries=result["entries"],
+        format="hcortex",
+        count=len(entries),
+        entries=entries,
     )
 
 
