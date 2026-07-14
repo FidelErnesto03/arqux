@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from arqux.handlers.cycle import create_cycle, mature_cycle
+from arqux.handlers.cycle import create_cycle, mature_cycle, synthesize_cycle
 from arqux.handlers.project import init_project
 from arqux.handlers.skill import convert_skill, edit_skill, import_skill
 from arqux.handlers.task import create_task
@@ -29,6 +29,7 @@ def _bootstrap_env(tmp_path: Path) -> Path:
     init_project(name="test-proj", path=str(proj_root), ctx=_CONTEXT)
     result = create_cycle(name="CYCLE-TEST", path=str(proj_root), ctx=_CONTEXT)
     cycle_id = result.fields["cycle_id"]
+    synthesize_cycle(cycle_id=cycle_id, content="$1:{scope: test}$2:{Inside: everything, Outside: nothing}$3:{CYC-OBJ-1: test objective}$4:{Directriz: follow guidelines}$5:{No risks}$6:{CP-01: check}$7:{metric: coverage}$8:{No constraints}$9:{No decisions}", path=str(proj_root), ctx=_CONTEXT)
     mature_cycle(cycle_id=cycle_id, path=str(proj_root), ctx=_CONTEXT)
     return proj_root
 

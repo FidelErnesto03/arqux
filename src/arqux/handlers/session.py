@@ -440,78 +440,157 @@ def _escape_ses_value(value: str) -> str:
 # ---------------------------------------------------------------------------
 
 
-def bootstrap(
-    path: str | None = None,
-    *,
-    agent_id: str | None = None,
-    ctx: PermissionContext | None = None,
+def _list_projects_from_meta(ws_root: Path) -> list[dict[str, str]]:
+    """Extract project DOM entries from the workspace meta-brain.cortex."""
+    meta_path = ws_root / "meta-brain.cortex"
+    if not meta_path.exists():
+        return []
+    try:
+        text = meta_path.read_text(encoding="utf-8")
+    except OSError:
+        return []
+    projects: list[dict[str, str]] = []
+    for m in re.finditer(
+        r'DOM:(\w+)\s*\{[^}]*?(?:name:"([^"]*)"[^}]*?path:"([^"]*)"'
+        r'|[^}]*?path:"([^"]*)"[^}]*?name:"([^"]*)")[^}]*?\}',
+        text,
+    ):
+        name = m.group(2) or m.group(5) or m.group(1)
+        path_rel = m.group(3) or m.group(4) or ""
+        projects.append({"name": name, "path": path_rel})
+    # Fallback: scan subdirectories with .arqux/brain.cortex
+    if not projects:
+        for child in sorted(ws_root.parent.iterdir()):
+            if (child / ARQUX_DIR / BRAIN_CORTEX).exists():
+                projects.append({"name": child.name, "path": child.name})
+    return projects
+
+
+def _bootstrap_workspace(
+    ws_root: Path,
+    start: Path,
+    agent_id: str,
+    ctx: PermissionContext | None,
 ) -> CortexOUT:
-    """Bootstrap a session by aggregating context, identity, cycle and brain.
+    """Build a workspace-level bootstrap (no project auto-binding)."""
+    from ..constants import IDENTITIES_DIR as _IDENTITIES_DIR
 
-    Wraps ``context.detect`` + ``identity.get`` + ``context.full`` +
-    ``cycle.current`` + ``brain.cortex`` read into 1 call (BLP-008).
+    # 1. List projects from meta-brain.
+    projects = _list_projects_from_meta(ws_root)
+    project_names = [p["name"] for p in projects]
 
-    Returns TWO outputs:
+    # 2. List skills.
+    skills_dir = ws_root / "skills"
+    skills: list[str] = []
+    if skills_dir.exists():
+        for f in sorted(skills_dir.iterdir()):
+            if f.is_file() and f.name.endswith(".skill.md"):
+                skills.append(f.stem.removesuffix(".skill"))
 
-    - ``cortex_context`` (dict, canal I): machine-readable context for
-      agent consumption.
-    - ``hcortex_dashboard`` (str, canal E): markdown dashboard for the
-      Architect.
+    # 3. Load identity.
+    identity_content = ""
+    identity_source = ""
+    for base, source in (
+        (ws_root / "identities", "workspace"),
+        (_IDENTITIES_DIR, "package"),
+    ):
+        candidate = base / f"{agent_id}.cortex"
+        if candidate.exists():
+            try:
+                identity_content = candidate.read_text(encoding="utf-8")
+                identity_source = source
+                break
+            except OSError:
+                pass
 
-    If no ``.arqux/`` is found, returns an informative message (not an
-    error).
-    """
-    import os as _os
-    from pathlib import Path as _Path
+    # 4. Build cortex_context (workspace-level, no project/cycle binding).
+    cortex_context: dict[str, Any] = {
+        "found": True,
+        "kind": "workspace",
+        "start": str(start),
+        "arqux_path": str(ws_root),
+        "project": None,
+        "project_path": None,
+        "governor": None,
+        "cycle": None,
+        "cycles": [],
+        "projects": project_names,
+        "agents": [],
+        "skills": skills,
+        "brain": {},
+        "identity": identity_content,
+        "identity_source": identity_source,
+        "agent_id": agent_id,
+    }
 
+    # 5. Build workspace dashboard.
+    dashboard_parts: list[str] = []
+    dashboard_parts.append("# Session Bootstrap — Workspace")
+    dashboard_parts.append("")
+    dashboard_parts.append("**STANDBY** — no project auto-selected.")
+    dashboard_parts.append(f"**Workspace:** `{ws_root.parent}`")
+    dashboard_parts.append(f"**Agent:** `{agent_id}`")
+    dashboard_parts.append("")
+    dashboard_parts.append("## Available Projects")
+    if projects:
+        for p in projects:
+            dashboard_parts.append(f"- `{p['name']}`")
+    else:
+        dashboard_parts.append("_No projects registered._")
+    dashboard_parts.append("")
+    dashboard_parts.append("## Skills Available")
+    if skills:
+        for s in skills:
+            dashboard_parts.append(f"- `{s}`")
+    else:
+        dashboard_parts.append("_No skills installed._")
+    dashboard_parts.append("")
+    dashboard_parts.append("## Identity")
+    dashboard_parts.append(f"Source: `{identity_source or 'none'}`")
+    dashboard_parts.append("")
+    dashboard_parts.append(
+        "**Choose a project** with `session.context.set` "
+        "or `project.status` to begin working."
+    )
+
+    hcortex_dashboard = "\n".join(dashboard_parts)
+
+    # PULSE.
+    _record_bootstrap_pulse(ws_root, ctx, agent_id=agent_id, project="")
+
+    return CortexOUT.work(
+        f"session.bootstrap ok kind=workspace projects={len(projects)} "
+        f"skills={len(skills)}",
+        found=True,
+        kind="workspace",
+        start=str(start),
+        agent_id=agent_id,
+        cortex_context=cortex_context,
+        hcortex_dashboard=hcortex_dashboard,
+    )
+
+
+def _bootstrap_project(
+    project_arqux: Path,
+    start: Path,
+    agent_id: str,
+    ctx: PermissionContext | None,
+) -> CortexOUT:
+    """Build a project-level bootstrap (legacy, no workspace found)."""
     from ..constants import CYCLES_DIR as _CYCLES_DIR
     from ..constants import IDENTITIES_DIR as _IDENTITIES_DIR
     from ..state import read_brain as _read_brain
 
-    start = _Path(path or _os.getcwd()).resolve()
-
-    # Resolve agent_id (default: caller's agent_id, fallback to alfred).
-    if not agent_id:
-        agent_id = (ctx or PermissionContext.from_env()).agent_id or "alfred"
-
-    project_arqux = find_project_root(start=start)
-    workspace_arqux = find_workspace_root(start=start)
-
-    if project_arqux is None and workspace_arqux is None:
-        # No .arqux/ found — informative message, NOT an error.
-        return CortexOUT.work(
-            f"session.bootstrap ok found=false start={start}",
-            found=False,
-            kind=None,
-            start=str(start),
-            cortex_context={"found": False, "start": str(start)},
-            hcortex_dashboard=(
-                f"# Session Bootstrap\n\n"
-                f"**Status:** No `.arqux/` directory found.\n\n"
-                f"**Start path:** `{start}`\n\n"
-                f"To bootstrap a session, initialise a workspace first:\n\n"
-                f"```\n"
-                f"arqux workspace init\n"
-                f"arqux project init --name <project-name>\n"
-                f"```\n"
-            ),
-            agent_id=agent_id,
-        )
-
-    # We have at least a workspace — prefer project if available.
-    arqux_root = project_arqux or workspace_arqux
-    kind = "project" if project_arqux is not None else "workspace"
-    project_root_parent = arqux_root.parent
+    project_root_parent = project_arqux.parent
 
     # 1. Read brain.
     fm, sections, raw = _read_brain(project_root_parent)
     project_name = fm.get("project", "") or project_root_parent.name
     governor = fm.get("governor", "")
 
-    # 2. List cycles.
-    cycles_base = arqux_root / _CYCLES_DIR
+    # 2. List cycles (no auto-selection).
+    cycles_base = project_arqux / _CYCLES_DIR
     cycles: list[dict[str, Any]] = []
-    current_cycle: str | None = None
     if cycles_base.exists():
         for cdir in sorted(cycles_base.iterdir()):
             if not cdir.is_dir():
@@ -527,10 +606,6 @@ def bootstrap(
                 except OSError:
                     pass
             cycles.append({"id": cdir.name, "status": cycle_status})
-            if cycle_status in ("active", "ready") and current_cycle is None:
-                current_cycle = cdir.name
-    if current_cycle is None and cycles:
-        current_cycle = cycles[-1]["id"]
 
     # 3. Parse bound agents from SESSIONS.
     agents: list[dict[str, str]] = []
@@ -544,7 +619,7 @@ def bootstrap(
             agents.append({"agent_id": m.group(1), "raw": line})
 
     # 4. List skills.
-    skills_dir = arqux_root / "skills"
+    skills_dir = project_arqux / "skills"
     skills: list[str] = []
     if skills_dir.exists():
         for f in sorted(skills_dir.iterdir()):
@@ -555,7 +630,7 @@ def bootstrap(
     identity_content = ""
     identity_source = ""
     for base, source in (
-        (arqux_root / "identities", "project" if kind == "project" else "workspace"),
+        (project_arqux / "identities", "project"),
         (_IDENTITIES_DIR, "package"),
     ):
         candidate = base / f"{agent_id}.cortex"
@@ -570,14 +645,15 @@ def bootstrap(
     # Build canal-I cortex_context dict.
     cortex_context: dict[str, Any] = {
         "found": True,
-        "kind": kind,
+        "kind": "project",
         "start": str(start),
-        "arqux_path": str(arqux_root),
+        "arqux_path": str(project_arqux),
         "project": project_name,
         "project_path": str(project_root_parent),
         "governor": governor,
-        "cycle": current_cycle,
+        "cycle": None,
         "cycles": cycles,
+        "projects": [project_name],
         "agents": agents,
         "skills": skills,
         "brain": {
@@ -596,20 +672,17 @@ def bootstrap(
     dashboard_parts: list[str] = []
     dashboard_parts.append(f"# Session Bootstrap — {project_name}")
     dashboard_parts.append("")
-    dashboard_parts.append(f"**Kind:** `{kind}`")
-    dashboard_parts.append(f"**Architect path:** `{start}`")
-    dashboard_parts.append(f"**Arqux path:** `{arqux_root}`")
+    dashboard_parts.append("**STANDBY** — no cycle auto-selected.")
+    dashboard_parts.append(f"**Project:** `{project_name}`")
+    dashboard_parts.append(f"**Path:** `{project_root_parent}`")
     dashboard_parts.append(f"**Governor:** `{governor or '(unset)'}`")
-    dashboard_parts.append(
-        f"**Agent:** `{agent_id}` (identity source: `{identity_source or 'none'}`)"
-    )
+    dashboard_parts.append(f"**Agent:** `{agent_id}` (identity: `{identity_source or 'none'}`)")
     dashboard_parts.append("")
     dashboard_parts.append("## Cycles")
     if cycles:
         for c in cycles:
-            marker = " *(current)*" if c["id"] == current_cycle else ""
             dashboard_parts.append(
-                f"- `{c['id']}` — status: `{c.get('status', '?')}`{marker}"
+                f"- `{c['id']}` — status: `{c.get('status', '?')}`"
             )
     else:
         dashboard_parts.append("_No cycles yet._")
@@ -632,20 +705,80 @@ def bootstrap(
     focus = sections.get("FOCUS", "").strip()
     dashboard_parts.append(focus if focus else "_(no focus set)_")
     dashboard_parts.append("")
+
     hcortex_dashboard = "\n".join(dashboard_parts)
 
     # PULSE.
-    _record_bootstrap_pulse(arqux_root, ctx, agent_id=agent_id, project=project_name)
+    _record_bootstrap_pulse(project_arqux, ctx, agent_id=agent_id, project=project_name)
 
     return CortexOUT.work(
-        f"session.bootstrap ok kind={kind} project={project_name} "
-        f"cycle={current_cycle} agents={len(agents)} skills={len(skills)}",
+        f"session.bootstrap ok kind=project project={project_name} "
+        f"cycles={len(cycles)} agents={len(agents)} skills={len(skills)}",
         found=True,
-        kind=kind,
+        kind="project",
         start=str(start),
         agent_id=agent_id,
         cortex_context=cortex_context,
         hcortex_dashboard=hcortex_dashboard,
+    )
+
+
+def bootstrap(
+    path: str | None = None,
+    *,
+    agent_id: str | None = None,
+    ctx: PermissionContext | None = None,
+) -> CortexOUT:
+    """Bootstrap a session — workspace-first, no project/cycle auto-binding.
+
+    AXM:standby_first — the session begins in STANDBY. The bootstrap
+    presents the workspace dashboard and available projects without
+    auto-selecting any.
+
+    Returns TWO outputs:
+    - ``cortex_context`` (dict, canal I): machine-readable context.
+    - ``hcortex_dashboard`` (str, canal E): markdown dashboard.
+
+    If no ``.arqux/`` is found, returns an informative message.
+    """
+    import os as _os
+    from pathlib import Path as _Path
+
+    start = _Path(path or _os.getcwd()).resolve()
+
+    # Resolve agent_id (default: caller's agent_id, fallback to alfred).
+    if not agent_id:
+        agent_id = (ctx or PermissionContext.from_env()).agent_id or "alfred"
+
+    workspace_arqux = find_workspace_root(start=start)
+
+    if workspace_arqux:
+        # Workspace found — workspace-level bootstrap, no project binding.
+        return _bootstrap_workspace(workspace_arqux, start, agent_id, ctx)
+
+    project_arqux = find_project_root(start=start)
+    if project_arqux:
+        # No workspace, only project — legacy project-level bootstrap.
+        return _bootstrap_project(project_arqux, start, agent_id, ctx)
+
+    # No .arqux/ found — informative message, NOT an error.
+    return CortexOUT.work(
+        f"session.bootstrap ok found=false start={start}",
+        found=False,
+        kind=None,
+        start=str(start),
+        cortex_context={"found": False, "start": str(start)},
+        hcortex_dashboard=(
+            f"# Session Bootstrap\n\n"
+            f"**Status:** No `.arqux/` directory found.\n\n"
+            f"**Start path:** `{start}`\n\n"
+            f"To bootstrap a session, initialise a workspace first:\n\n"
+            f"```\n"
+            f"arqux workspace init\n"
+            f"arqux project init --name <project-name>\n"
+            f"```\n"
+        ),
+        agent_id=agent_id,
     )
 
 

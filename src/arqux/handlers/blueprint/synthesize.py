@@ -251,9 +251,9 @@ def _find_or_create_blueprint(
             fm, body = _parse_md(text)
             return resolved, fm, body, False
 
-    # 2. Search across cycles
+    # 2. Search across cycles (most recent first)
     if cycles_base.exists():
-        for cdir in cycles_base.iterdir():
+        for cdir in sorted(cycles_base.iterdir(), reverse=True):
             bp_path = cdir / BLUEPRINTS_DIR / f"{bp_id}.md"
             if bp_path.exists():
                 text = bp_path.read_text(encoding="utf-8")

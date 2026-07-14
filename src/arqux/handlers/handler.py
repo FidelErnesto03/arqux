@@ -57,11 +57,14 @@ _TIER_SETS: dict[str, set[str]] = {
 }
 
 
-def list_handlers(tier: str) -> dict[str, Any]:
+def list_handlers(tier: str, ctx: Any = None) -> dict[str, Any]:
     """Return handlers classified by module, filtered by tier.
 
     Args:
         tier: One of NANO, LITE, FULL.
+        ctx: Optional permission context injected by the MCP server. The
+            discovery operation is read-only; it is accepted for adapter
+            compatibility and intentionally does not change classification.
 
     Returns:
         Dict with _total key and module-name keys, each containing

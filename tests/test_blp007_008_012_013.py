@@ -8,7 +8,7 @@ from pathlib import Path
 from arqux.blueprint.template import parse_blp_template
 from arqux.handlers.blueprint import define_blueprint, synthesize_blueprint
 from arqux.handlers.blueprint.lifecycle import create_blueprint
-from arqux.handlers.cycle import create_cycle, mature_cycle
+from arqux.handlers.cycle import create_cycle, mature_cycle, synthesize_cycle
 from arqux.handlers.project import init_project
 from arqux.handlers.session import bootstrap
 from arqux.handlers.workspace import init_workspace
@@ -32,6 +32,7 @@ def _bootstrap_env(tmp_path: Path) -> Path:
     init_project(name="test-proj", path=str(proj_root), ctx=_CONTEXT)
     result = create_cycle(name="CYCLE-TEST", path=str(proj_root), ctx=_CONTEXT)
     cycle_id = result.fields["cycle_id"]
+    synthesize_cycle(cycle_id=cycle_id, content="$1:{scope: test}$2:{Inside: everything, Outside: nothing}$3:{CYC-OBJ-1: test objective}$4:{Directriz: follow guidelines}$5:{No risks}$6:{CP-01: check}$7:{metric: coverage}$8:{No constraints}$9:{No decisions}", path=str(proj_root), ctx=_CONTEXT)
     mature_cycle(cycle_id=cycle_id, path=str(proj_root), ctx=_CONTEXT)
     return proj_root
 
@@ -235,7 +236,7 @@ def test_synthesize_invalid_bp_id(tmp_path: Path) -> None:
 
 
 def test_bootstrap_with_arqux(tmp_path: Path) -> None:
-    """bootstrap returns cortex_context and hcortex_dashboard when .arqux/ exists."""
+    """bootstrap returns workspace-level context when workspace .arqux/ exists."""
     proj_root = _bootstrap_env(tmp_path)
 
     result = bootstrap(path=str(proj_root), ctx=_CONTEXT)
@@ -245,7 +246,11 @@ def test_bootstrap_with_arqux(tmp_path: Path) -> None:
     assert "hcortex_dashboard" in result.fields
     cortex_ctx = result.fields["cortex_context"]
     assert cortex_ctx.get("found") is True
-    assert "project" in cortex_ctx
+    assert cortex_ctx.get("kind") == "workspace"
+    assert cortex_ctx.get("project") is None
+    assert cortex_ctx.get("cycle") is None
+    assert "projects" in cortex_ctx
+    assert len(cortex_ctx["projects"]) >= 1
     assert "cycles" in cortex_ctx
 
 
@@ -271,11 +276,23 @@ def test_bootstrap_identity_loaded(tmp_path: Path) -> None:
     assert "IDN:alfred" in cortex_ctx["identity"]
 
 
-def test_bootstrap_cycle_detected(tmp_path: Path) -> None:
-    """bootstrap detects the current cycle."""
+def test_bootstrap_project_only(tmp_path: Path) -> None:
+    """bootstrap falls back to project-level when no workspace .arqux/ exists."""
     proj_root = _bootstrap_env(tmp_path)
+    # Remove meta-brain.cortex so find_workspace_root fails → project-only path.
+    ws_root = proj_root.parent
+    meta_brain = ws_root / ".arqux" / "meta-brain.cortex"
+    if meta_brain.exists():
+        meta_brain.rename(meta_brain.with_suffix(".cortex.bak"))
 
     result = bootstrap(path=str(proj_root), ctx=_CONTEXT)
+    assert result.profile == "OUT-WORK"
     cortex_ctx = result.fields.get("cortex_context", {})
-    assert cortex_ctx.get("cycle") is not None
+    assert cortex_ctx.get("kind") == "project"
+    assert cortex_ctx.get("project") is not None
+    assert cortex_ctx.get("cycle") is None  # no auto-selection
     assert len(cortex_ctx.get("cycles", [])) >= 1
+
+    # Restore meta-brain
+    if meta_brain.with_suffix(".cortex.bak").exists():
+        meta_brain.with_suffix(".cortex.bak").rename(meta_brain)

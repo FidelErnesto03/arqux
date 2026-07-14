@@ -211,8 +211,8 @@ def _find_blueprint(root: Path, bp_id: str, *, path_hint: str | None = None) -> 
     except Exception:
         pass
 
-    # 3. Fallback: global search
-    for cdir in sorted(cycles_base.iterdir()):
+    # 3. Fallback: global search (most recent cycle first)
+    for cdir in sorted(cycles_base.iterdir(), reverse=True):
         bp_path = cdir / BLUEPRINTS_DIR / f"{bp_id}.md"
         if bp_path.exists():
             result = _read_blueprint(bp_path)
