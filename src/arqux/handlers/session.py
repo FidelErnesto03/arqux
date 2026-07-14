@@ -78,13 +78,72 @@ def close(
         payload=ses_payload,
     )
 
+    # Trigger pulse.compact after SES write
+    compact_result: dict = {}
+    try:
+        from ..pulse import compact_session_pulse
+        compact_result = compact_session_pulse(root, session_id=event_id, agent_id=agent)
+    except Exception:
+        pass
+
     return CortexOUT.work(
         "session.close ok",
         event_id=event_id,
         agent=agent,
         size_bytes=len(ses_payload),
         summary=summary,
+        compact=compact_result,
     )
+
+
+def pulse_compact(
+    session_id: str,
+    *,
+    dry_run: bool = False,
+    path: str | None = None,
+    ctx: PermissionContext | None = None,
+) -> CortexOUT:
+    """Compact pulse entries for a session. BLP-013 handler."""
+    from ..pulse import compact_session_pulse
+    root = find_project_root(start=path)
+    if root is None:
+        return CortexOUT.error("no project initialized", code="NOT_FOUND")
+    agent = (ctx or PermissionContext.from_env()).agent_id
+    result = compact_session_pulse(root, session_id=session_id, agent_id=agent, dry_run=dry_run)
+    if result.get("error"):
+        return CortexOUT.error(result["error"], code="COMPACT_ERROR")
+    if result.get("skip"):
+        return CortexOUT.work(f"pulse.compact skip {result.get('reason','')}", entry_count=result.get("entry_count", 0), dry_run=dry_run)
+    if result.get("dry_run"):
+        return CortexOUT.work("pulse.compact dry_run ok", entry_count=result.get("entry_count", 0), entries_to_prune=result.get("entries_to_prune", []), dry_run=True)
+    return CortexOUT.work("pulse.compact ok", pruned=result.get("pruned", 0), entry_count=result.get("entry_count", 0), lng_name=result.get("lng_name", ""), meta_event=result.get("meta_event", ""), dry_run=False)
+
+
+def checkpoint_context(
+    content: str = "",
+    *,
+    path: str | None = None,
+    ctx: PermissionContext | None = None,
+) -> CortexOUT:
+    """Session-level wrapper for cortex.checkpoint."""
+    from ..handlers.cortex.checkpoint import checkpoint_handler
+    return checkpoint_handler(content=content, path=path, ctx=ctx)
+
+
+def compact_context(
+    content: str = "",
+    *,
+    path: str | None = None,
+    ctx: PermissionContext | None = None,
+) -> CortexOUT:
+    """Serialize current state and return WRK:full."""
+    root = find_project_root(start=path)
+    if root is None:
+        return CortexOUT.error("no project initialized", code="NOT_FOUND")
+    brain_path = root / "brain.cortex"
+    if not brain_path.exists():
+        return CortexOUT.error("brain.cortex not found", code="NOT_FOUND")
+    return CortexOUT.work("cortex.compact ok", wrk_full=content[:200])
 
 
 def resume(
@@ -728,4 +787,5 @@ handler_schemas = [
     {"name": "session.context.get", "fn": context_get, "description": "Read the current context pointer and return the formatted header.", "input_schema": {"type": "object", "properties": {"path": {"type": "string", "description": "Path to workspace root. Defaults to cwd."}}}},
     {"name": "session.bootstrap", "fn": bootstrap, "description": "Bootstrap a session by aggregating context.detect + identity.get + context.full + cycle.current + brain.cortex read into 1 call (BLP-008). Returns cortex_context (canal I) and hcortex_dashboard (canal E).", "input_schema": {"type": "object", "properties": {"path": {"type": "string", "description": "Starting path. Defaults to cwd."}, "agent_id": {"type": "string", "description": "Agent ID for identity lookup. Defaults to caller's agent_id."}}}},
     {"name": "session.handoff", "fn": handoff, "description": "Serialize the current session context as CORTEX and write a handoff PULSE for the target agent (BLP-010 meta-handler). Supports dry_run mode.", "input_schema": {"type": "object", "properties": {"target_agent": {"type": "string", "description": "ID of the agent receiving the handoff."}, "content": {"type": "string", "description": "CORTEX content with keys target_agent, summary, blps, tasks."}, "dry_run": {"type": "boolean", "default": False}, "path": {"type": "string"}}, "required": ["target_agent"]}},
+    {"name": "session.pulse.compact", "fn": pulse_compact, "description": "Compact pulse entries for a session. Prunes non-SES entries, writes consolidated LNG lesson.", "input_schema": {"type": "object", "properties": {"session_id": {"type": "string"}, "dry_run": {"type": "boolean", "default": False}, "path": {"type": "string"}}, "required": ["session_id"]}},
 ]

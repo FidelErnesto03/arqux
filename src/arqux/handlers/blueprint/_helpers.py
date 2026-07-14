@@ -175,18 +175,72 @@ def scan_markers(text: str) -> list[str]:
 # ---------------------------------------------------------------------------
 
 
-def _find_blueprint(root: Path, bp_id: str) -> tuple[Path | None, dict[str, Any] | None, str | None]:
-    """Find a Blueprint by ID across all cycles. Returns (path, fm, body)."""
+def _find_blueprint(root: Path, bp_id: str, *, path_hint: str | None = None) -> tuple[Path | None, dict[str, Any] | None, str | None]:
+    """Find a Blueprint by ID. Respects path_hint (explicit path) first,
+    then active cycle, then falls back to global search.
+
+    Returns (path, fm, body).
+    """
     cycles_base = root / CYCLES_DIR
     if not cycles_base.exists():
         return None, None, None
-    for cdir in cycles_base.iterdir():
+
+    # 1. Explicit path hint
+    if path_hint:
+        bp_path = _resolve_blueprint_path(root, bp_id, path_hint=path_hint)
+        if bp_path and bp_path.exists():
+            result = _read_blueprint(bp_path)
+            if result:
+                return bp_path, result[0], result[1]
+        return None, None, None
+
+    # 2. Active cycle
+    from ...state import crud_read
+    try:
+        brain_path = root / ".arqux" / "brain.cortex"
+        if brain_path.exists():
+            cur = crud_read(brain_path, "$1/FCS:current")
+            fcs = cur.get("entries", [{}])[0].get("value", {}) if cur.get("entries") else {}
+            active_cycle = fcs.get("cycle", "")
+            if active_cycle:
+                bp_path = cycles_base / active_cycle / BLUEPRINTS_DIR / f"{bp_id}.md"
+                if bp_path.exists():
+                    result = _read_blueprint(bp_path)
+                    if result:
+                        return bp_path, result[0], result[1]
+    except Exception:
+        pass
+
+    # 3. Fallback: global search
+    for cdir in sorted(cycles_base.iterdir()):
         bp_path = cdir / BLUEPRINTS_DIR / f"{bp_id}.md"
         if bp_path.exists():
             result = _read_blueprint(bp_path)
             if result:
                 return bp_path, result[0], result[1]
     return None, None, None
+
+
+def _resolve_blueprint_path(root: Path, bp_id: str, *, path_hint: str | None = None) -> Path | None:
+    """Resolve a blueprint path, scoped by path_hint if provided.
+
+    If path_hint is a directory, searches that directory for the blueprint.
+    If path_hint is a cycle directory, searches its blueprints/ subdirectory.
+    """
+    if not path_hint:
+        return None
+    hint = Path(path_hint)
+    if not hint.is_absolute():
+        hint = root / hint
+    # Direct path to the file
+    direct = hint if hint.suffix == ".md" else hint / f"{bp_id}.md"
+    if direct.exists():
+        return direct
+    # hint is a cycle directory
+    bp_sub = hint / BLUEPRINTS_DIR / f"{bp_id}.md"
+    if bp_sub.exists():
+        return bp_sub
+    return None
 
 
 def _read_quality_gates(fm: dict[str, Any]) -> dict[str, bool] | None:
@@ -320,9 +374,8 @@ def _record_to_brain(root: Path, bp_id: str, outcome: str, evidence: str) -> Non
         if not brain_path.exists():
             return
 
-        from cortex.core.ast import Entry
         from cortex.core.parser import parse_cortex
-        from cortex.core.writer import write_cortex
+        from ..state import crud_add
 
         text = brain_path.read_text(encoding="utf-8")
         doc = parse_cortex(text)
@@ -336,18 +389,19 @@ def _record_to_brain(root: Path, bp_id: str, outcome: str, evidence: str) -> Non
         if pulse_sec is None:
             return
 
-        pulse_sec.entries.append(Entry(
-            section=pulse_sec.id,
-            sigil="AUD", name=f"{bp_id}_{outcome}", type="attrs",
-            value={
-                "kind": "blueprint",
-                "evidence": evidence,
-                "date": _now_iso(),
-            },
-        ))
-
-        cortex_text = write_cortex(doc)
-        brain_path.write_text(cortex_text, encoding="utf-8")
+        # Append the AUD entry via CODEC-CORTEX (single-line attrs, no
+        # direct file write).
+        esc_evidence = evidence.replace('"', '\\"')
+        result = crud_add(
+            brain_path,
+            pulse_sec.id,
+            "AUD",
+            f"{bp_id}_{outcome}",
+            f'kind:"blueprint", evidence:"{esc_evidence}", date:"{_now_iso()}"',
+            create_section=False,
+        )
+        if "error" in result:
+            return
     except Exception:
         pass
 

@@ -1,0 +1,70 @@
+$0
+
+# -- $0: MINIMAL LOCAL GLOSSARY --
+# Required: every .cortex artifact must be locally self-contained.
+# Sigil | Name | Type | Risk | Cognitive Layer | Description
+# IDN   | identity   | attrs      | B | Semantic       | Actor identity
+# DOM   | domain     | attrs      | B | Semantic       | Project/scope descriptor
+# KNW   | knowledge  | attrs      | B | Semantic       | Stable or promoted knowledge
+# CNST  | constraint | attrs      | H | Prefrontal     | Hard constraint or precondition
+# CLAIM | claim      | attrs      | M | Prefrontal     | Acceptance criterion
+# AUD   | audit      | attrs      | M | Prefrontal     | Verification/audit record
+# RSK   | risk       | attrs      | M | Prefrontal     | Identified risk with mitigation
+# FCS   | focus      | attrs      | H | Working        | Active attention anchor
+# OBJ   | objective  | attrs      | H | Working        | Active goal with success criterion
+# WRK   | work       | attrs      | B | Working        | Current execution state
+# STP   | step       | attrs      | M | Working        | Task procedure step
+# SES   | session    | attrs      | M | Episodic       | Compressed I/O/R episode
+# LNG   | lesson     | attrs      | M | Episodic       | Learned lesson or pattern
+# HDL   | handler    | attrs-pos  | M | Semantic       | Handoff descriptor
+# DESC  | description | cuerpo     | B | Semantic       | Structured textual description
+# ERR   | error      | attrs      | M | Prefrontal     | Concurrency / state info
+# ARQX  | artifact   | attrs      | B | Semantic       | ArqUX artifact metadata
+# BLK   | blocker    | attrs      | H | Prefrontal     | Blocking condition
+#
+# Types:
+#
+# Micro-glossary:
+
+
+$0.1: ARQUX METADATA
+
+ARQX:artifact{level:2, name:"T-004", usage:"state", kind:"native"}
+
+$1: TASK
+
+WRK:task{id:"T-004", status:"open", governor:"hermes", assignee:"alfred", priority:"high", complexity:"standard", cycle:"CYCLE-02", created:"2026-07-11T16:43:16Z", updated:"2026-07-11T16:43:16Z"}
+
+$2: OBJECTIVE
+
+OBJ:objective{text:"Corregir 4 bugs de sincronia en sync_brain: (1) wrk_value dead code + datos corruptos, (2) FCS no se actualiza, (3) meta-brain no propaga tests reales, (4) evidencia no queda en PULSE"}
+
+$3: PRECONDITIONS
+
+CNST:pre1{text:"sync_brain() existe en src/arqux/sync.py"}
+CNST:pre2{text:"blueprint.py handlers llaman sync_brain()"}
+CNST:pre3{text:"_record_bp_evidence() ya implementado en blueprint.py"}
+CNST:pre4{text:"_sync_meta_brain actualiza DOM:arqux"}
+CNST:pre5{text:"codec-cortex instalado y funcional"}
+
+$4: PROCEDURE
+
+STP:step1{action:"1. sync.py: Eliminar wrk_value (linea 99, dead code)"}
+STP:step2{action:"2. sync.py: Investigar por que crud_update($2/FCS:current) falla silenciosamente — revisar si el selector FCS:current existe en brain.cortex"}
+STP:step3{action:"3. sync_brain: Agregar conteo real de tests desde filesystem (contar tests/*.py) y propagar a _sync_meta_brain"}
+STP:step4{action:"4. blueprint.py: Verificar _record_to_brain() no falle — si falla, que loggee el error real"}
+STP:step5{action:"5. Verificar que _record_bp_evidence() en blueprint.complete y blueprint.approve dejan entries en PULSE"}
+STP:step6{action:"6. sync.py: Mejorar mensajes de logger.exception() para incluir que selector fallo"}
+
+$5: ACCEPTANCE
+
+CLAIM:ac1{criterion:"AC-01: WRK:current se actualiza correctamente tras blueprint.approve (current contiene el evento real, sin datos corruptos)"}
+CLAIM:ac2{criterion:"AC-02: FCS:current se actualiza con el focus provisto por cada handler"}
+CLAIM:ac3{criterion:"AC-03: sync_brain propaga tests, handlers, tasks_active, tasks_done, cycles_closed reales desde el filesystem (no solo desde metrics dict)"}
+CLAIM:ac4{criterion:"AC-04: meta-brain DOM:arqux.tests refleja el conteo real de tests del proyecto"}
+CLAIM:ac5{criterion:"AC-05: _record_to_brain y _record_bp_evidence dejan AUD entries visibles en PULSE tras cada blueprint.complete/approve"}
+CLAIM:ac6{criterion:"AC-06: Los logger.exception() en sync_brain deben tener mensajes claros que identifiquen que selector fallo"}
+
+$6: BLOCKERS
+
+BLK:b1{condition:"Ninguno conocido — los handlers ya llaman sync_brain() y evidence.record()", action:"HALT_AND_REPORT"}

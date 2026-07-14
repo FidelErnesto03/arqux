@@ -1,0 +1,52 @@
+$0
+
+# -- $0: MINIMAL LOCAL GLOSSARY --
+# Required: every .cortex artifact must be locally self-contained.
+# Sigil | Name | Type | Risk | Cognitive Layer | Description
+# IDN   | identity   | attrs      | B | Semantic       | Actor identity
+# DOM   | domain     | attrs      | B | Semantic       | Project/scope descriptor
+# KNW   | knowledge  | attrs      | B | Semantic       | Stable or promoted knowledge
+# CNST  | constraint | attrs      | H | Prefrontal     | Hard constraint or precondition
+# CLAIM | claim      | attrs      | M | Prefrontal     | Acceptance criterion
+# AUD   | audit      | attrs      | M | Prefrontal     | Verification/audit record
+# RSK   | risk       | attrs      | M | Prefrontal     | Identified risk with mitigation
+# FCS   | focus      | attrs      | H | Working        | Active attention anchor
+# OBJ   | objective  | attrs      | H | Working        | Active goal with success criterion
+# WRK   | work       | attrs      | B | Working        | Current execution state
+# STP   | step       | attrs      | M | Working        | Task procedure step
+# SES   | session    | attrs      | M | Episodic       | Compressed I/O/R episode
+# LNG   | lesson     | attrs      | M | Episodic       | Learned lesson or pattern
+# HDL   | handler    | attrs-pos  | M | Semantic       | Handoff descriptor
+# DESC  | description | cuerpo     | B | Semantic       | Structured textual description
+# ERR   | error      | attrs      | M | Prefrontal     | Concurrency / state info
+# ARQX  | artifact   | attrs      | B | Semantic       | ArqUX artifact metadata
+# BLK   | blocker    | attrs      | H | Prefrontal     | Blocking condition
+#
+# Types:
+#
+# Micro-glossary:
+
+
+$1: TASK
+
+ARQX:artifact{level:2, name:"T-002", usage:"state", kind:"native"}
+WRK:task{id:"T-002", status:"open", governor:"hermes", assignee:"heimdall", priority:"high", complexity:"complex", cycle:"CYCLE-02", created:"2026-07-11T13:31:03Z", updated:"2026-07-11T13:31:03Z"}
+
+$2: OBJECTIVE
+
+OBJ:objective{text:"Ejecutar auditoría ejecutable de ArqUX siguiendo protocolo ARQUX_EXECUTABLE_AUDIT_PROTOCOL.md y dejando resultado completo en docs/"}
+
+$3: PROCEDURE
+
+STP:step1{action:"Leer protocolo ARQUX_EXECUTABLE_AUDIT_PROTOCOL.md"}
+STP:step2{action:"Ejecutar todos los pasos de auditoría definidos"}
+STP:step3{action:"Recopilar evidencia usando handlers MCP y herramientas de Arqux"}
+STP:step4{action:"Generar informe completo en formato Markdown"}
+STP:step5{action:"Guardar informe en docs/ con nombre ARQUX_AUDIT_REPORT_<timestamp>.md"}
+STP:step6{action:"Incluir todas las secciones de evidencia, resultados, verificaciones y conclusiones"}
+
+$4: ACCEPTANCE
+
+CLAIM:ac1{criterion:"Protocolo ejecutado completamente"}
+CLAIM:ac2{criterion:"Informe generado y guardado en docs/"}
+CLAIM:ac3{criterion:"Informe incluye todas las secciones requeridas por el protocolo"}

@@ -17,6 +17,7 @@ The new handler is registered in handlers/__init__.py as "cycle.mature".
 
 from __future__ import annotations
 
+import re
 from pathlib import Path
 from typing import Any
 
@@ -521,10 +522,109 @@ def close_cycle(
         )
 
 
+
+def synthesize_cycle(
+    cycle_id: str,
+    content: str,
+    *,
+    path: str | None = None,
+    ctx: PermissionContext | None = None,
+) -> CortexOUT:
+    """Populate a cycle MANIFEST.md from CORTEX content (§1-§9)."""
+    root = find_project_root(start=path)
+    if root is None:
+        return CortexOUT.error("no project initialized", code="NOT_FOUND")
+    cdir = cycle_dir(root, cycle_id)
+    if not cdir.exists():
+        return CortexOUT.error(f"cycle {cycle_id} not found", code="NOT_FOUND")
+    mf = cdir / "MANIFEST.md"
+    if not mf.exists():
+        return CortexOUT.error(f"MANIFEST.md not found", code="NOT_FOUND")
+    text = mf.read_text(encoding="utf-8")
+    parts = text.split("---", 2)
+    if len(parts) < 3:
+        return CortexOUT.error("invalid MANIFEST.md format", code="INVALID_STATE")
+    fm_text = parts[1]
+    body = parts[2]
+    sections = _parse_content_sections(content)
+    if not sections:
+        return CortexOUT.error("no sections parsed from content", code="INVALID_ARGS")
+    sections_written = []
+    for sid, section_body in sections.items():
+        try:
+            snum = int(sid)
+            if snum < 1 or snum > 9:
+                continue
+        except ValueError:
+            continue
+        marker = f"## §{snum}:"
+        pattern = re.compile(rf"^{re.escape(marker)}.*?(?=^## §\d+:|$)", re.MULTILINE | re.DOTALL)
+        new_section = f"{marker}\n\n{section_body.strip()}\n"
+        if pattern.search(body):
+            body = pattern.sub(new_section, body, count=1)
+        else:
+            body += f"\n{new_section}"
+        sections_written.append(sid)
+    new_text = f"---{fm_text}---\n{body}"
+    mf.write_text(new_text, encoding="utf-8")
+    return CortexOUT.work(f"cycle.synthesize ok id={cycle_id} sections={len(sections_written)}", cycle_id=cycle_id, sections_written=sections_written, path=str(mf))
+
+
+def _replace_manifest_section(manifest_text: str, section_num: int, new_content: str) -> str:
+    """Replace a section (§N) in manifest text. Returns original if section not found."""
+    marker = f"## §{section_num}:"
+    pattern = re.compile(rf"^{re.escape(marker)}.*?(?=^## §\d+:|$)", re.MULTILINE | re.DOTALL)
+    if pattern.search(manifest_text):
+        return pattern.sub(f"{marker}\n\n{new_content.strip()}\n", manifest_text, count=1)
+    return manifest_text
+
+
+def _read_quality_gates_from_manifest(manifest_text: str) -> dict[str, bool]:
+    """Extract quality gates from MANIFEST.md body. Reads §9 table."""
+    gates: dict[str, bool] = {}
+    m = re.search(r"## §9:.*?\n((?:\|.*?\n)+)", manifest_text, re.DOTALL)
+    if not m:
+        return gates
+    table = m.group(1)
+    for line in table.strip().splitlines():
+        line = line.strip()
+        if not line.startswith("|") or "---" in line:
+            continue
+        cells = [c.strip() for c in line.split("|")[1:-1]]
+        if len(cells) >= 2:
+            name = cells[0].strip()
+            val = cells[1].strip()
+            gates[name] = val in ("✅", "true", "☑", "☒")
+    return gates
+
+
+def _parse_content_sections(content: str) -> dict[str, str]:
+    """Parse CORTEX content into {section_id: body}."""
+    out: dict[str, str] = {}
+    text = content.strip()
+    pattern = re.compile(r"\$(\d+(?:\.\d+)?):\s*\{")
+    for m in pattern.finditer(text):
+        sid = m.group(1)
+        start = m.end() - 1
+        depth = 0
+        i = start
+        while i < len(text):
+            if text[i] == "{":
+                depth += 1
+            elif text[i] == "}":
+                depth -= 1
+                if depth == 0:
+                    out[sid] = text[start + 1 : i].strip()
+                    break
+            i += 1
+    return out
+
 handler_schemas = [
     {"name": "cycle.create", "fn": create_cycle, "description": "Open a new cycle in the active project.", "input_schema": {"type": "object", "properties": {"name": {"type": "string"}, "description": {"type": "string"}, "path": {"type": "string", "description": "Path to project root. Defaults to cwd."}}}},
     {"name": "cycle.list", "fn": list_cycles, "description": "List cycles in the active project.", "input_schema": {"type": "object", "properties": {"status": {"type": "string", "enum": ["open", "closed"]}, "path": {"type": "string", "description": "Path to project root. Defaults to cwd."}}}},
     {"name": "cycle.current", "fn": current_cycle, "description": "Get the currently active cycle.", "input_schema": {"type": "object", "properties": {"path": {"type": "string", "description": "Path to project root. Defaults to cwd."}}}},
     {"name": "cycle.mature", "fn": mature_cycle, "description": "Mature a cycle (draft → ready).", "input_schema": {"type": "object", "properties": {"cycle_id": {"type": "string"}, "path": {"type": "string", "description": "Path to project root. Defaults to cwd."}}}},
     {"name": "cycle.close", "fn": close_cycle, "description": "Close a cycle (no new tasks can be added).", "input_schema": {"type": "object", "properties": {"cycle_id": {"type": "string"}, "summary": {"type": "string"}, "path": {"type": "string", "description": "Path to project root. Defaults to cwd."}}, "required": ["cycle_id"]}},
+    {"name": "cycle.synthesize", "fn": synthesize_cycle, "description": "Populate a cycle's MANIFEST.md sections in a single call.", "input_schema": {"type": "object", "properties": {"cycle_id": {"type": "string"}, "content": {"type": "string"}, "path": {"type": "string"}}, "required": ["cycle_id", "content"]}},
 ]
+

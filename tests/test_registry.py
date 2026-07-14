@@ -15,7 +15,7 @@ from arqux.handlers import REGISTRY, handler_count, list_handlers
 
 
 def test_handler_count_is_86() -> None:
-    assert handler_count() == 86
+    assert handler_count() == 91
 
 
 def test_mutating_handler_count() -> None:
@@ -44,7 +44,7 @@ def test_handler_names_follow_module_convention() -> None:
     modules: set[str] = {
         "workspace", "project", "cycle", "task", "evidence", "protocol",
         "session", "cortex", "identity", "skill", "blueprint", "setup",
-        "context",
+        "context", "handler",
     }
     for name in names:
         module = name.split(".", 1)[0]
@@ -64,17 +64,18 @@ def test_module_handler_counts() -> None:
     expected = {
         "blueprint": 20,  # +1: blueprint.synthesize, +1: blueprint.execute
         "context": 2,
-        "cortex": 19,  # +2: cortex.ref, cortex.format; +2: cortex.patch, cortex.migrate
-        "cycle": 5,
+        "cortex": 20,  # +3: ref, format, patch, migrate, checkpoint
+        "cycle": 6,  # +1: cycle.synthesize
         "evidence": 3,
         "identity": 2,  # +1: identity.get
         "project": 5,
-        "protocol": 4,
-        "session": 7,  # +1: session.bootstrap, +1: session.handoff
+        "protocol": 5,
+        "session": 8,  # +3: bootstrap, handoff, pulse.compact
         "setup": 1,
         "skill": 7,  # +1: skill.install
         "task": 8,  # +1: task.run
         "workspace": 3,
+        "handler": 1,
     }
     counts: dict[str, int] = {}
     for name in list_handlers():

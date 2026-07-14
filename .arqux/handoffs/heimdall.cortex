@@ -1,0 +1,9 @@
+$0
+
+$1: HANDOFF
+
+HOF:handoff{from:"hermes", to:"heimdall", project:"ARQUX", summary:"BLP-017 Governance Enforcement completado. Gate siempre workspace primero, hook pre-respuesta, identidad dinamica desde .arqux/identities/. CYCLE-04 17/17 BLPs. Quedan pendientes BLP-016 (CODEC-CORTEX) para ejecucion."
+   blps: "BLP-016"
+   tasks: ""
+   decisions: "Enforcement invisible: gate inyecta dashboard, hook corrige header"
+   gaps: "BLP-016 CODEC-CORTEX compliance pendiente de ejecucion", blps:"", tasks:""}

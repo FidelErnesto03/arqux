@@ -13,6 +13,7 @@ All public symbols are re-exported here for backward compatibility:
 
 from __future__ import annotations
 
+from .checkpoint import checkpoint_handler
 from .diagram import (
     render_diagram_handler,
     render_validate_file_handler,
@@ -422,6 +423,26 @@ handler_schemas = [
                 "dry_run": {"type": "boolean", "default": False},
             },
             "required": ["source_path", "target_path", "transform"],
+        },
+    },
+    {
+        "name": "cortex.checkpoint",
+        "fn": checkpoint_handler,
+        "description": (
+            "Persist the agent's working state (WRK:current) as a single "
+            "CORTEX line in brain.cortex §8. Accepts content as key:value "
+            "pairs (fcs:,obj:,tasks:,state:)."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "content": {
+                    "type": "string",
+                    "description": "CORTEX content: fcs:...,obj:...,tasks:...,state:...",
+                },
+                "path": {"type": "string", "description": "Path to project root."},
+            },
+            "required": ["content"],
         },
     },
 ]

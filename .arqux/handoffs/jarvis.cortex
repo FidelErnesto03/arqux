@@ -1,0 +1,9 @@
+$0
+
+$1: HANDOFF
+
+HOF:handoff{from:"hermes", to:"jarvis", project:"ARQUX", summary:"workspace.init (arqux init) solo copia AGENTS.md al root, pero NO AGENTS.lite.md ni AGENTS.full.md. Los deltas existen en src/arqux/templates/ pero no se copian. Fix simple: agregar 2 lineas de copia en workspace.py line 63-67. Sin BLP — fix directo."
+   blps: ""
+   tasks: "fix-workspace-init-agents-copy"
+   decisions: "Fix directo. workspace.init debe copiar los 3 AGENTS al root."
+   gaps: "Verificar que AGENTS.lite/full ya estan en templates/ (estan, se verifico)", blps:"", tasks:""}

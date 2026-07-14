@@ -106,7 +106,7 @@ def synthesize_blueprint(
         )
 
     # Find or create the BLP file.
-    bp_path, fm, body, created = _find_or_create_blueprint(root, bp_id, ctx)
+    bp_path, fm, body, created = _find_or_create_blueprint(root, bp_id, ctx, path_hint=path)
 
     # Apply each section via marker replacement.
     new_body = body
@@ -233,12 +233,25 @@ def _find_or_create_blueprint(
     root: Path,
     bp_id: str,
     ctx: PermissionContext | None,
+    *,
+    path_hint: str | None = None,
 ) -> tuple[Path, dict[str, Any], str, bool]:
     """Find the BLP file across cycles, or create a new draft.
 
     Returns ``(bp_path, frontmatter, body, created)``.
     """
     cycles_base = root / CYCLES_DIR
+
+    # 1. Explicit path_hint
+    if path_hint:
+        from ._helpers import _resolve_blueprint_path
+        resolved = _resolve_blueprint_path(root, bp_id, path_hint=path_hint)
+        if resolved and resolved.exists():
+            text = resolved.read_text(encoding="utf-8")
+            fm, body = _parse_md(text)
+            return resolved, fm, body, False
+
+    # 2. Search across cycles
     if cycles_base.exists():
         for cdir in cycles_base.iterdir():
             bp_path = cdir / BLUEPRINTS_DIR / f"{bp_id}.md"

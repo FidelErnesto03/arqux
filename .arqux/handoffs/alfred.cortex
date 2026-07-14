@@ -1,0 +1,9 @@
+$0
+
+$1: HANDOFF
+
+HOF:handoff{from:"hermes", to:"alfred", project:"ARQUX", summary:"Fix workspace.init — ahora copia AGENTS.md + AGENTS.lite.md + AGENTS.full.md al root. 36 tests OK. Build synced. Heimdall audit completo: AGENTS*↔SKILLs↔HANDLERS alineados. BLP-012 closed."
+   blps: "BLP-012"
+   tasks: ""
+   decisions: ""
+   gaps: "", blps:"", tasks:""}
