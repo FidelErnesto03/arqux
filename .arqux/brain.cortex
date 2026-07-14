@@ -18,11 +18,11 @@ $0
 # ARQX  | artifact   | attrs      | B | Semantic       | ArqUX artifact metadata
 #
 # Types:
-# bloque = canonical type
 # relación = canonical type
-# cuerpo = canonical type
-# attrs = canonical type
 # attrs-pos = canonical type
+# attrs = canonical type
+# bloque = canonical type
+# cuerpo = canonical type
 #
 # Micro-glossary:
 # cur=current pln=planned fut=future blk=blocked
@@ -40,11 +40,11 @@ IDN:governor{level:"2", project:"ARQUX", path:"/home/vatrox/workspace/ARQUX", go
 
 $2: FOCUS
 
-FCS:current{what:"Definir BLP-006", priority:"medium", status:"current", survive:"work", updated:"2026-07-14T16:42:36Z", event:"blueprint.create"}
+FCS:current{what:"Ciclo cerrado", priority:"medium", status:"current", survive:"work", updated:"2026-07-14T19:57:26Z", event:"cycle.close"}
 
 $3: OBJECTIVES
 
-OBJ:_{goal:"- - - - - - - - 20 BLPs completados en CYCLE-01. Sincronia brain.cortex restaurada.", status:"current", success:"pending", survive:"work"}
+OBJ:_{goal:"Mantener sincronia entre brain.cortex y estado real del proyecto. 96 BLPs gestionados en 5 ciclos (CYCLE-01 a CYCLE-05).", status:"current", success:"synced", survive:"work"}
 
 $4: SESSIONS
 
@@ -159,13 +159,14 @@ AUD:E_0096{date:"2026-07-14T17:35:15Z", event:"E-0096", task:"-", kind:"handler_
 AUD:E_0097{date:"2026-07-14T17:35:15Z", event:"E-0097", task:"-", kind:"handler_call", agent:"anonymous", result:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", evidence:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md"}
 AUD:E_0098{date:"2026-07-14T17:40:47Z", event:"E-0098", task:"-", kind:"handler_call", agent:"test", result:"[cortex.ref] sigil=WRK", evidence:"[cortex.ref] sigil=WRK"}
 AUD:E_0099{date:"2026-07-14T17:40:47Z", event:"E-0099", task:"-", kind:"handler_call", agent:"test", result:"[cortex.ref] sigil=LNG", evidence:"[cortex.ref] sigil=LNG"}
+KNW:cycles_closed{name:"cycles_closed", value:"1", updated:"2026-07-14T19:57:26Z", topic:"metrics", content:"metric cycles_closed=1", status:"current"}
 
 $7: LESSONS
 
 
 $8: ACTIVE_CONTEXT
 
-WRK:current{phase:"current", current:"blueprint.create: BLP-006 created in CYCLE-05", blocked:"no", survive:"work", updated:"2026-07-14T16:42:36Z", event:"blueprint.create"}
+WRK:current{phase:"current", current:"cycle.close: cycle CYCLE-06 closed", blocked:"no", survive:"work", updated:"2026-07-14T19:57:26Z", event:"cycle.close", fcs:"CYCLE-06", obj:"\"Tres BLPs ejecutados y completados\"", tasks:"\"BLP-001 review", state:"\"session-complete\"", last_turn:"2026-07-14T19:52:51Z"}
 
 $9: RISKS
 
@@ -181,8 +182,3 @@ $11: CONCURRENCY
 ERR:concurrency{version:"25", last_writer:"alfred", updated:"2026-07-10"}
 
 $12: CYCLES
-
-CYC:CYCLE-04{status:"closed",blps:"17",summary:"Evolutionary cycle. 17 BLPs (001-017). Audit: 3 implemented, 8 partial, 5 failed, 1 regression (BLP-013 pulse.compact). Report: .arqux/audits/auditoria-ciclo-04.md. Closed: 2026-07-14."}
-
-
-SES:2026-07-14T18:30:00Z{agent:"alfred+heimdall",summary:"CYCLE-05 completado. 8 BLPs ejecutados. Restaurado pulse.compact (regresion BLP-016). +5 handlers (91 total). skill.py:210 y checkpoint.py migrados a cortex_write. mcp-handlers.skill.md eliminado. brain.cortex.bak a backups. Source y runtime alineados via pip install -e. 829 tests pasan. CYCLE-04 y CYCLE-05 cerrados formalmente.",blps:"BLP-001..008",handlers:91,tests:829,regressions:0}

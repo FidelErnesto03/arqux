@@ -7,6 +7,7 @@ from pathlib import Path
 from ...cortex_out import CortexOUT
 from ...permissions import PermissionContext
 from ...state import cortex_read, cortex_render, cortex_verify, cortex_write
+from ...sync import sync_brain
 
 # ---------------------------------------------------------------------------
 # SectionCounter — in-memory sequential counter per (file, section)
@@ -137,6 +138,9 @@ def write_handler(
     if "error" in result:
         return CortexOUT.error(result["error"], code="VALIDATION_FAILED")
 
+    # Post-write hook: auto-sync to meta-brain when writing a project brain.cortex
+    _auto_sync_brain(path)
+
     return CortexOUT.work(
         f"cortex.write ok path={path} bytes={result['bytes_written']}",
         path=path,
@@ -144,6 +148,24 @@ def write_handler(
         backup=result.get("backup"),
         diagnostics=result.get("diagnostics", []),
     )
+
+
+def _auto_sync_brain(path: str) -> None:
+    """If *path* is a project-level brain.cortex, sync to meta-brain."""
+    p = Path(path).resolve()
+    if p.name != "brain.cortex":
+        return
+    parent = p.parent
+    if parent.name == ".arqux":
+        project_root = parent.parent
+    elif (parent / ".arqux" / "brain.cortex").exists():
+        project_root = parent
+    else:
+        return
+    try:
+        sync_brain(project_root, "cortex.write", focus="brain.cortex auto-sync")
+    except Exception:
+        pass
 
 
 def verify_handler(

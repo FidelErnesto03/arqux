@@ -82,6 +82,43 @@ def _find_workspace_template(root: Path, template_name: str) -> Path | None:
         cursor = cursor.parent
 
 
+TEMPLATE_PLACEHOLDER_PATTERNS: list[str] = [
+    r"_¿[Pp]or\s+qué",
+    r"_¿A\s+qué\s+objetivos",
+    r"_Ítem\s+\d+",
+    r"_Objetivo\s+[—–-]",
+    r"_Directriz\s+\d+",
+    r"_YYYY[ -]MM[ -]DD",
+    r"_Descripción",
+    r"_¿Qué\s+debe\s+",
+    r"_BLP[ -]NNN",
+    r"_Título",
+    r"_draft/ready/\.\.\.",
+    r"_CP[ -]NN",
+    r"_Regla\s+\d+",
+    r"_critical/high/medium/low",
+    r"_CYC[ -]OBJ[ -]N",
+    r"_agente",
+    r"_¿Qué\s+debe\s+validarse",
+]
+
+
+def _manifest_body_has_placeholders(text: str) -> list[str]:
+    """Check if the manifest body contains template placeholders.
+
+    Returns a list of matched placeholder patterns (empty = clean).
+    """
+    parts = text.split("---", 2)
+    if len(parts) < 3:
+        return []
+    body = parts[2]
+    found: list[str] = []
+    for pattern in TEMPLATE_PLACEHOLDER_PATTERNS:
+        if re.search(pattern, body):
+            found.append(pattern)
+    return found
+
+
 def _now_iso() -> str:
     import time
     return time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
@@ -267,6 +304,18 @@ def mature_cycle(
             f"expected draft or open",
             code="INVALID_STATE",
         )
+
+    # Validate manifest content: reject template placeholders.
+    mf_path = cdir / "MANIFEST.md"
+    if mf_path.exists():
+        mf_text = mf_path.read_text(encoding="utf-8")
+        placeholders = _manifest_body_has_placeholders(mf_text)
+        if placeholders:
+            return CortexOUT.error(
+                f"cycle {cycle_id} MANIFEST.md still contains template placeholders; "
+                f"run cycle.synthesize() first. Found: {placeholders}",
+                code="INVALID_STATE",
+            )
 
     fm["status"] = CYCLE_READY
     fm["matured_at"] = _now_iso()
@@ -558,7 +607,7 @@ def synthesize_cycle(
         except ValueError:
             continue
         marker = f"## §{snum}:"
-        pattern = re.compile(rf"^{re.escape(marker)}.*?(?=^## §\d+:|$)", re.MULTILINE | re.DOTALL)
+        pattern = re.compile(rf"^{re.escape(marker)}.*?(?=^## §\d+:|\Z)", re.MULTILINE | re.DOTALL)
         new_section = f"{marker}\n\n{section_body.strip()}\n"
         if pattern.search(body):
             body = pattern.sub(new_section, body, count=1)
@@ -573,7 +622,7 @@ def synthesize_cycle(
 def _replace_manifest_section(manifest_text: str, section_num: int, new_content: str) -> str:
     """Replace a section (§N) in manifest text. Returns original if section not found."""
     marker = f"## §{section_num}:"
-    pattern = re.compile(rf"^{re.escape(marker)}.*?(?=^## §\d+:|$)", re.MULTILINE | re.DOTALL)
+    pattern = re.compile(rf"^{re.escape(marker)}.*?(?=^## §\d+:|\Z)", re.MULTILINE | re.DOTALL)
     if pattern.search(manifest_text):
         return pattern.sub(f"{marker}\n\n{new_content.strip()}\n", manifest_text, count=1)
     return manifest_text

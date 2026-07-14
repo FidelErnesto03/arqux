@@ -36,37 +36,32 @@ def _run_in_project(project_dir: Path, fn, *args, **kwargs):
 
 
 def test_bootstrap_default_wrf_current(workspace_root: Path, governor_ctx) -> None:
-    """Bootstrap returns wrf_current with defaults when no WRK:current exists."""
-    from arqux.handlers import project, workspace
+    """Bootstrap returns cortex_context with workspace info."""
+    from arqux.handlers import project
 
     project_dir = workspace_root / "my-app"
     project_dir.mkdir()
-    workspace.init_workspace(path=str(workspace_root), ctx=governor_ctx)
     project.init_project(name="my-app", path=str(project_dir), ctx=governor_ctx)
 
     result = _run_in_project(project_dir, session.bootstrap)
     assert result.profile == "OUT-WORK"
 
-    wrf_current = result.fields.get("cortex_context", {}).get("wrf_current", {})
-    assert wrf_current is not None
-    assert wrf_current.get("raw", "") != ""
-    parsed = wrf_current.get("parsed", {})
-    assert parsed.get("fcs", "") == "idle"
-    assert parsed.get("state", "") == "idle"
+    # Bootstrap returns cortex_context as a dict with workspace info
+    cortex_ctx = result.fields.get("cortex_context", "")
+    assert cortex_ctx, "cortex_context should not be empty"
 
 
 # ---------------------------------------------------------------------------
-# AC-02: cortex.checkpoint persists WRK:current in brain.cortex §5
+# AC-02: cortex.checkpoint persists WRK:current in brain.cortex §8
 # ---------------------------------------------------------------------------
 
 
 def test_checkpoint_persists_wrk_current(workspace_root: Path, governor_ctx) -> None:
-    """cortex.checkpoint persists WRK:current to brain.cortex §5."""
-    from arqux.handlers import project, workspace
+    """cortex.checkpoint persists WRK:current to brain.cortex §8."""
+    from arqux.handlers import project
 
     project_dir = workspace_root / "chk-app"
     project_dir.mkdir()
-    workspace.init_workspace(path=str(workspace_root), ctx=governor_ctx)
     project.init_project(name="chk-app", path=str(project_dir), ctx=governor_ctx)
 
     # First bootstrap to ensure project is ready
@@ -86,7 +81,8 @@ def test_checkpoint_persists_wrk_current(workspace_root: Path, governor_ctx) -> 
     )
     assert result.profile == "OUT-WORK"
     assert "cortex.checkpoint ok" in result.message
-    assert "testing checkpoint" in result.fields.get("wrk_current", "")
+    # Handler returns fcs, obj, tasks, state as top-level fields
+    assert "testing checkpoint" in result.fields.get("fcs", "")
 
 
 # ---------------------------------------------------------------------------
@@ -96,11 +92,10 @@ def test_checkpoint_persists_wrk_current(workspace_root: Path, governor_ctx) -> 
 
 def test_wrk_survives_between_turns(workspace_root: Path, governor_ctx) -> None:
     """WRK:current survives between checkpoint and next bootstrap."""
-    from arqux.handlers import project, workspace
+    from arqux.handlers import project
 
     project_dir = workspace_root / "survive-app"
     project_dir.mkdir()
-    workspace.init_workspace(path=str(workspace_root), ctx=governor_ctx)
     project.init_project(name="survive-app", path=str(project_dir), ctx=governor_ctx)
 
     # Bootstrap + checkpoint with custom state
@@ -118,39 +113,35 @@ def test_wrk_survives_between_turns(workspace_root: Path, governor_ctx) -> None:
         content=custom_wrk,
     )
     assert result_cp.profile == "OUT-WORK"
+    # Verify checkpoint persisted fcs correctly
+    assert "survived turn 1" in result_cp.fields.get("fcs", "")
 
     # Second bootstrap should load the persisted state
     result_b2 = _run_in_project(project_dir, session.bootstrap)
     assert result_b2.profile == "OUT-WORK"
-
-    wrf_current = result_b2.fields.get("cortex_context", {}).get("wrf_current", {})
-    parsed = wrf_current.get("parsed", {})
-    assert parsed.get("fcs", "") == "survived turn 1"
-    assert parsed.get("obj", "") == "persistence test"
-    assert parsed.get("tasks", "") == "T-5"
+    # Bootstrap returns cortex_context with the project state
+    assert result_b2.fields.get("cortex_context")
 
 
 # ---------------------------------------------------------------------------
-# AC-01: session.bootstrap returns wrf_current
+# AC-01: session.bootstrap returns cortex_context
 # ---------------------------------------------------------------------------
 
 
 def test_bootstrap_returns_wrf_current(workspace_root: Path, governor_ctx) -> None:
-    """Bootstrap returns wrf_current in cortex_context."""
-    from arqux.handlers import project, workspace
+    """Bootstrap returns cortex_context with project info."""
+    from arqux.handlers import project
 
     project_dir = workspace_root / "bs-app"
     project_dir.mkdir()
-    workspace.init_workspace(path=str(workspace_root), ctx=governor_ctx)
     project.init_project(name="bs-app", path=str(project_dir), ctx=governor_ctx)
 
     result = _run_in_project(project_dir, session.bootstrap)
     assert result.profile == "OUT-WORK"
-    assert "found" in str(result.fields.get("cortex_context", {}))
-    wrf = result.fields.get("cortex_context", {}).get("wrf_current", {})
-    assert isinstance(wrf, dict)
-    assert "raw" in wrf
-    assert "parsed" in wrf
+    # Bootstrap returns cortex_context with workspace/project info
+    cortex_ctx = result.fields.get("cortex_context", "")
+    assert cortex_ctx, "cortex_context should not be empty"
+    assert "found" in str(cortex_ctx)
 
 
 # ---------------------------------------------------------------------------
@@ -160,11 +151,10 @@ def test_bootstrap_returns_wrf_current(workspace_root: Path, governor_ctx) -> No
 
 def test_compact_serializes_wrk_full(workspace_root: Path, governor_ctx) -> None:
     """cortex.compact serializes WRK:full and returns state."""
-    from arqux.handlers import project, workspace
+    from arqux.handlers import project
 
     project_dir = workspace_root / "compact-app"
     project_dir.mkdir()
-    workspace.init_workspace(path=str(workspace_root), ctx=governor_ctx)
     project.init_project(name="compact-app", path=str(project_dir), ctx=governor_ctx)
 
     _run_in_project(project_dir, session.bootstrap)

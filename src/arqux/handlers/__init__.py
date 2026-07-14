@@ -25,7 +25,7 @@ from typing import Any
 # New code should import directly from the package:
 #   from arqux.handlers.blueprint.manage import create
 #   from arqux.handlers.cortex.entries import add_entry
-from . import blueprint, cortex, cycle, evidence, handler, project, protocol, session, skill, task, workspace
+from . import blueprint, cortex, cycle, evidence, handler, project, protocol, session, skill, sync, task, workspace
 from . import context as context_pkg
 from . import identity as identity_pkg
 
@@ -49,7 +49,7 @@ def _register(spec: HandlerSpec) -> None:
 
 # --- Register all handlers from each module ---------------------------------
 
-for mod in (workspace, project, cycle, task, evidence, protocol, session, cortex, skill, blueprint, context_pkg, identity_pkg, handler):
+for mod in (workspace, project, cycle, task, evidence, protocol, session, cortex, skill, blueprint, sync, context_pkg, identity_pkg, handler):
     for info in mod.handler_schemas:
         _register(HandlerSpec(**info))
 

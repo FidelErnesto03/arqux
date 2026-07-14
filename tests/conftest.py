@@ -65,7 +65,7 @@ def arqux_env(request, tmp_path, monkeypatch):
     from dataclasses import dataclass
 
     from arqux.handlers.blueprint.lifecycle import create_blueprint
-    from arqux.handlers.cycle import create_cycle, mature_cycle
+    from arqux.handlers.cycle import create_cycle, synthesize_cycle, mature_cycle
     from arqux.handlers.project import init_project
     from arqux.handlers.workspace import init_workspace
 
@@ -87,6 +87,8 @@ def arqux_env(request, tmp_path, monkeypatch):
 
     result = create_cycle(name="CYCLE-TEST", path=str(proj_root), ctx=gov_ctx)
     cycle_id = result.fields["cycle_id"]
+
+    synthesize_cycle(cycle_id=cycle_id, content="$1:{Test purpose}$2:{Test scope: inside, outside}$3:{CYC-OBJ-1: Test objective}$4:{Test guideline}$5:{Test checkpoint}$6:{BLP index}$7:{Metrics: 0}$8:{Test rule}$9:{Gates}", path=str(proj_root), ctx=gov_ctx)
 
     mature_cycle(cycle_id=cycle_id, path=str(proj_root), ctx=gov_ctx)
 

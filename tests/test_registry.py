@@ -15,7 +15,16 @@ from arqux.handlers import REGISTRY, handler_count, list_handlers
 
 
 def test_handler_count_is_86() -> None:
-    assert handler_count() == 91
+    assert handler_count() == 92
+
+
+def test_handler_list_accepts_mcp_context() -> None:
+    """The MCP wrapper injects ctx into every registered handler."""
+    result = REGISTRY["handler.list"].fn("NANO", ctx=object())
+
+    assert result["_total"] == 8
+    assert "handler" in result
+    assert any(item["name"] == "handler.list" for item in result["handler"]["handlers"])
 
 
 def test_mutating_handler_count() -> None:
@@ -44,7 +53,7 @@ def test_handler_names_follow_module_convention() -> None:
     modules: set[str] = {
         "workspace", "project", "cycle", "task", "evidence", "protocol",
         "session", "cortex", "identity", "skill", "blueprint", "setup",
-        "context", "handler",
+        "context", "handler", "sync",
     }
     for name in names:
         module = name.split(".", 1)[0]
