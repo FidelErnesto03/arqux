@@ -22,6 +22,7 @@ from ..constants import (
 from ..cortex_out import CortexOUT
 from ..permissions import PermissionContext, promote_first_governor
 from ..state import (
+    cortex_write,
     find_workspace_root,
     write_meta_brain,
     write_projects_index,
@@ -71,9 +72,9 @@ def init_workspace(
     if not meta_brain_path.exists():
         meta_tmpl = Path(__file__).resolve().parent.parent / "templates" / META_BRAIN_CORTEX
         if meta_tmpl.exists():
-            meta_brain_path.write_text(
-                meta_tmpl.read_text(encoding="utf-8"), encoding="utf-8"
-            )
+            result = cortex_write(meta_brain_path, meta_tmpl.read_text(encoding="utf-8"))
+            if "error" in result:
+                raise RuntimeError(f"meta-brain write rejected: {result['error']}")
         else:
             # Fallback: only if template missing (shouldn't happen in production).
             meta_brain = {

@@ -20,7 +20,7 @@ from pathlib import Path
 
 from ..cortex_out import CortexOUT
 from ..permissions import PermissionContext
-from ..state import find_project_root, find_workspace_root
+from ..state import cortex_write, crud_add, find_project_root, find_workspace_root
 from ..sync import sync_brain
 
 SKILL_DIR = "skills"
@@ -207,7 +207,7 @@ def convert_skill(
         "}\n"
     )
 
-    dst.write_text(cortex_content, encoding="utf-8")
+    cortex_write(path=str(dst), content=cortex_content)
     return CortexOUT.work(
         f"skill.convert ok name={name} cortex={len(cortex_content)}c original={len(raw)}c",
         name=name,
@@ -649,19 +649,18 @@ def install_skill(
             if project_arqux is not None:
                 brain_path = project_arqux / "brain.cortex"
                 if brain_path.exists():
-                    brain_text = brain_path.read_text(encoding="utf-8")
-                    # Append a simple SKL registration line.
-                    skl_entry = f"SKL:{name}{{source:\"{source}\", status:\"installed\"}}\n"
-                    # Find the $6 section or append at the end.
-                    if "$6" in brain_text:
-                        # Insert after the $6 header line.
-                        idx = brain_text.index("$6")
-                        end_of_line = brain_text.index("\n", idx) + 1
-                        brain_text = brain_text[:end_of_line] + skl_entry + brain_text[end_of_line:]
-                    else:
-                        # Append a new $6 section.
-                        brain_text += f"\n$6: SKILLS\n\n{skl_entry}\n"
-                    brain_path.write_text(brain_text, encoding="utf-8")
+                    # Register the skill as an SKL entry in brain.cortex $6
+                    # via CODEC-CORTEX (creates $6 if missing).
+                    result = crud_add(
+                        brain_path,
+                        "$6",
+                        "SKL",
+                        name,
+                        f'source:"{source}", status:"installed"',
+                        create_section=True,
+                    )
+                    if "error" in result:
+                        raise RuntimeError(f"skill.register rejected: {result['error']}")
                     steps_report.append({
                         "step": "register",
                         "status": "done",

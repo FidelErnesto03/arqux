@@ -25,7 +25,13 @@ from ..constants import (
 from ..cortex_out import CortexOUT
 from ..permissions import PermissionContext
 from ..sessions import add_session_to_brain, remove_session_from_brain
-from ..state import find_project_root, find_workspace_root, read_brain, write_brain
+from ..state import (
+    cortex_write,
+    find_project_root,
+    find_workspace_root,
+    read_brain,
+    write_brain,
+)
 from ..sync import sync_brain
 
 
@@ -70,7 +76,9 @@ def init_project(
 
     if seed:
         # One-step: seed content provided — write directly as brain.cortex.
-        (gov_dir / BRAIN_CORTEX).write_text(seed, encoding="utf-8")
+        result = cortex_write(gov_dir / BRAIN_CORTEX, seed)
+        if "error" in result:
+            raise RuntimeError(f"brain.cortex seed write rejected: {result['error']}")
 
         # Update meta-brain with cross-project knowledge.
         if ws_root is not None:

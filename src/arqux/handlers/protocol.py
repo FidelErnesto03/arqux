@@ -128,9 +128,21 @@ def _now_iso() -> str:
     return time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
 
 
+
+def onboard(
+    agent_id: str,
+    role: str,
+    path: str | None = None,
+    ctx: PermissionContext | None = None,
+) -> CortexOUT:
+    """Onboard an agent — alias of protocol.adopt."""
+    return adopt(agent_id=agent_id, role=role, path=path, ctx=ctx)
+
 handler_schemas = [
     {"name": "protocol.adopt", "fn": adopt, "description": "Onboard an agent with a role.", "input_schema": {"type": "object", "properties": {"agent_id": {"type": "string"}, "role": {"type": "string", "enum": ["governor", "executor", "auditor"]}, "path": {"type": "string", "description": "Path to workspace root. Defaults to cwd."}}, "required": ["agent_id", "role"]}},
     {"name": "protocol.release", "fn": release, "description": "Fully detach an agent (clean exit, no orphans).", "input_schema": {"type": "object", "properties": {"agent_id": {"type": "string"}, "path": {"type": "string", "description": "Path to workspace root. Defaults to cwd."}}, "required": ["agent_id"]}},
     {"name": "protocol.pause", "fn": pause, "description": "Suspend governance for the current session without losing state.", "input_schema": {"type": "object", "properties": {}}},
     {"name": "protocol.resume", "fn": resume, "description": "Resume governance after a pause.", "input_schema": {"type": "object", "properties": {}}},
+    {"name": "protocol.onboard", "fn": onboard, "description": "Onboard an agent with a role. Alias of protocol.adopt for w06 workflow compatibility.", "input_schema": {"type": "object", "properties": {"agent_id": {"type": "string"}, "role": {"type": "string", "enum": ["governor", "executor", "auditor"]}, "path": {"type": "string", "description": "Path to workspace root. Defaults to cwd."}}, "required": ["agent_id", "role"]}},
 ]
+

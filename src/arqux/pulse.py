@@ -175,3 +175,132 @@ def read_handoffs(
         if len(entries) >= limit:
             break
     return entries
+
+
+# --- Pulse compaction (BLP-013) ----------------------------------------------
+
+
+def _prune_pulse_entries(
+    brain_path: Path,
+    entry_ids: list[str],
+    *,
+    dry_run: bool = False,
+) -> dict:
+    """Remove specific pulse entries from the brain's PULSE section."""
+    if not brain_path.exists():
+        return {"pruned": 0, "errors": 0, "dry_run": dry_run}
+    text = brain_path.read_text(encoding="utf-8")
+    lines = text.splitlines()
+    pruned = 0
+    kept: list[str] = []
+    for line in lines:
+        stripped = line.strip()
+        if stripped.startswith("AUD:") or stripped.startswith("- ["):
+            if any(eid in stripped for eid in entry_ids):
+                pruned += 1
+                continue
+        kept.append(line)
+    if not dry_run:
+        brain_path.write_text("\n".join(kept) + "\n", encoding="utf-8")
+    result: dict = {"pruned": pruned, "errors": 0, "dry_run": dry_run}
+    if dry_run:
+        result["would_prune"] = pruned
+    return result
+
+
+def compact_session_pulse(
+    project_root: Path,
+    *,
+    session_id: str,
+    agent_id: str = "system",
+    dry_run: bool = False,
+) -> dict:
+    """Compact pulse entries for a completed session.
+
+    Reads all pulse entries, prunes non-SES entries between this SES
+    and the previous SES, writes a consolidated LNG lesson, and records
+    a meta-event AUD.
+    """
+    brain_path = _brain_cortex_path(project_root)
+    if not brain_path.exists():
+        return {"error": "brain not found", "compacted": False}
+
+    all_entries = read_pulse_from_brain(project_root, limit=10000)
+
+    ses_entry = None
+    for e in all_entries:
+        if e["id"] == session_id and e.get("kind") == "session":
+            ses_entry = e
+            break
+    if ses_entry is None:
+        return {"error": f"SES {session_id} not found", "compacted": False}
+
+    prev_ses_idx = -1
+    ses_entries = [e for e in all_entries if e.get("kind") == "session"]
+    for i, e in enumerate(ses_entries):
+        if e["id"] == session_id and i > 0:
+            prev_id = ses_entries[i - 1]["id"]
+            for j, ae in enumerate(all_entries):
+                if ae["id"] == prev_id:
+                    prev_ses_idx = j
+                    break
+            break
+
+    ses_idx = next((j for j, ae in enumerate(all_entries) if ae["id"] == session_id), len(all_entries) - 1)
+    entries_to_compact = [
+        all_entries[j] for j in range(prev_ses_idx + 1, ses_idx)
+        if all_entries[j].get("kind") != "session"
+    ]
+    entry_count = len(entries_to_compact)
+
+    # Idempotency check BEFORE entry count — already compacted sessions
+    # may have 0 entries because all were pruned
+    lng_name = f"session_{session_id.replace('-', '_')}"
+    try:
+        existing = crud_read(brain_path, f"$7/LNG:{lng_name}")
+        if existing.get("entries"):
+            return {"skip": True, "reason": f"already compacted (LNG:{lng_name} exists)", "lng_name": lng_name, "entry_count": entry_count, "compacted": False}
+    except Exception:
+        pass
+
+    if entry_count < 5:
+        return {"skip": True, "reason": f"only {entry_count} entries (< 5)", "entry_count": entry_count, "compacted": False}
+
+    kind_counts: dict[str, int] = {}
+    for e in entries_to_compact:
+        k = e.get("kind", "unknown")
+        kind_counts[k] = kind_counts.get(k, 0) + 1
+    summary = ",".join(f"{k}:{v}" for k, v in sorted(kind_counts.items()))
+
+    entry_ids = [e["id"] for e in entries_to_compact]
+
+    if dry_run:
+        return {"dry_run": True, "entry_count": entry_count, "ses_preserved": True, "entries_to_prune": entry_ids, "lng_name": lng_name, "summary": summary, "compacted": False}
+
+    # Write LNG — ensure $0 has LNG sigil, then use crud_add
+    text = brain_path.read_text(encoding="utf-8")
+    if "$0" not in text[:200]:
+        # No $0 glossary — add minimal one
+        glossary = "$0\n# -- $0: MINIMAL LOCAL GLOSSARY --\n# LNG | lesson | attrs | M | Episodic | Behavioral lessons\n"
+        text = glossary + "\n" + text
+        brain_path.write_text(text, encoding="utf-8")
+    elif "LNG " not in text[:text.find("\n\n")] if "\n\n" in text else "LNG " not in text[:500]:
+        # $0 exists but no LNG — prepend LNG declaration
+        idx = text.find("\n", text.find("$0"))
+        if idx > 0:
+            text = text[:idx] + "\n# LNG | lesson | attrs | M | Episodic | Behavioral lessons" + text[idx:]
+            brain_path.write_text(text, encoding="utf-8")
+
+    crud_add(
+        brain_path, "$7", "LNG", lng_name,
+        {"type": "session", "entry_count": entry_count, "summary": summary,
+         "session_id": session_id, "agent": agent_id, "date": _now_iso()},
+        create_section=True, force=True,
+    )
+
+    prune_result = _prune_pulse_entries(brain_path, entry_ids)
+
+    meta_id = next_pulse_event_id(project_root)
+    append_pulse_to_brain(project_root, event_id=meta_id, task_id="-", kind="pulse_compact", agent=agent_id, payload=f"pulse.compact ok session={session_id} pruned={prune_result['pruned']} lng={lng_name} summary={summary}")
+
+    return {"compacted": True, "pruned": prune_result["pruned"], "entry_count": entry_count, "ses_preserved": True, "meta_event": meta_id, "lng_name": lng_name, "summary": summary}
