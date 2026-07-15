@@ -35,7 +35,7 @@ def parse_blp_template(
     *,
     ctx: PermissionContext | None = None,
 ) -> CortexOUT:
-    """Parse BLP_TEMPLATE.md and return ``{section_id: marker_text}``.
+    """Parse BLP_TEMPLATE.md and return section markers and inline markers.
 
     Args:
         path: Starting path for resolving project/workspace root.
@@ -45,9 +45,12 @@ def parse_blp_template(
 
     Returns ``OUT-WORK`` with:
 
-    - ``markers`` (dict[str, str]) — ``{"BLP:1": "<!-- BLP:1 -->...", ...}``
+    - ``markers`` (dict[str, str]) — ``{"BLP:1": "<!-- BLP:1 -->", ...}``
+    - ``inline_markers`` (dict[str, list[str]]) — inline ``_..._`` markers
+      per section, e.g. ``{"1": ["_Evidencia 1_", "_Evidencia 2_"], ...}``
+    - ``inline_marker_count`` (int) — total number of inline markers found
     - ``template_path`` (str) — path to the template file used
-    - ``count`` (int) — number of markers found
+    - ``count`` (int) — number of section markers found
     """
     template_path = _resolve_template(path)
     if template_path is None:
@@ -62,12 +65,16 @@ def parse_blp_template(
         return CortexOUT.error(str(exc), code="READ_ERROR")
 
     markers = _extract_markers(text)
+    inline_markers = _extract_inline_markers_by_section(text)
+    inline_count = sum(len(v) for v in inline_markers.values())
 
     _record_pulse(path, ctx, count=len(markers), template_path=str(template_path))
 
     return CortexOUT.work(
-        f"parse_blp_template ok markers={len(markers)} path={template_path}",
+        f"parse_blp_template ok markers={len(markers)} inline_markers={inline_count} path={template_path}",
         markers=markers,
+        inline_markers=inline_markers,
+        inline_marker_count=inline_count,
         template_path=str(template_path),
         count=len(markers),
     )
@@ -138,6 +145,58 @@ def _extract_markers(text: str) -> dict[str, str]:
         if marker_id not in markers:
             markers[marker_id] = match.group(0)
     return markers
+
+
+# Regex for inline markers: _text_ where text has at least 2 chars
+_INLINE_MARKER_RE = re.compile(r"_(.+?)_")
+
+
+def _extract_inline_markers_by_section(text: str) -> dict[str, list[str]]:
+    """Extract inline ``_..._`` markers per section from the template text.
+
+    For each section ``N``, returns a list of all ``_marker_`` strings
+    found inside the ``<!-- BLP:N --> … <!-- /BLP:N -->`` block.
+
+    Only markers whose inner text is at least 2 characters long and does
+    not contain double-underscores (``__``) are included.
+    """
+    result: dict[str, list[str]] = {}
+    # Find all section opening markers
+    section_opener = re.compile(r"<!-- (BLP:\d+) -->")
+    sections = list(section_opener.finditer(text))
+
+    for i, opener in enumerate(sections):
+        section_id = opener.group(1)  # e.g. "BLP:1"
+        sec_num = section_id.replace("BLP:", "")  # e.g. "1"
+        start = opener.end()
+
+        # Find closing marker or next section boundary
+        close_tag = f"<!-- /{section_id} -->"
+        close_pos = text.find(close_tag, start)
+        if close_pos == -1:
+            # No closing marker — use up to next opener or end
+            end = sections[i + 1].start() if i + 1 < len(sections) else len(text)
+        else:
+            end = close_pos
+
+        section_text = text[start:end]
+
+        # Find all inline markers in this section
+        markers: list[str] = []
+        for m in _INLINE_MARKER_RE.finditer(section_text):
+            marker_text = m.group(0)  # e.g. "_Evidencia 1_"
+            inner = m.group(1)
+            # Skip too-short markers (_x_)
+            if len(inner) < 2:
+                continue
+            # Skip double-underscore (likely emphasis)
+            if "__" in inner:
+                continue
+            markers.append(marker_text)
+
+        result[sec_num] = markers
+
+    return result
 
 
 def list_template_sections(

@@ -39,22 +39,19 @@ QUALITY_GATES = [
 MATURATION_GATES = [gate for gate in QUALITY_GATES if gate != LEARNING_GATE]
 
 # Blueprint states (BP_DEFINED eliminated — ISS-002)
+# Simplified lifecycle: draft → ready → in_progress → done + cancelled/blocked (BLP-004)
 BP_DRAFT = "draft"
-BP_MATURING = "maturing"
 BP_READY = "ready"
 BP_IN_PROGRESS = "in_progress"
 BP_BLOCKED = "blocked"
-BP_REVIEW = "review"
 BP_DONE = "done"
 BP_CANCELLED = "cancelled"
 
 VALID_TRANSITIONS = {
-    BP_DRAFT: [BP_MATURING, BP_CANCELLED],
-    BP_MATURING: [BP_READY, BP_DRAFT, BP_CANCELLED],
+    BP_DRAFT: [BP_READY, BP_CANCELLED],
     BP_READY: [BP_IN_PROGRESS, BP_CANCELLED],
-    BP_IN_PROGRESS: [BP_BLOCKED, BP_REVIEW],
-    BP_BLOCKED: [BP_MATURING, BP_CANCELLED],
-    BP_REVIEW: [BP_DONE, BP_IN_PROGRESS],  # in_progress = re-delegate
+    BP_IN_PROGRESS: [BP_DONE, BP_BLOCKED, BP_CANCELLED],
+    BP_BLOCKED: [BP_IN_PROGRESS, BP_CANCELLED],
     BP_DONE: [],
     BP_CANCELLED: [],
 }

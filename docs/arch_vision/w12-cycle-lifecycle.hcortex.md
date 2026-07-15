@@ -1,20 +1,22 @@
 # w12-cycle-lifecycle: Ciclo de vida del ciclo como contenedor de gobierno
 
-> **BLP-015** | CYCLE-04 | 2026-07-13
+> **BLP-003** | CYCLE-07 | 2026-07-15
 >
 > El ciclo gobierna, no ejecuta. Es el contenedor que abre la puerta a BLPs y tasks. Sin un ciclo definido, el trabajo carece de marco de gobierno.
+>
+> **Simplificación (BLP-003):** La máquina de estados del ciclo se simplificó a 2 estados: `draft` y `closed`. Se eliminaron `CYCLE_READY`, `CYCLE_ACTIVE` y el handler `cycle.mature`. La maduración es conversacional, no un handler.
 
 ---
 
 ## Visión
 
-Cada ciclo en Arqux tiene un ciclo de vida completo con el mismo patrón conversacional que los Blueprints (w08):
+Cada ciclo en Arqux tiene un ciclo de vida conversacional (w08):
 
 ```
-create → [conversación de diseño] → synthesize → mature → [BLPs] → close
+create → [conversación de diseño] → synthesize → [BLPs] → close
 ```
 
-El gap histórico era que `cycle.create` copiaba un template vacío y `cycle.mature` no validaba nada. CYCLE-04 nació con 14 BLPs completados pero su MANIFEST.md era el template sin rellenar. **w12 cierra ese gap.**
+La maduración emerge de la conversación con el Arquitecto. No hay handler de mature — cuando el Arquitecto dice "creemos la primera BLP", esa es la validación.
 
 ---
 
@@ -22,16 +24,14 @@ El gap histórico era que `cycle.create` copiaba un template vacío y `cycle.mat
 
 ```puml
 @startuml
-title Cycle State Machine — w12
+title Cycle State Machine — w12 (simplificada BLP-003)
 
 [*] --> draft : cycle.create()
 draft --> draft : cycle.synthesize()
-draft --> ready : cycle.mature()
-ready --> closed : cycle.close()
+draft --> closed : cycle.close()
 closed --> [*]
 
 note right of draft : Manifiesto vacío (template)
-note right of ready : Compuertas §9 validadas
 note right of closed : Métricas finales en §7
 @enduml
 ```
@@ -43,11 +43,12 @@ note right of closed : Métricas finales en §7
 | Handler | Descripción | Archivo |
 |---|---|---|
 | `cycle.create` | Crea contenedor con template vacío | `handlers/cycle.py` |
-| `cycle.synthesize` | Escribe §1-§9 en 1 call (NUEVO) | `handlers/cycle.py` |
-| `cycle.mature` | Valida compuertas §9, transiciona draft→ready | `handlers/cycle.py` |
-| `cycle.close` | Verifica BLPs, actualiza §7 métricas | `handlers/cycle.py` |
+| `cycle.synthesize` | Escribe §1-§9 en 1 call | `handlers/cycle.py` |
+| `cycle.close` | Verifica placeholders (si draft), luego BLPs, cierra | `handlers/cycle.py` |
 | `cycle.list` | Lista ciclos del proyecto | `handlers/cycle.py` |
 | `cycle.current` | Devuelve el ciclo activo | `handlers/cycle.py` |
+
+> **Eliminado:** `cycle.mature` — la maduración es conversacional.
 
 ---
 
@@ -64,25 +65,28 @@ Salida:  OUT-WORK sections_written=[], bytes_written=N
          PULSE audit registrado
 ```
 
-### cycle.mature (actualizado)
-
-```
-Entrada: cycle_id (str)
-Acción:  Lee MANIFEST.md §9, valida todas las compuertas
-         Todas ✅ → status: ready
-         Alguna ☐ → OUT-ERROR QUALITY_GATES_FAILED
-Salida:  OUT-WORK status=ready | OUT-ERROR failed_gates=[...]
-```
-
-### cycle.close (actualizado)
+### cycle.close (BLP-003)
 
 ```
 Entrada: cycle_id (str), summary (str opcional)
-Acción:  Escanea BLPs en blueprints/
+Acción:  Si ciclo en draft → verificar placeholders en MANIFEST.md
+         Si hay placeholders → OUT-ERROR INVALID_STATE
+         Si no hay placeholders → escanea BLPs en blueprints/
          Verifica done/cancelled
          Actualiza MANIFEST.md §7 métricas
          Escribe SES en brain PULSE
 Salida:  OUT-WORK blps_done=N blps_cancelled=N
+```
+
+### blueprint.create (BLP-003)
+
+```
+Entrada: obj (str), cycle (str opcional)
+Acción:  Verifica ciclo no esté closed
+         Lee MANIFEST.md del ciclo → busca placeholders
+         Si hay placeholders → OUT-ERROR "complete diseño conversacional"
+         Si limpio → crea BLP normalmente
+Salida:  OUT-WORK blueprint_id=BLP-NNN status=draft
 ```
 
 ---
@@ -107,24 +111,16 @@ Salida:  OUT-WORK blps_done=N blps_cancelled=N
 
 1. **cycle.create** copia el template. No lo llena.
 2. **cycle.synthesize** escribe en 1 call, mismo patrón que blueprint.synthesize.
-3. **cycle.mature** rechaza si alguna compuerta §9 es ☐.
-4. El ciclo gobierna, no ejecuta. BLPs y tasks existen DENTRO del ciclo.
-5. **cycle.close** bloquea si hay BLPs no done/cancelled.
-6. **cycle.close** actualiza §7 con métricas reales.
+3. **close_cycle() en draft** rechaza si hay placeholders en el manifiesto.
+4. **blueprint.create()** rechaza si el ciclo tiene placeholders en el manifiesto.
+5. El ciclo gobierna, no ejecuta. BLPs y tasks existen DENTRO del ciclo.
+6. **cycle.close** bloquea si hay BLPs no done/cancelled.
+7. **cycle.close** actualiza §7 con métricas reales.
 
 ---
 
-## Lecciones Aprendidas (CYCLE-04)
+## Lecciones Aprendidas
 
-- CYCLE-03 tenía manifiesto rico (manual). CYCLE-04 vacío (sin mecanismo).
-- BLP-002 (CYCLE-03) fue CANCELLED — el gap persistió 2 ciclos.
-- El patrón ya funcionaba para BLPs (`blueprint.synthesize`, BLP-007). Aplicarlo a ciclos era la extensión natural.
-- `arch_vision/w00-triage.hcortex.md` preveía esto desde CYCLE-03: "Nuevo ciclo → cycle.create + definir manifiesto".
-
----
-
-## Workflow
-
-Archivo: `.arqux/skills/workflows/w12-cycle-lifecycle.md`
-
-Referencia: `workflows.skill.md` → IDN:w12
+- BLP-003 simplificó la máquina de estados: eliminó CYCLE_READY, CYCLE_ACTIVE y mature_cycle().
+- La maduración es conversacional, no un handler. Ciclo tiene 2 estados: draft ↔ closed.
+- CYCLE-00 eliminado (bootstrap sin BLPs). CYCLE-01 cerrado (41 BLPs todos done).

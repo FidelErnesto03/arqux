@@ -16,7 +16,6 @@ DIAG:w08{
 title Blueprint Lifecycle — State Machine
 
 state "draft" as D
-state "maturing" as M
 state "ready" as R
 state "in_progress" as IP
 state "review" as RV
@@ -25,15 +24,14 @@ state "blocked" as B
 state "cancelled" as CN
 
 [*] --> D : blueprint.create
-D --> M : blueprint.mature (indagacion + sintesis)
-M --> R : blueprint.ready
+D --> R : blueprint.ready
 R --> IP : claim
 IP --> RV : complete
 IP --> B : fail
 B --> D : re-plan
 B --> CN : cancel
-RV --> DN : approve
-RV --> IP : re-delegate (max 3)
+RV --> DN : blueprint.ac(verified) all
+RV --> IP : re_delegate (max 3)
 RV --> CN : 3rd fail
 @enduml
 }
@@ -54,20 +52,19 @@ STP:w08_synthesis{
   4_coherencia:"Verificar coherencia transversal: §2 ↔ §6 ↔ §12 ↔ §11. Ajustar si hay contradicciones.",
   5_presentar:"Presentar el BLP completo al Arquitecto para revision holistica.",
   6_ajustar:"Si el Arquitecto solicita cambios, aplicar blueprint.update(section=N) sobre las secciones especificas.",
-  7_aprobar:"Una vez conforme: blueprint.gate(gate=all) → blueprint.ready()",
+  7_aprobar:"Una vez conforme: blueprint.ready() → compuertas de calidad verificadas",
 }
 
 
-$8.2: READY — Desde maturing o draft directo
+$8.2: READY — Desde draft directo
 
-AXM:no_define{ El handler blueprint.define() NO se utiliza. La sintesis se hace via blueprint.update(). Se va de draft → maturing → ready. }
+AXM:no_define{ El handler blueprint.define() NO se utiliza. La sintesis se hace via blueprint.update(). Se va de draft → ready. }
 
 STP:w08_ready{
-  1:"Blueprint en maturing con diseno validado",
-  2:"Governor: blueprint.gate(gate=all) → compuertas de calidad",
-  3:"Governor: blueprint.ready(BLP-NNN) → state = ready",
-  4:"Governor: blueprint.assign(BLP-NNN, executor)",
-  5:"Executor: blueprint.claim(BLP-NNN) → state = in_progress",
+  1:"Blueprint en draft con diseno validado",
+  2:"Governor: blueprint.ready(BLP-NNN) → state = ready + compuertas de calidad verificadas",
+  3:"Governor: blueprint.claim(BLP-NNN) asigna y reclama en 1 paso",
+  4:"Executor: blueprint.claim(BLP-NNN) → state = in_progress",
   key_rule:"Ready significa diseno sintetizado y validado por el Arquitecto.",
 }
 
@@ -76,7 +73,7 @@ $8.3: EXECUTION — Task-by-task con checkpoint
 
 STP:w08_execution{
   0:"AXM:workflow_fidelity — Cada paso en orden, sin saltos.",
-  1:"Governor: blueprint.assign(BLP-NNN, executor)",
+  1:"Governor: blueprint.claim(BLP-NNN) asigna y reclama",
   2:"Executor: blueprint.claim(BLP-NNN) → state = in_progress",
   3:"Executor lee BLP completo (18 secciones sintetizadas)",
   4:"For EACH task: self-check, execute, blueprint.task(completed), sync_brain() checkpoint, verify WRK, then next task",
@@ -94,7 +91,7 @@ STP:w08_verify{
   1:"Auditor carga BLP + evidence",
   2:"For each AC: blueprint.ac(verified). Si fail: blueprint.ac(failed) → re_delegate (max 3)",
   3:"3ra falla → blueprint.block_for_architect()",
-  4:"All ACs pass → blueprint.approve(BLP-NNN) → done",
+  4:"All ACs pass → blueprint.ac(verified) for all → done",
 }
 
 

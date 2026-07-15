@@ -11,9 +11,12 @@ file + rename).
 
 from __future__ import annotations
 
+import logging
 import re
 from pathlib import Path
 from typing import Any
+
+logger = logging.getLogger(__name__)
 
 from ...blueprint.template import parse_blp_template
 from ...constants import BLUEPRINTS_DIR, CYCLES_DIR
@@ -21,8 +24,110 @@ from ...cortex_out import CortexOUT
 from ...permissions import PermissionContext
 from ...pulse import append_pulse_to_brain, next_pulse_event_id
 from ...state import find_project_root
+from ._helpers import _write_blueprint
 from ._synthesize_common import parse_content_sections
 from .manage import update_blueprint
+
+# ---------------------------------------------------------------------------
+# Constants and helpers
+# ---------------------------------------------------------------------------
+
+# Regex for marker replacement lines: _marker_ → value
+_MARKER_REPLACE_RE = re.compile(r"^_(.+?)_\s*→\s*(.+)$", re.MULTILINE)
+
+
+def _try_marker_replacement(
+    body: str,
+    open_tag: str,
+    close_tag: str,
+    section_content: str,
+) -> str | None:
+    """Try to replace individual ``_..._`` markers in the section block.
+
+    Parses *section_content* for ``_marker_ → value`` patterns. For each
+    match, finds the exact ``_marker_`` string inside the
+    ``<!-- BLP:N --> … <!-- /BLP:N -->`` block and replaces it with
+    *value*.
+
+    Returns the modified *body* if any replacements were made, or ``None``
+    if no marker patterns were found or no section block could be located.
+    """
+    replacements = _MARKER_REPLACE_RE.findall(section_content)
+    if not replacements:
+        return None
+
+    # Find the section block in the body
+    block_re = re.compile(re.escape(open_tag) + r".*?" + re.escape(close_tag), re.DOTALL)
+    match = block_re.search(body)
+    if not match:
+        return None
+
+    section_block = match.group(0)
+    modified_block = section_block
+
+    any_replaced = False
+    not_found = []
+    for marker, value in replacements:
+        old = f"_{marker.strip()}_"
+        if old in modified_block:
+            modified_block = modified_block.replace(old, value.strip(), 1)
+            any_replaced = True
+        else:
+            not_found.append(old)
+
+    if not any_replaced:
+        if not_found:
+            logger.warning(
+                "P1: markers not found in template section %s: %s. "
+                "Verify that the markers exist in the BLP_TEMPLATE.md",
+                open_tag,
+                not_found,
+            )
+        return None
+
+    return body[: match.start()] + modified_block + body[match.end():]
+
+
+def _replace_section_in_body(
+    body: str,
+    marker_id: str,
+    new_content: str,
+) -> str | None:
+    """Replace the full content between ``<!-- marker_id -->`` markers.
+
+    Preserves the section header (``## §N: Title``) from the existing
+    content if *new_content* does not already start with one.
+
+    Returns the modified *body* or ``None`` if the marker was not found.
+    """
+    open_tag = f"<!-- {marker_id} -->"
+    close_tag = f"<!-- /{marker_id} -->"
+    marker_pattern = rf"{re.escape(open_tag)}.*?{re.escape(close_tag)}"
+
+    match = re.search(marker_pattern, body, re.DOTALL)
+    if not match:
+        return None
+
+    existing_block = match.group(0)
+    inner = existing_block[len(open_tag) : -len(close_tag)].strip()
+
+    # Preserve section header (## §N: Title) from existing content
+    header = ""
+    for line in inner.split("\n"):
+        if line.strip().startswith("## §"):
+            header = line.rstrip()
+            break
+
+    section_content = new_content.strip()
+    if header and not section_content.startswith("## §"):
+        section_content = f"{header}\n\n{section_content}"
+
+    marker_replacement = f"{open_tag}\n{section_content}\n{close_tag}"
+    result = body.replace(existing_block, marker_replacement, 1)
+    if result == body:
+        return None
+    return result
+
 
 # ---------------------------------------------------------------------------
 # synthesize
@@ -107,15 +212,34 @@ def synthesize_blueprint(
     # Find or create the BLP file.
     bp_path, fm, body, created = _find_or_create_blueprint(root, bp_id, ctx, path_hint=path)
 
-    # Delegate each section to blueprint.update (reuses _replace_section).
+    # Try per-section marker replacement first, fall back to update_blueprint.
     sections_written: list[str] = []
     sections_errors: list[dict] = []
+    body_modified = False
+
     for sid, section_content in sections_to_write.items():
-        result = update_blueprint(bp_id, section=sid, content=section_content, path=path, ctx=ctx)
+        # Try inline marker replacement first (new in BLP-002).
+        open_tag = f"<!-- BLP:{sid} -->"
+        close_tag = f"<!-- /BLP:{sid} -->"
+        new_body = _try_marker_replacement(body, open_tag, close_tag, section_content)
+        if new_body is not None:
+            body = new_body
+            body_modified = True
+            sections_written.append(sid)
+            continue
+
+        # Fallback: full section replacement via update_blueprint (backward compat).
+        result = update_blueprint(
+            bp_id, section=sid, content=section_content, path=path, ctx=ctx,
+        )
         if result.profile == "OUT-WORK":
             sections_written.append(sid)
         else:
             sections_errors.append({"id": sid, "error": result.message})
+
+    # If any marker replacements were applied directly on body, write once.
+    if body_modified:
+        _write_blueprint(bp_path, fm, body)
 
     _record_pulse(root, ctx, bp_id=bp_id, action="synthesize",
                   sections_written=sections_written)

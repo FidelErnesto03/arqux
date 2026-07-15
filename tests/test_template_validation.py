@@ -204,7 +204,7 @@ def test_brain_after_task_complete_no_w002(
     Validates BC-2 fix: tasks_active should have status:"current",
     tasks_done should have status:"done" (NOT "active").
     """
-    from arqux.handlers.cycle import create_cycle, mature_cycle
+    from arqux.handlers.cycle import create_cycle
     from arqux.handlers.project import init_project
     from arqux.handlers.task import claim_task, complete_task, create_task
     from arqux.handlers.workspace import init_workspace
@@ -218,7 +218,7 @@ def test_brain_after_task_complete_no_w002(
     root = find_project_root(start=str(ws / ".arqux"))
     assert root is not None, "project root not found"
     create_cycle(name="c1", path=str(ws / ".arqux"), ctx=governor_ctx)
-    mature_cycle(cycle_id="CYCLE-01", path=str(ws / ".arqux"), ctx=governor_ctx)
+    # BLP-003: mature_cycle removed. Cycles stay in draft (normal active state).
     create_task(obj="test BC-2 fix", path=str(ws / ".arqux"), ctx=governor_ctx)
     claim_task(task_id="T-001", path=str(ws / ".arqux"), ctx=governor_ctx)
     complete_task(task_id="T-001", path=str(ws / ".arqux"), ctx=governor_ctx)

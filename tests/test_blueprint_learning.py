@@ -1,8 +1,12 @@
-"""Tests for learning-related behavior in the blueprint lifecycle."""
+"""Tests for learning-related behavior in the blueprint lifecycle.
+
+Simplified lifecycle (BLP-004): no approve_blueprint — complete goes directly to done.
+"""
 
 from __future__ import annotations
 
 import os
+import re
 from pathlib import Path
 
 from arqux.handlers import blueprint, cycle, project, workspace
@@ -23,10 +27,16 @@ def _setup_blueprint(workspace_root: Path, ctx) -> tuple[Path, Path]:
         cycle.create_cycle(name="TestCycle", ctx=ctx)
         manifest = project_dir / ".arqux" / "cycles" / "CYCLE-01" / "MANIFEST.md"
         if manifest.exists():
-            manifest.write_text(
-                manifest.read_text(encoding="utf-8").replace('status: "draft"', 'status: "ready"', 1),
-                encoding="utf-8",
+            mf_text = manifest.read_text(encoding="utf-8")
+            # Strip all template placeholders (underscore-delimited markers)
+            # using the same MARKER_PATTERN from cycle.py
+            mf_text = re.sub(
+                r"(?<!\w)_([\w¿¡][\w\s\-/.,;:¿?!¡()]*?)_(?!\w)",
+                "filled",
+                mf_text,
             )
+            mf_text = mf_text.replace('status: "draft"', 'status: "ready"', 1)
+            manifest.write_text(mf_text, encoding="utf-8")
         result = blueprint.create_blueprint(obj="Learning test", ctx=ctx)
         bp_id = result.fields["blueprint_id"]
     finally:
@@ -41,7 +51,6 @@ def _setup_blueprint(workspace_root: Path, ctx) -> tuple[Path, Path]:
         "- [ ] **AC-02:** Second test criterion\n"
         "<!-- /BLP:12 -->"
     )
-    import re
     text = re.sub(
         r"<!-- BLP:12 -->.*?<!-- /BLP:12 -->",
         ac_block,
@@ -115,66 +124,20 @@ def test_blueprint_ac_verified_returns_message(workspace_root: Path, governor_ct
     assert "blueprint.ac ok" in result.to_text()
 
 
-def test_blueprint_approve_blocks_failed_acceptance_criteria(workspace_root: Path, governor_ctx) -> None:
-    project_dir, bp_path = _setup_blueprint(workspace_root, governor_ctx)
-    _set_frontmatter_status(bp_path, "review")
-
-    cwd = os.getcwd()
-    try:
-        os.chdir(project_dir)
-        result = blueprint.ac_blueprint("BLP-001", "AC-01", "verified")
-        assert result.profile == "OUT-WORK"
-
-        result2 = blueprint.approve_blueprint("BLP-001")
-        assert "APPROVAL_INCOMPLETE" in result2.to_text()
-    finally:
-        os.chdir(cwd)
-
-
-def test_blueprint_approve_blocks_unverified_acceptance_criteria(workspace_root: Path, governor_ctx) -> None:
-    project_dir, bp_path = _setup_blueprint(workspace_root, governor_ctx)
-    _set_frontmatter_status(bp_path, "review")
-
-    cwd = os.getcwd()
-    try:
-        os.chdir(project_dir)
-        result = blueprint.approve_blueprint("BLP-001")
-    finally:
-        os.chdir(cwd)
-
-    assert "APPROVAL_INCOMPLETE" in result.to_text()
-    # Approve blocks when ACs are unchecked OR learning/validations are missing
-    assert (
-        "missing_acceptance_criteria=" in result.to_text()
-        or "missing_learning=" in result.to_text()
-        or "missing_validations=" in result.to_text()
-    )
-
-
-def test_blueprint_approve_requires_learning_gate_and_returns_instruction(workspace_root: Path, governor_ctx) -> None:
+def test_blueprint_complete_requires_evidence(workspace_root: Path, governor_ctx) -> None:
+    """Complete blueprint requires evidence to pass."""
     project_dir, bp_path = _setup_blueprint(workspace_root, governor_ctx)
     _set_frontmatter_status(bp_path, "in_progress")
-    _set_all_quality_gates(bp_path, True)
-    _mark_all_acceptance_criteria(bp_path)
-    identity = workspace_root / ".arqux" / "identities" / "alfred.cortex"
-    identity.write_text(
-        identity.read_text(encoding="utf-8")
-        + '\nLNG:blp_001{type:"process", cause:"BLP-001 approval", lesson:"BLP-001 learning recorded"}\n',
-        encoding="utf-8",
-    )
 
     cwd = os.getcwd()
     try:
         os.chdir(project_dir)
-        # Complete blueprint to set evidence in frontmatter
-        result_complete = blueprint.complete_blueprint("BLP-001", evidence="All ACs verified and tasks done")
-        assert result_complete.profile == "OUT-WORK", str(result_complete.fields)
-        result = blueprint.approve_blueprint("BLP-001")
+        result = blueprint.complete_blueprint("BLP-001", evidence="All ACs verified and tasks done")
     finally:
         os.chdir(cwd)
 
-    assert "blueprint.approve ok" in result.to_text()
-    assert "identity.record" in result.to_text()
+    assert result.profile == "OUT-WORK"
+    assert "blueprint.complete ok" in result.to_text()
 
 
 def test_blueprint_template_contains_learning_gate() -> None:

@@ -33,7 +33,7 @@ class TestMutatingHandlersSet:
         """Critical mutating handlers must be in the set."""
         expected = {
             "blueprint.cancel", "blueprint.fail", "blueprint.update",
-            "blueprint.complete", "blueprint.approve",
+            "blueprint.complete",
             "task.fail", "task.create", "task.update", "task.complete",
             "cortex.entry.delete", "cortex.entry.update", "cortex.write",
             "cortex.entry.add", "cortex.entry.move",
@@ -42,7 +42,7 @@ class TestMutatingHandlersSet:
             "session.context.set", "session.close",
             "project.bind", "project.unbind",
             "identity.record",
-            "cycle.create", "cycle.close", "cycle.mature",
+            "cycle.create", "cycle.close",
         }
         missing = expected - MUTATING_HANDLERS
         assert not missing, f"Missing mutating handlers: {missing}"

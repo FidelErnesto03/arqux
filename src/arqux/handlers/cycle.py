@@ -2,17 +2,14 @@
 PATCH: src/arqux/handlers/cycle.py
 ==================================
 
-This file REPLACES the existing cycle.py to add:
-    - ALTO-1 fix: `cycle.mature` handler for draft → ready transition.
+This file REPLACES the existing cycle.py.
+The obsolete `mature` handler was removed in BLP-003 — cycle state machine
+simplified to draft → closed. Maturation is conversational, not a handler.
 
 CHANGES vs original:
-    1. New handler `mature_cycle()` that transitions a cycle from
-       status="draft" to status="ready".
-    2. `create_cycle()` now writes status="draft" explicitly (was implicit
-       via template), and returns an instruction to call cycle.mature.
-    3. `close_cycle()` unchanged except for also updating MANIFEST.md.
-
-The new handler is registered in handlers/__init__.py as "cycle.mature".
+    1. `create_cycle()` now writes status="draft" explicitly (was implicit
+       via template).
+    2. `close_cycle()` unchanged except for also updating MANIFEST.md.
 """
 
 from __future__ import annotations
@@ -40,6 +37,7 @@ from ..permissions import PermissionContext, enforce_ctx
 from ..state import (
     cycle_dir,
     find_project_root,
+    find_workspace_root,
     next_cycle_id,
     write_cortex_pair,
 )
@@ -49,25 +47,17 @@ from ..state import (
 from ..sync import reconcile_cycle, sync_brain
 from .blueprint._synthesize_common import parse_content_sections
 
-# --- Cycle states (NEW in v0.4.0) -----------------------------------------
-# Previously cycles only had "open" and "closed" states. The MANIFEST.md
-# template writes status="draft" but blueprint.create validates
-# status in ("ready", "active"). This was the ALTO-1 bug.
-# v0.4.0 introduces explicit cycle state machine:
-#     draft → ready → active → closed
-# The "open" state is kept as alias for backward compat (mapped to "ready").
+# --- Cycle states (BLP-003 simplification) --------------------------------
+# Simplified to 2 states: draft (open/designing) and closed (finished).
+# The "open" alias is kept for backward compatibility (mapped to closed).
 
 CYCLE_DRAFT = "draft"
-CYCLE_READY = "ready"
-CYCLE_ACTIVE = "active"
 
-CYCLE_TRANSITIONS_V040: dict[str, tuple[str, ...]] = {
-    CYCLE_DRAFT: (CYCLE_READY,),
-    CYCLE_READY: (CYCLE_ACTIVE, CYCLE_CLOSED),
-    CYCLE_ACTIVE: (CYCLE_CLOSED,),
+CYCLE_TRANSITIONS: dict[str, tuple[str, ...]] = {
+    CYCLE_DRAFT: (CYCLE_CLOSED,),
     CYCLE_CLOSED: (),
-    # Backward compat: "open" maps to ready.
-    CYCLE_OPEN: (CYCLE_ACTIVE, CYCLE_CLOSED),
+    # Backward compat: "open" maps to closed.
+    CYCLE_OPEN: (CYCLE_CLOSED,),
 }
 
 
@@ -83,41 +73,168 @@ def _find_workspace_template(root: Path, template_name: str) -> Path | None:
         cursor = cursor.parent
 
 
-TEMPLATE_PLACEHOLDER_PATTERNS: list[str] = [
-    r"_¿[Pp]or\s+qué",
-    r"_¿A\s+qué\s+objetivos",
-    r"_Ítem\s+\d+",
-    r"_Objetivo\s+[—–-]",
-    r"_Directriz\s+\d+",
-    r"_YYYY[ -]MM[ -]DD",
-    r"_Descripción",
-    r"_¿Qué\s+debe\s+",
-    r"_BLP[ -]NNN",
-    r"_Título",
-    r"_draft/ready/\.\.\.",
-    r"_CP[ -]NN",
-    r"_Regla\s+\d+",
-    r"_critical/high/medium/low",
-    r"_CYC[ -]OBJ[ -]N",
-    r"_agente",
-    r"_¿Qué\s+debe\s+validarse",
-]
+# ---------------------------------------------------------------------------
+# Template-based marker system (BLP-001)
+# ---------------------------------------------------------------------------
+
+MARKER_PATTERN = re.compile(r"(?<!\w)_([\w¿¡][\w\s\-/.,;:¿?!¡()]*?)_(?!\w)")
+
+
+def parse_cycle_template(
+    template_path: str | Path | None = None,
+) -> dict[int, list[str]]:
+    """Parse CYCLE_MANIFEST_TEMPLATE.md and return markers by section.
+
+    Returns ``{section_num: [marker_text, ...]}`` where each marker_text
+    is the full placeholder string (e.g. ``"_Ítem 1_"``).
+
+    The parser discovers markers dynamically — no hardcoded list.
+    Uses ``<!-- CYCLE:N -->`` markers as canonical delimiters (like BLPs),
+    with ``## §N:`` headers as fallback.
+    """
+    if template_path is None:
+        root = Path.cwd()
+        template_path = _find_workspace_template(root, "CYCLE_MANIFEST_TEMPLATE.md")
+        if template_path is None:
+            template_path = Path(__file__).resolve().parent.parent / "templates" / "CYCLE_MANIFEST_TEMPLATE.md"
+
+    p = Path(template_path)
+    if not p.exists():
+        return {}
+
+    text = p.read_text(encoding="utf-8")
+    sections: dict[int, list[str]] = {}
+
+    # Split body after frontmatter
+    parts = text.split("---", 2)
+    body = parts[2] if len(parts) >= 3 else text
+
+    # Try CYCLE:N markers first (more precise)
+    cycle_markers = list(re.finditer(r"<!--\s*CYCLE:(\d+)\s*-->(.*?)<!--\s*/CYCLE:\1\s*-->", body, re.DOTALL))
+
+    if cycle_markers:
+        # Use CYCLE:N markers as delimiters
+        for m in cycle_markers:
+            snum = int(m.group(1))
+            section_text = m.group(2)
+            markers = []
+            for marker_m in MARKER_PATTERN.finditer(section_text):
+                marker_text = f"_{marker_m.group(1)}_"
+                if marker_text not in markers:
+                    markers.append(marker_text)
+            sections[snum] = markers
+    else:
+        # Fallback: split by ## §N: headers
+        section_headers = list(re.finditer(r"^## §(\d+):", body, re.MULTILINE))
+        for i, header in enumerate(section_headers):
+            snum = int(header.group(1))
+            start = header.end()
+            end = section_headers[i + 1].start() if i + 1 < len(section_headers) else len(body)
+            section_text = body[start:end]
+            markers = []
+            for m in MARKER_PATTERN.finditer(section_text):
+                marker_text = f"_{m.group(1)}_"
+                if marker_text not in markers:
+                    markers.append(marker_text)
+            sections[snum] = markers
+
+    return sections
+
+
+def _read_allowed_placeholders(mf_text: str) -> list[str]:
+    """Read ``allowed_placeholders@`` from MANIFEST.md frontmatter.
+
+    Returns a list of placeholder strings that should be ignored during
+    maturity validation.
+    """
+    parts = mf_text.split("---", 2)
+    if len(parts) < 2:
+        return []
+    fm_text = parts[1]
+    m = re.search(r"allowed_placeholders@:\s*\[(.*?)\]", fm_text, re.DOTALL)
+    if not m:
+        return []
+    raw = m.group(1)
+    # Parse comma-separated quoted strings
+    allowed: list[str] = []
+    for item in re.findall(r'"([^"]*)"', raw):
+        allowed.append(item)
+    return allowed
+
+
+def _find_template_markers_in_body(body: str, tmpl_markers: dict[int, list[str]]) -> list[str]:
+    """Find markers from the template that remain in the manifest body.
+
+    Returns a list of unmatched marker strings found in the body.
+    """
+    found: list[str] = []
+    for _snum, markers in tmpl_markers.items():
+        for marker in markers:
+            if marker in body and marker not in found:
+                found.append(marker)
+    return found
+
+
+def _replace_markers_in_section(
+    manifest_text: str,
+    section_num: int,
+    markers: dict[str, str],
+) -> str:
+    """Replace specific markers in a section of the manifest.
+
+    ``markers`` is a dict mapping the original marker (e.g. ``"_Ítem 1_"``)
+    to its replacement value.
+
+    Only replaces markers that exist in the template section.
+    """
+    marker = f"## §{section_num}:"
+    # Find the section boundaries
+    pattern = re.compile(
+        rf"^{re.escape(marker)}.*?(?=^## §\d+:|\Z)",
+        re.MULTILINE | re.DOTALL,
+    )
+    section_match = pattern.search(manifest_text)
+    if not section_match:
+        return manifest_text
+
+    section_content = section_match.group(0)
+    for orig_marker, replacement in markers.items():
+        section_content = section_content.replace(orig_marker, replacement)
+
+    return pattern.sub(section_content, manifest_text, count=1)
+
+
+def _has_known_markers(content_body: str, tmpl_markers: dict[int, list[str]]) -> bool:
+    """Check if content_body contains any markers from the template."""
+    for _snum, markers in tmpl_markers.items():
+        for marker in markers:
+            if marker in content_body:
+                return True
+    return False
 
 
 def _manifest_body_has_placeholders(text: str) -> list[str]:
     """Check if the manifest body contains template placeholders.
 
-    Returns a list of matched placeholder patterns (empty = clean).
+    Returns a list of matched placeholder full text (empty = clean).
+    Uses dynamic markers from the template file.
     """
     parts = text.split("---", 2)
     if len(parts) < 3:
         return []
     body = parts[2]
-    found: list[str] = []
-    for pattern in TEMPLATE_PLACEHOLDER_PATTERNS:
-        if re.search(pattern, body):
-            found.append(pattern)
-    return found
+
+    # Get allowed placeholders from frontmatter
+    allowed = _read_allowed_placeholders(text)
+
+    # Find markers from the template that remain in the body
+    tmpl_markers = parse_cycle_template()
+    found = _find_template_markers_in_body(body, tmpl_markers)
+
+    # Filter out allowed placeholders
+    filtered = [m for m in found if m not in allowed]
+
+    return filtered
 
 
 def _now_iso() -> str:
@@ -180,13 +297,13 @@ def create_cycle(
 ) -> CortexOUT:
     """Open a new cycle in the active project.
 
-    v0.4.0 change: cycle starts in status="draft". Call `cycle.mature`
-    to transition to "ready" before creating blueprints.
+    v0.4.0 change: cycle starts in status="draft". Already active on creation.
     """
     ctx = enforce_ctx(ctx, "cycle.create")
-    root = find_project_root(start=path)
-    if root is None:
-        return CortexOUT.error("no project initialized", code="NOT_FOUND")
+    root = _resolve_project_root(path)
+    if root[0] is None:
+        return CortexOUT.error(root[1], code="NOT_FOUND")
+    root = root[0]
 
     cycle_id = next_cycle_id(root)
     cdir = cycle_dir(root, cycle_id)
@@ -227,134 +344,13 @@ def create_cycle(
         status=CYCLE_DRAFT,
         instruction=(
             f"Cycle {cycle_id} is in draft state. "
-            "Call cycle.mature to transition to ready before creating blueprints."
+            "Use cycle.synthesize() to fill the manifest, then create blueprints with blueprint.create()."
         ),
     )
 
 
-def mature_cycle(
-    cycle_id: str | None = None,
-    path: str | None = None,
-    ctx: PermissionContext | None = None,
-) -> CortexOUT:
-    """Mature a cycle from draft → ready.
-
-    NEW handler in v0.4.0. Fixes ALTO-1 (workflow incompleto).
-
-    A cycle in "ready" state allows blueprint creation. The maturation
-    step is intentional: it forces the governor to explicitly declare
-    the cycle ready for work, providing a natural checkpoint for review.
-
-    Args:
-        cycle_id: Cycle to mature. If None, uses the most recent cycle.
-        path: Path to project root.
-        ctx: Permission context (requires GOVERNOR role in strict mode).
-
-    Returns:
-        CortexOUT with cycle_id and new status.
-    """
-    ctx = enforce_ctx(ctx, "cycle.mature")
-    root = find_project_root(start=path)
-    if root is None:
-        return CortexOUT.error("no project initialized", code="NOT_FOUND")
-
-    cycles_base = root / CYCLES_DIR
-    if not cycles_base.exists():
-        return CortexOUT.error("no cycles", code="NOT_FOUND")
-
-    if cycle_id is None:
-        all_cycles = sorted(
-            d.name for d in cycles_base.iterdir() if d.is_dir()
-        )
-        if not all_cycles:
-            return CortexOUT.error("no cycles", code="NOT_FOUND")
-        cycle_id = all_cycles[-1]
-
-    cdir = cycle_dir(root, cycle_id)
-    if not cdir.exists():
-        return CortexOUT.error(f"cycle {cycle_id} not found", code="NOT_FOUND")
-
-    fm = _read_cycle_manifest(cdir)
-    if fm is None:
-        return CortexOUT.error(
-            f"cycle {cycle_id} has no MANIFEST.md", code="INVALID_STATE"
-        )
-
-    current_status = fm.get("status", "draft")
-
-    if current_status == CYCLE_READY:
-        return CortexOUT.work(
-            f"cycle {cycle_id} already in ready state",
-            cycle_id=cycle_id,
-            status=CYCLE_READY,
-            no_op=True,
-        )
-    if current_status == CYCLE_ACTIVE:
-        return CortexOUT.work(
-            f"cycle {cycle_id} is active (already matured)",
-            cycle_id=cycle_id,
-            status=CYCLE_ACTIVE,
-            no_op=True,
-        )
-    if current_status == CYCLE_CLOSED:
-        return CortexOUT.error(
-            f"cycle {cycle_id} is closed; cannot mature",
-            code="INVALID_STATE",
-        )
-    if current_status not in (CYCLE_DRAFT, CYCLE_OPEN):
-        return CortexOUT.error(
-            f"cycle {cycle_id} has unexpected status {current_status!r}; "
-            f"expected draft or open",
-            code="INVALID_STATE",
-        )
-
-    # Validate manifest content: reject template placeholders.
-    mf_path = cdir / "MANIFEST.md"
-    if mf_path.exists():
-        mf_text = mf_path.read_text(encoding="utf-8")
-        placeholders = _manifest_body_has_placeholders(mf_text)
-        if placeholders:
-            return CortexOUT.error(
-                f"cycle {cycle_id} MANIFEST.md still contains template placeholders; "
-                f"run cycle.synthesize() first. Found: {placeholders}",
-                code="INVALID_STATE",
-            )
-
-    fm["status"] = CYCLE_READY
-    fm["matured_at"] = _now_iso()
-    fm["matured_by"] = ctx.agent_id
-    _write_cycle_manifest(cdir, fm)
-
-    cortex_path = cdir / "cycle.cortex"
-    if cortex_path.exists():
-        try:
-            cfm, body = _parse_cortex_file(cortex_path)
-            if cfm:
-                cfm["status"] = CYCLE_READY
-                cfm["matured_at"] = _now_iso()
-                write_cortex_pair(cdir, "cycle", cfm, body)
-        except Exception:
-            pass
-
-    sync_brain(
-        root,
-        "cycle.mature",
-        focus=f"Ciclo {cycle_id} madurado",
-        detail=f"cycle {cycle_id} transitioned draft -> ready by {ctx.agent_id}",
-    )
-
-    reconcile_cycle(root, cycle_id)
-
-    return CortexOUT.work(
-        f"cycle.mature ok id={cycle_id} status=ready",
-        cycle_id=cycle_id,
-        status=CYCLE_READY,
-        matured_by=ctx.agent_id,
-        instruction=(
-            f"Cycle {cycle_id} is now ready. "
-            "You can create blueprints with blueprint.create."
-        ),
-    )
+# mature_cycle() removed in BLP-003 — cycle state machine simplified to
+# draft → closed. Maturation is conversational, not a handler.
 
 
 def list_cycles(
@@ -363,9 +359,10 @@ def list_cycles(
     ctx: PermissionContext | None = None,
 ) -> CortexOUT:
     """List cycles in the active project."""
-    root = find_project_root(start=path)
-    if root is None:
-        return CortexOUT.error("no project initialized", code="NOT_FOUND")
+    root = _resolve_project_root(path)
+    if root[0] is None:
+        return CortexOUT.error(root[1], code="NOT_FOUND")
+    root = root[0]
 
     cycles_base = root / CYCLES_DIR
     if not cycles_base.exists():
@@ -398,9 +395,10 @@ def current_cycle(path: str | None = None, ctx: PermissionContext | None = None)
         - count: number of open cycles
         - latest: the most recent cycle (highest ID)
     """
-    root = find_project_root(start=path)
-    if root is None:
-        return CortexOUT.error("no project initialized", code="NOT_FOUND")
+    root = _resolve_project_root(path)
+    if root[0] is None:
+        return CortexOUT.error(root[1], code="NOT_FOUND")
+    root = root[0]
 
     cycles_base = root / CYCLES_DIR
     if not cycles_base.exists():
@@ -447,13 +445,29 @@ def close_cycle(
 ) -> CortexOUT:
     """Close a cycle with automatic lesson generation."""
     ctx = enforce_ctx(ctx, "cycle.close")
-    root = find_project_root(start=path)
-    if root is None:
-        return CortexOUT.error("no project initialized", code="NOT_FOUND")
+    root = _resolve_cycle_root(cycle_id, path)
+    if root[0] is None:
+        return CortexOUT.error(root[1], code="NOT_FOUND")
+    root = root[0]
 
     cdir = cycle_dir(root, cycle_id)
     if not cdir.exists():
         return CortexOUT.error(f"cycle {cycle_id} not found", code="NOT_FOUND")
+
+    # BLP-003: If cycle is in draft, validate no placeholders in manifest
+    mf_path = cdir / "MANIFEST.md"
+    if mf_path.exists():
+        mf_text = mf_path.read_text(encoding="utf-8")
+        mf_fm = _read_cycle_manifest(cdir)
+        if mf_fm and mf_fm.get("status", "") == CYCLE_DRAFT:
+            placeholders = _manifest_body_has_placeholders(mf_text)
+            if placeholders:
+                return CortexOUT.error(
+                    f"cycle {cycle_id} is in draft and MANIFEST.md still has template placeholders. "
+                    f"Complete the conversational design first via cycle.synthesize(). "
+                    f"Found: {placeholders}",
+                    code="INVALID_STATE",
+                )
 
     tasks_dir = cdir / TASKS_DIR
     now = _now_iso()
@@ -611,6 +625,72 @@ def close_cycle(
 
 
 
+def _resolve_project_root(path: str | None = None) -> tuple[Path | None, str]:
+    """Resolve project root from path or by scanning workspace projects.
+
+    Returns (root, error_msg) where error_msg is empty-string on success.
+    """
+    root = find_project_root(start=path)
+    if root is not None:
+        return root, ""
+
+    if path is not None:
+        return None, "no project initialized"
+
+    # Try known workspace locations
+    for wdir in [Path.cwd(), Path.home() / "workspace", Path.home() / "proyectos"]:
+        ws_root = find_workspace_root(start=str(wdir))
+        if ws_root is None:
+            continue
+        # Use the first project with .arqux/brain.cortex
+        for entry in sorted(ws_root.parent.iterdir()):
+            if not entry.is_dir() or entry.name.startswith("."):
+                continue
+            pa = entry / ".arqux"
+            if (pa / "brain.cortex").exists():
+                return pa, ""
+    return None, (
+        "no project initialized. "
+        "Provide 'path' or run session.context.set first."
+    )
+
+
+def _resolve_cycle_root(cycle_id: str, path: str | None = None) -> tuple[Path | None, str]:
+    """Resolve project root from path or by scanning workspace for a cycle.
+
+    Returns (root, error_msg) where error_msg is empty-string on success.
+    """
+    root = find_project_root(start=path)
+    if root is not None:
+        return root, ""
+
+    # Fallback: scan workspace when path is not provided
+    if path is not None:
+        return None, "no project initialized"
+
+    # Try known workspace locations
+    for wdir in [Path.cwd(), Path.home() / "workspace", Path.home() / "proyectos"]:
+        ws_root = find_workspace_root(start=str(wdir))
+        if ws_root is None:
+            continue
+        # Check ws-level cycles first
+        if (ws_root / "cycles" / cycle_id).is_dir():
+            return ws_root.parent, ""
+        # Search projects
+        for entry in sorted(ws_root.parent.iterdir()):
+            if not entry.is_dir() or entry.name.startswith("."):
+                continue
+            pa = entry / ".arqux"
+            if not (pa / "brain.cortex").exists():
+                continue
+            if (pa / "cycles" / cycle_id).is_dir():
+                return pa, ""
+    return None, (
+        f"cycle {cycle_id} not found in any workspace project. "
+        "Provide 'path' or run session.context.set first."
+    )
+
+
 def synthesize_cycle(
     cycle_id: str,
     content: str,
@@ -618,10 +698,37 @@ def synthesize_cycle(
     path: str | None = None,
     ctx: PermissionContext | None = None,
 ) -> CortexOUT:
-    """Populate a cycle MANIFEST.md from CORTEX content (§1-§9)."""
-    root = find_project_root(start=path)
-    if root is None:
-        return CortexOUT.error("no project initialized", code="NOT_FOUND")
+    """Populate a cycle MANIFEST.md from CORTEX content (§1-§9).
+
+    Two modes (auto-detected per section):
+
+    1. **Marker replacement** — Content body contains known template
+       markers (``_marker_``). Each marker in the content is matched to
+       the template, and the *following text* (after ``→``) replaces the
+       original marker in the manifest.
+
+       Example::
+
+           $4:{_Ítem 1_→Refinar pipeline de gobernanza}
+
+       This replaces only ``_Ítem 1_`` in §4 with
+       ``Refinar pipeline de gobernanza``, leaving the rest of §4 intact.
+
+    2. **Section replacement** (backward compat) — Content body has NO
+       template markers. The entire section block ``## §N:...`` is
+       replaced by the provided content.
+
+       Example::
+
+           $4:{Contenido completamente nuevo para §4}
+
+    Parses CYCLE_MANIFEST_TEMPLATE.md dynamically — no hardcoded
+    structure knowledge.
+    """
+    root = _resolve_cycle_root(cycle_id, path)
+    if root[0] is None:
+        return CortexOUT.error(root[1], code="NOT_FOUND")
+    root = root[0]
     cdir = cycle_dir(root, cycle_id)
     if not cdir.exists():
         return CortexOUT.error(f"cycle {cycle_id} not found", code="NOT_FOUND")
@@ -634,6 +741,10 @@ def synthesize_cycle(
         return CortexOUT.error("invalid MANIFEST.md format", code="INVALID_STATE")
     fm_text = parts[1]
     body = parts[2]
+
+    # Parse template markers once for marker-based replacement
+    tmpl_markers = parse_cycle_template()
+
     sections = parse_content_sections(content)
     if not sections:
         return CortexOUT.error("no sections parsed from content", code="INVALID_ARGS")
@@ -645,24 +756,63 @@ def synthesize_cycle(
                 continue
         except ValueError:
             continue
-        marker = f"## §{snum}:"
-        pattern = re.compile(rf"^{re.escape(marker)}.*?(?=^## §\d+:|\Z)", re.MULTILINE | re.DOTALL)
-        new_section = f"{marker}\n\n{section_body.strip()}\n"
-        if pattern.search(body):
-            body = pattern.sub(new_section, body, count=1)
+
+        # Check if content contains known markers → marker-level replacement
+        known_markers = tmpl_markers.get(snum, [])
+        marker_map: dict[str, str] = {}
+        for marker in known_markers:
+            if marker in section_body:
+                # Extract value after "→" or after the marker itself
+                after_marker = section_body.split(marker, 1)[1].strip()
+                # Remove leading → or : if present
+                if after_marker.startswith("→") or after_marker.startswith(":"):
+                    after_marker = after_marker[1:].strip()
+                # If there's a quoted value, extract it
+                if after_marker and after_marker[0] in ('"', "'"):
+                    end_quote = after_marker.find(after_marker[0], 1)
+                    if end_quote > 1:
+                        after_marker = after_marker[1:end_quote]
+                marker_map[marker] = after_marker
+
+        if marker_map:
+            # Marker-level replacement: replace each marker in the manifest
+            body = _replace_markers_in_section(body, snum, marker_map)
+            sections_written.append(f"{sid}(markers)")
         else:
-            body += f"\n{new_section}"
-        sections_written.append(sid)
+            # No known markers — replace entire section (backward compat)
+            body = _replace_manifest_section(body, snum, section_body.strip())
+            sections_written.append(sid)
+
     new_text = f"---{fm_text}---\n{body}"
     mf.write_text(new_text, encoding="utf-8")
 
     reconcile_cycle(root, cycle_id)
 
-    return CortexOUT.work(f"cycle.synthesize ok id={cycle_id} sections={len(sections_written)}", cycle_id=cycle_id, sections_written=sections_written, path=str(mf))
+    return CortexOUT.work(
+        f"cycle.synthesize ok id={cycle_id} sections={len(sections_written)}",
+        cycle_id=cycle_id,
+        sections_written=sections_written,
+        path=str(mf),
+    )
 
 
 def _replace_manifest_section(manifest_text: str, section_num: int, new_content: str) -> str:
-    """Replace a section (§N) in manifest text. Returns original if section not found."""
+    """Replace a section (SN) in manifest text. Returns original if section not found.
+    Preserves CYCLE:N comment markers if present.
+    """
+    # Try to find CYCLE:N markers first (more precise)
+    cycle_pat = re.compile(
+        rf"(<!--\s*CYCLE:{section_num}\s*-->).*?(<!--\s*/CYCLE:{section_num}\s*-->)",
+        re.DOTALL,
+    )
+    cycle_match = cycle_pat.search(manifest_text)
+    if cycle_match:
+        open_tag = cycle_match.group(1)
+        close_tag = cycle_match.group(2)
+        replacement = f"{open_tag}\n{new_content}\n{close_tag}"
+        return cycle_pat.sub(replacement, manifest_text, count=1)
+
+    # Fallback: split by ## §N: headers (backward compat)
     marker = f"## §{section_num}:"
     pattern = re.compile(rf"^{re.escape(marker)}.*?(?=^## §\d+:|\Z)", re.MULTILINE | re.DOTALL)
     if pattern.search(manifest_text):
@@ -693,7 +843,6 @@ handler_schemas = [
     {"name": "cycle.create", "fn": create_cycle, "description": "Open a new cycle in the active project.", "input_schema": {"type": "object", "properties": {"name": {"type": "string"}, "description": {"type": "string"}, "path": {"type": "string", "description": "Path to project root. Defaults to cwd."}}}},
     {"name": "cycle.list", "fn": list_cycles, "description": "List cycles in the active project.", "input_schema": {"type": "object", "properties": {"status": {"type": "string", "enum": ["open", "closed"]}, "path": {"type": "string", "description": "Path to project root. Defaults to cwd."}}}},
     {"name": "cycle.current", "fn": current_cycle, "description": "Get the currently active cycle.", "input_schema": {"type": "object", "properties": {"path": {"type": "string", "description": "Path to project root. Defaults to cwd."}}}},
-    {"name": "cycle.mature", "fn": mature_cycle, "description": "Mature a cycle (draft → ready).", "input_schema": {"type": "object", "properties": {"cycle_id": {"type": "string"}, "path": {"type": "string", "description": "Path to project root. Defaults to cwd."}}}},
     {"name": "cycle.close", "fn": close_cycle, "description": "Close a cycle (no new tasks can be added).", "input_schema": {"type": "object", "properties": {"cycle_id": {"type": "string"}, "summary": {"type": "string"}, "path": {"type": "string", "description": "Path to project root. Defaults to cwd."}}, "required": ["cycle_id"]}},
     {"name": "cycle.synthesize", "fn": synthesize_cycle, "description": "Populate a cycle's MANIFEST.md sections in a single call.", "input_schema": {"type": "object", "properties": {"cycle_id": {"type": "string"}, "content": {"type": "string"}, "path": {"type": "string"}}, "required": ["cycle_id", "content"]}},
 ]

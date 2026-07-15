@@ -98,14 +98,28 @@ def reconcile_handler(
 
     # Project-level reconcile (default)
     try:
-        result = reconcile_brain(project_root)
+        # Check if we're at workspace root (workspace context) vs project root
+        from arqux.state import find_workspace_root
+        ws_root = find_workspace_root(start=project_root)
+        is_workspace_context = (ws_root is not None and
+                                ws_root.parent == project_root)
+
+        if is_workspace_context:
+            # Workspace context: reconcile meta-brain directly
+            result = reconcile_brain(project_root)
+            # Override reconciled flag since we're in workspace context
+            result["reconciled"] = True
+            result["is_workspace"] = True
+        else:
+            result = reconcile_brain(project_root)
 
         if result["reconciled"]:
             metrics = result["metrics"]
             return CortexOUT.work(
                 f"reconcile.ok blueprints={metrics.get('total_blueprints', 0)} "
                 f"open_cycles={metrics.get('open_cycles', 0)} "
-                f"closed_cycles={metrics.get('closed_cycles', 0)}",
+                f"closed_cycles={metrics.get('closed_cycles', 0)} "
+                f"workspace={'true' if result.get('is_workspace', False) else 'false'}",
                 project=str(project_root),
                 metrics=metrics,
                 meta_synced=result.get("meta_synced", False),

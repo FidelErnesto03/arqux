@@ -6,7 +6,7 @@ v0.4.3 model (patched):
     - AUDITOR: read-only + governance read handlers (cannot mutate state).
     - GOVERNOR_ONLY = {workspace.init, project.init}
     - MUTATING_HANDLERS: frozenset of handlers that mutate state — auditor is denied.
-    - HMAC_REQUIRED = {identity.record, evidence.record, blueprint.approve, blueprint.re_delegate}
+    - HMAC_REQUIRED = {identity.record, evidence.record, blueprint.re_delegate}
 
 Patches applied (vs 0.4.2):
     - P0-B: AUDITOR can no longer call mutating handlers (was: fallthrough allowed all).
@@ -116,16 +116,16 @@ GOVERNOR_ONLY: tuple[str, ...] = (
 # This is the canonical list of handlers that mutate state.
 MUTATING_HANDLERS: frozenset[str] = frozenset({
     # blueprint mutations
-    "blueprint.create", "blueprint.mature",
-    "blueprint.ready", "blueprint.assign", "blueprint.claim",
+    "blueprint.create",
+    "blueprint.ready", "blueprint.claim",
     "blueprint.update", "blueprint.complete", "blueprint.fail",
-    "blueprint.cancel", "blueprint.approve", "blueprint.re_delegate",
-    "blueprint.block_for_architect", "blueprint.task", "blueprint.gate",
+    "blueprint.cancel", "blueprint.re_delegate",
+    "blueprint.block_for_architect", "blueprint.task",
     "blueprint.ac",
     # task mutations
     "task.create", "task.claim", "task.update", "task.complete", "task.fail",
     # cycle mutations
-    "cycle.create", "cycle.mature", "cycle.close",
+    "cycle.create", "cycle.close",
     # evidence mutations
     "evidence.record",
     # cortex mutations
@@ -151,7 +151,6 @@ MUTATING_HANDLERS: frozenset[str] = frozenset({
 HMAC_REQUIRED: tuple[str, ...] = (
     "identity.record",       # anyone can claim to be any agent — must verify
     "evidence.record",       # evidence must be attributable to verified agent
-    "blueprint.approve",     # approval must come from verified auditor/governor
     "blueprint.re_delegate", # re-delegation is a governance action
 )
 
@@ -190,6 +189,17 @@ class PermissionContext:
             resolved = resolve_agent_identity(agent_id, project_root=proj_path)
             if resolved and resolved != agent_id:
                 agent_id = resolved
+        else:
+            # P2 fallback: try to auto-detect project root from CWD
+            try:
+                from .state import find_project_root
+                auto_root = find_project_root()
+                if auto_root is not None:
+                    resolved = resolve_agent_identity(agent_id, project_root=auto_root)
+                    if resolved and resolved != agent_id:
+                        agent_id = resolved
+            except Exception:
+                pass
 
         # Validate role string.
         try:

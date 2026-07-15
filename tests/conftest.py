@@ -65,7 +65,7 @@ def arqux_env(request, tmp_path, monkeypatch):
     from dataclasses import dataclass
 
     from arqux.handlers.blueprint.lifecycle import create_blueprint
-    from arqux.handlers.cycle import create_cycle, mature_cycle, synthesize_cycle
+    from arqux.handlers.cycle import create_cycle, synthesize_cycle
     from arqux.handlers.project import init_project
     from arqux.handlers.workspace import init_workspace
 
@@ -90,8 +90,7 @@ def arqux_env(request, tmp_path, monkeypatch):
 
     synthesize_cycle(cycle_id=cycle_id, content="$1:{Test purpose}$2:{Test scope: inside, outside}$3:{CYC-OBJ-1: Test objective}$4:{Test guideline}$5:{Test checkpoint}$6:{BLP index}$7:{Metrics: 0}$8:{Test rule}$9:{Gates}", path=str(proj_root), ctx=gov_ctx)
 
-    mature_cycle(cycle_id=cycle_id, path=str(proj_root), ctx=gov_ctx)
-
+    # BLP-003: mature_cycle removed. Cycles stay in draft (normal active state).
     result = create_blueprint(obj="test BLP", path=str(proj_root), ctx=gov_ctx)
     bp_id = result.fields["blueprint_id"]
 

@@ -204,9 +204,9 @@ IDN:brain_sync{ name:"sync_brain", location:"src/arqux/sync.py", purpose:"Automa
 
 AXM:fail_silent{ sync_brain() never interrupts the calling handler. Errors are logged and swallowed. The handler always completes normally. }
 
-HDL:sync_brain{ signature:"sync_brain(project_root, event, focus?, metrics?, detail?)", purpose:"Update WRK:current, update FCS:current (if focus=), log metrics. Called as last line before return in mutating handlers.", event:"Canonical event name: 'blueprint.approve', 'task.complete', 'cycle.create'", focus:"New FCS value. Only for major events (approve, create, close).", metrics:"Dict of counters: {'blueprints_done': 17}", detail:"Human-readable detail about the event" }
+HDL:sync_brain{ signature:"sync_brain(project_root, event, focus?, metrics?, detail?)", purpose:"Update WRK:current, update FCS:current (if focus=), log metrics. Called as last line before return in mutating handlers.", event:"Canonical event name: 'blueprint.complete', 'task.complete', 'cycle.create'", focus:"New FCS value. Only for major events (complete, create, close).", metrics:"Dict of counters: {'blueprints_done': 17}", detail:"Human-readable detail about the event" }
 
-STP:integrated_handlers{ count:15, modules:["blueprint (create, complete, approve, cancel, ready)", "task (create, complete)", "cycle (create, close)", "skill (edit)", "project (bind)", "cortex (record_lesson_handler)"], note:"Each handler calls sync_brain() as its last non-return line." }
+STP:integrated_handlers{ count:15, modules:["blueprint (create, complete, cancel, ready)", "task (create, complete)", "cycle (create, close)", "skill (edit)", "project (bind)", "cortex (record_lesson_handler)"], note:"Each handler calls sync_brain() as its last non-return line." }
 
 AXM:handler_responsibility{ Each mutating handler is responsible for calling sync_brain() explicitly. No middleware. The handler calls it as the last line before returning success. }
 
