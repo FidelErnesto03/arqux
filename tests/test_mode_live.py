@@ -50,7 +50,7 @@ def _run_in_project(project_dir: Path, fn, *args, **kwargs):
 def test_mature_mode_live_accepted(workspace_root: Path, governor_ctx) -> None:
     project_dir, bp_id = _setup_blueprint(workspace_root, governor_ctx)
     bp_path = project_dir / ".arqux" / "cycles" / "CYCLE-01" / "blueprints" / f"{bp_id}.md"
-    _set_status(bp_path, "defined")
+    _set_status(bp_path, "draft")
     result = _run_in_project(
         project_dir,
         blueprint.mature_blueprint,
@@ -65,7 +65,7 @@ def test_mature_mode_live_accepted(workspace_root: Path, governor_ctx) -> None:
 def test_mature_mode_async_default(workspace_root: Path, governor_ctx) -> None:
     project_dir, bp_id = _setup_blueprint(workspace_root, governor_ctx)
     bp_path = project_dir / ".arqux" / "cycles" / "CYCLE-01" / "blueprints" / f"{bp_id}.md"
-    _set_status(bp_path, "defined")
+    _set_status(bp_path, "draft")
     result = _run_in_project(
         project_dir,
         blueprint.mature_blueprint,
@@ -79,7 +79,7 @@ def test_mature_mode_async_default(workspace_root: Path, governor_ctx) -> None:
 def test_mature_invalid_mode_rejected(workspace_root: Path, governor_ctx) -> None:
     project_dir, bp_id = _setup_blueprint(workspace_root, governor_ctx)
     bp_path = project_dir / ".arqux" / "cycles" / "CYCLE-01" / "blueprints" / f"{bp_id}.md"
-    _set_status(bp_path, "defined")
+    _set_status(bp_path, "draft")
     result = _run_in_project(
         project_dir,
         blueprint.mature_blueprint,
@@ -94,7 +94,7 @@ def test_mature_invalid_mode_rejected(workspace_root: Path, governor_ctx) -> Non
 def test_mature_live_transitions(workspace_root: Path, governor_ctx) -> None:
     project_dir, bp_id = _setup_blueprint(workspace_root, governor_ctx)
     bp_path = project_dir / ".arqux" / "cycles" / "CYCLE-01" / "blueprints" / f"{bp_id}.md"
-    _set_status(bp_path, "defined")
+    _set_status(bp_path, "draft")
     _run_in_project(
         project_dir,
         blueprint.mature_blueprint,

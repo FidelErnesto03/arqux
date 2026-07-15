@@ -27,7 +27,6 @@ NANO_HANDLERS: set[str] = {
 
 LITE_EXTRA: set[str] = {
     "blueprint.create",
-    "blueprint.define",
     "blueprint.task",
     "blueprint.complete",
     "blueprint.ac",

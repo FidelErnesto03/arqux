@@ -46,7 +46,8 @@ from ..state import (
 from ..state import (
     parse_cortex_file as _parse_cortex_file,
 )
-from ..sync import sync_brain
+from ..sync import sync_brain, reconcile_cycle
+from .blueprint._synthesize_common import parse_content_sections
 
 # --- Cycle states (NEW in v0.4.0) -----------------------------------------
 # Previously cycles only had "open" and "closed" states. The MANIFEST.md
@@ -217,6 +218,8 @@ def create_cycle(
 
     sync_brain(root, "cycle.create", focus=f"Ciclo {cycle_id} iniciado", detail=f"cycle {cycle_id} created")
 
+    reconcile_cycle(root, cycle_id)
+
     return CortexOUT.work(
         f"cycle.create ok id={cycle_id} status=draft",
         cycle_id=cycle_id,
@@ -340,6 +343,8 @@ def mature_cycle(
         detail=f"cycle {cycle_id} transitioned draft -> ready by {ctx.agent_id}",
     )
 
+    reconcile_cycle(root, cycle_id)
+
     return CortexOUT.work(
         f"cycle.mature ok id={cycle_id} status=ready",
         cycle_id=cycle_id,
@@ -379,7 +384,20 @@ def list_cycles(
 
 
 def current_cycle(path: str | None = None, ctx: PermissionContext | None = None) -> CortexOUT:
-    """Get the currently active (most recent open) cycle."""
+    """Get all currently active cycles (non-closed).
+
+    Returns ALL cycles whose status is NOT 'closed'.
+    The list is sorted by name (highest number = most recent).
+
+    For projects with legacy cycles (no MANIFEST.md), they are
+    treated as open for backward compatibility.
+
+    Returns:
+        CortexOUT with:
+        - open_cycles: list of all non-closed cycle IDs
+        - count: number of open cycles
+        - latest: the most recent cycle (highest ID)
+    """
     root = find_project_root(start=path)
     if root is None:
         return CortexOUT.error("no project initialized", code="NOT_FOUND")
@@ -389,16 +407,35 @@ def current_cycle(path: str | None = None, ctx: PermissionContext | None = None)
         return CortexOUT.error("no cycles", code="NOT_FOUND")
 
     open_cycles = []
-    for cdir in sorted(cycles_base.iterdir()):
-        if cdir.is_dir():
+    for cdir in sorted(cycles_base.iterdir(), reverse=True):
+        if not cdir.is_dir():
+            continue
+        # Read manifest to verify cycle is not closed.
+        fm = _read_cycle_manifest(cdir)
+        if fm is None:
+            # No manifest — treat as open for backward compat.
+            open_cycles.append(cdir.name)
+            continue
+        status = fm.get("status", "")
+        if status != CYCLE_CLOSED:
             open_cycles.append(cdir.name)
 
+    # Reverse to get ascending order, so open_cycles[-1] is the most recent.
+    open_cycles.reverse()
+
     if not open_cycles:
-        return CortexOUT.error("no cycles", code="NOT_FOUND")
+        return CortexOUT.work(
+            "no open cycles",
+            open_cycles=[],
+            count=0,
+            latest=None,
+        )
 
     return CortexOUT.work(
-        f"current={open_cycles[-1]}",
-        cycle=open_cycles[-1],
+        f"open_cycles={len(open_cycles)}",
+        open_cycles=open_cycles,
+        count=len(open_cycles),
+        latest=open_cycles[-1],  # Most recent (highest ID)
     )
 
 
@@ -555,6 +592,8 @@ def close_cycle(
 
     sync_brain(root, "cycle.close", focus="Ciclo cerrado", metrics={"cycles_closed": 1}, detail=f"cycle {cycle_id} closed")
 
+    reconcile_cycle(root, cycle_id)
+
     return CortexOUT.work(
         f"cycle.close ok id={cycle_id} completed={len(completed)} "
         f"failed={len(failed)} lessons={len(lessons)} "
@@ -595,7 +634,7 @@ def synthesize_cycle(
         return CortexOUT.error("invalid MANIFEST.md format", code="INVALID_STATE")
     fm_text = parts[1]
     body = parts[2]
-    sections = _parse_content_sections(content)
+    sections = parse_content_sections(content)
     if not sections:
         return CortexOUT.error("no sections parsed from content", code="INVALID_ARGS")
     sections_written = []
@@ -616,6 +655,9 @@ def synthesize_cycle(
         sections_written.append(sid)
     new_text = f"---{fm_text}---\n{body}"
     mf.write_text(new_text, encoding="utf-8")
+
+    reconcile_cycle(root, cycle_id)
+
     return CortexOUT.work(f"cycle.synthesize ok id={cycle_id} sections={len(sections_written)}", cycle_id=cycle_id, sections_written=sections_written, path=str(mf))
 
 
@@ -646,27 +688,6 @@ def _read_quality_gates_from_manifest(manifest_text: str) -> dict[str, bool]:
             gates[name] = val in ("✅", "true", "☑", "☒")
     return gates
 
-
-def _parse_content_sections(content: str) -> dict[str, str]:
-    """Parse CORTEX content into {section_id: body}."""
-    out: dict[str, str] = {}
-    text = content.strip()
-    pattern = re.compile(r"\$(\d+(?:\.\d+)?):\s*\{")
-    for m in pattern.finditer(text):
-        sid = m.group(1)
-        start = m.end() - 1
-        depth = 0
-        i = start
-        while i < len(text):
-            if text[i] == "{":
-                depth += 1
-            elif text[i] == "}":
-                depth -= 1
-                if depth == 0:
-                    out[sid] = text[start + 1 : i].strip()
-                    break
-            i += 1
-    return out
 
 handler_schemas = [
     {"name": "cycle.create", "fn": create_cycle, "description": "Open a new cycle in the active project.", "input_schema": {"type": "object", "properties": {"name": {"type": "string"}, "description": {"type": "string"}, "path": {"type": "string", "description": "Path to project root. Defaults to cwd."}}}},

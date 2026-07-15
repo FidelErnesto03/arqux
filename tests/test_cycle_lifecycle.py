@@ -16,8 +16,10 @@ from pathlib import Path
 
 import pytest
 
+from arqux.handlers.blueprint._synthesize_common import (
+    parse_content_sections as _parse_content_sections,
+)
 from arqux.handlers.cycle import (
-    _parse_content_sections,
     _read_quality_gates_from_manifest,
     _replace_manifest_section,
     synthesize_cycle,

@@ -36,7 +36,7 @@ from ..state import (
 from ..state import (
     parse_cortex_file as _parse_cortex_file,
 )
-from ..sync import sync_brain
+from ..sync import sync_brain, reconcile_cycle
 
 
 def create_task(
@@ -129,9 +129,11 @@ def create_task(
     sync_brain(
         root,
         "task.create",
-        metrics={"tasks_active": 1},
+        metrics=dict(tasks_active=1),
         detail=f"task {task_id} created in {cycle_id}",
     )
+
+    reconcile_cycle(root, cycle_id)
 
     return CortexOUT.work(
         f"task.create ok id={task_id}",
@@ -162,6 +164,10 @@ def claim_task(task_id: str, path: str | None = None, ctx: PermissionContext | N
     fm["assignee"] = caller
     fm["updated"] = _now_iso()
     write_cortex_pair(path.parent, task_id, fm, body)
+
+    cycle_id = fm.get("cycle", "")
+    if cycle_id:
+        reconcile_cycle(root, cycle_id)
 
     return CortexOUT.work(
         f"task.claim ok id={task_id} agent={caller}",
@@ -199,6 +205,10 @@ def update_task(
     fm["updated"] = _now_iso()
     new_body = body.rstrip() + f"\n\n# NOTE ({_now_iso()})\n{note}\n"
     write_cortex_pair(path.parent, task_id, fm, new_body)
+
+    cycle_id = fm.get("cycle", "")
+    if cycle_id:
+        reconcile_cycle(root, cycle_id)
 
     return CortexOUT.work(
         f"task.update ok id={task_id} status={fm['status']}",
@@ -251,6 +261,10 @@ def complete_task(
         detail=f"task {task_id} completed",
     )
 
+    cycle_id = fm.get("cycle", "")
+    if cycle_id:
+        reconcile_cycle(root, cycle_id)
+
     return CortexOUT.work(
         f"task.complete ok id={task_id} (evidence in brain PULSE as {event_id})",
         task_id=task_id,
@@ -291,6 +305,10 @@ def fail_task(
         payload=reason,
         cycle=fm.get("cycle", ""),
     )
+
+    cycle_id = fm.get("cycle", "")
+    if cycle_id:
+        reconcile_cycle(root, cycle_id)
 
     return CortexOUT.work(
         f"task.fail ok id={task_id} reason={reason!r} (recorded in brain PULSE as {event_id})",
@@ -500,6 +518,10 @@ def run_task(
 
     if not dry_run:
         _record_run_pulse(root, ctx, task_id=task_id, outcome=outcome)
+        # Extract cycle_id from task path and reconcile
+        cycle_id = task_path.parent.parent.name
+        if cycle_id:
+            reconcile_cycle(root, cycle_id)
 
     return CortexOUT.work(
         f"task.run ok task_id={task_id} steps={len(procedure_steps)} "
