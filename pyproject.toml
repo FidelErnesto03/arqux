@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "arqux"
-version = "0.6.1"
+version = "0.6.0"
 description = "Architectural User Experience for governed AI agents. Identity contracts, MCP governance, Blueprint lifecycle, CORTEX memory, and verifiable evidence."
 readme = "README.md"
 license = "Apache-2.0"
