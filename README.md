@@ -4,16 +4,16 @@
 
 **Architectural User Experience for governed AI agents.**
 
-[![Version](https://img.shields.io/badge/version-0.4.3-167A55?style=flat-square&labelColor=050807)](https://pypi.org/project/arqux/)
+[![Version](https://img.shields.io/badge/version-0.6.1-167A55?style=flat-square&labelColor=050807)](https://pypi.org/project/arqux/)
 [![Status](https://img.shields.io/badge/status-beta-FFB020?style=flat-square&labelColor=050807)](https://pypi.org/project/arqux/)
 [![License](https://img.shields.io/badge/license-Apache--2.0-2EC98D?style=flat-square\&labelColor=050807)](LICENSE)
 [![Python](https://img.shields.io/badge/python-3.10%2B-8FE3C0?style=flat-square\&labelColor=050807)](https://www.python.org/)
 [![MCP](https://img.shields.io/badge/MCP-governance%20layer-167A55?style=flat-square\&labelColor=050807)](https://github.com/FidelErnesto03/arqux)
 [![Getting Started](https://img.shields.io/badge/Getting%20Started-guide-2EC98D?style=flat-square\&labelColor=050807)](docs/guides/GETTING_STARTED.md)
-[![Handlers](https://img.shields.io/badge/MCP%20Handlers-73-purple)](https://github.com/FidelErnesto03/arqux)
+[![Handlers](https://img.shields.io/badge/MCP%20Handlers-92-purple)](https://github.com/FidelErnesto03/arqux)
 [![Agents](https://img.shields.io/badge/agents-4-red)](https://github.com/FidelErnesto03/arqux)
 [![CORTEX](https://img.shields.io/badge/CORTEX-persistent%20memory-2EC98D?style=flat-square\&labelColor=050807)](https://github.com/FidelErnesto03/codec-cortex)
-[![Coverage](https://img.shields.io/badge/coverage-71%25-167A55?style=flat-square\&labelColor=050807)](https://github.com/FidelErnesto03/arqux)
+[![Coverage](https://img.shields.io/badge/coverage-75%25-167A55?style=flat-square\&labelColor=050807)](https://github.com/FidelErnesto03/arqux)
 
 **The file is the protocol.**
 
