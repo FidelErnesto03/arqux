@@ -1,33 +1,27 @@
 """Blueprint lifecycle handlers.
 
-create, mature, ready, assign, claim
+Simplified lifecycle: create → ready → claim → complete (BLP-004)
 """
 
 from __future__ import annotations
 
 from pathlib import Path
 
-from ...constants import CYCLES_DIR
+from ...constants import CYCLE_CLOSED, CYCLES_DIR
 from ...cortex_out import CortexOUT
 from ...permissions import PermissionContext
 from ...sync import reconcile_cycle, sync_brain
 from ._helpers import (
     BLUEPRINT_TEMPLATE,
-    BP_BLOCKED,
     BP_DRAFT,
     BP_IN_PROGRESS,
-    BP_MATURING,
     BP_READY,
-    LEARNING_GATE,
     _blueprints_dir,
     _find_blueprint,
     _find_workspace_template,
-    _has_learning_recorded,
-    _learning_instruction,
     _now_iso,
     _prefill_from_context,
     _read_blueprint,
-    _read_quality_gates,
     _resolve_root,
     _transition,
     _write_blueprint,
@@ -66,14 +60,25 @@ def create_blueprint(
             return CortexOUT.error("no cycles — call cycle.create first", code="NOT_FOUND")
         cycle_id = open_cycles[-1]
 
-    # Check cycle is in ready or active state
+    # Check cycle is in draft (not closed) and validate no placeholders in manifest
     cycle_mf = cycles_base / cycle_id / "MANIFEST.md"
     if cycle_mf.exists():
+        mf_text = cycle_mf.read_text(encoding="utf-8")
         mf_fm, _ = _read_blueprint(cycle_mf)
         cycle_status = mf_fm.get("status", "") if mf_fm else ""
-        if cycle_status not in ("ready", "active"):
+        if cycle_status == CYCLE_CLOSED:
             return CortexOUT.error(
-                f"cycle {cycle_id} is not ready. Current status: {cycle_status}. Mature the cycle first.",
+                f"cycle {cycle_id} is closed. Cannot create blueprints in a closed cycle.",
+                code="INVALID_STATE",
+            )
+        # BLP-003: validate no placeholders in cycle manifest
+        from ..cycle import _manifest_body_has_placeholders
+        placeholders = _manifest_body_has_placeholders(mf_text)
+        if placeholders:
+            return CortexOUT.error(
+                f"cycle {cycle_id} MANIFEST.md still has template placeholders. "
+                f"Complete the conversational design first via cycle.synthesize(). "
+                f"Found: {placeholders}",
                 code="INVALID_STATE",
             )
 
@@ -141,75 +146,6 @@ def create_blueprint(
 
 
 # ---------------------------------------------------------------------------
-# blueprint.mature
-# ---------------------------------------------------------------------------
-
-
-def mature_blueprint(
-    bp_id: str,
-    mode: str = "async",
-    path: str | None = None,
-    ctx: PermissionContext | None = None,
-) -> CortexOUT:
-    """Enter maturation phase. State → maturing.
-
-    Mode 'async' (default): cyclic iteration with Architect.
-    Mode 'live': synchronous co-design with immediate feedback.
-    """
-    if mode not in ("live", "async"):
-        return CortexOUT.error(
-            f"invalid mode={mode!r} (must be 'live' or 'async')",
-            code="INVALID_ARGS",
-        )
-
-    root = _resolve_root(path)
-    if root is None:
-        return CortexOUT.error("no project initialized", code="NOT_FOUND")
-
-    bp_path, fm, body = _find_blueprint(root, bp_id)
-    if bp_path is None:
-        return CortexOUT.error(f"blueprint {bp_id} not found", code="NOT_FOUND")
-
-    valid_from = fm.get("status", BP_DRAFT)
-    if valid_from not in (BP_BLOCKED, BP_DRAFT):
-        return CortexOUT.error(
-            f"cannot mature from {valid_from} (must be draft or blocked)",
-            code="INVALID_STATE",
-        )
-
-    fm["status"] = BP_MATURING
-    fm["mature_mode"] = mode
-    fm["updated_at"] = _now_iso()
-    _write_blueprint(bp_path, fm, body)
-
-    cycle_id = fm.get("cycle", "")
-    if cycle_id:
-        reconcile_cycle(root, cycle_id)
-
-    if mode == "live":
-        instruction = (
-            "Live co-design mode active. Iterate sections immediately "
-            "with Architect feedback — no waiting between cycles. "
-            "Refine each section until Architect approves, "
-            "then call blueprint.gate() for quality gates."
-        )
-    else:
-        instruction = (
-            "Cyclic maturation with Architect begins. "
-            "Present each section, wait for feedback, adjust. "
-            "Once all quality gates pass, call blueprint.ready()."
-        )
-
-    return CortexOUT.work(
-        f"blueprint.mature ok id={bp_id} mode={mode}",
-        blueprint_id=bp_id,
-        status=BP_MATURING,
-        mode=mode,
-        instruction=instruction,
-    )
-
-
-# ---------------------------------------------------------------------------
 # blueprint.ready
 # ---------------------------------------------------------------------------
 
@@ -219,7 +155,7 @@ def ready_blueprint(
     path: str | None = None,
     ctx: PermissionContext | None = None,
 ) -> CortexOUT:
-    """Architect declares Blueprint ready for execution. State → ready."""
+    """Architect declares Blueprint ready for execution. State → ready (draft→ready directly)."""
     root = _resolve_root(path)
     if root is None:
         return CortexOUT.error("no project initialized", code="NOT_FOUND")
@@ -231,32 +167,6 @@ def ready_blueprint(
     err = _transition(bp_id, fm.get("status", BP_DRAFT), BP_READY)
     if err:
         return CortexOUT.error(err, code="INVALID_STATE")
-
-    # Verify quality gates: ALL must be true before ready.
-    gates_status = _read_quality_gates(fm)
-    if gates_status:
-        if not gates_status.get(LEARNING_GATE, True) and _has_learning_recorded(root, bp_id):
-            gates_status[LEARNING_GATE] = True
-        failed_gates = [g for g, v in gates_status.items() if not v]
-        if failed_gates:
-            if failed_gates == [LEARNING_GATE]:
-                return CortexOUT.error(
-                    "Cannot ready: has_learning_recorded is false. Call identity.record() first.",
-                    code="LEARNING_NOT_RECORDED",
-                    failed_gates=failed_gates,
-                    instruction=_learning_instruction(f"blueprint.ready({bp_id})"),
-                )
-            return CortexOUT.error(
-                f"maturation incomplete — {len(failed_gates)} quality gate(s) still false: "
-                f"{', '.join(failed_gates)}. "
-                f"Complete the cyclic maturation interaction with the Architect first.",
-                code="MATURATION_INCOMPLETE",
-                failed_gates=failed_gates,
-                instruction=(
-                    "Load the blueprint-workflow skill (§8.3) for maturation protocol. "
-                    "Present each gate to the Architect. Only call ready() when ALL gates are true."
-                ),
-            )
 
     fm["status"] = BP_READY
     fm["updated_at"] = _now_iso()
@@ -278,49 +188,7 @@ def ready_blueprint(
         f"blueprint.ready ok id={bp_id}",
         blueprint_id=bp_id,
         status=BP_READY,
-        instruction=(
-            "Blueprint is executable. Governor: call blueprint.assign() "
-            "to assign an executor."
-        ),
-    )
-
-
-# ---------------------------------------------------------------------------
-# blueprint.assign
-# ---------------------------------------------------------------------------
-
-
-def assign_blueprint(
-    bp_id: str,
-    executor: str,
-    path: str | None = None,
-    ctx: PermissionContext | None = None,
-) -> CortexOUT:
-    """Governor assigns an executor to the Blueprint."""
-    root = _resolve_root(path)
-    if root is None:
-        return CortexOUT.error("no project initialized", code="NOT_FOUND")
-
-    bp_path, fm, body = _find_blueprint(root, bp_id)
-    if bp_path is None:
-        return CortexOUT.error(f"blueprint {bp_id} not found", code="NOT_FOUND")
-
-    if fm.get("status") != BP_READY:
-        return CortexOUT.error(f"Blueprint is {fm.get('status')} — must be ready to assign", code="INVALID_STATE")
-
-    fm["executor"] = executor
-    fm["updated_at"] = _now_iso()
-    _write_blueprint(bp_path, fm, body)
-
-    cycle_id = fm.get("cycle", "")
-    if cycle_id:
-        reconcile_cycle(root, cycle_id)
-
-    return CortexOUT.work(
-        f"blueprint.assign ok id={bp_id} executor={executor}",
-        blueprint_id=bp_id,
-        executor=executor,
-        instruction=f"Executor {executor}: call blueprint.claim({bp_id!r}) to start.",
+        instruction="Blueprint is ready for execution. Call blueprint.claim() to start.",
     )
 
 
@@ -334,7 +202,7 @@ def claim_blueprint(
     path: str | None = None,
     ctx: PermissionContext | None = None,
 ) -> CortexOUT:
-    """Executor claims the Blueprint. State → in_progress."""
+    """Executor claims the Blueprint. State → in_progress. Assigns executor implicitly."""
     root = _resolve_root(path)
     if root is None:
         return CortexOUT.error("no project initialized", code="NOT_FOUND")

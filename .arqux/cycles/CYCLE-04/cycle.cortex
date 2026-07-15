@@ -33,4 +33,4 @@ ARQX:artifact{level:2, name:"cycle", usage:"state", kind:"native"}
 
 $1: CYCLE
 
-WRK:cycle{id:"cycle", name:"?", status:"ready", created:"", description:""}
+WRK:cycle{id:"CYCLE-04", name:"?", status:"closed", created:"", description:""}

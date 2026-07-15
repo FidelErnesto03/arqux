@@ -2,8 +2,4 @@ $0
 
 $1: HANDOFF
 
-HOF:handoff{from:"hermes", to:"alfred", project:"ARQUX", summary:"Fix workspace.init — ahora copia AGENTS.md + AGENTS.lite.md + AGENTS.full.md al root. 36 tests OK. Build synced. Heimdall audit completo: AGENTS*↔SKILLs↔HANDLERS alineados. BLP-012 closed."
-   blps: "BLP-012"
-   tasks: ""
-   decisions: ""
-   gaps: "", blps:"", tasks:""}
+HOF:handoff{from:"hermes", to:"alfred", project:"ARQUX", summary:"Heimdall auditoria completa. ISS-006 debe eliminarse del disco. Crear BLP-007 que aborde ISS-003 (from_env callers) + GOV-001 (patrones sistemicos). ISS-004 diferido a CYCLE-08.", blps:"BLP-001", tasks:"Eliminar ISS-006"}

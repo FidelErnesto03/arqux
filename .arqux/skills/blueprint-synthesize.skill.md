@@ -123,5 +123,5 @@ $12:{
 
 `workflows.skill.md` w08 (blueprint-lifecycle) should be updated to
 reference `blueprint.synthesize` instead of `blueprint.create` + 18×
-`blueprint.update` for programmatic authoring. The human-in-the-loop
-maturation flow (define → mature → ready) is unchanged.
+`blueprint.update` for programmatic authoring. The simplified lifecycle
+(create → ready → claim → complete) is defined in w08 v2.1.

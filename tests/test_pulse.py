@@ -82,7 +82,7 @@ def test_parse_pulse_line_invalid() -> None:
 
 def test_append_pulse_to_brain(tmp_path) -> None:
     """append_pulse_to_brain writes an entry and next_pulse_event_id advances."""
-    from arqux.handlers.cycle import create_cycle, mature_cycle
+    from arqux.handlers.cycle import create_cycle
     from arqux.handlers.project import init_project
     from arqux.handlers.workspace import init_workspace
     from arqux.pulse import append_pulse_to_brain, next_pulse_event_id, read_pulse_from_brain
@@ -94,7 +94,7 @@ def test_append_pulse_to_brain(tmp_path) -> None:
     proj.mkdir()
     init_project(name="pulse-test", path=str(proj))
     create_cycle(name="CYCLE-PULSE", path=str(proj))
-    mature_cycle(path=str(proj))
+    # BLP-003: mature_cycle removed. Cycles stay in draft (normal active state).
 
     eid = next_pulse_event_id(proj)
     assert eid == "E-0001"

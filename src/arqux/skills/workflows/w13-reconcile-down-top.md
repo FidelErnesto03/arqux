@@ -74,19 +74,15 @@ title w13 — Handlers que disparan reconcile_cycle
 
 [*] --> bp_create : blueprint.create
 [*] --> bp_define : blueprint.define
-[*] --> bp_mature : blueprint.mature
 [*] --> bp_ready : blueprint.ready
-[*] --> bp_assign : blueprint.assign
 [*] --> bp_claim : blueprint.claim
 [*] --> bp_complete : blueprint.complete
-[*] --> bp_approve : blueprint.approve
 [*] --> bp_fail : blueprint.fail
 [*] --> bp_cancel : blueprint.cancel
 [*] --> bp_redelegate : blueprint.re_delegate
 [*] --> bp_block : blueprint.block_for_architect
 
 [*] --> cycle_create : cycle.create
-[*] --> cycle_mature : cycle.mature
 [*] --> cycle_close : cycle.close
 [*] --> cycle_synthesize : cycle.synthesize
 
@@ -98,18 +94,14 @@ task_complete --> RECONCILE
 task_fail --> RECONCILE
 bp_create --> RECONCILE
 bp_define --> RECONCILE
-bp_mature --> RECONCILE
 bp_ready --> RECONCILE
-bp_assign --> RECONCILE
 bp_claim --> RECONCILE
 bp_complete --> RECONCILE
-bp_approve --> RECONCILE
 bp_fail --> RECONCILE
 bp_cancel --> RECONCILE
 bp_redelegate --> RECONCILE
 bp_block --> RECONCILE
 cycle_create --> RECONCILE
-cycle_mature --> RECONCILE
 cycle_close --> RECONCILE
 cycle_synthesize --> RECONCILE
 
@@ -121,7 +113,7 @@ RECONCILE --> [*] : MANIFEST.md §6+7 actualizado
 
 $2: PASOS DEL WORKFLOW
 
-STP:w13_step1{ 0:"Handler mutante completa su operación (task.create, blueprint.approve, cycle.close, etc.)", 1:"Handler escribe archivo local (task.cortex, BLP.md, MANIFEST.md)", 2:"Handler llama a sync_brain() para WRK/FCS (liviano)", 3:"Handler llama a reconcile_cycle(project_root, cycle_id) para estado persistente" }
+STP:w13_step1{ 0:"Handler mutante completa su operación (task.create, blueprint.complete, cycle.close, etc.)", 1:"Handler escribe archivo local (task.cortex, BLP.md, MANIFEST.md)", 2:"Handler llama a sync_brain() para WRK/FCS (liviano)", 3:"Handler llama a reconcile_cycle(project_root, cycle_id) para estado persistente" }
 
 STP:w13_step2{ 0:"reconcile_cycle() escanea BLPs del ciclo", 1:"Lee cada BLP-*.md del directorio blueprints/", 2:"Extrae frontmatter: blueprint_id, title, status, priority, governor", 3:"Cuenta por estado: done, draft, cancelled, review, in_progress, ready, blocked", 4:"Construye tabla §6 con todos los BLPs", 5:"Calcula progreso: (done + cancelled) / total * 100", key_rule:"La tabla §6 se auto-puebla completamente. No tocar manualmente." }
 
@@ -144,19 +136,15 @@ HDL:task.fail{ handler:"task.fail", file:"handlers/task.py", description:"Bloque
 
 HDL:blueprint.create{ handler:"blueprint.create", file:"handlers/blueprint/lifecycle.py", description:"Crea BLP → llama reconcile_cycle()." }
 HDL:blueprint.define{ handler:"blueprint.define", file:"handlers/blueprint/lifecycle.py", description:"Define BLP → llama reconcile_cycle()." }
-HDL:blueprint.mature{ handler:"blueprint.mature", file:"handlers/blueprint/lifecycle.py", description:"Madura BLP → llama reconcile_cycle()." }
 HDL:blueprint.ready{ handler:"blueprint.ready", file:"handlers/blueprint/lifecycle.py", description:"Prepara BLP → llama reconcile_cycle()." }
-HDL:blueprint.assign{ handler:"blueprint.assign", file:"handlers/blueprint/lifecycle.py", description:"Asigna BLP → llama reconcile_cycle()." }
 HDL:blueprint.claim{ handler:"blueprint.claim", file:"handlers/blueprint/lifecycle.py", description:"Reclama BLP → llama reconcile_cycle()." }
 HDL:blueprint.complete{ handler:"blueprint.complete", file:"handlers/blueprint/review.py", description:"Completa BLP → llama reconcile_cycle()." }
-HDL:blueprint.approve{ handler:"blueprint.approve", file:"handlers/blueprint/review.py", description:"Aprueba BLP → llama reconcile_cycle()." }
 HDL:blueprint.fail{ handler:"blueprint.fail", file:"handlers/blueprint/review.py", description:"Bloquea BLP → llama reconcile_cycle()." }
 HDL:blueprint.cancel{ handler:"blueprint.cancel", file:"handlers/blueprint/review.py", description:"Cancela BLP → llama reconcile_cycle()." }
 HDL:blueprint.re_delegate{ handler:"blueprint.re_delegate", file:"handlers/blueprint/review.py", description:"Re-delega BLP → llama reconcile_cycle()." }
 HDL:blueprint.block_for_architect{ handler:"blueprint.block_for_architect", file:"handlers/blueprint/review.py", description:"Bloquea BLP para Arquitecto → llama reconcile_cycle()." }
 
 HDL:cycle.create{ handler:"cycle.create", file:"handlers/cycle.py", description:"Crea ciclo → llama reconcile_cycle()." }
-HDL:cycle.mature{ handler:"cycle.mature", file:"handlers/cycle.py", description:"Madura ciclo → llama reconcile_cycle()." }
 HDL:cycle.close{ handler:"cycle.close", file:"handlers/cycle.py", description:"Cierra ciclo → llama reconcile_cycle()." }
 HDL:cycle.synthesize{ handler:"cycle.synthesize", file:"handlers/cycle.py", description:"Sintetiza ciclo → llama reconcile_cycle()." }
 

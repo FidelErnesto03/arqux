@@ -24,28 +24,23 @@ $2: STATE MACHINE DIAGRAM
 
 DIAG:w08_sm{
 @startuml
-title Blueprint Lifecycle — State Machine (v2.0 Optimizado)
+title Blueprint Lifecycle — State Machine (v2.1 Simplificado, BLP-004)
 
 state "draft" as D
-state "conversational_design" as CD
 state "ready" as R
 state "in_progress" as IP
-state "review" as RV
 state "done" as DN
 state "blocked" as B
 state "cancelled" as CN
 
-[*] --> D : blueprint.synthesize
-D --> CD : indagacion conversacional
-CD --> R : blueprint.ready
+[*] --> D : blueprint.synthesize / blueprint.create
+D --> R : blueprint.ready
 R --> IP : blueprint.claim
-IP --> RV : blueprint.complete
+IP --> DN : blueprint.complete
 IP --> B : blueprint.fail
-B --> D : re-plan
+B --> IP : desbloqueado
 B --> CN : blueprint.cancel
-RV --> DN : blueprint.approve
-RV --> IP : re-delegate (max 3)
-RV --> CN : 3rd fail
+D --> CN : blueprint.cancel
 @enduml
 }
 
@@ -128,12 +123,12 @@ WRK:w08_synthesis{ status:"current", owner:"agente", survive:"yes", action:"sint
 
 $7: WORKFLOW STEPS — EXECUTION
 
-WRK:w08_execution{ status:"current", owner:"executor", survive:"yes", action:"ejecutar tareas de BLP", procedure:"0. AXM:workflow_fidelity — Cada paso en orden, sin saltos. 1. Executor: blueprint.claim(BLP-NNN) → state = in_progress. 2. Executor lee BLP completo (18 secciones sintetizadas). 3. For EACH task: execute, blueprint.task(completed), checkpoint, next task. 4. On obstacle: blueprint.fail(BLP-NNN, reason). 5. To cancel: blueprint.cancel(BLP-NNN, reason). 6. When ALL tasks done: blueprint.complete(BLP-NNN, evidence) → state = review.", reason:"Ejecucion task-by-task con checkpoint.", checkpoint_rule:"Cada tarea = task.complete() + checkpoint. Nunca 2 sin checkpoint." }
+WRK:w08_execution{ status:"current", owner:"executor", survive:"yes", action:"ejecutar tareas de BLP", procedure:"0. AXM:workflow_fidelity — Cada paso en orden, sin saltos. 1. Executor: blueprint.claim(BLP-NNN) → state = in_progress (asigna executor implicitamente). 2. Executor lee BLP completo (18 secciones sintetizadas). 3. For EACH task: execute, blueprint.task(completed), checkpoint, next task. 4. On obstacle: blueprint.fail(BLP-NNN, reason) → blocked. 5. To cancel: blueprint.cancel(BLP-NNN, reason). 6. When ALL tasks done: blueprint.complete(BLP-NNN, evidence) → state = done (aprobado implicitamente).", reason:"Ejecucion task-by-task con checkpoint. Sin assign ni approve separados.", checkpoint_rule:"Cada tarea = task.complete() + checkpoint. Nunca 2 sin checkpoint." }
 
 
 $8: WORKFLOW STEPS — VERIFICATION
 
-WRK:w08_verify{ status:"current", owner:"auditor", survive:"yes", action:"verificar ACs", procedure:"1. Auditor carga BLP + evidence. 2. For each AC: blueprint.ac(verified). Si fail → re_delegate (max 3). 3. 3ra falla → blueprint.block_for_architect(). 4. All ACs pass → blueprint.approve(BLP-NNN) → done.", reason:"Cross-verification de criterios de aceptacion." }
+WRK:w08_verify{ status:"current", owner:"auditor", survive:"yes", action:"verificar ACs durante ejecucion", procedure:"1. Auditor carga BLP + evidence. 2. For each AC: blueprint.ac(verified). Si fail → registrar evidencia. 3. All ACs pass → continuar ejecucion. 4. Si requiere re-apertura: blueprint.re_delegate(BLP-NNN) → done/blocked -> in_progress.", reason:"Cross-verification de criterios de aceptacion durante in_progress." }
 
 
 $9: WORKFLOW STEPS — CLOSURE
@@ -143,9 +138,9 @@ WRK:w08_closure{ status:"current", owner:"governor", survive:"yes", action:"cerr
 
 $10: HANDLERS REEMPLAZADOS EN FASE DE DISENO (w08 v2.0)
 
-LNG:w08_replaced_in_design{ note:"Estos handlers ya NO se usan en la fase de DISENO/SINTESIS (reemplazados por blueprint.synthesize). SIGUEN activos en las fases de EJECUCION y VERIFICACION.", blueprint.create: "Reemplazado por synthesize (creacion atomica dentro del handler)", blueprint.define: "Reemplazado por synthesize (secciones en 1 llamada)", blueprint.update: "Reemplazado por synthesize (parcheo idempotente)", blueprint.mature: "La maduracion es la conversacion con el Arquitecto", blueprint.gate: "Compuertas verificadas durante la conversacion de diseno", blueprint.assign: "El executor se define en la conversacion de diseno" }
+LNG:w08_replaced_in_design{ note:"Estos handlers fueron ELIMINADOS en BLP-004 (simplificación de lifecycle). Su funcionalidad ahora está fusionada en menos handlers.", blueprint.create: "Se mantiene. Crea BLP en draft.", blueprint.mature: "Eliminado. La maduración es conversacional directa.", blueprint.gate: "Eliminado. Fusionado en ready (draft→ready directo).", blueprint.assign: "Eliminado. El executor se asigna implícitamente en claim.", blueprint.approve: "Eliminado. Fusionado en complete (done = completado + aprobado)." }
 
-AXM:w08_design_vs_exec{ Los handlers blueprint.claim, blueprint.complete, blueprint.fail, blueprint.cancel, blueprint.ac, blueprint.approve, blueprint.re_delegate, y blueprint.block_for_architect SIGUEN activos en las fases de EJECUCION (§7) y VERIFICACION (§8). NO fueron eliminados — solo se excluyen de la fase de DISENO donde synthesize los reemplaza. }
+AXM:w08_design_vs_exec{ Los handlers blueprint.claim, blueprint.complete, blueprint.fail, blueprint.cancel, blueprint.ac, blueprint.re_delegate, y blueprint.block_for_architect SIGUEN activos en las fases de EJECUCION (§7) y VERIFICACION (§8). Los handlers blueprint.mature, blueprint.gate, blueprint.assign, blueprint.approve fueron ELIMINADOS en BLP-004 porque su funcionalidad se fusionó en ready (draft→ready directo), claim (asignación implícita del executor), y complete (done = completado + aprobado). }
 
 
 $11: COMPARATIVA 23→4 LLAMADAS

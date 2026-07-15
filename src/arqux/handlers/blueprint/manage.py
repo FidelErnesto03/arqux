@@ -1,6 +1,6 @@
 """Blueprint management handlers.
 
-update, gate, task
+Simplified: update, task
 """
 
 from __future__ import annotations
@@ -12,14 +12,7 @@ from ...permissions import PermissionContext
 from ._helpers import (
     BP_DONE,
     BP_IN_PROGRESS,
-    BP_MATURING,
-    BP_REVIEW,
-    LEARNING_GATE,
-    MATURATION_GATES,
-    QUALITY_GATES,
     _find_blueprint,
-    _has_learning_recorded,
-    _learning_instruction,
     _now_iso,
     _record_bp_evidence,
     _resolve_root,
@@ -177,75 +170,10 @@ def update_blueprint(
         "note": note,
     }
     if section:
-        fields["instruction"] = _learning_instruction(f"blueprint.update({bp_id}, section={section})")
+        fields["instruction"] = "Record learning via identity.record()"
     return CortexOUT.work(
         f"blueprint.update ok id={bp_id}",
         **fields,
-    )
-
-
-# ---------------------------------------------------------------------------
-# blueprint.gate
-# ---------------------------------------------------------------------------
-
-
-def gate_blueprint(
-    bp_id: str,
-    gate: str = "all",
-    path: str | None = None,
-    ctx: PermissionContext | None = None,
-) -> CortexOUT:
-    """Approve one or all Blueprint quality gates after Architect maturation."""
-    root = _resolve_root(path)
-    if root is None:
-        return CortexOUT.error("no project initialized", code="NOT_FOUND")
-
-    bp_path, fm, body = _find_blueprint(root, bp_id)
-    if bp_path is None:
-        return CortexOUT.error(f"blueprint {bp_id} not found", code="NOT_FOUND")
-
-    if fm.get("status") != BP_MATURING:
-        return CortexOUT.error(
-            f"blueprint is {fm.get('status')} — must be maturing to approve gates",
-            code="INVALID_STATE",
-        )
-
-    requested = MATURATION_GATES if gate == "all" else [gate]
-    invalid = [name for name in requested if name not in QUALITY_GATES]
-    if invalid:
-        return CortexOUT.error(
-            f"unknown quality gate(s): {', '.join(invalid)}",
-            code="INVALID_ARGS",
-            invalid_gates=invalid,
-        )
-
-    approved: list[str] = []
-    blocked: list[str] = []
-    for name in requested:
-        if name == LEARNING_GATE and not _has_learning_recorded(root, bp_id):
-            blocked.append(name)
-            continue
-        fm[name] = True
-        approved.append(name)
-
-    fm["updated_at"] = _now_iso()
-    _write_blueprint(bp_path, fm, body)
-
-    if blocked:
-        return CortexOUT.error(
-            "learning gate requires recorded learning evidence. Call identity.record() first.",
-            code="LEARNING_NOT_RECORDED",
-            approved_gates=approved,
-            blocked_gates=blocked,
-            instruction=_learning_instruction(f"blueprint.gate({bp_id}, {gate})"),
-        )
-
-    return CortexOUT.work(
-        f"blueprint.gate ok id={bp_id} approved={len(approved)}",
-        blueprint_id=bp_id,
-        approved_gates=approved,
-        status=fm.get("status"),
-        instruction="Call blueprint.ready() when all required maturation gates are approved.",
     )
 
 
@@ -274,7 +202,7 @@ def task_blueprint(
     if bp_path is None:
         return CortexOUT.error(f"blueprint {bp_id} not found", code="NOT_FOUND")
 
-    if fm.get("status") not in (BP_IN_PROGRESS, BP_REVIEW, BP_DONE):
+    if fm.get("status") not in (BP_IN_PROGRESS, BP_DONE):
         return CortexOUT.error(
             f"blueprint is {fm.get('status')} — must be in_progress to update tasks",
             code="INVALID_STATE",
@@ -311,7 +239,7 @@ def task_blueprint(
         "status": status,
     }
     if status == "completed":
-        fields["instruction"] = _learning_instruction(f"blueprint.task({bp_id}, {task_id})")
+        fields["instruction"] = "Record learning: identity.record()"
     return CortexOUT.work(
         f"blueprint.task ok id={bp_id} task={task_id} status={status}",
         **fields,

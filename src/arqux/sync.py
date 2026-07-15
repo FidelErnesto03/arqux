@@ -39,7 +39,7 @@ def sync_brain(
           ``state.find_project_root()``)
         The function auto-detects which case it is.
     event:
-        Canonical event name, e.g. ``"blueprint.approve"``.
+        Canonical event name, e.g. `blueprint.complete`.
     focus:
         If provided, updates ``FCS:current`` in brain.cortex.
     metrics:
@@ -249,15 +249,14 @@ def reconcile_brain(project_root: Path) -> dict[str, Any]:
     """Reconcile brain.cortex persistent state with filesystem reality.
 
     Scans all cycles and blueprints, counts by status, and updates:
-    - brain.cortex §3 (OBJ): goal with accurate counts
-    - brain.cortex §10 (KNW): project_knowledge topic
-    - brain.cortex §19 (ARQX metadata): version, last_sync
-    - meta-brain.cortex $2/DOM:arqux: counts if meta-brain exists
+    - For project root: brain.cortex §3 (OBJ): goal with accurate counts
+    - For workspace root: meta-brain.cortex $3 (FCS): status with counts
+    - For both: meta-brain.cortex $2/DOM:arqux: counts if meta-brain exists
 
     Returns dict with reconciliation report.
     """
     ts = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
-    result = {
+    result: dict[str, Any] = {
         "reconciled": False,
         "discrepancies": [],
         "metrics": {},
@@ -302,38 +301,69 @@ def reconcile_brain(project_root: Path) -> dict[str, Any]:
             "tests": test_count,
         }
 
-        # 2. Reconstruct brain.cortex §3 (OBJ)
+        # 2. Determine context: workspace root vs project root
+        from arqux.state import find_workspace_root, crud_update
+
+        ws_root = find_workspace_root(start=project_root)
+        if ws_root is None:
+            result["errors"].append("workspace root not found")
+            return result
+        
+        # workspace root is .arqux/ directory; project_root is its parent
+        # When project_root == ws_root.parent, we're at workspace context
+        is_workspace_root = (ws_root.parent == project_root)
+
+        # 3. Update brain or meta-brain based on context
+        if is_workspace_root:
+            # Workspace context: update meta-brain $3 (FCS) with reconciliation status
+            meta_brain = ws_root / "meta-brain.cortex"
+            if meta_brain.exists():
+                fcs_text = (
+                    f"Reconciliacion completada. {total_blps} BLPs gestionados "
+                    f"en {len(open_cycles) + len(closed_cycles)} ciclos "
+                    f"({', '.join(sorted(open_cycles + closed_cycles))})."
+                )
+                crud_update(
+                    str(meta_brain),
+                    "$3/FCS:current",
+                    set_={
+                        "what": fcs_text,
+                        "priority": "low",
+                        "status": "current",
+                        "survive": "work",
+                        "updated": ts,
+                        "event": "brain.reconcile",
+                    },
+                    force=True,
+                )
+                result["reconciled"] = True
+        else:
+            # Project context: update brain.cortex §3 (OBJ) with accurate counts
+            brain_path = project_root / ".arqux" / "brain.cortex"
+            if brain_path.exists():
+                goal = (
+                    f"Mantener sincronia entre brain.cortex y estado real del proyecto. "
+                    f"{total_blps} BLPs gestionados en {len(open_cycles) + len(closed_cycles)} ciclos "
+                    f"({', '.join(sorted(open_cycles + closed_cycles))})."
+                )
+
+                crud_update(
+                    str(brain_path),
+                    "$3/OBJ:_",
+                    set_={
+                        "goal": goal,
+                        "status": "current",
+                        "success": "synced",
+                        "survive": "work",
+                        "updated": ts,
+                        "event": "brain.reconcile",
+                    },
+                    force=True,
+                )
+                result["reconciled"] = True
+
+        # 4. Sync to meta-brain DOM:arqux (always)
         try:
-            from arqux.state import crud_update
-
-            goal = (
-                f"Mantener sincronia entre brain.cortex y estado real del proyecto. "
-                f"{total_blps} BLPs gestionados en {len(open_cycles) + len(closed_cycles)} ciclos "
-                f"({', '.join(sorted(open_cycles + closed_cycles))})."
-            )
-
-            crud_update(
-                str(project_root / ".arqux" / "brain.cortex"),
-                "$3/OBJ:_",
-                set_={
-                    "goal": goal,
-                    "status": "current",
-                    "success": "synced",
-                    "survive": "work",
-                    "updated": ts,
-                    "event": "brain.reconcile",
-                },
-                force=True,
-            )
-            result["reconciled"] = True
-        except Exception as e:
-            result["errors"].append(f"Failed to update OBJ: {e}")
-
-        # 3. Reconstruct meta-brain.cortex $2/DOM:arqux
-        try:
-            from arqux.state import crud_update, find_workspace_root
-
-            ws_root = find_workspace_root(start=project_root.parent)
             if ws_root is not None:
                 meta_brain = ws_root / "meta-brain.cortex"
                 if meta_brain.exists():

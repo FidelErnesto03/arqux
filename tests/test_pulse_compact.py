@@ -9,7 +9,7 @@ from __future__ import annotations
 
 def _bootstrap_project(tmp_path, name: str = "compact-test"):
     """Create a workspace + project with a cycle for testing."""
-    from arqux.handlers.cycle import create_cycle, mature_cycle
+    from arqux.handlers.cycle import create_cycle
     from arqux.handlers.project import init_project
     from arqux.handlers.workspace import init_workspace
 
@@ -20,7 +20,7 @@ def _bootstrap_project(tmp_path, name: str = "compact-test"):
     proj.mkdir()
     init_project(name=name, path=str(proj))
     create_cycle(name="CYCLE-CPT", path=str(proj))
-    mature_cycle(path=str(proj))
+    # BLP-003: mature_cycle removed. Cycles stay in draft (normal active state).
     return proj
 
 

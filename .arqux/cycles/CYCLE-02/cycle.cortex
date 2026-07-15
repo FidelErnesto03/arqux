@@ -23,19 +23,14 @@ $0
 # BLK   | blocker    | attrs      | H | Prefrontal     | Blocking condition
 #
 # Types:
-# relación = canonical type
-# cuerpo = canonical type
-# attrs-pos = canonical type
-# attrs = canonical type
-# bloque = canonical type
 #
 # Micro-glossary:
-# cur=current pln=planned fut=future blk=blocked
-# min=minimum rec=recovery wrk=work full=full
-# ok=success fail=failure part=partial
 
+
+$19: ARQUX METADATA
+
+ARQX:artifact{level:2, name:"cycle", usage:"state", kind:"native"}
 
 $1: CYCLE
 
-ARQX:artifact{level:2, name:"cycle", usage:"state", kind:"native"}
-WRK:cycle{id:"cycle", name:"?", status:"ready", created:"", description:"", phase:"current", current:"BLP-014 v0.4.3 aplicado y aprobado", blocked:"no", survive:"work", updated:"2026-07-12T11:50:00Z", event:"blueprint.approve"}
+WRK:cycle{id:"CYCLE-02", name:"?", status:"closed", created:"", description:""}
