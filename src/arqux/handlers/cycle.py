@@ -46,7 +46,7 @@ from ..state import (
 from ..state import (
     parse_cortex_file as _parse_cortex_file,
 )
-from ..sync import sync_brain, reconcile_cycle
+from ..sync import reconcile_cycle, sync_brain
 from .blueprint._synthesize_common import parse_content_sections
 
 # --- Cycle states (NEW in v0.4.0) -----------------------------------------
@@ -627,7 +627,7 @@ def synthesize_cycle(
         return CortexOUT.error(f"cycle {cycle_id} not found", code="NOT_FOUND")
     mf = cdir / "MANIFEST.md"
     if not mf.exists():
-        return CortexOUT.error(f"MANIFEST.md not found", code="NOT_FOUND")
+        return CortexOUT.error("MANIFEST.md not found", code="NOT_FOUND")
     text = mf.read_text(encoding="utf-8")
     parts = text.split("---", 2)
     if len(parts) < 3:

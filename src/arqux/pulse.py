@@ -195,10 +195,11 @@ def _prune_pulse_entries(
     kept: list[str] = []
     for line in lines:
         stripped = line.strip()
-        if stripped.startswith("AUD:") or stripped.startswith("- ["):
-            if any(eid in stripped for eid in entry_ids):
-                pruned += 1
-                continue
+        if (stripped.startswith("AUD:") or stripped.startswith("- [")) and any(
+            eid in stripped for eid in entry_ids
+        ):
+            pruned += 1
+            continue
         kept.append(line)
     if not dry_run:
         brain_path.write_text("\n".join(kept) + "\n", encoding="utf-8")

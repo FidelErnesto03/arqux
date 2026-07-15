@@ -9,7 +9,6 @@ from __future__ import annotations
 
 from typing import Any
 
-
 # --- TIER MAPPING -----------------------------------------------------------
 # Handlers are classified by tier.
 # FULL tier = all handlers in REGISTRY (computed lazily).

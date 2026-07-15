@@ -9,7 +9,7 @@ import re
 
 from ...cortex_out import CortexOUT
 from ...permissions import PermissionContext
-from ...sync import sync_brain, reconcile_cycle
+from ...sync import reconcile_cycle, sync_brain
 from ._helpers import (
     BP_BLOCKED,
     BP_CANCELLED,

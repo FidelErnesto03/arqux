@@ -373,6 +373,7 @@ def _record_to_brain(root: Path, bp_id: str, outcome: str, evidence: str) -> Non
             return
 
         from cortex.core.parser import parse_cortex
+
         from ..state import crud_add
 
         text = brain_path.read_text(encoding="utf-8")

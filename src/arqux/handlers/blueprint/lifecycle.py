@@ -5,13 +5,12 @@ create, mature, ready, assign, claim
 
 from __future__ import annotations
 
-import re
 from pathlib import Path
 
 from ...constants import CYCLES_DIR
 from ...cortex_out import CortexOUT
 from ...permissions import PermissionContext
-from ...sync import sync_brain, reconcile_cycle
+from ...sync import reconcile_cycle, sync_brain
 from ._helpers import (
     BLUEPRINT_TEMPLATE,
     BP_BLOCKED,

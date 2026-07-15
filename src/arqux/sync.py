@@ -331,7 +331,7 @@ def reconcile_brain(project_root: Path) -> dict[str, Any]:
 
         # 3. Reconstruct meta-brain.cortex $2/DOM:arqux
         try:
-            from arqux.state import find_workspace_root, crud_update
+            from arqux.state import crud_update, find_workspace_root
 
             ws_root = find_workspace_root(start=project_root.parent)
             if ws_root is not None:

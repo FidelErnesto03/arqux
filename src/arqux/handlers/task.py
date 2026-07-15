@@ -36,7 +36,7 @@ from ..state import (
 from ..state import (
     parse_cortex_file as _parse_cortex_file,
 )
-from ..sync import sync_brain, reconcile_cycle
+from ..sync import reconcile_cycle, sync_brain
 
 
 def create_task(
@@ -129,7 +129,7 @@ def create_task(
     sync_brain(
         root,
         "task.create",
-        metrics=dict(tasks_active=1),
+        metrics={"tasks_active": 1},
         detail=f"task {task_id} created in {cycle_id}",
     )
 

@@ -337,7 +337,6 @@ def test_session_close_triggers_compact(tmp_path) -> None:
 def test_session_close_compact_skip_few(tmp_path) -> None:
     """session.close compact skips when < 5 entries in session."""
     from arqux.handlers.session import close
-    from arqux.pulse import read_pulse_from_brain
 
     proj = _bootstrap_project(tmp_path)
 

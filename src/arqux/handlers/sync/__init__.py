@@ -5,7 +5,7 @@ from __future__ import annotations
 from ...cortex_out import CortexOUT
 from ...permissions import PermissionContext
 from ...state import find_project_root
-from ...sync import sync_brain, reconcile_brain, reconcile_cycle
+from ...sync import reconcile_brain, reconcile_cycle, sync_brain
 
 
 def sync_run_handler(
