@@ -7,10 +7,9 @@ to avoid code duplication (BLP-006).
 from __future__ import annotations
 
 import re
-from typing import Dict
 
 
-def parse_content_sections(content: str) -> Dict[str, str]:
+def parse_content_sections(content: str) -> dict[str, str]:
     """Parse a CORTEX content payload into ``{section_id: body}``.
 
     Supports two forms:
@@ -22,9 +21,9 @@ def parse_content_sections(content: str) -> Dict[str, str]:
         content: Raw CORTEX content string.
 
     Returns:
-        Dict mapping section ID (str) to body (str).
+        dict mapping section ID (str) to body (str).
     """
-    out: Dict[str, str] = {}
+    out: dict[str, str] = {}
     text = content.strip()
     if not text:
         return out

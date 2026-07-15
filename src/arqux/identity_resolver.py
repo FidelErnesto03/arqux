@@ -11,12 +11,11 @@ blueprint, and permission handlers all use the same resolution logic.
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Optional
 
 
 def resolve_agent_identity(
     agent_id: str,
-    project_root: Optional[Path] = None,
+    project_root: Path | None = None,
 ) -> str:
     """Resolve a runtime *agent_id* to its canonical ArqUX identity name.
 
@@ -82,7 +81,7 @@ def resolve_agent_identity(
     return agent_id
 
 
-def _find_workspace_root(start: Path) -> Optional[Path]:
+def _find_workspace_root(start: Path) -> Path | None:
     """Walk up from *start* to find the workspace root (has AGENTS.md)."""
     for parent in [start] + list(start.parents):
         if (parent / "AGENTS.md").exists():
@@ -92,7 +91,7 @@ def _find_workspace_root(start: Path) -> Optional[Path]:
     return None
 
 
-def _extract_idn_name(cortex_text: str) -> Optional[str]:
+def _extract_idn_name(cortex_text: str) -> str | None:
     """Extract the ``IDN:name`` value from a CORTEX identity file.
 
     Looks for lines of the form::
