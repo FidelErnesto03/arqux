@@ -9,6 +9,8 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
+# define_blueprint was removed in ISS-002 — kept as thin wrapper for legacy tests
+from arqux.handlers.blueprint import synthesize_blueprint
 from arqux.handlers.blueprint._read import list_blueprints, read_blueprint
 from arqux.handlers.blueprint.lifecycle import (
     assign_blueprint,
@@ -17,8 +19,6 @@ from arqux.handlers.blueprint.lifecycle import (
     mature_blueprint,
     ready_blueprint,
 )
-# define_blueprint was removed in ISS-002 — kept as thin wrapper for legacy tests
-from arqux.handlers.blueprint import synthesize_blueprint
 
 
 def define_blueprint(bp_id, **kwargs):

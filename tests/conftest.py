@@ -65,7 +65,7 @@ def arqux_env(request, tmp_path, monkeypatch):
     from dataclasses import dataclass
 
     from arqux.handlers.blueprint.lifecycle import create_blueprint
-    from arqux.handlers.cycle import create_cycle, synthesize_cycle, mature_cycle
+    from arqux.handlers.cycle import create_cycle, mature_cycle, synthesize_cycle
     from arqux.handlers.project import init_project
     from arqux.handlers.workspace import init_workspace
 

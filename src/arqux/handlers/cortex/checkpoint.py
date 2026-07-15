@@ -74,7 +74,7 @@ def checkpoint_handler(
     try:
         existing = crud_read(brain_path, "$8/WRK:current")
         if existing.get("entries"):
-            result = crud_update(
+            crud_update(
                 brain_path, "$8/WRK:current",
                 set_={"fcs": value["fcs"], "obj": value["obj"], "tasks": value["tasks"], "state": value["state"], "last_turn": now},
                 force=True,

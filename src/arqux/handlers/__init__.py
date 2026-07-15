@@ -25,7 +25,20 @@ from typing import Any
 # New code should import directly from the package:
 #   from arqux.handlers.blueprint.manage import create
 #   from arqux.handlers.cortex.entries import add_entry
-from . import blueprint, cortex, cycle, evidence, handler, project, protocol, session, skill, sync, task, workspace
+from . import (
+    blueprint,
+    cortex,
+    cycle,
+    evidence,
+    handler,
+    project,
+    protocol,
+    session,
+    skill,
+    sync,
+    task,
+    workspace,
+)
 from . import context as context_pkg
 from . import identity as identity_pkg
 

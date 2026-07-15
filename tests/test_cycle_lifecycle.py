@@ -11,27 +11,25 @@ Tests:
 
 from __future__ import annotations
 
-import tempfile
 from pathlib import Path
 
 import pytest
 
+from arqux.constants import (
+    ARQUX_DIR,
+    BLUEPRINTS_DIR,
+    CYCLE_CLOSED,
+)
 from arqux.handlers.blueprint._synthesize_common import (
     parse_content_sections as _parse_content_sections,
 )
 from arqux.handlers.cycle import (
+    CYCLE_READY,
     _read_quality_gates_from_manifest,
     _replace_manifest_section,
-    synthesize_cycle,
-    mature_cycle,
     close_cycle,
-    CYCLE_DRAFT,
-    CYCLE_READY,
-)
-from arqux.constants import (
-    BLUEPRINTS_DIR,
-    CYCLE_CLOSED,
-    ARQUX_DIR,
+    mature_cycle,
+    synthesize_cycle,
 )
 from arqux.state import cycle_dir
 
@@ -254,7 +252,7 @@ class TestSynthesizeCycle:
         manifest.write_text(_make_minimal_manifest_template().replace(
             'cycle_id: ""', f'cycle_id: "{cycle_id}"'
         ).replace(
-            'name: ""', f'name: "test-cycle"'
+            'name: ""', 'name: "test-cycle"'
         ), encoding="utf-8")
 
         content = (

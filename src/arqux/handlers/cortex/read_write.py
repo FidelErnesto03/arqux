@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import contextlib
 from pathlib import Path
 
 from ...cortex_out import CortexOUT
@@ -162,10 +163,8 @@ def _auto_sync_brain(path: str) -> None:
         project_root = parent
     else:
         return
-    try:
+    with contextlib.suppress(Exception):
         sync_brain(project_root, "cortex.write", focus="brain.cortex auto-sync")
-    except Exception:
-        pass
 
 
 def verify_handler(
