@@ -88,21 +88,29 @@ _Hitos, revisiones y puntos de validación. La ejecución se detiene en cada pun
 
 ## §6: Blueprints (Índice)
 
-_Índice breve de los Blueprints asignados a este ciclo. Se auto-pobla._
-
-| BLP ID | Título | Estado | Prioridad | Objetivo | Gobernador |
-|---|---|---|---|---|---|
-| _BLP-NNN_ | _Título_ | _draft/ready/..._ | _critical/high/medium/low_ | _CYC-OBJ-N_ | _agente_ |
-
+| BLP-001 | Ejecutar auditoría ejecutable de ArqUX siguiendo protocolo A... | done | medium | hermes |
+| BLP-002 | Establecer pruebas automatizadas completas y pipeline CI/CD ... | done | medium | hermes |
+| BLP-003 | Corregir pruebas de permisos contradictorios y mejorar cober... | done | medium | hermes |
+| BLP-004 | Empaquetar correctamente los workflows y corregir el empaque... | done | medium | hermes |
+| BLP-005 | Corregir los 9 tests que fallan en áreas críticas: blueprint... | done | medium | hermes |
+| BLP-006 | Crear documentación automática de handlers (HANDLERS.md) gen... | ready | medium | hermes |
+| BLP-007 | Corregir el error silencioso sync_brain sincronizando la pla... | done | medium | hermes |
+| BLP-008 | Crear comando arqux quickstart para onboarding interactivo d... | done | medium | hermes |
+| BLP-009 | Crear GETTING_STARTED.md como documentacion humana de ArqUX ... | done | medium | hermes |
+| BLP-010 | Crear comando arqux status --dashboard con dashboard visual ... | done | medium | hermes |
+| BLP-011 | Crear comandos arqux backup y arqux restore para respaldo y ... | done | medium | hermes |
+| BLP-012 | Crear fixture de integracion arqux_env para tests de bluepri... | done | medium | hermes |
+| BLP-013 | Refactorizar arquitectura de ArqUX en capas: core/models/han... | done | medium | hermes |
+| BLP-014 | Aplicar ARQUX-PATCH-20260712 (v0.4.2 → 0.4.3) al repo /home/... | done | medium | alfred |
+| BLP-015 | Corregir dos defectos de governance en los handlers MCP/core... | done | medium | alfred |
+| BLP-016 | Formalizar el mecanismo de auto-gestión CORTEX-native: binde... | in_progress | medium | alfred |
+| BLP-017 | Corregir blueprint.execute handler para que NO marque comple... | defined | medium | alfred |
 
 ## §7: Estado y Métricas
 
-**Estado actual:** draft
-**Total Blueprints:** 0 | **Draft:** 0 | **Madurando:** 0 | **Ready:** 0 | **En Progreso:** 0 | **Done:** 0
-**Progreso:** 0%
-**Próximo punto de control:** _CP-NN — Fecha_
-**Iniciado:** _YYYY-MM-DD_ | **Fin planificado:** _YYYY-MM-DD_
-
+**Total Blueprints:** 17 | **Draft:** 0 | **Definido:** 1 | **Ready:** 1 | **En Progreso:** 1 | **Review:** 0 | **Done:** 14 | **Cancelado:** 0 | **Bloqueado:** 0
+**Progreso:** 82%
+**Total Tareas:** 6 | **Abiertas:** 6 | **Borrador:** 0 | **En Progreso:** 0 | **Completadas:** 0 | **Bloqueadas:** 0 | **Canceladas:** 0 | **Review:** 0
 
 ## §8: Reglas del Ciclo
 

@@ -32,7 +32,7 @@ def next_pulse_event_id(project_root: Path) -> str:
     max_num = 0
     for ev in events:
         eid = ev.get("id", "")
-        if eid.startswith("E-"):
+        if eid.startswith("E-") or eid.startswith("E_"):
             try:
                 num = int(eid[2:])
                 if num > max_num:

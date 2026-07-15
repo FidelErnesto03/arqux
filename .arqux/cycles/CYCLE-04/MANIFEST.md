@@ -51,21 +51,28 @@ CP-01: handler.list + AGENTS alineados — 2026-07-13 completado. CP-02: PULSE c
 
 ## §6: Blueprints (Índice)
 
-_Índice breve de los Blueprints asignados a este ciclo. Se auto-pobla._
-
-| BLP ID | Título | Estado | Prioridad | Objetivo | Gobernador |
-|---|---|---|---|---|---|
-| _BLP-NNN_ | _Título_ | _draft/ready/..._ | _critical/high/medium/low_ | _CYC-OBJ-N_ | _agente_ |
-
+| BLP-001 | Optimizar transversalmente la adopción e inicio de proyectos... | done | medium | hermes |
+| BLP-002 | Reestructurar AGENTS.md, AGENTS.lite.md y AGENTS.full.md com... | done | medium | hermes |
+| BLP-003 | Actualizar workflows.skill.md y skills gobernadas para refle... | done | medium | hermes |
+| BLP-004 | Consolidar mcp-handlers.skill.md post-BLP-001: reparar estru... | done | medium | hermes |
+| BLP-005 | Resolver issues detectados por Heimdall en dry-run de CYCLE-... | done | medium | hermes |
+| BLP-006 | Regenerar w04-reactive-task.md siguiendo arch_vision/w04 §6:... | done | medium | hermes |
+| BLP-007 | Regenerar w05-identity-evolution.md siguiendo arch_vision/w0... | done | medium | hermes |
+| BLP-008 | Regenerar w06-agent-adoption.md siguiendo arch_vision/w06 §6... | done | medium | hermes |
+| BLP-009 | Regenerar w07-skill-lifecycle.md siguiendo arch_vision/w07 §... | done | medium | hermes |
+| BLP-010 | Regenerar w08-blueprint-lifecycle.md siguiendo arch_vision/w... | done | medium | hermes |
+| BLP-011 | Regenerar w10-identity-handoff.md siguiendo arch_vision/w10 ... | done | medium | hermes |
+| BLP-012 | handler.list — Dynamic Capability Discovery: el agente descu... | done | high | alfred |
+| BLP-013 | pulse.compact — Compactación de PULSE en cierre de sesión ví... | done | high | alfred |
+| BLP-014 | CORTEX-native working memory — checkpoint WRK:current entre ... | done | high | alfred |
+| BLP-015 | w12-cycle-lifecycle — Ciclo de vida del ciclo como contenedo... | done | high | alfred |
+| BLP-016 | CODEC-CORTEX compliance — migrar escrituras directas a handl... | in_progress | critical | alfred |
+| BLP-017 | Governance Enforcement — gate de arranque + hook pre-respues... | done | critical | alfred |
 
 ## §7: Estado y Métricas
 
-**Estado actual:** draft
-**Total Blueprints:** 0 | **Draft:** 0 | **Madurando:** 0 | **Ready:** 0 | **En Progreso:** 0 | **Done:** 0
-**Progreso:** 0%
-**Próximo punto de control:** _CP-NN — Fecha_
-**Iniciado:** _YYYY-MM-DD_ | **Fin planificado:** _YYYY-MM-DD_
-
+**Total Blueprints:** 17 | **Draft:** 0 | **Definido:** 0 | **Ready:** 0 | **En Progreso:** 1 | **Review:** 0 | **Done:** 16 | **Cancelado:** 0 | **Bloqueado:** 0
+**Progreso:** 94%
 
 ## §8: Reglas del Ciclo
 

@@ -18,11 +18,11 @@ $0
 # ARQX  | artifact   | attrs      | B | Semantic       | ArqUX artifact metadata
 #
 # Types:
-# relación = canonical type
-# attrs-pos = canonical type
-# attrs = canonical type
 # bloque = canonical type
+# attrs-pos = canonical type
 # cuerpo = canonical type
+# attrs = canonical type
+# relación = canonical type
 #
 # Micro-glossary:
 # cur=current pln=planned fut=future blk=blocked
@@ -40,11 +40,11 @@ IDN:governor{level:"2", project:"ARQUX", path:"/home/vatrox/workspace/ARQUX", go
 
 $2: FOCUS
 
-FCS:current{what:"Ciclo cerrado", priority:"medium", status:"current", survive:"work", updated:"2026-07-14T19:57:26Z", event:"cycle.close"}
+FCS:current{what:"Próximo BLP o cierre de ciclo", priority:"medium", status:"current", survive:"work", updated:"2026-07-15T14:50:31Z", event:"blueprint.approve"}
 
 $3: OBJECTIVES
 
-OBJ:_{goal:"Mantener sincronia entre brain.cortex y estado real del proyecto. 96 BLPs gestionados en 5 ciclos (CYCLE-01 a CYCLE-05).", status:"current", success:"synced", survive:"work"}
+OBJ:_{goal:"Mantener sincronia entre brain.cortex y estado real del proyecto. 98 BLPs gestionados en 7 ciclos (CYCLE-00, CYCLE-01, CYCLE-02, CYCLE-03, CYCLE-04, CYCLE-05, CYCLE-06).", status:"current", success:"synced", survive:"work", updated:"2026-07-14T21:39:34Z", event:"brain.reconcile"}
 
 $4: SESSIONS
 
@@ -158,7 +158,7 @@ AUD:E_0095{date:"2026-07-14T17:35:15Z", event:"E-0095", task:"-", kind:"handler_
 AUD:E_0096{date:"2026-07-14T17:35:15Z", event:"E-0096", task:"-", kind:"handler_call", agent:"anonymous", result:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", evidence:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md"}
 AUD:E_0097{date:"2026-07-14T17:35:15Z", event:"E-0097", task:"-", kind:"handler_call", agent:"anonymous", result:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", evidence:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md"}
 AUD:E_0098{date:"2026-07-14T17:40:47Z", event:"E-0098", task:"-", kind:"handler_call", agent:"test", result:"[cortex.ref] sigil=WRK", evidence:"[cortex.ref] sigil=WRK"}
-AUD:E_0099{date:"2026-07-14T17:40:47Z", event:"E-0099", task:"-", kind:"handler_call", agent:"test", result:"[cortex.ref] sigil=LNG", evidence:"[cortex.ref] sigil=LNG"}
+AUD:E_0099{event:"E-0099", task:"-", kind:"session", agent:"alfred", date:"2026-07-14", result:"CYCLE-06 verification completed: 846/846 tests passing. BLP-001/002/003 all 18/18 ACs verified. Fix: regex $→Z in cycle.py.", evidence:"pending"}
 KNW:cycles_closed{name:"cycles_closed", value:"1", updated:"2026-07-14T19:57:26Z", topic:"metrics", content:"metric cycles_closed=1", status:"current"}
 
 $7: LESSONS
@@ -166,7 +166,7 @@ $7: LESSONS
 
 $8: ACTIVE_CONTEXT
 
-WRK:current{phase:"current", current:"cycle.close: cycle CYCLE-06 closed", blocked:"no", survive:"work", updated:"2026-07-14T19:57:26Z", event:"cycle.close", fcs:"CYCLE-06", obj:"\"Tres BLPs ejecutados y completados\"", tasks:"\"BLP-001 review", state:"\"session-complete\"", last_turn:"2026-07-14T19:52:51Z"}
+WRK:current{phase:"current", current:"blueprint.approve: BLP BLP-007 approved", blocked:"no", survive:"work", updated:"2026-07-15T14:50:31Z", event:"blueprint.approve", fcs:"BLP-004 completado y auditado", obj:"Reconciliación Down-Top w13", tasks:"T-1.1 a T-1.7 verificadas", state:"review", last_turn:"2026-07-14T22:12:46Z"}
 
 $9: RISKS
 

@@ -2,6 +2,40 @@
 
 All notable changes to ArqUX are documented here.
 
+## [0.6.0] — 2026-07-15
+
+### Added
+- **identity_resolver.py**: `resolve_agent_identity()` — central identity resolution service (BLP-007)
+- **PermissionContext.from_env(project_root=)**: Resolves runtime "hermes" to canonical "Alfred" (BLP-007)
+- **Synthesize refactored**: Now a loop over `blueprint.update` — eliminates `_replace_marker`, `_atomic_write` (BLP-006)
+- **_synthesize_common.py**: Shared CORTEX parser extracted from synthesize.py and cycle.py (BLP-006)
+- **PULSE ID fix**: `next_pulse_event_id` now scans for both `E-` and `E_` formats (BLP-005)
+- **reconcile_cycle()**: Down-top automatic state reconciliation (BLP-004)
+- **GOV-001**: Governance evidence — cross-reference of lessons vs systemic patterns
+
+### Changed
+- **blueprint.define REMOVED** as registered MCP handler (BLP-006)
+- **State machine simplified**: `draft -> maturing -> ready -> in_progress -> review -> done` (ISS-002)
+- **Handler count**: 93 -> 92
+- **Lifecycle ISS-002**: `BP_DEFINED` constant and `define_blueprint()` wrapper fully removed
+- **Tests**: 845 total
+- **Version**: 0.5.0 -> 0.6.0
+
+### Fixed
+- **session.close E008_DUPLICATE_ENTRY**: PULSE IDs no longer collide (BLP-005)
+- **synthesize header duplication**: Eliminated by refactoring to delegate to `update` (BLP-006)
+- **cycle.synthesize no-expand bug**: Shared parser in `_synthesize_common.py` (BLP-006)
+- **blueprint.create governor="hermes"**: Now `governor="alfred"` via identity resolution (BLP-007)
+- **blueprint.claim executor="hermes"**: Now `executor="alfred"` via identity resolution (BLP-007)
+- **session.context_set agent="hermes"**: Returns resolved identity (BLP-007)
+
+### Removed
+- **blueprint.define** handler from MCP registry (BLP-006)
+- **_replace_marker()** and **_atomic_write()** from synthesize.py (BLP-006)
+- **BP_DEFINED** state constant and transitions (ISS-002)
+- **define_blueprint()** wrapper from lifecycle.py (ISS-002)
+- **6 resolved issues** deleted from .arqux/issues/ after verification
+
 ## [0.5.0] — 2026-07-12
 
 ### Added

@@ -15,6 +15,7 @@ from arqux.handlers import REGISTRY, handler_count, list_handlers
 
 
 def test_handler_count_is_86() -> None:
+    """Total handler count is 92 (BLP-006 removed blueprint.define)."""
     assert handler_count() == 92
 
 
@@ -71,7 +72,7 @@ def test_each_handler_has_spec() -> None:
 
 def test_module_handler_counts() -> None:
     expected = {
-        "blueprint": 20,  # +1: blueprint.synthesize, +1: blueprint.execute
+        "blueprint": 19,  # -1: blueprint.define removed (BLP-006)
         "context": 2,
         "cortex": 20,  # +3: ref, format, patch, migrate, checkpoint
         "cycle": 6,  # +1: cycle.synthesize

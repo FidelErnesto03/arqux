@@ -9,7 +9,7 @@ import re
 
 from ...cortex_out import CortexOUT
 from ...permissions import PermissionContext
-from ...sync import sync_brain
+from ...sync import sync_brain, reconcile_cycle
 from ._helpers import (
     BP_BLOCKED,
     BP_CANCELLED,
@@ -84,6 +84,10 @@ def complete_blueprint(
         detail=f"BLP {bp_id} completed",
     )
 
+    cycle_id = fm.get("cycle", "")
+    if cycle_id:
+        reconcile_cycle(root, cycle_id)
+
     return CortexOUT.work(
         f"blueprint.complete ok id={bp_id}",
         blueprint_id=bp_id,
@@ -116,6 +120,10 @@ def fail_blueprint(
     fm["blocked_reason"] = reason
     fm["updated_at"] = _now_iso()
     _write_blueprint(bp_path, fm, body)
+
+    cycle_id = fm.get("cycle", "")
+    if cycle_id:
+        reconcile_cycle(root, cycle_id)
 
     return CortexOUT.work(
         f"blueprint.fail ok id={bp_id} reason={reason!r}",
@@ -190,6 +198,10 @@ def approve_blueprint(
         detail=f"BLP {bp_id} approved",
     )
 
+    cycle_id = fm.get("cycle", "")
+    if cycle_id:
+        reconcile_cycle(root, cycle_id)
+
     return CortexOUT.work(
         f"blueprint.approve ok id={bp_id}",
         blueprint_id=bp_id,
@@ -234,6 +246,10 @@ def cancel_blueprint(
         detail=f"{bp_id} cancelled: {reason or ''}",
     )
 
+    cycle_id = fm.get("cycle", "")
+    if cycle_id:
+        reconcile_cycle(root, cycle_id)
+
     return CortexOUT.work(
         f"blueprint.cancel ok id={bp_id}",
         blueprint_id=bp_id, status=BP_CANCELLED, reason=reason,
@@ -276,6 +292,10 @@ def re_delegate_blueprint(
     fm["updated_at"] = _now_iso()
     _write_blueprint(bp_path, fm, body)
 
+    cycle_id = fm.get("cycle", "")
+    if cycle_id:
+        reconcile_cycle(root, cycle_id)
+
     return CortexOUT.work(
         f"blueprint.re_delegate ok id={bp_id} loop={loop_count}/{MAX_VERIFICATION_LOOPS}",
         blueprint_id=bp_id,
@@ -308,6 +328,10 @@ def block_for_architect(
     fm["blocked_reason"] = f"Verification failed {MAX_VERIFICATION_LOOPS} times — Architect manual review required"
     fm["updated_at"] = _now_iso()
     _write_blueprint(bp_path, fm, body)
+
+    cycle_id = fm.get("cycle", "")
+    if cycle_id:
+        reconcile_cycle(root, cycle_id)
 
     return CortexOUT.work(
         f"blueprint.block_for_architect ok id={bp_id}",

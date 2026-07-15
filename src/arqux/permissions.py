@@ -24,6 +24,7 @@ import os
 import warnings
 from collections.abc import Callable
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any, TypeVar
 
 from .constants import (
@@ -32,6 +33,7 @@ from .constants import (
     ROLE_EXECUTOR,
     ROLE_GOVERNOR,
 )
+from .identity_resolver import resolve_agent_identity
 
 
 class Role(str, enum.Enum):
@@ -114,7 +116,7 @@ GOVERNOR_ONLY: tuple[str, ...] = (
 # This is the canonical list of handlers that mutate state.
 MUTATING_HANDLERS: frozenset[str] = frozenset({
     # blueprint mutations
-    "blueprint.create", "blueprint.define", "blueprint.mature",
+    "blueprint.create", "blueprint.mature",
     "blueprint.ready", "blueprint.assign", "blueprint.claim",
     "blueprint.update", "blueprint.complete", "blueprint.fail",
     "blueprint.cancel", "blueprint.approve", "blueprint.re_delegate",
@@ -173,7 +175,7 @@ class PermissionContext:
     verified: bool = False  # True if HMAC signature has been verified
 
     @classmethod
-    def from_env(cls) -> PermissionContext:
+    def from_env(cls, project_root: str | Path | None = None) -> PermissionContext:
         prefix = f"{PRODUCT_NAME_UPPER}_"
         agent_id = os.environ.get(f"{prefix}AGENT_ID", "anonymous")
         role = os.environ.get(f"{prefix}AGENT_ROLE", ROLE_GOVERNOR)
@@ -181,6 +183,13 @@ class PermissionContext:
         signature = os.environ.get(f"{prefix}AGENT_SIGNATURE")
         timestamp_str = os.environ.get(f"{prefix}AGENT_TIMESTAMP")
         timestamp = int(timestamp_str) if timestamp_str else None
+
+        # Resolve runtime agent_id to canonical ArqUX identity (BLP-007)
+        if project_root is not None:
+            proj_path = Path(project_root) if isinstance(project_root, str) else project_root
+            resolved = resolve_agent_identity(agent_id, project_root=proj_path)
+            if resolved and resolved != agent_id:
+                agent_id = resolved
 
         # Validate role string.
         try:

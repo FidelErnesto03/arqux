@@ -11,10 +11,7 @@ file + rename).
 
 from __future__ import annotations
 
-import contextlib
-import os
 import re
-import tempfile
 from pathlib import Path
 from typing import Any
 
@@ -24,6 +21,8 @@ from ...cortex_out import CortexOUT
 from ...permissions import PermissionContext
 from ...pulse import append_pulse_to_brain, next_pulse_event_id
 from ...state import find_project_root
+from ._synthesize_common import parse_content_sections
+from .manage import update_blueprint
 
 # ---------------------------------------------------------------------------
 # synthesize
@@ -87,7 +86,7 @@ def synthesize_blueprint(
     valid_ids = set(tmpl_result.fields.get("markers", {}))
 
     # Parse content into section_id -> body.
-    sections = _parse_content_sections(content)
+    sections = parse_content_sections(content)
     if not sections:
         return CortexOUT.error(
             "no sections parsed from content",
@@ -108,30 +107,31 @@ def synthesize_blueprint(
     # Find or create the BLP file.
     bp_path, fm, body, created = _find_or_create_blueprint(root, bp_id, ctx, path_hint=path)
 
-    # Apply each section via marker replacement.
-    new_body = body
+    # Delegate each section to blueprint.update (reuses _replace_section).
     sections_written: list[str] = []
+    sections_errors: list[dict] = []
     for sid, section_content in sections_to_write.items():
-        marker_id = f"BLP:{sid}"
-        before = new_body
-        new_body = _replace_marker(new_body, marker_id, section_content)
-        if new_body != before:
+        result = update_blueprint(bp_id, section=sid, content=section_content, path=path, ctx=ctx)
+        if result.profile == "OUT-WORK":
             sections_written.append(sid)
-
-    # Atomic write: temp file + rename.
-    bytes_written = _atomic_write(bp_path, fm, new_body)
+        else:
+            sections_errors.append({"id": sid, "error": result.message})
 
     _record_pulse(root, ctx, bp_id=bp_id, action="synthesize",
                   sections_written=sections_written)
 
+    msg = (f"blueprint.synthesize ok id={bp_id} sections={len(sections_written)} "
+           f"errors={len(sections_errors)} created={created}")
+    if sections_errors:
+        msg += f" failed={sections_errors}"
+
     return CortexOUT.work(
-        f"blueprint.synthesize ok id={bp_id} sections={len(sections_written)} "
-        f"created={created} bytes={bytes_written}",
+        msg,
         blueprint_id=bp_id,
         path=str(bp_path),
         sections_written=sections_written,
+        sections_errors=sections_errors if sections_errors else None,
         sections_skipped=sections_skipped,
-        bytes_written=bytes_written,
         created=created,
     )
 
@@ -139,94 +139,6 @@ def synthesize_blueprint(
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
-
-
-def _parse_content_sections(content: str) -> dict[str, str]:
-    """Parse a CORTEX content payload into ``{section_id: body}``.
-
-    Recognises both the per-section form (``$1:{body1}\n$2:{body2}``)
-    and the single-body form (``$0:{1: "body1", 2: "body2"}``).
-    """
-    out: dict[str, str] = {}
-    text = content.strip()
-
-    # Per-section form: scan for $N:{...} or $N.N:{...}
-    pattern = re.compile(r"\$(\d+(?:\.\d+)?):\s*\{")
-    matches = list(pattern.finditer(text))
-    if matches:
-        for _i, m in enumerate(matches):
-            sid = m.group(1)
-            start = m.end() - 1  # position of the opening brace
-            body = _extract_brace_body(text, start)
-            if body is not None:
-                out[sid] = body.strip()
-        return out
-
-    # Single-body form: $0:{...} containing key:val pairs.
-    # Fall back to parsing the whole content as a key:val map.
-    inner = _extract_brace_body(text, text.find("{"))
-    if inner is None:
-        return {}
-    for part in _split_top_level(inner, ","):
-        part = part.strip()
-        if not part or ":" not in part:
-            continue
-        k, _, v = part.partition(":")
-        k = k.strip().strip('"').strip("'")
-        v = v.strip()
-        if len(v) >= 2 and v[0] in ('"', "'") and v[-1] == v[0]:
-            v = v[1:-1]
-        if k:
-            out[k] = v
-    return out
-
-
-def _extract_brace_body(text: str, start: int) -> str | None:
-    """Return the content inside the ``{...}`` block starting at ``start``."""
-    if start < 0 or start >= len(text) or text[start] != "{":
-        return None
-    depth = 0
-    i = start
-    while i < len(text):
-        c = text[i]
-        if c == "{":
-            depth += 1
-        elif c == "}":
-            depth -= 1
-            if depth == 0:
-                return text[start + 1 : i]
-        i += 1
-    return None
-
-
-def _split_top_level(text: str, sep: str) -> list[str]:
-    """Split ``text`` on ``sep`` at top level (not inside braces/quotes)."""
-    parts: list[str] = []
-    buf: list[str] = []
-    depth = 0
-    quote: str | None = None
-    for c in text:
-        if quote:
-            buf.append(c)
-            if c == quote:
-                quote = None
-        elif c in ('"', "'"):
-            quote = c
-            buf.append(c)
-        elif c == "{":
-            depth += 1
-            buf.append(c)
-        elif c == "}":
-            depth = max(0, depth - 1)
-            buf.append(c)
-        elif c == sep and depth == 0:
-            parts.append("".join(buf))
-            buf = []
-        else:
-            buf.append(c)
-    if buf:
-        parts.append("".join(buf))
-    return parts
 
 
 def _find_or_create_blueprint(
@@ -285,7 +197,7 @@ def _find_or_create_blueprint(
     fm, body = _parse_md(body)
     fm["blueprint_id"] = bp_id
     fm["status"] = "draft"
-    fm["governor"] = (ctx or PermissionContext.from_env()).agent_id
+    fm["governor"] = (ctx or PermissionContext.from_env(project_root=root)).agent_id
 
     return bp_path, fm, body, True
 
@@ -317,70 +229,6 @@ def _parse_md(text: str) -> tuple[dict[str, Any], str]:
     return fm, body
 
 
-def _replace_marker(text: str, marker_id: str, content: str) -> str:
-    """Replace the content between ``<!-- marker_id -->`` markers.
-
-    Preserves the section header (``## §N: Title``) if present.
-    """
-    open_tag = f"<!-- {marker_id} -->"
-    close_tag = f"<!-- /{marker_id} -->"
-    pattern = rf"{re.escape(open_tag)}.*?{re.escape(close_tag)}"
-
-    match = re.search(pattern, text, re.DOTALL)
-    if not match:
-        return text
-
-    block = match.group(0)
-    inner = block[len(open_tag):-len(close_tag)].strip()
-
-    # Preserve section header (first line starting with ## §).
-    header = ""
-    for line in inner.split("\n"):
-        if line.strip().startswith("## §"):
-            header = line.rstrip()
-            break
-
-    if header:
-        replacement = f"{open_tag}\n{header}\n\n{content}\n{close_tag}"
-    else:
-        replacement = f"{open_tag}\n{content}\n{close_tag}"
-
-    return text.replace(block, replacement, 1)
-
-
-def _atomic_write(bp_path: Path, fm: dict[str, Any], body: str) -> int:
-    """Write the BLP .md file atomically (temp file + rename)."""
-    # Render frontmatter.
-    fm_lines = ["---"]
-    for k, v in fm.items():
-        if isinstance(v, bool):
-            v = str(v).lower()
-        elif isinstance(v, str):
-            v = f'"{v}"'
-        fm_lines.append(f"{k}: {v}")
-    fm_lines.append("---")
-    fm_lines.append("")
-    content = "\n".join(fm_lines) + body
-
-    bp_path.parent.mkdir(parents=True, exist_ok=True)
-    # Write to temp file in the same directory, then rename.
-    fd, tmp_path = tempfile.mkstemp(
-        prefix=f".{bp_path.stem}_",
-        suffix=".tmp",
-        dir=str(bp_path.parent),
-    )
-    try:
-        with os.fdopen(fd, "w", encoding="utf-8") as f:
-            f.write(content)
-        os.replace(tmp_path, bp_path)
-    except Exception:
-        with contextlib.suppress(OSError):
-            os.unlink(tmp_path)
-        raise
-
-    return len(content)
-
-
 def _record_pulse(
     root: Path,
     ctx: PermissionContext | None,
@@ -391,7 +239,7 @@ def _record_pulse(
 ) -> None:
     """Append a PULSE event for the synthesize call (best-effort)."""
     try:
-        agent = (ctx or PermissionContext.from_env()).agent_id
+        agent = (ctx or PermissionContext.from_env(project_root=root)).agent_id
         event_id = next_pulse_event_id(root)
         append_pulse_to_brain(
             root,

@@ -17,7 +17,6 @@ from ._helpers import (
     BLUEPRINT_TEMPLATE,
     BP_BLOCKED,
     BP_CANCELLED,
-    BP_DEFINED,
     BP_DONE,
     BP_DRAFT,
     BP_IN_PROGRESS,
@@ -41,7 +40,6 @@ from .lifecycle import (
     assign_blueprint,
     claim_blueprint,
     create_blueprint,
-    define_blueprint,
     mature_blueprint,
     ready_blueprint,
 )
@@ -66,7 +64,6 @@ __all__ = [
     "BLUEPRINT_TEMPLATE",
     "BP_BLOCKED",
     "BP_CANCELLED",
-    "BP_DEFINED",
     "BP_DONE",
     "BP_DRAFT",
     "BP_IN_PROGRESS",
@@ -87,7 +84,6 @@ __all__ = [
     "assign_blueprint",
     "claim_blueprint",
     "create_blueprint",
-    "define_blueprint",
     "mature_blueprint",
     "ready_blueprint",
     # Synthesize (BLP-007)
@@ -112,7 +108,6 @@ __all__ = [
 
 handler_schemas = [
     {"name": "blueprint.create", "fn": create_blueprint, "description": "Create a new Blueprint from BLP_TEMPLATE.md in draft state.", "input_schema": {"type": "object", "properties": {"obj": {"type": "string", "description": "Blueprint objective"}, "cycle": {"type": "string", "description": "Cycle ID. Uses most recent if omitted."}, "path": {"type": "string"}}, "required": ["obj"]}},
-    {"name": "blueprint.define", "fn": define_blueprint, "description": "Fill the Blueprint's definition sections. State → defined. Accepts a 'sections' dict (BLP-012) mapping section IDs ('BLP:N') to content — section IDs are validated dynamically against BLP_TEMPLATE.md via parse_blp_template().", "input_schema": {"type": "object", "properties": {"bp_id": {"type": "string"}, "pre": {"type": "array", "items": {"type": "string"}}, "scope": {"type": "string"}, "exclusions": {"type": "string"}, "mandatory_rules": {"type": "array", "items": {"type": "string"}}, "acceptance_criteria": {"type": "array", "items": {"type": "string"}}, "procedure": {"type": "string"}, "validations": {"type": "array", "items": {"type": "object"}}, "technical_design": {"type": "string"}, "operational_design": {"type": "string"}, "risks": {"type": "array", "items": {"type": "string"}}, "blocking_rule": {"type": "string"}, "sections": {"type": "object", "description": "Dynamic dict of section_id (e.g. 'BLP:3') -> content string. Section IDs validated against BLP_TEMPLATE.md (BLP-012)."}, "path": {"type": "string"}}, "required": ["bp_id"]}},
     {"name": "blueprint.mature", "fn": mature_blueprint, "description": "Enter maturation phase. Mode 'live' for synchronous co-design, 'async' (default) for cyclic iteration.", "input_schema": {"type": "object", "properties": {"bp_id": {"type": "string"}, "mode": {"type": "string", "enum": ["live", "async"], "default": "async", "description": "Maturation mode: 'live' for synchronous co-design, 'async' for cyclic iteration."}, "path": {"type": "string"}}, "required": ["bp_id"]}},
     {"name": "blueprint.gate", "fn": gate_blueprint, "description": "Approve one or all Blueprint quality gates after Architect maturation.", "input_schema": {"type": "object", "properties": {"bp_id": {"type": "string"}, "gate": {"type": "string", "description": "Quality gate name, or 'all' for maturation gates."}, "path": {"type": "string"}}, "required": ["bp_id"]}},
     {"name": "blueprint.ready", "fn": ready_blueprint, "description": "Architect declares Blueprint ready for execution.", "input_schema": {"type": "object", "properties": {"bp_id": {"type": "string"}, "path": {"type": "string"}}, "required": ["bp_id"]}},

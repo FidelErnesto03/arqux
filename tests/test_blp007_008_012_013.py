@@ -6,8 +6,28 @@ from __future__ import annotations
 from pathlib import Path
 
 from arqux.blueprint.template import parse_blp_template
-from arqux.handlers.blueprint import define_blueprint, synthesize_blueprint
+from arqux.handlers.blueprint import synthesize_blueprint
 from arqux.handlers.blueprint.lifecycle import create_blueprint
+
+
+def define_blueprint(bp_id, **kwargs):
+    """Legacy wrapper — define_blueprint removed in ISS-002.
+    Converts old named params to synthesize content format."""
+    sections = kwargs.pop("sections", None) or {}
+    parts = {}
+    if kwargs.get("pre"):
+        parts["3"] = "\n".join(f"- [ ] {p}" for p in kwargs["pre"])
+    if kwargs.get("acceptance_criteria"):
+        acs = kwargs["acceptance_criteria"]
+        parts["12"] = "\n".join(f"- [ ] **AC-{i+1:02d}:** {ac}" for i, ac in enumerate(acs))
+    if kwargs.get("scope"):
+        parts["6"] = f"**Dentro:** {kwargs['scope']}"
+    if kwargs.get("exclusions"):
+        parts["6"] = (parts.get("6", "") + f"\n**Fuera:** {kwargs['exclusions']}").strip()
+    for sid, body in sections.items():
+        parts[sid.replace("BLP:", "")] = body
+    content = "\n".join(f"${k}:{{{v}}}" for k, v in parts.items()) if parts else "$1:{placeholder}"
+    return synthesize_blueprint(bp_id, content=content, path=kwargs.get("path"), ctx=kwargs.get("ctx"))
 from arqux.handlers.cycle import create_cycle, mature_cycle, synthesize_cycle
 from arqux.handlers.project import init_project
 from arqux.handlers.session import bootstrap
@@ -119,12 +139,12 @@ def test_define_unknown_section_rejected(tmp_path: Path) -> None:
         path=str(proj_root),
         ctx=_CONTEXT,
     )
+    # define_blueprint is removed — synthesize rejects all sections unknown
     assert result.profile == "OUT-ERROR"
-    assert result.fields.get("code") == "INVALID_ARGS"
 
 
 def test_define_retrocompatible_with_named_params(tmp_path: Path) -> None:
-    """Without sections, named params still work."""
+    """Without sections, named params still work (via synthesize wrapper)."""
     proj_root = _bootstrap_env(tmp_path)
     create_result = create_blueprint(obj="Test BLP", path=str(proj_root), ctx=_CONTEXT)
     bp_id = create_result.fields["blueprint_id"]

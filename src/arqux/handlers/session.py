@@ -273,7 +273,7 @@ def context_set(
     if ws_root is None:
         return CortexOUT.error("no workspace root found", code="NOT_FOUND")
 
-    agent = (ctx or PermissionContext.from_env()).agent_id
+    agent = (ctx or PermissionContext.from_env(project_root=ws_root)).agent_id
 
     # Phase 2: resolve target project from meta-brain
     project_root = _resolve_project_from_meta_brain(ws_root, project)

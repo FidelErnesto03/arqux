@@ -53,7 +53,11 @@ def test_cycle_current_returns_latest(workspace_root: Path, governor_ctx) -> Non
         cycle.create_cycle(name="A")
         cycle.create_cycle(name="B")
         result = cycle.current_cycle()
-        assert "current=CYCLE-02" in result.to_text()
+        assert "open_cycles=" in result.to_text()
+        assert "CYCLE-02" in result.to_text()
+        assert "CYCLE-01" in result.to_text()
+        assert "count=2" in result.to_text()
+        assert "latest=CYCLE-02" in result.to_text()
     finally:
         os.chdir(cwd)
 

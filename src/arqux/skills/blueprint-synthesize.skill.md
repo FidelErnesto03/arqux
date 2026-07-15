@@ -88,8 +88,7 @@ Returns `OUT-WORK` with:
 4. **Atomic write** — the BLP file is written to a temp file first,
    then renamed. A crash mid-write never leaves a half-written BLP.
 5. **No status change** — synthesize does NOT change the BLP status.
-   If the BLP was `draft`, it stays `draft`. If it was `defined`, it
-   stays `defined`. Synthesize only writes content.
+   If the BLP was `draft`, it stays `draft`. Synthesize only writes content.
 6. **Frontmatter preserved** — when updating an existing BLP, the
    frontmatter (status, governor, executor, quality_gates, etc.) is
    preserved. Only the body sections are replaced.
@@ -117,7 +116,7 @@ $12:{
 
 - **Depends on:** `arqux.blueprint.template.parse_blp_template` (BLP-013)
 - **Replaces:** `blueprint.create` + N× `blueprint.update` for programmatic BLP authoring
-- **Does NOT replace:** `blueprint.define` (which also transitions state to `defined`)
+- **Does NOT replace:** `blueprint.update` (one section at a time)
 - **Used by:** `blueprint.execute` (BLP-010) for re-writing sections during execution
 
 ## §8: WORKFLOW UPDATES

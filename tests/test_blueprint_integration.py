@@ -14,10 +14,37 @@ from arqux.handlers.blueprint.lifecycle import (
     assign_blueprint,
     claim_blueprint,
     create_blueprint,
-    define_blueprint,
     mature_blueprint,
     ready_blueprint,
 )
+# define_blueprint was removed in ISS-002 — kept as thin wrapper for legacy tests
+from arqux.handlers.blueprint import synthesize_blueprint
+
+
+def define_blueprint(bp_id, **kwargs):
+    """Legacy wrapper — define_blueprint removed in ISS-002.
+    Converts old named params to synthesize content format."""
+    sections = kwargs.pop("sections", None) or {}
+    parts = {}
+    if kwargs.get("pre"):
+        parts["3"] = "\n".join(f"- [ ] {p}" for p in kwargs["pre"])
+    if kwargs.get("scope"):
+        parts["6"] = f"**Dentro:** {kwargs['scope']}"
+    if kwargs.get("exclusions"):
+        parts["6"] = (parts.get("6", "") + f"\n**Fuera:** {kwargs['exclusions']}").strip()
+    if kwargs.get("acceptance_criteria"):
+        acs = kwargs["acceptance_criteria"]
+        parts["12"] = "\n".join(f"- [ ] **AC-{i+1:02d}:** {ac}" for i, ac in enumerate(acs))
+    if kwargs.get("mandatory_rules"):
+        parts["7"] = "\n".join(f"{i+1}. {r}" for i, r in enumerate(kwargs["mandatory_rules"]))
+    for sid, body in sections.items():
+        clean_sid = sid.replace("BLP:", "")
+        parts[clean_sid] = body
+    content = "\n".join(f"${k}:{{{v}}}" for k, v in parts.items()) if parts else "$1:{placeholder}"
+    path = kwargs.get("path")
+    ctx = kwargs.get("ctx")
+    return synthesize_blueprint(bp_id, content=content, path=path, ctx=ctx)
+
 from arqux.handlers.blueprint.manage import gate_blueprint, update_blueprint
 from arqux.handlers.blueprint.review import (
     ac_blueprint,
@@ -122,7 +149,7 @@ def test_create_blueprint_draft(arqux_env) -> None:
 
 
 def test_define_blueprint(arqux_env) -> None:
-    """Define a blueprint and verify the status transitions to defined."""
+    """Define a blueprint — uses synthesize wrapper (ISS-002)."""
     result = define_blueprint(
         arqux_env.bp_id,
         pre=["precondition one"],
@@ -130,9 +157,9 @@ def test_define_blueprint(arqux_env) -> None:
         path=str(arqux_env.proj_root),
         ctx=arqux_env.gov_ctx,
     )
-    assert "blueprint.define ok" in result.to_text()
+    assert "blueprint.synthesize ok" in result.to_text()
     fm = _read_fm(arqux_env.proj_root, arqux_env.bp_id)
-    assert fm.get("status") == "defined", f"expected defined, got {fm.get('status')}"
+    assert fm.get("status") in ("draft",), f"expected draft, got {fm.get('status')}"
 
 
 def test_mature_blueprint(arqux_env) -> None:
