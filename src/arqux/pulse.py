@@ -24,14 +24,31 @@ def _brain_cortex_path(project_root: Path) -> Path:
 # --- Pulse operations --------------------------------------------------------
 
 
+_PULSE_ID_RE = re.compile(r"^(E-|SES-|OBS-|HDL-)\d+$")
+
+
+def _is_valid_pulse_id(event_id: str) -> bool:
+    """Validate pulse event ID format (BLP-008 GOV-001 P4.1)."""
+    return bool(_PULSE_ID_RE.match(event_id))
+
+
 def next_pulse_event_id(project_root: Path) -> str:
-    """Return the next sequential event ID (E-XXXX)."""
+    """Return the next sequential event ID (E-XXXX).
+
+    Canonical format uses hyphen (BLP-008 GOV-001 P3.1).
+    Scans existing entries for both hyphen and underscore prefixes
+    for backward compatibility. Implements sanity check: if the
+    generated ID already exists, keep incrementing (P3.3).
+    """
     events = read_pulse_from_brain(project_root)
+    existing_ids = set()
     if not events:
         return "E-0001"
     max_num = 0
     for ev in events:
         eid = ev.get("id", "")
+        existing_ids.add(eid)
+        # Accept both hyphen and underscore for backward compat
         if eid.startswith("E-") or eid.startswith("E_"):
             try:
                 num = int(eid[2:])
@@ -39,7 +56,14 @@ def next_pulse_event_id(project_root: Path) -> str:
                     max_num = num
             except ValueError:
                 continue
-    return f"E-{max_num + 1:04d}"
+
+    # P3.3: Sanity check — if generated ID already exists, keep incrementing
+    candidate = max_num + 1
+    while True:
+        candidate_id = f"E-{candidate:04d}"
+        if candidate_id not in existing_ids:
+            return candidate_id
+        candidate += 1
 
 
 def append_pulse_to_brain(
@@ -54,8 +78,24 @@ def append_pulse_to_brain(
 ) -> str:
     """Append a pulse entry to the brain's PULSE section.
 
+    Validates naming conventions (BLP-008 GOV-001 P4.1):
+    - event_id must start with E- or SES- or OBS-
+    - kind must be a known pulse kind
+
     Returns pulse summary line.
+
+    Note: event_id uses hyphen (E-0004) for API consistency.
+    Internally, CRUD stores with underscore (E_0004) because
+    the CODEC-CORTEX parser uses hyphen as a selector separator.
     """
+    # P4.1: Validate naming conventions
+    if not _is_valid_pulse_id(event_id):
+        raise ValueError(
+            f"invalid pulse event_id={event_id!r}: must start with "
+            f"E-, SES-, OBS-, or HDL-"
+        )
+    if not kind or not isinstance(kind, str):
+        raise ValueError(f"kind is required (got {kind!r})")
     ts = _now_iso()
     brain_path = _brain_cortex_path(project_root)
     value = {"date": ts, "event": event_id, "task": task_id or "-", "kind": kind, "agent": agent, "result": payload, "evidence": payload}

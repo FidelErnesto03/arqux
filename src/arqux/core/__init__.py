@@ -1,1 +1,1 @@
-# Core layer — infrastructure and domain models
+# ArqUX Core — Universal components for template-based workflows.

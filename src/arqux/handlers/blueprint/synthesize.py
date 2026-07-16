@@ -1,12 +1,13 @@
-"""blueprint.synthesize handler (BLP-007).
+"""blueprint.synthesize handler — pure sequencer for guided BLP creation.
 
-Writes a Blueprint's content sections in a single call from a CORTEX
-content payload. Uses ``parse_blp_template()`` (BLP-013) to validate
-section IDs against ``BLP_TEMPLATE.md``.
+GUIDE MODE:
+  1. Create or find the BLP in the active cycle
+  2. Scan the body with ``Sequencer("BLP").scan()``
+  3. Return the first pending section (lowest ID with unfilled markers)
+  4. Agent writes directly via ``blueprint.update()``
 
-Creates the BLP ``.md`` file if it doesn't exist (status=draft). Does
-NOT change BLP status — only writes content. Writes atomically (temp
-file + rename).
+synthesize does NOT write files.
+Agent calls ``blueprint.update()`` directly for every section.
 """
 
 from __future__ import annotations
@@ -25,109 +26,6 @@ from ...permissions import PermissionContext
 from ...pulse import append_pulse_to_brain, next_pulse_event_id
 from ...state import find_project_root
 from ._helpers import _write_blueprint
-from ._synthesize_common import parse_content_sections
-from .manage import update_blueprint
-
-# ---------------------------------------------------------------------------
-# Constants and helpers
-# ---------------------------------------------------------------------------
-
-# Regex for marker replacement lines: _marker_ → value
-_MARKER_REPLACE_RE = re.compile(r"^_(.+?)_\s*→\s*(.+)$", re.MULTILINE)
-
-
-def _try_marker_replacement(
-    body: str,
-    open_tag: str,
-    close_tag: str,
-    section_content: str,
-) -> str | None:
-    """Try to replace individual ``_..._`` markers in the section block.
-
-    Parses *section_content* for ``_marker_ → value`` patterns. For each
-    match, finds the exact ``_marker_`` string inside the
-    ``<!-- BLP:N --> … <!-- /BLP:N -->`` block and replaces it with
-    *value*.
-
-    Returns the modified *body* if any replacements were made, or ``None``
-    if no marker patterns were found or no section block could be located.
-    """
-    replacements = _MARKER_REPLACE_RE.findall(section_content)
-    if not replacements:
-        return None
-
-    # Find the section block in the body
-    block_re = re.compile(re.escape(open_tag) + r".*?" + re.escape(close_tag), re.DOTALL)
-    match = block_re.search(body)
-    if not match:
-        return None
-
-    section_block = match.group(0)
-    modified_block = section_block
-
-    any_replaced = False
-    not_found = []
-    for marker, value in replacements:
-        old = f"_{marker.strip()}_"
-        if old in modified_block:
-            modified_block = modified_block.replace(old, value.strip(), 1)
-            any_replaced = True
-        else:
-            not_found.append(old)
-
-    if not any_replaced:
-        if not_found:
-            logger.warning(
-                "P1: markers not found in template section %s: %s. "
-                "Verify that the markers exist in the BLP_TEMPLATE.md",
-                open_tag,
-                not_found,
-            )
-        return None
-
-    return body[: match.start()] + modified_block + body[match.end():]
-
-
-def _replace_section_in_body(
-    body: str,
-    marker_id: str,
-    new_content: str,
-) -> str | None:
-    """Replace the full content between ``<!-- marker_id -->`` markers.
-
-    Preserves the section header (``## §N: Title``) from the existing
-    content if *new_content* does not already start with one.
-
-    Returns the modified *body* or ``None`` if the marker was not found.
-    """
-    open_tag = f"<!-- {marker_id} -->"
-    close_tag = f"<!-- /{marker_id} -->"
-    marker_pattern = rf"{re.escape(open_tag)}.*?{re.escape(close_tag)}"
-
-    match = re.search(marker_pattern, body, re.DOTALL)
-    if not match:
-        return None
-
-    existing_block = match.group(0)
-    inner = existing_block[len(open_tag) : -len(close_tag)].strip()
-
-    # Preserve section header (## §N: Title) from existing content
-    header = ""
-    for line in inner.split("\n"):
-        if line.strip().startswith("## §"):
-            header = line.rstrip()
-            break
-
-    section_content = new_content.strip()
-    if header and not section_content.startswith("## §"):
-        section_content = f"{header}\n\n{section_content}"
-
-    marker_replacement = f"{open_tag}\n{section_content}\n{close_tag}"
-    result = body.replace(existing_block, marker_replacement, 1)
-    if result == body:
-        return None
-    return result
-
 
 # ---------------------------------------------------------------------------
 # synthesize
@@ -136,36 +34,27 @@ def _replace_section_in_body(
 
 def synthesize_blueprint(
     bp_id: str,
-    content: str,
+    content: str | None = None,
     *,
     path: str | None = None,
     ctx: PermissionContext | None = None,
 ) -> CortexOUT:
-    """Write a Blueprint's content sections in one call.
+    """Write a Blueprint's content sections via guided orchestration.
 
     Args:
-        bp_id: Blueprint ID (e.g. ``"BLP-007"``). If the BLP file does
-            not exist, it is created with status=draft.
-        content: CORTEX content payload. Two forms accepted:
-
-            - **Per-section form:** ``$1:{body1}\n$2:{body2}\n...``
-            - **Single-body form:** ``$0:{1: "body1", 2: "body2", ...}``
-
-            In the per-section form, the section ID is the part after
-            ``$`` and before ``:``. The body is everything between
-            ``{`` and the matching ``}``.
-
+        bp_id: Blueprint ID (e.g. ``"BLP-007"``). Created if not exists.
+        content: CORTEX content payload. Per-section form:
+            ``$1:{full section body}``.
+            Omit for GUIDE MODE.
         path: Starting path for resolving the project root.
         ctx: Permission context.
 
     Returns ``OUT-WORK`` with:
-
-    - ``blueprint_id`` (str)
-    - ``path`` (str) — path to the written BLP file
-    - ``sections_written`` (list[str])
-    - ``sections_skipped`` (list[str]) — IDs in content but not in template
-    - ``bytes_written`` (int)
-    - ``created`` (bool) — true if the BLP was created (vs. updated)
+        - ``blueprint_id`` (str)
+        - ``path`` (str) — path to the written BLP file
+        - ``sections_written`` (list[str])
+        - ``next_section`` (dict | None) — next section to fill
+        - ``frontmatter_prompt`` (dict | None) — YAML fields after §18
     """
     if not bp_id or not isinstance(bp_id, str):
         return CortexOUT.error("bp_id is required", code="INVALID_ARGS")
@@ -174,8 +63,8 @@ def synthesize_blueprint(
             f"invalid bp_id={bp_id!r} (must match BLP-NNN)",
             code="INVALID_ARGS",
         )
-    if not content or not isinstance(content, str):
-        return CortexOUT.error("content is required", code="INVALID_ARGS")
+    if content is not None and not isinstance(content, str):
+        return CortexOUT.error("invalid content type", code="INVALID_ARGS")
 
     root = find_project_root(start=path)
     if root is None:
@@ -190,78 +79,65 @@ def synthesize_blueprint(
         )
     valid_ids = set(tmpl_result.fields.get("markers", {}))
 
-    # Parse content into section_id -> body.
-    sections = parse_content_sections(content)
-    if not sections:
-        return CortexOUT.error(
-            "no sections parsed from content",
-            code="INVALID_ARGS",
-        )
-
-    sections_skipped = [sid for sid in sections if f"BLP:{sid}" not in valid_ids]
-    sections_to_write = {sid: body for sid, body in sections.items()
-                         if f"BLP:{sid}" in valid_ids}
-    if not sections_to_write:
-        return CortexOUT.error(
-            f"no valid sections to write. Skipped: {sections_skipped}",
-            code="INVALID_ARGS",
-            skipped=sections_skipped,
-            valid_ids=sorted(valid_ids),
-        )
-
     # Find or create the BLP file.
     bp_path, fm, body, created = _find_or_create_blueprint(root, bp_id, ctx, path_hint=path)
 
-    # Try per-section marker replacement first, fall back to update_blueprint.
-    sections_written: list[str] = []
-    sections_errors: list[dict] = []
-    body_modified = False
-
-    for sid, section_content in sections_to_write.items():
-        # Try inline marker replacement first (new in BLP-002).
-        open_tag = f"<!-- BLP:{sid} -->"
-        close_tag = f"<!-- /BLP:{sid} -->"
-        new_body = _try_marker_replacement(body, open_tag, close_tag, section_content)
-        if new_body is not None:
-            body = new_body
-            body_modified = True
-            sections_written.append(sid)
-            continue
-
-        # Fallback: full section replacement via update_blueprint (backward compat).
-        result = update_blueprint(
-            bp_id, section=sid, content=section_content, path=path, ctx=ctx,
-        )
-        if result.profile == "OUT-WORK":
-            sections_written.append(sid)
-        else:
-            sections_errors.append({"id": sid, "error": result.message})
-
-    # If any marker replacements were applied directly on body, write once.
-    if body_modified:
+    # Persist the template body to disk immediately if freshly created.
+    if created:
         _write_blueprint(bp_path, fm, body)
 
-    _record_pulse(root, ctx, bp_id=bp_id, action="synthesize",
-                  sections_written=sections_written)
-
-    msg = (f"blueprint.synthesize ok id={bp_id} sections={len(sections_written)} "
-           f"errors={len(sections_errors)} created={created}")
-    if sections_errors:
-        msg += f" failed={sections_errors}"
-
+    # GUIDE MODE: scan BLP with Sequencer and return next pending section.
+    from ...core.sequencer import Sequencer
+    seq = Sequencer("BLP")
+    pending_segments = seq.scan(body).pending
+    if not pending_segments:
+        # All sections filled — prompt for YAML frontmatter.
+        return _prompt_yaml(created, bp_path, bp_id)
+    next_seg = pending_segments[0]
     return CortexOUT.work(
-        msg,
+        f"blueprint.synthesize guide id={bp_id}",
         blueprint_id=bp_id,
         path=str(bp_path),
-        sections_written=sections_written,
-        sections_errors=sections_errors if sections_errors else None,
-        sections_skipped=sections_skipped,
+        next_section={
+            "section_id": next_seg.id,
+            "template": next_seg.template,
+            "markers": next_seg.pending_markers if not next_seg.has_content else [],
+        },
+        sections_pending={s.id: s.pending_markers for s in pending_segments},
         created=created,
     )
 
 
 # ---------------------------------------------------------------------------
-# Helpers
+# synthesize
+# ---------------------------------------------------------------------------
+
+
+def _prompt_yaml(created: bool, bp_path: Path, bp_id: str) -> CortexOUT:
+    """Return YAML frontmatter prompt when all sections are filled."""
+    return CortexOUT.work(
+        f"blueprint.synthesize complete id={bp_id}",
+        blueprint_id=bp_id,
+        path=str(bp_path),
+        next_section=None,
+        frontmatter_prompt={
+            "title": "string",
+            "priority": "low|medium|high",
+            "complexity": "simple|standard|complex",
+            "has_clear_objective": "true|false",
+            "has_verifiable_preconditions": "true|false",
+            "has_scope_and_exclusions": "true|false",
+            "has_acceptance_criteria": "true|false",
+            "has_work_procedure": "true|false",
+            "has_required_validations": "true|false",
+            "has_learning_recorded": "true|false",
+        },
+        created=created,
+    )
+
+
+# ---------------------------------------------------------------------------
+# BLP file find-or-create
 # ---------------------------------------------------------------------------
 
 
@@ -272,51 +148,76 @@ def _find_or_create_blueprint(
     *,
     path_hint: str | None = None,
 ) -> tuple[Path, dict[str, Any], str, bool]:
-    """Find the BLP file across cycles, or create a new draft.
+    """Find the BLP file in the active cycle, or create a new draft.
+
+    synthesize only searches the ACTIVE cycle — BLP numbers reset per cycle
+    and the synthesizer must respect session context.
 
     Returns ``(bp_path, frontmatter, body, created)``.
     """
     cycles_base = root / CYCLES_DIR
 
-    # 1. Explicit path_hint
-    if path_hint:
-        from ._helpers import _resolve_blueprint_path
-        resolved = _resolve_blueprint_path(root, bp_id, path_hint=path_hint)
-        if resolved and resolved.exists():
-            text = resolved.read_text(encoding="utf-8")
-            fm, body = _parse_md(text)
-            return resolved, fm, body, False
+    # Determine active cycle from session context
+    from ...state import crud_read
+    cycle_id = ""
+    try:
+        brain_path = root / ".arqux" / "brain.cortex"
+        if brain_path.exists():
+            cur = crud_read(brain_path, "$1/FCS:current")
+            fcs = cur.get("entries", [{}])[0].get("value", {}) if cur.get("entries") else {}
+            cycle_id = fcs.get("cycle", "")
+    except Exception:
+        pass
 
-    # 2. Search across cycles (most recent first)
-    if cycles_base.exists():
-        for cdir in sorted(cycles_base.iterdir(), reverse=True):
-            bp_path = cdir / BLUEPRINTS_DIR / f"{bp_id}.md"
+    # 1. Active cycle lookup (scope: only the active cycle)
+    if cycle_id and cycles_base.exists():
+        bp_path = cycles_base / cycle_id / BLUEPRINTS_DIR / f"{bp_id}.md"
+        if bp_path.exists():
+            text = bp_path.read_text(encoding="utf-8")
+            fm, body = _parse_md(text)
+            return bp_path, fm, body, False
+
+    # Fallback: search for last open (non-closed) cycle
+    if not cycle_id and cycles_base.exists():
+        active_cycles: list[str] = []
+        for cdir in sorted(cycles_base.iterdir()):
+            if not cdir.is_dir():
+                continue
+            manifest_path = cdir / "MANIFEST.md"
+            if manifest_path.exists():
+                manifest_text = manifest_path.read_text(encoding="utf-8")
+                if "status: closed" not in manifest_text:
+                    active_cycles.append(cdir.name)
+        cycle_id = active_cycles[-1] if active_cycles else None
+        if cycle_id:
+            bp_path = cycles_base / cycle_id / BLUEPRINTS_DIR / f"{bp_id}.md"
             if bp_path.exists():
                 text = bp_path.read_text(encoding="utf-8")
                 fm, body = _parse_md(text)
                 return bp_path, fm, body, False
 
-    # Not found — create in the latest cycle.
-    if cycles_base.exists():
-        open_cycles = sorted([d.name for d in cycles_base.iterdir() if d.is_dir()])
-        cycle_id = open_cycles[-1] if open_cycles else "CYCLE-01"
-    else:
+    if not cycle_id:
         cycle_id = "CYCLE-01"
-        cycles_base.mkdir(parents=True, exist_ok=True)
 
+    # Not found — create fresh in the target cycle.
     bp_dir = cycles_base / cycle_id / BLUEPRINTS_DIR
     bp_dir.mkdir(parents=True, exist_ok=True)
     bp_path = bp_dir / f"{bp_id}.md"
 
-    # Use the template as the starting body.
     from ...blueprint.template import _resolve_template
     template_path = _resolve_template(path=str(root.parent))
     if template_path and template_path.exists():
         body = template_path.read_text(encoding="utf-8")
-        body = body.replace("blueprint_id: \"\"", f'blueprint_id: "{bp_id}"')
+        body = body.replace('blueprint_id: ""', f'blueprint_id: "{bp_id}"')
         body = body.replace("# BLP-NNN: Título", f"# {bp_id}: Synthesized")
     else:
-        body = f"---\nblueprint_id: \"{bp_id}\"\nstatus: \"draft\"\n---\n\n# {bp_id}: Synthesized\n"
+        body = (
+            "---\n"
+            f'blueprint_id: "{bp_id}"\n'
+            'status: "draft"\n'
+            "---\n\n"
+            f"# {bp_id}: Synthesized\n"
+        )
 
     fm, body = _parse_md(body)
     fm["blueprint_id"] = bp_id
@@ -324,6 +225,11 @@ def _find_or_create_blueprint(
     fm["governor"] = (ctx or PermissionContext.from_env(project_root=root)).agent_id
 
     return bp_path, fm, body, True
+
+
+# ---------------------------------------------------------------------------
+# Low-level helpers
+# ---------------------------------------------------------------------------
 
 
 def _parse_md(text: str) -> tuple[dict[str, Any], str]:

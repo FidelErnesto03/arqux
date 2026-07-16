@@ -342,23 +342,45 @@ def _validate_approval_ready(root: Path, bp_id: str, fm: dict[str, Any], body: s
 
 
 def _has_learning_recorded(root: Path, bp_id: str) -> bool:
-    """Return true when any workspace/project identity has an LNG for bp_id."""
-    identity_dirs = [
-        root / "identities",
-        root.parent / ARQUX_DIR / "identities",
-        root.parent.parent / ARQUX_DIR / "identities",
-    ]
+    """Return true when any workspace/project identity has an LNG for bp_id.
+
+    Uses IdentityManager for consistent path resolution (BLP-008 GOV-001 P2.3).
+    """
+    from ...identity import IdentityManager
+
+    im = IdentityManager(project_root=root.parent)
+    try:
+        identities = im.list_identities()
+    except Exception:
+        identities = []
+
+    # Also check workspace-level identities
+    ws_ids: list[str] = []
+    ws_dir = root.parent.parent / ARQUX_DIR / "identities"
+    if ws_dir.exists():
+        ws_ids = [p.stem for p in ws_dir.glob("*.cortex")
+                  if not p.name.endswith(".lessons.cortex")]
+
+    all_identities = list(set(identities + ws_ids))
     needles = {bp_id.lower(), bp_id.lower().replace("-", "_")}
-    for identity_dir in identity_dirs:
-        if not identity_dir.exists():
-            continue
-        for identity_file in identity_dir.glob("*.cortex"):
-            try:
-                text = identity_file.read_text(encoding="utf-8").lower()
-            except OSError:
-                continue
+    for identity_name in all_identities:
+        # Try IdentityManager first
+        try:
+            artifact = im.resolve(identity_name)
+            text = artifact.payload.lower()
             if "lng:" in text and any(needle in text for needle in needles):
                 return True
+        except Exception:
+            pass
+        # Fallback: check workspace identity file directly
+        identity_file = ws_dir / f"{identity_name}.cortex"
+        if identity_file.exists():
+            try:
+                text = identity_file.read_text(encoding="utf-8").lower()
+                if "lng:" in text and any(needle in text for needle in needles):
+                    return True
+            except OSError:
+                continue
     return False
 
 

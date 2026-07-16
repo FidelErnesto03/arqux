@@ -33,7 +33,22 @@ from .constants import (
     ROLE_EXECUTOR,
     ROLE_GOVERNOR,
 )
-from .identity_resolver import resolve_agent_identity
+from .identity import IdentityManager
+
+
+# --- Identity name extraction helper (BLP-008 GOV-001 P2.2) ---
+
+
+def _extract_identity_name(payload: str) -> str | None:
+    """Extract the IDN name from a CORTEX identity artifact payload."""
+    import re
+    m = re.search(r'IDN:\w+\{[^}]*?name[=:]\s*"([^"]+)"', payload)
+    if m:
+        return m.group(1)
+    m = re.search(r'IDN:\w+\{[^}]*?name[=:]\s*([^,}\s]+)', payload)
+    if m:
+        return m.group(1)
+    return None
 
 
 class Role(str, enum.Enum):
@@ -183,21 +198,29 @@ class PermissionContext:
         timestamp_str = os.environ.get(f"{prefix}AGENT_TIMESTAMP")
         timestamp = int(timestamp_str) if timestamp_str else None
 
-        # Resolve runtime agent_id to canonical ArqUX identity (BLP-007)
+        # Resolve runtime agent_id to canonical ArqUX identity (BLP-008 GOV-001 P2.2)
         if project_root is not None:
             proj_path = Path(project_root) if isinstance(project_root, str) else project_root
-            resolved = resolve_agent_identity(agent_id, project_root=proj_path)
-            if resolved and resolved != agent_id:
-                agent_id = resolved
+            try:
+                im = IdentityManager(project_root=proj_path)
+                artifact = im.resolve(agent_id)
+                # Extract name from IDN entry if available
+                name = _extract_identity_name(artifact.payload)
+                if name:
+                    agent_id = name
+            except Exception:
+                pass
         else:
             # P2 fallback: try to auto-detect project root from CWD
             try:
                 from .state import find_project_root
                 auto_root = find_project_root()
                 if auto_root is not None:
-                    resolved = resolve_agent_identity(agent_id, project_root=auto_root)
-                    if resolved and resolved != agent_id:
-                        agent_id = resolved
+                    im = IdentityManager(project_root=auto_root)
+                    artifact = im.resolve(agent_id)
+                    name = _extract_identity_name(artifact.payload)
+                    if name:
+                        agent_id = name
             except Exception:
                 pass
 

@@ -139,7 +139,7 @@ def test_define_blueprint(arqux_env) -> None:
         path=str(arqux_env.proj_root),
         ctx=arqux_env.gov_ctx,
     )
-    assert "blueprint.synthesize ok" in result.to_text()
+    assert "blueprint.synthesize" in result.to_text()
     fm = _read_fm(arqux_env.proj_root, arqux_env.bp_id)
     assert fm.get("status") in ("draft",), f"expected draft, got {fm.get('status')}"
 

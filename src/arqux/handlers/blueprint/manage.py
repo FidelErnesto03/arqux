@@ -24,6 +24,35 @@ from ._helpers import (
 # ---------------------------------------------------------------------------
 
 
+def _resolve_section_titles(body: str) -> dict[str, str]:
+    """Extract section titles from BLP template markers in the body.
+
+    Reads section titles from ``<!-- BLP:N -->`` markers in the template body
+    by looking for ``## §N: Title`` patterns inside each marker block.
+    Falls back to reading ``## §N:`` headers from the body directly.
+    """
+    titles: dict[str, str] = {}
+
+    # Scan for section markers in the body
+    marker_re = re.compile(r"<!-- BLP:(\d+) -->\s*\n\s*## §\d+:\s*(.+?)\s*\n", re.DOTALL)
+    for m in marker_re.finditer(body):
+        sec_num = m.group(1)
+        sec_title = m.group(2).strip()
+        titles[sec_num] = sec_title
+
+    if titles:
+        return titles
+
+    # Fallback: try to find section headers directly
+    header_re = re.compile(r"## §(\d+):\s*(.+?)$", re.MULTILINE)
+    for m in header_re.finditer(body):
+        sec_num = m.group(1)
+        sec_title = m.group(2).strip()
+        titles[sec_num] = sec_title
+
+    return titles
+
+
 def update_blueprint(
     bp_id: str,
     note: str | None = None,
@@ -78,51 +107,14 @@ def update_blueprint(
                     code="NOT_FOUND",
                 )
 
-        # Marker-based replacement
-        open_tag = f"<!-- {marker_id} -->"
-        close_tag = f"<!-- /{marker_id} -->"
-        marker_pattern = rf"{re.escape(open_tag)}.*?{re.escape(close_tag)}"
-
-        marker_match = re.search(marker_pattern, body, re.DOTALL)
-        if marker_match:
-            # Preserve section header (## §N: Title) from existing content
-            existing_block = marker_match.group(0)
-            inner = existing_block[len(open_tag):-len(close_tag)].strip()
-            header = ""
-            for line in inner.split("\n"):
-                if line.strip().startswith("## §"):
-                    header = line.rstrip()
-                    break
-            if header and not section_content.strip().startswith("## §"):
-                section_content = f"{header}\n\n{section_content}"
-            marker_replacement = f"{open_tag}\n{section_content}\n{close_tag}"
-            body = re.sub(
-                marker_pattern,
-                marker_replacement,
-                body, count=1, flags=re.DOTALL,
-            )
+        # Marker-based replacement via Universal Updater
+        from ...core.updater import Updater
+        new_body = Updater("BLP").replace(body, sec_num, section_content)
+        if new_body != body:
+            body = new_body
         else:
-            # Fallback: legacy section-header-based replacement
-            section_titles = {
-                "1": "Problem Statement",
-                "2": "Objective",
-                "3": "Preconditions",
-                "4": "Guiding Principle",
-                "5": "Context",
-                "6": "Scope & Exclusions",
-                "7": "Mandatory Rules",
-                "8": "Technical Design",
-                "9": "Operational Design",
-                "10": "Contracts",
-                "11": "Work Procedure",
-                "12": "Acceptance Criteria",
-                "13": "Required Validations",
-                "14": "Tasks",
-                "15": "Risks",
-                "16": "Blocking Rule",
-                "17": "Expected Output",
-                "18": "Quality Contract",
-            }
+            # Marker not found — fallback to header-based dynamic resolution
+            section_titles = _resolve_section_titles(body)
             section_title = section_titles.get(sec_num, "")
             section_header = f"## §{sec_num}:"
             replacement_header = f"{section_header} {section_title}".rstrip()
