@@ -6,7 +6,12 @@ to avoid code duplication (BLP-006).
 
 from __future__ import annotations
 
+import logging
 import re
+
+logger = logging.getLogger(__name__)
+from pathlib import Path
+from typing import Any
 
 
 def parse_content_sections(content: str) -> dict[str, str]:
@@ -38,6 +43,14 @@ def parse_content_sections(content: str) -> dict[str, str]:
             body = _extract_brace_body(text, start)
             if body is not None:
                 out[sid] = body.strip()
+        # Warn if some $N: patterns were found without braces (missing {})
+        bare_refs = re.findall(r"\$(\d+):\s*(?!\{)", text)
+        if bare_refs and not out:
+            logger.warning(
+                "P1.2a: found $N: patterns without braces: %s. "
+                "Per-section format requires $N:{body}. Did you forget { and }?",
+                bare_refs,
+            )
         return out
 
     # 2. Single-body form: $0:{key:val, ...}
@@ -107,3 +120,125 @@ def _split_top_level(text: str, sep: str) -> list[str]:
     if remaining:
         parts.append(remaining)
     return parts
+
+
+# ---------------------------------------------------------------------------
+# P1.3: Per-section report (BLP-008 GOV-001)
+# ---------------------------------------------------------------------------
+
+
+def _check_marker_missing(body: str, section_id: str) -> bool:
+    """Check if a section still has template placeholder markers."""
+    markers = [
+        "_Describe the problem",
+        "_Concrete, verifiable",
+        "_Precondition",
+        "_The rule that governs",
+        "_Description_",
+        "_Impact_",
+        "_Mitigation_",
+        "_placeholder_",
+    ]
+    for marker in markers:
+        if marker.lower() in body.lower():
+            return True
+    return False
+
+
+def generate_section_report(
+    body: str,
+    sections_written: list[str],
+    sections_skipped: list[str],
+    sections_errors: list[dict],
+) -> dict[str, dict[str, object]]:
+    """Generate a per-section report with section_id, body, marker_status.
+
+    Returns a dict mapping section_id -> {section_id, body_preview, marker_status,
+    written, skipped, error}.
+    """
+    report: dict[str, dict[str, object]] = {}
+    all_ids = set(sections_written) | set(sections_skipped)
+
+    for sid in all_ids:
+        open_tag = f"<!-- BLP:{sid} -->"
+        close_tag = f"<!-- /BLP:{sid} -->"
+        marker_pattern = rf"{re.escape(open_tag)}.*?{re.escape(close_tag)}"
+        match = re.search(marker_pattern, body, re.DOTALL)
+        section_text = match.group(0) if match else ""
+
+        preview = section_text[:120].strip() if section_text else ""
+        has_placeholder = _check_marker_missing(section_text, sid) if section_text else True
+
+        entry: dict[str, object] = {
+            "section_id": sid,
+            "body_preview": preview,
+            "marker_status": "missing" if has_placeholder else "ok",
+            "written": sid in set(sections_written),
+            "skipped": sid in set(sections_skipped),
+            "error": False,
+        }
+        report[sid] = entry
+
+    for err in sections_errors:
+        sid = err.get("id", "")
+        if sid in report:
+            report[sid]["error"] = True
+            report[sid]["error_msg"] = err.get("error", "")
+
+    return report
+
+
+# ---------------------------------------------------------------------------
+# P1.4: Post-write placeholder verification (BLP-008 GOV-001)
+# ---------------------------------------------------------------------------
+
+
+def verify_no_placeholders(bp_path: str | Path) -> dict[str, object]:
+    """Re-read a BLP.md and verify no template placeholders remain.
+
+    Returns a dict with:
+        path (str): the verified file path
+        leftover_placeholders (list[str]): any placeholder markers found
+        verified (bool): True if no placeholders remain
+    """
+    import re as _re
+
+    fpath = Path(bp_path)
+    if not fpath.exists():
+        return {"path": str(bp_path), "error": "file not found", "verified": False}
+
+    text = fpath.read_text(encoding="utf-8")
+
+    placeholder_patterns = [
+        (r"_Describe the problem[^_]*_", "§1 problem statement"),
+        (r"_Concrete, verifiable[^_]*_", "§2 objective"),
+        (r"_Precondition \d[^_]*_", "§3 precondition"),
+        (r"_The rule that governs[^_]*_", "§4 guiding principle"),
+        (r"_Context[^_]*_", "§5 context"),
+        (r"_Include[^_]*_", "§6 scope"),
+        (r"_Rule \d[^_]*_", "§7 mandatory rules"),
+        (r"_Technical design[^_]*_", "§8 technical design"),
+        (r"_Operational design[^_]*_", "§9 operational design"),
+        (r"_Inputs[^_]*_", "§10 contracts"),
+        (r"_Work procedure[^_]*_", "§11 work procedure"),
+        (r"_AC-\d+[^_]*_", "§12 acceptance criteria"),
+        (r"_Validation[^_]*_", "§13 validations"),
+        (r"_Task[^_]*_", "§14 tasks"),
+        (r"_Risk[^_]*_", "§15 risks"),
+        (r"_Blocking rule[^_]*_", "§16 blocking rule"),
+        (r"_Modified files[^_]*_", "§17 expected output"),
+        (r"_Quality gate[^_]*_", "§18 quality contract"),
+        (_re.escape("_placeholder_"), "generic"),
+    ]
+
+    found: list[str] = []
+    for pattern, desc in placeholder_patterns:
+        matches = _re.findall(pattern, text, _re.IGNORECASE | _re.DOTALL)
+        for m in matches:
+            found.append(f"{desc}: {m.strip()[:80]}")
+
+    return {
+        "path": str(bp_path),
+        "leftover_placeholders": found,
+        "verified": len(found) == 0,
+    }

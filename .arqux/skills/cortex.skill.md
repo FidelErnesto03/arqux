@@ -250,3 +250,43 @@ STP:puml_diagrams{
 }
 
 AXM:diagrams_are_contracts{ The three diagrams ARE the design contract between Architect and Executor. If the executor builds something different from what the diagrams show, it's a deviation. The diagrams are interpretable by both humans (visual) and agents (UML notation is machine-parseable). }
+
+
+$8: IDENTITY SERVICE (P2 IdentityManager)
+
+IDN:identity_service{
+  name:"IdentityManager",
+  module:"src/arqux/identity.py",
+  purpose:"Central resolver for agent identities. Replaces identity_resolver.py (BLP-008 GOV-001 P2.2).",
+  relationship:"Used by permisos.py PermissionContext.from_env() to resolve agent_id -> canonical name",
+}
+
+AXM:identity_manager_only{ All identity resolution MUST go through IdentityManager. Direct file access to identities/ is DEPRECATED. identity_resolver.py is replaced. }
+
+HDL:identity_manager_resolve{
+  signature:"IdentityManager(project_root=...).resolve(name) -> CortexArtifact",
+  purpose:"Resolve an agent name to its CortexArtifact identity file.",
+  raises:"IdentityNotFoundError if <name>.cortex not found",
+}
+
+HDL:identity_manager_bind{
+  signature:"IdentityManager(project_root=...).bind_to_session(name) -> SessionContext",
+  purpose:"Resolve + extract AXM/LIM contracts into SessionContext for command execution.",
+}
+
+HDL:identity_manager_elevate{
+  signature:"elevate_to_identity(agent, lesson_id, contract_type, *, pattern, evidence_ref) -> dict",
+  purpose:"Inject AXM or LIM sigil into an identity file (Governor-only flow).",
+  note:"Only sanctioned way to mutate identity files. Called by Governor after learning elevation approval.",
+}
+
+HDL:identity_manager_list{
+  signature:"list_identities() -> list[str]",
+  purpose:"Return sorted list of identity names from .arqux/identities/",
+}
+
+STP:identity_path_resolution{
+  project_level:"IdentityManager(project_root=/path/to/ARQUX) -> /path/to/ARQUX/.arqux/identities/",
+  workspace_level:"If no project_root, uses packaged identities or ~/.arqux/identities/",
+  note:"Uses find_project_root() internally for consistent path resolution (BLP-008 GOV-001 P2.3).",
+}

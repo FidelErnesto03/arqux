@@ -23,13 +23,25 @@ $0
 # BLK   | blocker    | attrs      | H | Prefrontal     | Blocking condition
 #
 # Types:
+# attrs-pos = canonical type
+# cuerpo = canonical type
+# relación = canonical type
+# attrs = canonical type
+# bloque = canonical type
 #
 # Micro-glossary:
+# cur=current pln=planned fut=future blk=blocked
+# min=minimum rec=recovery wrk=work full=full
+# ok=success fail=failure part=partial
 
 
 $19: ARQUX METADATA
 
 ARQX:artifact{level:"2", name:"brain", usage:"state", kind:"native"}
+
+AXM:validate_before_mutate{severity:high, scope:all, rule:"Todo handler de transicion debe validar invariantes del estado destino ANTES de mutar. Derivado de cycle.mature() que no validaba quality gates.", survive:work}
+
+AXM:blp_includes_workflow_skill{severity:high, scope:blueprint, rule:"Todo BLP de nuevo handler debe incluir workflow + skill en alcance. Si el workflow existe, debe actualizarse.", survive:work}
 
 $1: IDENTITY
 
@@ -41,7 +53,7 @@ FCS:current{what:"Ciclo cerrado", priority:"medium", status:"current", survive:"
 
 $3: OBJECTIVES
 
-OBJ:_{goal:"- - - Mantener sincronia entre brain.cortex y estado real del proyecto. 98 BLPs gestionados en 7 ciclos (CYCLE-00, CYCLE-01, CYCLE-02, CYCLE-03, CYCLE-04, CYCLE-05, CYCLE-06).", status:"current", success:"", survive:"work"}
+OBJ:_{goal:"- - - Mantener sincronia entre brain.cortex y estado real del proyecto. 98 BLPs gestionados en 7 ciclos (CYCLE-00, CYCLE-01, CYCLE-02, CYCLE-03, CYCLE-04, CYCLE-05, CYCLE-06).", status:"current", success:"pending", survive:"work"}
 
 $4: SESSIONS
 
@@ -155,21 +167,23 @@ AUD:E_0099{event:"E-0099", evidence:"pending", task:"-", kind:"session", agent:"
 
 $7: LESSONS
 
-LNG:_______2026_07_15t18{type:"contextual", cause:"", lesson:"- - - [2026-07-15T18:02:57Z] LNG:cycle-01_completion{type:\"process\", cause:\"1 task(s) completed in CYCLE-01\", lesson:\"Completed tasks show effective cycle planning\"}"}
-LNG:_____2026_07_15t20{type:"contextual", cause:"", lesson:"- - [2026-07-15T20:22:04Z] LNG:cycle-01_completion{type:\"process\", cause:\"1 task(s) completed in CYCLE-01\", lesson:\"Completed tasks show effective cycle planning\"}"}
-LNG:___2026_07_15t20{type:"contextual", cause:"", lesson:"- [2026-07-15T20:38:30Z] LNG:cycle-01_completion{type:\"process\", cause:\"1 task(s) completed in CYCLE-01\", lesson:\"Completed tasks show effective cycle planning\"}"}
+LNG:_______2026_07_15t18{type:"contextual", cause:"not_specified", lesson:"- - - [2026-07-15T18:02:57Z] LNG:cycle-01_completion{type:\"process\", cause:\"1 task(s) completed in CYCLE-01\", lesson:\"Completed tasks show effective cycle planning\"}", prevention:"not_applicable"}
+LNG:_____2026_07_15t20{type:"contextual", cause:"not_specified", lesson:"- - [2026-07-15T20:22:04Z] LNG:cycle-01_completion{type:\"process\", cause:\"1 task(s) completed in CYCLE-01\", lesson:\"Completed tasks show effective cycle planning\"}", prevention:"not_applicable"}
+LNG:___2026_07_15t20{type:"contextual", cause:"not_specified", lesson:"- [2026-07-15T20:38:30Z] LNG:cycle-01_completion{type:\"process\", cause:\"1 task(s) completed in CYCLE-01\", lesson:\"Completed tasks show effective cycle planning\"}", prevention:"not_applicable"}
 
 $8: ACTIVE_CONTEXT
 
-WRK:current{phase:"active", current:"- cycle=- cycle=- cycle=cycle.close: cycle CYCLE-02 closed", blocked:"no", survive:"work"}
+WRK:current{phase:"active", current:"- cycle=- cycle=- cycle=cycle.close: cycle CYCLE-02 closed", blocked:"no", survive:"work", fcs:"fix-jarvis-22-fails+investigar", obj:"Corregir 22 tests fallidos de Jarvis y documentar issue de fallo sistemico de Jarvis", tasks:"investigar-fallos", state:"in_progress", last_turn:"2026-07-15T22:40:21Z"}
 
 $9: RISKS
 
-RSK:risk{description:"- - - - - - - - - - - Meta-brain DOM valores truncados por comas en parentesis", mitigation:"", severity:"medium"}
+RSK:risk{description:"- - - - - - - - - - - Meta-brain DOM valores truncados por comas en parentesis", mitigation:"pending", severity:"medium", risk:"pending", impact:"pending", status:"active", survive:"work"}
 
 $10: KNOWLEDGE
 
-KNW:knowledge{topic:"project_knowledge", content:"Framework de gobierno ArqUX sobre ARQUX CYCLE-01: 19 BLPs completados. 73 MCP handlers, 124 tests, 6 skills (mcp-handlers unificado, protocol, cortex, workflows/library, learning, diagram). CORE AXIOMS: workflow_fidelity vinculante en identidades, progressive_evidence (checkpoint por tarea con sync_brain), AXM:workflow_fidelity (respeto irrestricto a workflows w01-w08). Estructura: mcp-handlers.skill.md unifica transporte+interface, workflows/ subdirectory con 8 flujos, cortex.skill.md consolida HCORTEX. sync_brain() helper en sync.py actualiza WRK/FCS/metrics en brain.cortex y meta-brain DOM:arqux tras cada mutacion.\nPROTOCOLO: Ejecutar CADA paso de AGENTS.md (cargar skills, self-audit con LNG). PROGRESION: Cada tarea se marca INMEDIATAMENTE con blueprint.task() + sync_brain() antes de la siguiente (nunca diferido). NUNCA marcar 2+ tareas en un solo llamado. VERIFICAR: ACs individuales tan pronto como la tarea que los satisface se completa. RECUPERACION: Si hay interrupcion, session.resume() + WRK:current restaura el ultimo checkpoint. HALT: Ante duda, informar opciones al Arquitecto antes de actuar. Evaluar contexto completo (jobs, dependencias, recovery time). Never apply from generic approval - require exact preview hash.\nCREACION: Presentar concepto primero, esperar 'dale'/'aprobado' antes de blueprint_create. Usar lenguaje natural, no sigils. Si Arquitecto dice 'apruebo para ejecucion', ready directo sin maduracion. DEFINICION: blueprint_define no puebla cuerpo del BLP - verificar secciones escritas despues. NAMING: AC-01 (no CA-01) para que handler blueprint.ac encuentre los criterios. EJECUCION: Siempre pasar path explicito a handlers. Priorizar MCP handler antes que bypass. Alfred completa flujo BLP completo (define, ejecuta, revisa, aprueba) sin invocar a otros auditores. Al completar, identity.record + sync_brain().\nDEPENDENCIA: CODEC-CORTEX es libreria obligatoria y esta en el workspace. No escribir fallbacks manuales. v0.4.3: auto-repair E032/E034 en transactions.py atomic_write_cortex() cuando force=True - completa required fields faltantes (prevention, success, output) con defaults. version instalada via pip desde local. CLI: 'arqux brain repair <path>' (pendiente). PARSER: parse_attrs_body respeta quoted strings con colons. set_ en update_entry REEMPLAZA correctamente claves del dict (entry.value[k] = v). El falso positivo 'WRK merge' era E032/E034 bloqueando writes. BRAIN INIT: FCS debe tener what, OBJ debe tener goal para pasar validacion CODEC-CORTEX. Sigilos locales deben declararse en $0 o causan E017/E006.\nORACLE: CLEANUP_NON_EXIST_OBJ fragmenta shared pool cada 12h en XE. AUDITORIA: GAP-001/002 fix directo; GAP-003/004/005 via BLP-012 con gobernanza. Loose governance files fuera de .arqux/ no son entry points. w10 auditoria 2 tiers: handler doc mismatch 62 vs 48. diagramas: Siempre ejecutar cortex.render.validate_file antes de embeber PUML. skill.edit con section tiene bug de reemplazo hasta EOF - usar write completo. Acs de grep deben usar patrones especificos por entorno. MCP environment field es 'environment' no 'env'. Convertir contadores a int al leer frontmatter.\nFix mutation write blocking. Approach: auto-repair E032/E034 in transactions.py atomic_write_cortex() + CLI brain repair subcommand. Implemented in v0.4.3. Pending: CLI 'arqux brain repair <path>' command.\nDogfooding: Arqux se gobierna a si mismo. Skills en .arqux/skills/ y ARQUX/src/arqux/skills/ deben ser byte-identicas. Verificar con md5sum tras cada skill.edit. Si difieren, copiar version autoritativa a ambos lados. Esto aplica a todos los proyectos gobernados bajo Arqux.\nJarvis avanzo en BLP-013 (refactor arquitectura). El directorio handlers/blueprint/ existe con lifecycle.py, review.py, manage.py, _helpers.py. El blueprint.py original se redujo a 202 bytes (stub). NO SE REVISO ni valido. Pendiente: verificar que todos los imports sean correctos, que handlers/__init__.py importe el paquete blueprint/ correctamente, que los 601 tests pasen, y que los handlers MCP sigan funcionando via server.py. NO ejecutar nuevos cambios sobre blueprint hasta revision.", status:"active"}
+KNW:knowledge{topic:"project_knowledge", content:"Framework de gobierno ArqUX..."}
+
+KNW:metodologia_diseno_cyc07{topic:"metodologia", status:"active", content:"10 principios de diseno validados en CYCLE-07: 1) Verificar en codigo antes de asumir formato de handlers. 2) No sobre-afirmar: ventana = tokens planos. 3) No asumir estandares sin validar. 4) Aislar fuente exacta antes de diagnosticar. 5) Sync automatico sobre manual. 6) validate_file antes de PUML. 7) Formato hibrido PUML+HCORTEX. 8) Skill es repositorio API, no brain.cortex. 9) Workflow w14 documenta flujo synthesize. 10) MCP handler antes que bypass directo."}
 
 $11: CONCURRENCY
 

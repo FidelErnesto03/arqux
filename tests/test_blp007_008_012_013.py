@@ -8,11 +8,14 @@ from pathlib import Path
 from arqux.blueprint.template import parse_blp_template
 from arqux.handlers.blueprint import synthesize_blueprint
 from arqux.handlers.blueprint.lifecycle import create_blueprint
+from arqux.cortex_out import CortexOUT
 
 
 def define_blueprint(bp_id, **kwargs):
     """Legacy wrapper — define_blueprint removed in ISS-002.
-    Converts old named params to synthesize content format."""
+    Converts old named params to update_blueprint calls."""
+    from arqux.handlers.blueprint.manage import update_blueprint
+
     sections = kwargs.pop("sections", None) or {}
     parts = {}
     if kwargs.get("pre"):
@@ -26,8 +29,14 @@ def define_blueprint(bp_id, **kwargs):
         parts["6"] = (parts.get("6", "") + f"\n**Fuera:** {kwargs['exclusions']}").strip()
     for sid, body in sections.items():
         parts[sid.replace("BLP:", "")] = body
-    content = "\n".join(f"${k}:{{{v}}}" for k, v in parts.items()) if parts else "$1:{placeholder}"
-    return synthesize_blueprint(bp_id, content=content, path=kwargs.get("path"), ctx=kwargs.get("ctx"))
+
+    result = None
+    for sid in sorted(parts.keys(), key=int):
+        result = update_blueprint(
+            bp_id, section=sid, content=parts[sid],
+            path=kwargs.get("path"), ctx=kwargs.get("ctx"),
+        )
+    return result or CortexOUT.error("no sections written")
 from arqux.handlers.cycle import create_cycle, synthesize_cycle
 from arqux.handlers.project import init_project
 from arqux.handlers.session import bootstrap
@@ -123,8 +132,7 @@ def test_define_with_dynamic_sections(tmp_path: Path) -> None:
         ctx=_CONTEXT,
     )
     assert result.profile == "OUT-WORK", str(result.fields)
-    sections_written = result.fields.get("sections_written", [])
-    assert "1" in sections_written or "BLP:1" in sections_written or len(sections_written) >= 1
+    assert result.fields.get("section") is not None
 
 
 def test_define_unknown_section_rejected(tmp_path: Path) -> None:
@@ -165,39 +173,31 @@ def test_define_retrocompatible_with_named_params(tmp_path: Path) -> None:
 
 
 def test_synthesize_writes_sections_to_existing_blp(tmp_path: Path) -> None:
-    """synthesize writes sections to an existing BLP without changing status."""
+    """synthesize returns guide info for existing BLPs."""
     proj_root = _bootstrap_env(tmp_path)
     create_result = create_blueprint(obj="Test BLP", path=str(proj_root), ctx=_CONTEXT)
     bp_id = create_result.fields["blueprint_id"]
 
     result = synthesize_blueprint(
-        bp_id=bp_id,
-        content='''$1:{Test problem statement}
-$2:{Test objective}
-$3:{- [ ] Precondition 1}''',
-        path=str(proj_root),
-        ctx=_CONTEXT,
+        bp_id=bp_id, path=str(proj_root), ctx=_CONTEXT,
     )
     assert result.profile == "OUT-WORK", str(result.fields)
-    assert result.fields.get("created") is False
-    sections_written = result.fields.get("sections_written", [])
-    assert len(sections_written) >= 1
+    assert result.fields.get("next_section") is not None
+    assert "section_id" in result.fields.get("next_section", {})
 
 
 def test_synthesize_creates_blp_if_not_exists(tmp_path: Path) -> None:
-    """synthesize creates the BLP file if it doesn't exist (status=draft)."""
+    """synthesize creates the BLP file and returns guide info."""
     proj_root = _bootstrap_env(tmp_path)
 
     result = synthesize_blueprint(
         bp_id="BLP-999",
-        content='''$1:{Created via synthesize}
-$2:{Verify creation}''',
         path=str(proj_root),
         ctx=_CONTEXT,
     )
     assert result.profile == "OUT-WORK", str(result.fields)
     assert result.fields.get("created") is True
-
+    assert result.fields.get("next_section") is not None
 
 def test_synthesize_no_status_change(tmp_path: Path) -> None:
     """synthesize does NOT change BLP status."""
@@ -208,7 +208,6 @@ def test_synthesize_no_status_change(tmp_path: Path) -> None:
     # Synthesize should not change the status (still 'draft' after create).
     result = synthesize_blueprint(
         bp_id=bp_id,
-        content='$1:{Synthesized content}',
         path=str(proj_root),
         ctx=_CONTEXT,
     )
@@ -222,27 +221,12 @@ def test_synthesize_no_status_change(tmp_path: Path) -> None:
     assert "draft" in str(read_result.fields)
 
 
-def test_synthesize_invalid_content(tmp_path: Path) -> None:
-    """Invalid content (no sections) returns INVALID_ARGS."""
-    proj_root = _bootstrap_env(tmp_path)
-
-    result = synthesize_blueprint(
-        bp_id="BLP-007",
-        content="not valid cortex content",
-        path=str(proj_root),
-        ctx=_CONTEXT,
-    )
-    assert result.profile == "OUT-ERROR"
-    assert result.fields.get("code") == "INVALID_ARGS"
-
-
 def test_synthesize_invalid_bp_id(tmp_path: Path) -> None:
     """Invalid bp_id format returns INVALID_ARGS."""
     proj_root = _bootstrap_env(tmp_path)
 
     result = synthesize_blueprint(
         bp_id="invalid-id",
-        content='$1:{test}',
         path=str(proj_root),
         ctx=_CONTEXT,
     )
