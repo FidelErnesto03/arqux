@@ -6,6 +6,7 @@ $0
 # IDN   | identity   | attrs      | B | Semantic       | Actor identity
 # DOM   | domain     | attrs      | B | Semantic       | Project/scope descriptor
 # KNW   | knowledge  | attrs      | B | Semantic       | Stable or promoted knowledge
+# AXM   | axiom      | cuerpo     | H | Prefrontal     | Non-negotiable principle
 # CNST  | constraint | attrs      | H | Prefrontal     | Hard constraint or precondition
 # CLAIM | claim      | attrs      | M | Prefrontal     | Acceptance criterion
 # AUD   | audit      | attrs      | M | Prefrontal     | Verification/audit record
@@ -23,11 +24,11 @@ $0
 # BLK   | blocker    | attrs      | H | Prefrontal     | Blocking condition
 #
 # Types:
-# attrs-pos = canonical type
-# cuerpo = canonical type
+# bloque = canonical type
 # relación = canonical type
 # attrs = canonical type
-# bloque = canonical type
+# attrs-pos = canonical type
+# cuerpo = canonical type
 #
 # Micro-glossary:
 # cur=current pln=planned fut=future blk=blocked
@@ -38,10 +39,8 @@ $0
 $19: ARQUX METADATA
 
 ARQX:artifact{level:"2", name:"brain", usage:"state", kind:"native"}
-
-AXM:validate_before_mutate{severity:high, scope:all, rule:"Todo handler de transicion debe validar invariantes del estado destino ANTES de mutar. Derivado de cycle.mature() que no validaba quality gates.", survive:work}
-
-AXM:blp_includes_workflow_skill{severity:high, scope:blueprint, rule:"Todo BLP de nuevo handler debe incluir workflow + skill en alcance. Si el workflow existe, debe actualizarse.", survive:work}
+AXM:validate_before_mutate{severity:"blocking", scope:"all", rule:"Todo handler de transicion debe validar invariantes del estado destino ANTES de mutar. Derivado de cycle.mature() que no validaba quality gates.", survive:"work"}
+AXM:blp_includes_workflow_skill{severity:"blocking", scope:"blueprint", rule:"Todo BLP de nuevo handler debe incluir workflow + skill en alcance. Si el workflow existe, debe actualizarse.", survive:"work"}
 
 $1: IDENTITY
 
@@ -49,11 +48,11 @@ IDN:governor{level:"2", project:"ARQUX", path:"/home/vatrox/workspace/ARQUX", go
 
 $2: FOCUS
 
-FCS:current{what:"Ciclo cerrado", priority:"medium", status:"current", survive:"work"}
+FCS:current{what:"Ciclo cerrado", priority:"medium", status:"current", survive:"work", updated:"2026-07-16T17:05:24Z", event:"cycle.close"}
 
 $3: OBJECTIVES
 
-OBJ:_{goal:"- - - Mantener sincronia entre brain.cortex y estado real del proyecto. 98 BLPs gestionados en 7 ciclos (CYCLE-00, CYCLE-01, CYCLE-02, CYCLE-03, CYCLE-04, CYCLE-05, CYCLE-06).", status:"current", success:"pending", survive:"work"}
+OBJ:_{goal:"Mantener sincronia entre brain.cortex y estado real del proyecto. 114 BLPs gestionados en 7 ciclos (CYCLE-01, CYCLE-02, CYCLE-03, CYCLE-04, CYCLE-05, CYCLE-06, CYCLE-07).", status:"current", success:"synced", survive:"work", updated:"2026-07-16T16:19:19Z", event:"brain.reconcile"}
 
 $4: SESSIONS
 
@@ -163,27 +162,27 @@ AUD:E_0095{event:"E-0095", evidence:"[identity.get] agent_id=governor source=wor
 AUD:E_0096{event:"E-0096", evidence:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", task:"-", kind:"handler_call", agent:"anonymous", result:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", date:"2026-07-14"}
 AUD:E_0097{event:"E-0097", evidence:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", task:"-", kind:"handler_call", agent:"anonymous", result:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", date:"2026-07-14"}
 AUD:E_0098{event:"E-0098", evidence:"[cortex.ref] sigil=WRK", task:"-", kind:"handler_call", agent:"test", result:"[cortex.ref] sigil=WRK", date:"2026-07-14"}
-AUD:E_0099{event:"E-0099", evidence:"pending", task:"-", kind:"session", agent:"alfred", result:"pending", date:"2026-07-14"}
+KNW:blueprints_done{name:"blueprints_done", value:"1", updated:"2026-07-16T16:09:01Z", topic:"metrics", content:"metric blueprints_done=1", status:"current"}
+KNW:sync_run{name:"sync_run", value:"1", updated:"2026-07-16T16:17:02Z", topic:"metrics", content:"metric sync_run=1", status:"current"}
+AUD:E_0099{date:"2026-07-16T16:21:53Z", event:"E-0099", task:"T-4.1", kind:"blueprint_lifecycle", agent:"alfred", result:"[blueprint.task] task T-4.1 marked as completed — ISS-02 evaluado: requiere validación estructural en synthesize.py → requiere código fuente. Deferido a BLP-016", evidence:"[blueprint.task] task T-4.1 marked as completed — ISS-02 evaluado: requiere validación estructural en synthesize.py → requiere código fuente. Deferido a BLP-016"}
+KNW:cycles_closed{name:"cycles_closed", value:"1", updated:"2026-07-16T17:05:24Z", topic:"metrics", content:"metric cycles_closed=1", status:"current"}
 
 $7: LESSONS
 
-LNG:_______2026_07_15t18{type:"contextual", cause:"not_specified", lesson:"- - - [2026-07-15T18:02:57Z] LNG:cycle-01_completion{type:\"process\", cause:\"1 task(s) completed in CYCLE-01\", lesson:\"Completed tasks show effective cycle planning\"}", prevention:"not_applicable"}
-LNG:_____2026_07_15t20{type:"contextual", cause:"not_specified", lesson:"- - [2026-07-15T20:22:04Z] LNG:cycle-01_completion{type:\"process\", cause:\"1 task(s) completed in CYCLE-01\", lesson:\"Completed tasks show effective cycle planning\"}", prevention:"not_applicable"}
-LNG:___2026_07_15t20{type:"contextual", cause:"not_specified", lesson:"- [2026-07-15T20:38:30Z] LNG:cycle-01_completion{type:\"process\", cause:\"1 task(s) completed in CYCLE-01\", lesson:\"Completed tasks show effective cycle planning\"}", prevention:"not_applicable"}
 
 $8: ACTIVE_CONTEXT
 
-WRK:current{phase:"active", current:"- cycle=- cycle=- cycle=cycle.close: cycle CYCLE-02 closed", blocked:"no", survive:"work", fcs:"fix-jarvis-22-fails+investigar", obj:"Corregir 22 tests fallidos de Jarvis y documentar issue de fallo sistemico de Jarvis", tasks:"investigar-fallos", state:"in_progress", last_turn:"2026-07-15T22:40:21Z"}
+WRK:current{phase:"current", current:"cycle.close: cycle CYCLE-07 closed", blocked:"no", survive:"work", fcs:"CYCLE-07 closed", obj:"CYCLE-07 completado con 6 BLPs (010", tasks:"none", state:"cycle closed", last_turn:"2026-07-16T17:05:27Z", updated:"2026-07-16T17:05:24Z", event:"cycle.close"}
 
 $9: RISKS
 
-RSK:risk{description:"- - - - - - - - - - - Meta-brain DOM valores truncados por comas en parentesis", mitigation:"pending", severity:"medium", risk:"pending", impact:"pending", status:"active", survive:"work"}
+RSK:risk{description:"- - - - - - - - - - - Meta-brain DOM valores truncados por comas en parentesis", mitigation:"pending", severity:"warning", risk:"pending", impact:"pending", status:"current", survive:"work"}
 
 $10: KNOWLEDGE
 
-KNW:knowledge{topic:"project_knowledge", content:"Framework de gobierno ArqUX..."}
-
-KNW:metodologia_diseno_cyc07{topic:"metodologia", status:"active", content:"10 principios de diseno validados en CYCLE-07: 1) Verificar en codigo antes de asumir formato de handlers. 2) No sobre-afirmar: ventana = tokens planos. 3) No asumir estandares sin validar. 4) Aislar fuente exacta antes de diagnosticar. 5) Sync automatico sobre manual. 6) validate_file antes de PUML. 7) Formato hibrido PUML+HCORTEX. 8) Skill es repositorio API, no brain.cortex. 9) Workflow w14 documenta flujo synthesize. 10) MCP handler antes que bypass directo."}
+KNW:knowledge{topic:"project_knowledge", content:"Framework de gobierno ArqUX...", status:"current"}
+KNW:metodologia_diseno_cyc07{topic:"metodologia", status:"current", content:"10 principios de diseno validados en CYCLE-07: 1) Verificar en codigo antes de asumir formato de handlers. 2) No sobre-afirmar: ventana = tokens planos. 3) No asumir estandares sin validar. 4) Aislar fuente exacta antes de diagnosticar. 5) Sync automatico sobre manual. 6) validate_file antes de PUML. 7) Formato hibrido PUML+HCORTEX. 8) Skill es repositorio API, no brain.cortex. 9) Workflow w14 documenta flujo synthesize. 10) MCP handler antes que bypass directo."}
+KNW:blp_presentacion_completa_0001{topic:"lesson", status:"current", content:"Nunca presentar un BLP incompleto al Arquitecto. Las 18 secciones son el contrato. Si no estan todas, no esta listo para revision. Ver LNG-2026-07-15-001.", updated:"2026-07-16T16:35:00Z"}
 
 $11: CONCURRENCY
 

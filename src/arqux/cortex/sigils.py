@@ -159,13 +159,6 @@ SIGIL_CACHE: dict[str, dict[str, Any]] = {
         "description": "Agent claim over a task or resource",
     },
     # --- Skill sigils (Level 2) ---
-    "GTE": {
-        "name": "gate",
-        "type": "attrs",
-        "risk": "H",
-        "layer": "Prefrontal",
-        "description": "Mutation gate — quality gate that must be passed",
-    },
     "POL": {
         "name": "policy",
         "type": "attrs",

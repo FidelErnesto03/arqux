@@ -1,5 +1,0 @@
-$0
-
-$1: HANDOFF
-
-HOF:handoff{from:"hermes", to:"heimdall summary:"Auditar BLP-013 - tareas no ejecutadas" blps:"BLP-013" tasks:"T-1,T-2" decisions:"BLP-013 cerrado sin checkpoint de tareas" gaps:"Auditar si es patron en CYCLE-03"", project:"ARQUX", summary:"", blps:"", tasks:""}

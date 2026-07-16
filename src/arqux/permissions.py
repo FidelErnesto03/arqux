@@ -20,12 +20,15 @@ Environment variables:
 from __future__ import annotations
 
 import enum
+import logging
 import os
 import warnings
 from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, TypeVar
+
+logger = logging.getLogger(__name__)
 
 from .constants import (
     PRODUCT_NAME_UPPER,
@@ -208,8 +211,11 @@ class PermissionContext:
                 name = _extract_identity_name(artifact.payload)
                 if name:
                     agent_id = name
-            except Exception:
-                pass
+            except Exception as exc:
+                logger.warning(
+                    "from_env: identity resolve failed for agent_id=%s project_root=%s: %s",
+                    agent_id, project_root, exc,
+                )
         else:
             # P2 fallback: try to auto-detect project root from CWD
             try:
@@ -221,8 +227,11 @@ class PermissionContext:
                     name = _extract_identity_name(artifact.payload)
                     if name:
                         agent_id = name
-            except Exception:
-                pass
+            except Exception as exc:
+                logger.warning(
+                    "from_env: P2 fallback identity resolve failed for agent_id=%s: %s",
+                    agent_id, exc,
+                )
 
         # Validate role string.
         try:
