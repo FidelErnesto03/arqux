@@ -119,9 +119,7 @@ def should_skip(path: Path) -> bool:
                 return True
     if path.suffix in SKIP_EXTENSIONS:
         return True
-    if path.name in SKIP_FILES:
-        return True
-    return False
+    return path.name in SKIP_FILES
 
 
 def is_text_file(path: Path) -> bool:
@@ -300,8 +298,8 @@ def apply_rename(root: Path, name: str, dry_run: bool, verbose: bool) -> int:
             f"renamed {file_renames} files and {dir_renames} directories.",
             file=sys.stderr,
         )
-        print(f"Next steps:", file=sys.stderr)
-        print(f"  pip install -e .", file=sys.stderr)
+        print("Next steps:", file=sys.stderr)
+        print("  pip install -e .", file=sys.stderr)
         print(f"  {name} --version", file=sys.stderr)
         print(f"  {name} init", file=sys.stderr)
         print(f"  {name} serve", file=sys.stderr)
@@ -335,12 +333,11 @@ def main(argv: list[str] | None = None) -> int:
     )
     args = parser.parse_args(argv)
 
-    if args.root:
-        root = Path(args.root).resolve()
-    else:
-        # Start from cwd so the script operates on the directory the user
-        # invoked it from (consistent with shell UX).
-        root = find_repo_root(Path.cwd())
+    root = (
+        Path(args.root).resolve()
+        if args.root
+        else find_repo_root(Path.cwd())
+    )
 
     if not root.exists():
         print(f"ERROR: root path does not exist: {root}", file=sys.stderr)

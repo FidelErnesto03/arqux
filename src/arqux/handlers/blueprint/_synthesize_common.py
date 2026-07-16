@@ -11,7 +11,6 @@ import re
 
 logger = logging.getLogger(__name__)
 from pathlib import Path
-from typing import Any
 
 
 def parse_content_sections(content: str) -> dict[str, str]:
@@ -139,10 +138,7 @@ def _check_marker_missing(body: str, section_id: str) -> bool:
         "_Mitigation_",
         "_placeholder_",
     ]
-    for marker in markers:
-        if marker.lower() in body.lower():
-            return True
-    return False
+    return any(marker.lower() in body.lower() for marker in markers)
 
 
 def generate_section_report(

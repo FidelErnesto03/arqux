@@ -26,9 +26,9 @@ from arqux.handlers.blueprint._synthesize_common import (
     parse_content_sections as _parse_content_sections,
 )
 from arqux.handlers.cycle import (
+    _manifest_body_has_placeholders,
     _read_quality_gates_from_manifest,
     _replace_manifest_section,
-    _manifest_body_has_placeholders,
     close_cycle,
     synthesize_cycle,
 )
@@ -388,14 +388,14 @@ class TestCloseCycle:
         cdir = cycle_dir(temp_project / ARQUX_DIR, cycle_name)
         cdir.mkdir(parents=True, exist_ok=True)
         manifest = cdir / "MANIFEST.md"
-        manifest.write_text("""---
-cycle_id: "%s"
-name: "%s"
+        manifest.write_text(f"""---
+cycle_id: "{cycle_name}"
+name: "{cycle_name}"
 status: draft
 ---
 ## §1: Propósito
 Test cycle
-""" % (cycle_name, cycle_name), encoding="utf-8")
+""", encoding="utf-8")
         return cycle_name, cdir
 
     def test_close_no_blps(self, temp_project, monkeypatch):
@@ -809,7 +809,7 @@ class TestCycleCloseCurrentNotAffected:
 
     def test_close_works_directly(self, temp_project, monkeypatch):
         """cycle.close works directly without needing mature first."""
-        from arqux.handlers.cycle import close_cycle, CYCLE_CLOSED
+        from arqux.handlers.cycle import CYCLE_CLOSED, close_cycle
         monkeypatch.chdir(temp_project)
 
         from arqux.state import cycle_dir
@@ -864,7 +864,7 @@ status: "draft"
 
     def test_transitions_direct_draft_to_closed(self):
         """Verify CYCLE_TRANSITIONS only has draft→closed."""
-        from arqux.handlers.cycle import CYCLE_DRAFT, CYCLE_CLOSED, CYCLE_TRANSITIONS
+        from arqux.handlers.cycle import CYCLE_CLOSED, CYCLE_DRAFT, CYCLE_TRANSITIONS
         assert CYCLE_DRAFT in CYCLE_TRANSITIONS
         assert CYCLE_CLOSED in CYCLE_TRANSITIONS
         assert CYCLE_DRAFT not in CYCLE_TRANSITIONS or CYCLE_TRANSITIONS[CYCLE_DRAFT] == (CYCLE_CLOSED,)

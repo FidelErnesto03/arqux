@@ -38,7 +38,6 @@ from .constants import (
 )
 from .identity import IdentityManager
 
-
 # --- Identity name extraction helper (BLP-008 GOV-001 P2.2) ---
 
 

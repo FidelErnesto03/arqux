@@ -6,9 +6,9 @@ from __future__ import annotations
 from pathlib import Path
 
 from arqux.blueprint.template import parse_blp_template
+from arqux.cortex_out import CortexOUT
 from arqux.handlers.blueprint import synthesize_blueprint
 from arqux.handlers.blueprint.lifecycle import create_blueprint
-from arqux.cortex_out import CortexOUT
 
 
 def define_blueprint(bp_id, **kwargs):
