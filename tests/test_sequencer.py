@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from arqux.core.sequencer import Sequencer
 
-
 SAMPLE_BODY = """\
 <!-- BLP:TITLE -->
 # BLP-001: Test

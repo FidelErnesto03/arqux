@@ -302,13 +302,13 @@ def reconcile_brain(project_root: Path) -> dict[str, Any]:
         }
 
         # 2. Determine context: workspace root vs project root
-        from arqux.state import find_workspace_root, crud_update
+        from arqux.state import crud_update, find_workspace_root
 
         ws_root = find_workspace_root(start=project_root)
         if ws_root is None:
             result["errors"].append("workspace root not found")
             return result
-        
+
         # workspace root is .arqux/ directory; project_root is its parent
         # When project_root == ws_root.parent, we're at workspace context
         is_workspace_root = (ws_root.parent == project_root)

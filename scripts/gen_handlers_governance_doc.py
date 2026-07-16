@@ -24,7 +24,6 @@ from arqux.permissions import (
     READ_ONLY_PREFIXES,
 )
 
-
 # 24-handler governance budget (P1-R)
 GOVERNANCE_HANDLERS = {
     # blueprint (16 governance handlers — mutations)

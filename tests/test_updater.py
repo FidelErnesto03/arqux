@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from arqux.core.updater import Updater
 
-
 SAMPLE_BODY = """\
 <!-- BLP:1 -->
 ## §1: Planteamiento del Problema
