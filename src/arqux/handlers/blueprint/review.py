@@ -1,6 +1,6 @@
 """Blueprint review/completion handlers.
 
-complete, approve, ac, re_delegate, block_for_architect, fail, cancel
+complete, ac, re_delegate, block_for_architect, fail, cancel
 """
 
 from __future__ import annotations

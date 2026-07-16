@@ -79,6 +79,20 @@ def synthesize_blueprint(
         )
     valid_ids = set(tmpl_result.fields.get("markers", {}))
 
+    # Validate content section IDs against template (non-GUIDE mode).
+    if content is not None:
+        from ._synthesize_common import parse_content_sections
+        sections = parse_content_sections(content)
+        unknown = [
+            sid for sid in sections
+            if f"BLP:{sid}" not in valid_ids
+        ]
+        if unknown:
+            return CortexOUT.error(
+                f"unknown section(s) {unknown} — not in BLP_TEMPLATE.md markers",
+                code="TEMPLATE_MISMATCH",
+            )
+
     # Find or create the BLP file.
     bp_path, fm, body, created = _find_or_create_blueprint(root, bp_id, ctx, path_hint=path)
 

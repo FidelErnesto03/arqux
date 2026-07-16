@@ -36,8 +36,6 @@ QUALITY_GATES = [
     "has_required_validations",
     LEARNING_GATE,
 ]
-MATURATION_GATES = [gate for gate in QUALITY_GATES if gate != LEARNING_GATE]
-
 # Blueprint states (BP_DEFINED eliminated — ISS-002)
 # Simplified lifecycle: draft → ready → in_progress → done + cancelled/blocked (BLP-004)
 BP_DRAFT = "draft"
@@ -245,7 +243,7 @@ def _read_quality_gates(fm: dict[str, Any]) -> dict[str, bool] | None:
     keys. We check for the expected gate keys directly. If legacy Blueprints
     have the original 6 gates but no learning gate, the learning gate defaults
     to false so they must pass through the new learning contract before ready
-    or approve.
+    or complete.
     Returns dict of gate_name: bool, or None if no gates found.
     """
     gates = {}
@@ -325,20 +323,6 @@ def _validate_execution_complete(body: str, evidence: str | None) -> dict[str, A
         errors["missing_validations"] = ["completion evidence is required for declared validations"]
     return errors
 
-
-def _validate_approval_ready(root: Path, bp_id: str, fm: dict[str, Any], body: str) -> dict[str, Any]:
-    errors: dict[str, Any] = {}
-    missing_ac = _unchecked_items(body, 12, "AC")
-    if missing_ac:
-        errors["missing_acceptance_criteria"] = missing_ac
-    missing_artifacts = _missing_required_artifacts(body, root.parent)
-    if missing_artifacts:
-        errors["missing_artifacts"] = missing_artifacts
-    if not _has_learning_recorded(root, bp_id):
-        errors["missing_learning"] = ["record learning with identity.record before approval"]
-    if _has_required_validation_rows(body) and not fm.get("evidence"):
-        errors["missing_validations"] = ["review evidence is required for declared validations"]
-    return errors
 
 
 def _has_learning_recorded(root: Path, bp_id: str) -> bool:
