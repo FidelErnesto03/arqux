@@ -166,13 +166,14 @@ KNW:blueprints_done{name:"blueprints_done", value:"1", updated:"2026-07-16T16:09
 KNW:sync_run{name:"sync_run", value:"1", updated:"2026-07-16T16:17:02Z", topic:"metrics", content:"metric sync_run=1", status:"current"}
 AUD:E_0099{date:"2026-07-16T16:21:53Z", event:"E-0099", task:"T-4.1", kind:"blueprint_lifecycle", agent:"alfred", result:"[blueprint.task] task T-4.1 marked as completed — ISS-02 evaluado: requiere validación estructural en synthesize.py → requiere código fuente. Deferido a BLP-016", evidence:"[blueprint.task] task T-4.1 marked as completed — ISS-02 evaluado: requiere validación estructural en synthesize.py → requiere código fuente. Deferido a BLP-016"}
 KNW:cycles_closed{name:"cycles_closed", value:"1", updated:"2026-07-16T17:05:24Z", topic:"metrics", content:"metric cycles_closed=1", status:"current"}
+KNW:tasks_active{name:"tasks_active", value:"1", updated:"2026-07-16T17:34:20Z", topic:"metrics", content:"metric tasks_active=1", status:"current"}
 
 $7: LESSONS
 
 
 $8: ACTIVE_CONTEXT
 
-WRK:current{phase:"current", current:"cycle.close: cycle CYCLE-07 closed", blocked:"no", survive:"work", fcs:"CYCLE-07 closed", obj:"CYCLE-07 completado con 6 BLPs (010", tasks:"none", state:"cycle closed", last_turn:"2026-07-16T17:05:27Z", updated:"2026-07-16T17:05:24Z", event:"cycle.close"}
+WRK:current{phase:"current", current:"task.create: task T-001 created in CYCLE-07", blocked:"no", survive:"work", fcs:"AUDITORIA TRANSVERSAL CYCLE-07", obj:"Reportar hallazgos de auditoría transversal de CYCLE-07", tasks:"", state:"auditing", last_turn:"2026-07-16T18:34:31Z", updated:"2026-07-16T17:34:20Z", event:"task.create"}
 
 $9: RISKS
 
