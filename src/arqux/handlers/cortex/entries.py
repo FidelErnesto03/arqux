@@ -130,15 +130,22 @@ def entry_add_handler(
     individual ``section``, ``sigil``, ``name`` and ``value`` params
     (merge rule: content wins).
     """
+    # Normalise section so empty/None is treated as absent (BLP-017).
+    if section is None:
+        section = ""
     # Merge content CORTEX (canal I) over individual params.
     if content:
         parsed = parse_content_entry(content)
         if parsed:
             sigil = parsed.get("__sigil__", sigil)
             name = parsed.get("__name__", name)
+            # BLP-017: derive section from content's $N: prefix when the
+            # positional section is absent. Explicit section always wins.
+            if not section and parsed.get("__section__"):
+                section = parsed["__section__"]
             # Strip the meta keys before serialising the value body.
             body_keys = {k: v for k, v in parsed.items()
-                         if k not in ("__sigil__", "__name__")}
+                         if k not in ("__sigil__", "__name__", "__section__")}
             if body_keys:
                 # crud_add expects the attrs body WITHOUT outer braces
                 # (e.g. 'key:val, key2:val2'). The braces are added by

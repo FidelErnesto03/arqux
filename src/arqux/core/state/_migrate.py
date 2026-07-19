@@ -4,6 +4,9 @@ from __future__ import annotations
 
 from pathlib import Path
 
+# BLP-fix (T-005/G-9): _cc_* are defined in core.state.__init__
+# (as None when CODEC-CORTEX is absent), so a top-level 'from . import'
+# is safe and no longer circular.
 from . import _cc_parser, _cc_validator, _cc_writer
 from ._crud import requires_codec_cortex
 

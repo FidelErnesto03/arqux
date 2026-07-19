@@ -51,6 +51,7 @@ def create_task(
     *,
     content: str | None = None,
     path: str | None = None,
+    cycle: str | None = None,
     ctx: PermissionContext | None = None,
 ) -> CortexOUT:
     """Create a governed task in the current cycle.
@@ -93,7 +94,16 @@ def create_task(
     open_cycles = [p.name for p in sorted(cycles_base.iterdir()) if p.is_dir()]
     if not open_cycles:
         return CortexOUT.error("no cycles — call cycle.create first", code="NOT_FOUND")
-    cycle_id = open_cycles[-1]
+    # BLP-fix (G-5/G-6): respetar ciclo explicito; si no, usar el ciclo
+    # actual del proyecto en lugar del ultimo por orden alfabetico.
+    if cycle and cycle in open_cycles:
+        cycle_id = cycle
+    else:
+        from .cycle import current_cycle as _current_cycle
+
+        _cc = _current_cycle(path=path)
+        _open = _cc.data.get("open_cycles", []) if hasattr(_cc, "data") else []
+        cycle_id = cycle or (_open[-1] if _open else open_cycles[-1])
 
     task_id = next_task_id(root, cycle_id)
     fm = {
@@ -149,7 +159,7 @@ def claim_task(task_id: str, path: str | None = None, ctx: PermissionContext | N
     if root is None:
         return CortexOUT.error("no project initialized", code="NOT_FOUND")
 
-    path, fm, body = _load_task(root, task_id)
+    path, fm, body = _load_task(root, task_id, cycle=_cycle_from_path(path))
     if path is None:
         return CortexOUT.error(f"task {task_id} not found", code="NOT_FOUND")
 
@@ -189,7 +199,7 @@ def update_task(
     if root is None:
         return CortexOUT.error("no project initialized", code="NOT_FOUND")
 
-    path, fm, body = _load_task(root, task_id)
+    path, fm, body = _load_task(root, task_id, cycle=_cycle_from_path(path))
     if path is None:
         return CortexOUT.error(f"task {task_id} not found", code="NOT_FOUND")
 
@@ -228,7 +238,7 @@ def complete_task(
     if root is None:
         return CortexOUT.error("no project initialized", code="NOT_FOUND")
 
-    path, fm, body = _load_task(root, task_id)
+    path, fm, body = _load_task(root, task_id, cycle=_cycle_from_path(path))
     if path is None:
         return CortexOUT.error(f"task {task_id} not found", code="NOT_FOUND")
 
@@ -284,7 +294,7 @@ def fail_task(
     if root is None:
         return CortexOUT.error("no project initialized", code="NOT_FOUND")
 
-    path, fm, body = _load_task(root, task_id)
+    path, fm, body = _load_task(root, task_id, cycle=_cycle_from_path(path))
     if path is None:
         return CortexOUT.error(f"task {task_id} not found", code="NOT_FOUND")
 
@@ -333,8 +343,15 @@ def read_task(
     if not cycles_base.exists():
         return CortexOUT.error("no cycles", code="NOT_FOUND")
 
+    # BLP-fix (G-7): restringir la busqueda al ciclo derivado del path
+    # en lugar de escanear todos los ciclos (evita colision de task_id).
+    _cycle = _cycle_from_path(path)
+    cdirs = sorted(cycles_base.iterdir())
+    if _cycle:
+        cdirs = [c for c in cdirs if c.name == _cycle]
+
     target: Path | None = None
-    for cdir in cycles_base.iterdir():
+    for cdir in cdirs:
         candidate = cdir / TASKS_DIR / f"{task_id}.cortex"
         if candidate.exists():
             target = candidate
@@ -407,16 +424,48 @@ def list_tasks(
 
 # --- Internal helpers ------------------------------------------------------
 
-def _load_task(root: Path, task_id: str) -> tuple[Path | None, dict[str, Any], str]:
-    """Find and parse a task by ID across all cycles."""
+def _cycle_from_path(path: str | None) -> str | None:
+    """Derive the cycle ID from a path if it points inside a cycle dir.
+
+    BLP-fix (G-7): when a handler receives a path that resolves to
+    ``.../cycles/CYCLE-XX``, return ``CYCLE-XX`` so task lookups are
+    scoped to that cycle instead of scanning all cycles.
+    """
+    if not path:
+        return None
+    p = Path(path)
+    # Walk up looking for a 'cycles' parent.
+    for parent in [p, *p.parents]:
+        if parent.name == "cycles" and parent.parent.is_dir():
+            # path is the cycles dir itself -> use current cycle fallback
+            return None
+        if parent.parent.name == "cycles":
+            return parent.name
+    return None
+
+
+def _load_task(root: Path, task_id: str, cycle: str | None = None) -> tuple[Path | None, dict[str, Any], str]:
+    """Find and parse a task by ID.
+
+    BLP-fix (G-5/G-7): if ``cycle`` is provided, restrict the search to
+    that cycle only instead of scanning all cycles (which caused task_id
+    collisions across cycles).
+    """
     cycles_base = root / CYCLES_DIR
     if not cycles_base.exists():
         return None, {}, ""
-    for cdir in sorted(cycles_base.iterdir()):
+    cdirs = sorted(cycles_base.iterdir())
+    if cycle:
+        cdirs = [c for c in cdirs if c.name == cycle]
+    for cdir in cdirs:
         candidate = cdir / TASKS_DIR / f"{task_id}.cortex"
         if candidate.exists():
             fm, body = _parse_cortex_file(candidate)
             return candidate, fm, body
+        candidate_h = cdir / TASKS_DIR / f"{task_id}.md"
+        if candidate_h.exists():
+            fm, body = _parse_cortex_file(candidate_h)
+            return candidate_h, fm, body
     return None, {}, ""
 
 
@@ -590,7 +639,7 @@ def _record_run_pulse(
 
 
 handler_schemas = [
-    {"name": "task.create", "fn": create_task, "description": "Create a governed task in the current cycle. Accepts a 'content' CORTEX entry string (BLP-009) with keys obj, pre[], proc[], ac[], blk[], assignee, complexity, priority — parsed values override individual params (merge rule: content wins).", "input_schema": {"type": "object", "properties": {"obj": {"type": "string"}, "pre": {"type": "array", "items": {"type": "string"}}, "proc": {"type": "array", "items": {"type": "string"}}, "ac": {"type": "array", "items": {"type": "string"}}, "blk": {"type": "array", "items": {"type": "string"}}, "assignee": {"type": "string"}, "complexity": {"type": "string", "enum": ["simple", "standard", "complex"]}, "priority": {"type": "string", "enum": ["low", "medium", "high"]}, "content": {"type": "string", "description": "CORTEX entry string with keys obj,pre[],proc[],ac[],blk[],assignee,complexity,priority. Lists as key:[v1,v2,v3]. Parsed values override individual params (BLP-009)."}, "path": {"type": "string", "description": "Path to project root. Defaults to cwd."}}, "required": ["obj"]}},
+    {"name": "task.create", "fn": create_task, "description": "Create a governed task in the current cycle. Accepts a 'content' CORTEX entry string (BLP-009) with keys obj, pre[], proc[], ac[], blk[], assignee, complexity, priority — parsed values override individual params (merge rule: content wins).", "input_schema": {"type": "object", "properties": {"obj": {"type": "string"}, "pre": {"type": "array", "items": {"type": "string"}}, "proc": {"type": "array", "items": {"type": "string"}}, "ac": {"type": "array", "items": {"type": "string"}}, "blk": {"type": "array", "items": {"type": "string"}}, "assignee": {"type": "string"}, "complexity": {"type": "string", "enum": ["simple", "standard", "complex"]}, "priority": {"type": "string", "enum": ["low", "medium", "high"]}, "content": {"type": "string", "description": "CORTEX entry string with keys obj,pre[],proc[],ac[],blk[],assignee,complexity,priority. Lists as key:[v1,v2,v3]. Parsed values override individual params (BLP-009)."}, "cycle": {"type": "string", "description": "Target cycle ID (e.g. CYCLE-07). If omitted, uses the current cycle."}, "path": {"type": "string", "description": "Path to project root. Defaults to cwd."}}, "required": ["obj"]}},
     {"name": "task.claim", "fn": claim_task, "description": "An executor claims a task → status: in_progress.", "input_schema": {"type": "object", "properties": {"task_id": {"type": "string"}, "path": {"type": "string", "description": "Path to project root. Defaults to cwd."}}, "required": ["task_id"]}},
     {"name": "task.update", "fn": update_task, "description": "Update task progress, optionally change status.", "input_schema": {"type": "object", "properties": {"task_id": {"type": "string"}, "note": {"type": "string"}, "status": {"type": "string"}, "path": {"type": "string", "description": "Path to project root. Defaults to cwd."}}, "required": ["task_id", "note"]}},
     {"name": "task.complete", "fn": complete_task, "description": "Mark a task done and record evidence.", "input_schema": {"type": "object", "properties": {"task_id": {"type": "string"}, "evidence": {"type": "string"}, "path": {"type": "string", "description": "Path to project root. Defaults to cwd."}}, "required": ["task_id"]}},

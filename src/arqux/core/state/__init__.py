@@ -69,8 +69,14 @@ try:
     _HAS_CODEC_CORTEX = True
     _codec_cortex = True  # sentinel
 except ImportError:
+    # BLP-fix (T-005/G-9): CODEC-CORTEX is optional. Define the
+    # codec handles as None so that 'from . import _cc_*' at module
+    # level in the submodules does not raise ImportError, and the
+    # runtime checks via requires_codec_cortex() still gate usage.
     _HAS_CODEC_CORTEX = False
-    pass
+    _codec_cortex = None
+    _cc_ast = _cc_lexer = _cc_parser = _cc_validator = _cc_writer = None
+    _cc_mutations = _cc_selectors = _cc_transactions = _cc_renderer = None
 
 # --- Import and re-export submodules ---------------------------------------
 

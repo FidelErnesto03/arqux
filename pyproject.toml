@@ -28,9 +28,12 @@ classifiers = [
 dependencies = [
     # MCP runtime — Model Context Protocol server primitives.
     "mcp>=1.0.0",
-    # CODEC-CORTEX v0.5.0+ — information codec for AI agents (CORTEX/HCORTEX, learning engine).
-    # v0.5.0+ required: introduces SchemaResolver, ensure_in_glossary, E032/E023 validation.
-    "codec-cortex>=0.5.0",
+    # CODEC-CORTEX v0.5.2+ — information codec for AI agents (CORTEX/HCORTEX, learning engine).
+    # v0.5.2+ REQUIRED: supports the ArqUX BLP-041 schema ($0.1 sub-section with
+    # ARQX:artifact metadata). codec-cortex 0.4.0/0.5.0/0.5.1 reject $0.1 with
+    # E017_UNPARSED_LINE / E033_ZERO_SECTION_MEMORY_ENTRY, breaking all template
+    # and identity validation (see CYCLE-07 T-002). Pin >=0.5.2.
+    "codec-cortex>=0.5.2",
     # Utilities.
     "pydantic>=2.0.0",
     "click>=8.1.0",
