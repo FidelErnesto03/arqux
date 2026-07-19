@@ -1,7 +1,10 @@
-"""Tests for codec-cortex 0.5.0 template validation — BC-5 fix.
+"""Tests for codec-cortex 0.5.2 template validation — BC-5 fix.
 
 Validates that every .cortex template shipped with ArqUX passes the strict
-schema validation introduced in codec-cortex 0.5.0:
+schema validation introduced in codec-cortex 0.5.2 (the minimum version
+required by ArqUX; see pyproject.toml). codec-cortex <0.5.2 rejects the
+ArqUX BLP-041 schema ($0.1 sub-section with ARQX:artifact metadata) with
+E017_UNPARSED_LINE / E033_ZERO_SECTION_MEMORY_ENTRY (CYCLE-07 T-002):
 
   - W001_MISSING_FIELDS: every entry must have `name` attr
   - W002_INVALID_STATUS: status must be canonical or declared in $0
@@ -12,8 +15,8 @@ schema validation introduced in codec-cortex 0.5.0:
   - I001_UNDECLARED_SIGIL / I002_UNDECLARED_TYPE: sigils/types not in $0
     are auto-added with needs_review (info, not error)
 
-This test suite is part of the ArqUX × codec-cortex 0.5.0 compatibility
-patch. It MUST pass before publishing ArqUX with codec-cortex 0.5.0+.
+This test suite is part of the ArqUX × codec-cortex 0.5.2 compatibility
+patch. It MUST pass before publishing ArqUX with codec-cortex 0.5.2+.
 """
 
 from __future__ import annotations

@@ -58,8 +58,16 @@ def parse_content_entry(content: str | None) -> dict[str, Any]:
     if not text:
         return {}
 
-    # Strip leading "$N:" or "$N.N:" section prefix.
+    # Capture leading "$N:" or "$N.N:" section prefix as __section__ (BLP-017).
+    result: dict[str, Any] = {}
+    section_match = re.match(r"^\$(\d+(?:\.\d+)?):", text)
+    if section_match:
+        result["__section__"] = "$" + section_match.group(1)
+    # Strip leading "$N:" or "$N.N:" section prefix (and any wrapping braces
+    # of the form "$N:{...}") so the inner "SIGIL:name{...}" is exposed.
     text = re.sub(r"^\$\d+(?:\.\d+)?:", "", text).strip()
+    if text.startswith("{") and text.endswith("}"):
+        text = text[1:-1].strip()
 
     # Detect "SIGIL:name{...}" or "SIGIL:name" form.
     sigil_match = re.match(r"^([A-Z][A-Z0-9_]{1,9}):([A-Za-z0-9_\-.]+)\s*(.*)$", text, re.DOTALL)
@@ -72,7 +80,6 @@ def parse_content_entry(content: str | None) -> dict[str, Any]:
 
     # Now extract the inner {...} body (if any).
     inner = _extract_braces(text)
-    result: dict[str, Any] = {}
     if sigil_id:
         result["__sigil__"] = sigil_id
     if sigil_name:

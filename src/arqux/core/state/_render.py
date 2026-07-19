@@ -7,6 +7,9 @@ from pathlib import Path
 from typing import Any
 
 from ... import formats
+# BLP-fix (T-005/G-9): _HAS_CODEC_CORTEX / _cc_* are defined in
+# core.state.__init__ (as None when CODEC-CORTEX is absent), so a
+# top-level 'from . import' is safe and no longer circular.
 from . import _HAS_CODEC_CORTEX, _cc_parser, _cc_renderer
 
 

@@ -1,5 +1,0 @@
-$0
-
-$1: HANDOFF
-
-HOF:handoff{from:"hermes", to:"heimdall", project:"ARQUX", summary:"CYCLE-07 tiene 6 BLPs todos done pero 3 issues abiertos (ISS-003, ISS-004, GOV-001) que bloquean el cierre. ISS-006 ya resuelto debe eliminarse. LNG-001 documentado. El Arquitecto quiere que Heimdall revise los issues abiertos y determine: cuales siguen siendo relevantes", blps:"BLP-001", tasks:"Revisar ISS-003"}

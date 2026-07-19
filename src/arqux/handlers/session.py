@@ -273,7 +273,16 @@ def context_set(
     if ws_root is None:
         return CortexOUT.error("no workspace root found", code="NOT_FOUND")
 
-    agent = (ctx or PermissionContext.from_env(project_root=ws_root)).agent_id
+    # BLP-fix (T-004 / Heimdall audit): never silently fall back to the
+    # default governor identity (alfred) when an explicit context agent is
+    # available. Respect ctx.agent_id; only fall back to from_env when
+    # no context is supplied, and surface the chosen identity instead of
+    # masking it.
+    if ctx is not None:
+        agent = ctx.agent_id
+    else:
+        ctx_env = PermissionContext.from_env(project_root=ws_root)
+        agent = ctx_env.agent_id
 
     # Phase 2: resolve target project from meta-brain
     project_root = _resolve_project_from_meta_brain(ws_root, project)
@@ -861,7 +870,12 @@ def handoff(
     from ..state import read_brain
     fm, sections, raw = read_brain(root.parent)
     project_name = fm.get("project", "") or root.parent.name
-    agent_id = (ctx or PermissionContext.from_env()).agent_id
+    # BLP-fix (T-004 / Heimdall audit): respect explicit ctx.agent_id;
+    # never silently mask the active identity with the default fallback.
+    if ctx is not None:
+        agent_id = ctx.agent_id
+    else:
+        agent_id = PermissionContext.from_env().agent_id
 
     # Build CORTEX handoff payload.
     handoff_lines = [

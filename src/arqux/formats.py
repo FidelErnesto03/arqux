@@ -755,6 +755,31 @@ def _build_projects_doc(doc, projects):
     _add_section(doc, "$1", "PROJECTS", entries)
 
 
+def _strip_attr_prefix(value: str, key: str) -> str:
+    """Strip a repeated serialized-attr prefix from a value.
+
+    BLP-fix (T-006/G-12): when a CORTEX artifact is re-read and
+    re-written, a value that already carries its own serialized
+    ``key=`` prefix (e.g. ``"text=Corregir"``) would be wrapped again
+    as ``{"text": "text=Corregir"}`` and rendered as
+    ``text:"text=Corregir"`` — duplicating the prefix on every
+    round-trip. Strip any leading ``key=`` (repeatedly) so re-writes
+    stay idempotent.
+    """
+    if not isinstance(value, str) or not value:
+        return value
+    # Remove any leading run of "<key>=" and/or bullet markers "- " / "* "
+    # (they may be interleaved, e.g. "text=- text=- text=...") so that
+    # re-writing an already-normalized value stays idempotent.
+    import re
+    pattern = re.compile(rf"^(?:{re.escape(key)}=|[*-]\s*)+")
+    prev = None
+    while prev != value:
+        prev = value
+        value = pattern.sub("", value)
+    return value
+
+
 def _build_task_doc(doc, fm, body):
     _add_section(doc, "$1", "TASK", [
         _entry("$1", "WRK", "task", {
@@ -786,32 +811,47 @@ def _build_task_doc(doc, fm, body):
         entries = []
         sid = f"${sec_num}"
         if sigil == "OBJ":
-            entries.append(_entry(sid, sigil, "objective", {"text": content}))
+            # OBJ may be a single paragraph or a bulleted list; normalize
+            # by stripping bullets and repeated 'text=' prefixes per line.
+            obj_lines = []
+            for line in content.splitlines():
+                line = line.strip()
+                if not line:
+                    continue
+                obj_lines.append(_strip_attr_prefix(line.lstrip("-* "), "text"))
+            obj_text = " ".join(obj_lines)
+            entries.append(_entry(sid, sigil, "objective", {"text": obj_text}))
         elif sigil == "STP":
             for i, line in enumerate(content.splitlines()):
                 line = line.strip()
                 if line and re.match(r'^\d+\.', line):
                     action = re.sub(r'^\d+\.\s*', '', line)
+                    action = _strip_attr_prefix(action, "action")
                     entries.append(_entry(sid, sigil, f"step{i+1}",
                                           {"action": action}))
         elif sigil == "CNST":
             for i, line in enumerate(content.splitlines()):
                 line = line.strip()
                 if line and line.startswith("-"):
+                    val = line.lstrip("- ")
+                    val = _strip_attr_prefix(val, "text")
                     entries.append(_entry(sid, sigil, f"pre{i+1}",
-                                          {"text": line.lstrip("- ")}))
+                                          {"text": val}))
         elif sigil == "CLAIM":
             for i, line in enumerate(content.splitlines()):
                 line = line.strip()
                 if line and line.startswith("-"):
+                    val = line.lstrip("- ")
+                    val = _strip_attr_prefix(val, "criterion")
                     entries.append(_entry(sid, sigil, f"ac{i+1}",
-                                          {"criterion": line.lstrip("- ")}))
+                                          {"criterion": val}))
         elif sigil == "BLK":
             for i, line in enumerate(content.splitlines()):
                 line = line.strip()
                 if line and line.startswith("-"):
+                    cond = _strip_attr_prefix(line.lstrip("- "), "condition")
                     entries.append(_entry(sid, sigil, f"b{i+1}", {
-                        "condition": line.lstrip("- "),
+                        "condition": cond,
                         "action": "HALT_AND_REPORT",
                     }))
         if entries:
@@ -823,7 +863,8 @@ def _build_task_doc(doc, fm, body):
         if content:
             sid = f"${sec_num}"
             _add_section(doc, sid, key, [
-                _entry(sid, "AUD", key.lower(), {"text": content}),
+                _entry(sid, "AUD", key.lower(),
+                       {"text": _strip_attr_prefix(content, "text")}),
             ])
             sec_num += 1
 

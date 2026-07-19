@@ -193,3 +193,56 @@ def test_entry_list_invalid_format(tmp_path: Path) -> None:
     result = entry_list_handler(str(f), format="bogus", ctx=_CONTEXT)
     assert result.profile == "OUT-ERROR"
     assert result.fields.get("code") == "INVALID_ARGS"
+
+
+# ---------------------------------------------------------------------------
+# BLP-017 — content supplies the section via the $N: prefix (BUG-002 fix C)
+# ---------------------------------------------------------------------------
+
+
+def test_entry_add_content_supplies_section(tmp_path: Path) -> None:
+    """When section is None/empty, content's $N: prefix must set the section.
+
+    Reproduces BUG-002 defect 2-subpoint: content carries the section so the
+    caller is not forced to pass it positionally. Pre-fix this raised
+    'int' object has no attribute 'strip' or silently ignored the section.
+    """
+    f = tmp_path / "test.cortex"
+    f.write_text(_SAMPLE)
+    result = entry_add_handler(
+        str(f),
+        "",  # section omitted -> must come from content
+        "LNG",  # overridden by content anyway
+        "dummy",
+        "dummy-value",
+        content='$6:{LNG:E_0100{type:"process", cause:"regression test", lesson:"section from content", prevention:"use content $N:"}}',
+        create_section=True,
+        force=True,
+        ctx=_CONTEXT,
+    )
+    assert result.profile == "OUT-WORK", str(result.fields)
+    assert result.fields.get("section") == "$6", str(result.fields)
+    assert result.fields.get("sigil") == "LNG"
+
+    # Verify the entry really landed in $6.
+    get = entry_get_handler(str(f), "LNG:*", ctx=_CONTEXT)
+    assert get.profile == "OUT-WORK"
+    assert get.fields.get("count", 0) >= 1
+
+
+def test_entry_add_explicit_section_wins_over_content(tmp_path: Path) -> None:
+    """Merge rule: an explicit positional section must beat content's $N:."""
+    f = tmp_path / "test.cortex"
+    f.write_text(_SAMPLE)
+    result = entry_add_handler(
+        str(f),
+        "$3",  # explicit section wins
+        "OBJ",
+        "explicit",
+        'goal:"explicit", status:"current"',
+        content='$9:{OBJ:from_content{goal:"content", status:"current", success:"verified", survive:"work"}}',
+        force=True,
+        ctx=_CONTEXT,
+    )
+    assert result.profile == "OUT-WORK", str(result.fields)
+    assert result.fields.get("section") == "$3", str(result.fields)

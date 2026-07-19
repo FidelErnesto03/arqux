@@ -12,7 +12,7 @@ Before deploying ArqUX in a pilot environment, verify:
 
 - [ ] **ArqUX version**: `>= 0.4.3` (run `arqux --version`)
 - [ ] **Python**: `>= 3.10` (3.12 recommended)
-- [ ] **codec-cortex**: `>= 0.5.0` (auto-installed as dependency)
+- [ ] **codec-cortex**: `>= 0.5.2` (auto-installed as dependency; required for BLP-041 `$0.1` schema support — see CYCLE-07 T-002)
 - [ ] **Strict mode**: `ARQUX_STRICT_ROLES=1` and `ARQUX_STRICT_SECURITY=1` set in environment
 - [ ] **Secrets**: `.arqux/secrets/` directory created with one `<agent>.key` file per agent identity (mode 0600)
 - [ ] **Identities**: At least one governor identity bound (`arqux identity resolve alfred`)
