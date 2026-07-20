@@ -190,9 +190,13 @@ def _find_blueprint(root: Path, bp_id: str, *, path_hint: str | None = None) -> 
     # 2. Active cycle
     from ...state import crud_read
     try:
-        brain_path = root / ".arqux" / "brain.cortex"
+        # find_project_root returns the .arqux dir; keep legacy fallback for
+        # callers that pass the project root instead.
+        brain_path = root / "brain.cortex"
+        if not brain_path.exists():
+            brain_path = root / ".arqux" / "brain.cortex"
         if brain_path.exists():
-            cur = crud_read(brain_path, "$1/FCS:current")
+            cur = crud_read(brain_path, "FCS:current")
             fcs = cur.get("entries", [{}])[0].get("value", {}) if cur.get("entries") else {}
             active_cycle = fcs.get("cycle", "")
             if active_cycle:
@@ -371,7 +375,9 @@ def _has_learning_recorded(root: Path, bp_id: str) -> bool:
 def _record_to_brain(root: Path, bp_id: str, outcome: str, evidence: str) -> None:
     """Record Blueprint outcome in brain PULSE using CODEC-CORTEX (BLP-042)."""
     try:
-        brain_path = root / ".arqux" / "brain.cortex"
+        brain_path = root / "brain.cortex"
+        if not brain_path.exists():
+            brain_path = root / ".arqux" / "brain.cortex"
         if not brain_path.exists():
             return
 
