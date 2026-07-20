@@ -14,9 +14,12 @@ CHANGES vs original:
 
 from __future__ import annotations
 
+import logging
 import re
 from pathlib import Path
 from typing import Any
+
+logger = logging.getLogger(__name__)
 
 from ..constants import (
     ARQUX_DIR,
@@ -195,11 +198,26 @@ def _replace_markers_in_section(
     )
     section_match = pattern.search(manifest_text)
     if not section_match:
+        logger.warning(
+            "_replace_markers_in_section: section §%d (%s) not found in manifest — "
+            "no replacement performed. markers=%s",
+            section_num, marker, markers,
+        )
         return manifest_text
 
     section_content = section_match.group(0)
+    unmatched = []
     for orig_marker, replacement in markers.items():
-        section_content = section_content.replace(orig_marker, replacement)
+        if orig_marker in section_content:
+            section_content = section_content.replace(orig_marker, replacement)
+        else:
+            unmatched.append(orig_marker)
+
+    if unmatched:
+        logger.warning(
+            "_replace_markers_in_section: %d marker(s) not found in section §%d: %s",
+            len(unmatched), section_num, unmatched,
+        )
 
     return pattern.sub(section_content, manifest_text, count=1)
 

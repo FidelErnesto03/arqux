@@ -24,11 +24,11 @@ $0
 # BLK   | blocker    | attrs      | H | Prefrontal     | Blocking condition
 #
 # Types:
-# relación = canonical type
-# cuerpo = canonical type
-# bloque = canonical type
-# attrs = canonical type
 # attrs-pos = canonical type
+# attrs = canonical type
+# bloque = canonical type
+# cuerpo = canonical type
+# relación = canonical type
 #
 # Micro-glossary:
 # cur=current pln=planned fut=future blk=blocked
@@ -52,7 +52,7 @@ FCS:current{what:"Ciclo CYCLE-10 iniciado", priority:"medium", status:"current",
 
 $3: OBJECTIVES
 
-OBJ:_{goal:"Mantener sincronia entre brain.cortex y estado real del proyecto. 114 BLPs gestionados en 7 ciclos (CYCLE-01, CYCLE-02, CYCLE-03, CYCLE-04, CYCLE-05, CYCLE-06, CYCLE-07).", status:"current", success:"synced", survive:"work", updated:"2026-07-16T16:19:19Z", event:"brain.reconcile"}
+OBJ:_{goal:"Mantener sincronia entre brain.cortex y estado real del proyecto. 118 BLPs gestionados en 9 ciclos (CYCLE-01, CYCLE-02, CYCLE-03, CYCLE-04, CYCLE-05, CYCLE-06, CYCLE-07, CYCLE-08, CYCLE-09).", status:"current", success:"synced", survive:"work", updated:"2026-07-20T18:15:59Z", event:"brain.reconcile"}
 
 $4: SESSIONS
 
@@ -148,13 +148,33 @@ AUD:E_0134{date:"2026-07-19T01:37:35Z", event:"E-0134", task:"-", kind:"handler_
 AUD:E_0135{date:"2026-07-19T01:37:35Z", event:"E-0135", task:"-", kind:"handler_call", agent:"test", result:"[identity.get] agent_id=governor source=workspace", evidence:"[identity.get] agent_id=governor source=workspace"}
 AUD:E_0136{date:"2026-07-19T01:37:35Z", event:"E-0136", task:"-", kind:"handler_call", agent:"anonymous", result:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", evidence:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md"}
 AUD:E_0137{date:"2026-07-19T01:37:35Z", event:"E-0137", task:"-", kind:"handler_call", agent:"anonymous", result:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", evidence:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md"}
+AUD:E_0138{date:"2026-07-19T11:36:54Z", event:"E-0138", task:"-", kind:"handler_call", agent:"test", result:"[cortex.ref] sigil=WRK", evidence:"[cortex.ref] sigil=WRK"}
+AUD:E_0139{date:"2026-07-19T11:36:54Z", event:"E-0139", task:"-", kind:"handler_call", agent:"test", result:"[cortex.ref] sigil=LNG", evidence:"[cortex.ref] sigil=LNG"}
+AUD:E_0140{date:"2026-07-19T11:36:54Z", event:"E-0140", task:"-", kind:"handler_call", agent:"test", result:"[cortex.format] hcortex->cortex", evidence:"[cortex.format] hcortex->cortex"}
+AUD:E_0141{date:"2026-07-19T11:36:54Z", event:"E-0141", task:"-", kind:"handler_call", agent:"test", result:"[identity.get] agent_id=governor source=workspace", evidence:"[identity.get] agent_id=governor source=workspace"}
+AUD:E_0142{date:"2026-07-19T11:36:55Z", event:"E-0142", task:"-", kind:"handler_call", agent:"anonymous", result:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", evidence:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md"}
+AUD:E_0143{date:"2026-07-19T11:36:55Z", event:"E-0143", task:"-", kind:"handler_call", agent:"anonymous", result:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", evidence:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md"}
+AUD:E_0144{date:"2026-07-19T21:06:36Z", event:"E-0144", task:"-", kind:"checkpoint", agent:"hermes", result:"cortex.checkpoint ok fcs=Sandbox-CODEC-CORTEX-migracion-comparati obj=", evidence:"cortex.checkpoint ok fcs=Sandbox-CODEC-CORTEX-migracion-comparati obj="}
+AUD:E_0145{date:"2026-07-20T15:46:37Z", event:"E-0145", task:"-", kind:"handler_call", agent:"anonymous", result:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", evidence:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md"}
+AUD:E_0146{date:"2026-07-20T15:46:37Z", event:"E-0146", task:"-", kind:"handler_call", agent:"anonymous", result:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", evidence:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md"}
+AUD:E_0147{date:"2026-07-20T15:46:53Z", event:"E-0147", task:"-", kind:"handler_call", agent:"test", result:"[cortex.ref] sigil=WRK", evidence:"[cortex.ref] sigil=WRK"}
+AUD:E_0148{date:"2026-07-20T15:46:53Z", event:"E-0148", task:"-", kind:"handler_call", agent:"test", result:"[cortex.ref] sigil=LNG", evidence:"[cortex.ref] sigil=LNG"}
+AUD:E_0149{date:"2026-07-20T15:46:53Z", event:"E-0149", task:"-", kind:"handler_call", agent:"test", result:"[cortex.format] hcortex->cortex", evidence:"[cortex.format] hcortex->cortex"}
+AUD:E_0150{date:"2026-07-20T15:46:53Z", event:"E-0150", task:"-", kind:"handler_call", agent:"test", result:"[identity.get] agent_id=governor source=workspace", evidence:"[identity.get] agent_id=governor source=workspace"}
+AUD:E_0151{date:"2026-07-20T15:46:53Z", event:"E-0151", task:"-", kind:"handler_call", agent:"anonymous", result:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", evidence:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md"}
+AUD:E_0152{date:"2026-07-20T15:46:53Z", event:"E-0152", task:"-", kind:"handler_call", agent:"anonymous", result:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", evidence:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md"}
+AUD:E_0153{date:"2026-07-20T15:49:09Z", event:"E-0153", task:"T-001", kind:"task_complete", agent:"alfred", result:"Fix aplicado en _helpers.py (2 sitios) y synthesize.py: brain_path ahora es root/brain.cortex con fallback legacy a root/.arqux/brain.cortex; selector FCS agnóstico de sección (\"FCS:current\"). Test de regresión nuevo tests/test_find_blueprint_active_cycle.py (4 tests: ciclo activo viejo gana al nuevo, ciclo activo nuevo, FCS en $1 legacy, fallback sin hint). Suite completa: 871 passed, 0 failed. uv tool arqux reinstalado; verificado que la instalación resuelve BLP-001 a CYCLE-03 correctamente.", evidence:"Fix aplicado en _helpers.py (2 sitios) y synthesize.py: brain_path ahora es root/brain.cortex con fallback legacy a root/.arqux/brain.cortex; selector FCS agnóstico de sección (\"FCS:current\"). Test de regresión nuevo tests/test_find_blueprint_active_cycle.py (4 tests: ciclo activo viejo gana al nuevo, ciclo activo nuevo, FCS en $1 legacy, fallback sin hint). Suite completa: 871 passed, 0 failed. uv tool arqux reinstalado; verificado que la instalación resuelve BLP-001 a CYCLE-03 correctamente.", cycle:"CYCLE-02"}
+AUD:E_0154{date:"2026-07-20T18:27:12Z", event:"E-0154", task:"-", kind:"handler_call", agent:"test", result:"[cortex.ref] sigil=WRK", evidence:"[cortex.ref] sigil=WRK"}
+AUD:E_0155{date:"2026-07-20T18:27:12Z", event:"E-0155", task:"-", kind:"handler_call", agent:"test", result:"[cortex.ref] sigil=LNG", evidence:"[cortex.ref] sigil=LNG"}
+AUD:E_0156{date:"2026-07-20T18:27:12Z", event:"E-0156", task:"-", kind:"handler_call", agent:"test", result:"[cortex.format] hcortex->cortex", evidence:"[cortex.format] hcortex->cortex"}
+AUD:E_0157{date:"2026-07-20T18:27:12Z", event:"E-0157", task:"-", kind:"handler_call", agent:"test", result:"[identity.get] agent_id=governor source=workspace", evidence:"[identity.get] agent_id=governor source=workspace"}
 
 $7: LESSONS
 
 
 $8: ACTIVE_CONTEXT
 
-WRK:current{phase:"current", current:"task.complete: task T-002 completed", blocked:"no", survive:"work", fcs:"AUDITORIA TRANSVERSAL CYCLE-07", obj:"Reportar hallazgos de auditoría transversal de CYCLE-07", tasks:"", state:"auditing", last_turn:"2026-07-16T18:34:31Z", updated:"2026-07-19T01:35:01Z", event:"task.complete"}
+WRK:current{phase:"current", current:"task.complete: task T-001 completed", blocked:"no", survive:"work", fcs:"Sandbox-CODEC-CORTEX-migracion-comparativa;obj:Analisis preliminar + migracion + delta vs skill;tasks:completado-5-5;state:done", obj:"", tasks:"", state:"active", last_turn:"2026-07-19T21:06:36Z", updated:"2026-07-20T15:49:09Z", event:"task.complete"}
 
 $9: RISKS
 

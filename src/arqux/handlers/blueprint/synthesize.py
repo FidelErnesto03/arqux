@@ -175,9 +175,11 @@ def _find_or_create_blueprint(
     from ...state import crud_read
     cycle_id = ""
     try:
-        brain_path = root / ".arqux" / "brain.cortex"
+        brain_path = root / "brain.cortex"
+        if not brain_path.exists():
+            brain_path = root / ".arqux" / "brain.cortex"
         if brain_path.exists():
-            cur = crud_read(brain_path, "$1/FCS:current")
+            cur = crud_read(brain_path, "FCS:current")
             fcs = cur.get("entries", [{}])[0].get("value", {}) if cur.get("entries") else {}
             cycle_id = fcs.get("cycle", "")
     except Exception:

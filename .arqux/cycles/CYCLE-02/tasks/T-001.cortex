@@ -27,24 +27,23 @@ $0
 # Micro-glossary:
 
 
-$1: TASK
+$19: ARQUX METADATA
 
 ARQX:artifact{level:2, name:"T-001", usage:"state", kind:"native"}
-WRK:task{id:"T-001", status:"open", governor:"hermes", assignee:"heimdall", priority:"high", complexity:"standard", cycle:"CYCLE-02", created:"2026-07-11T13:29:09Z", updated:"2026-07-11T13:29:09Z"}
+
+$1: TASK
+
+WRK:task{id:"T-001", status:"done", governor:"hermes", assignee:"alfred", priority:"high", complexity:"standard", cycle:"CYCLE-02", created:"2026-07-11T13:29:09Z", updated:"2026-07-20T15:49:09Z"}
 
 $2: OBJECTIVE
 
 OBJ:objective{text:"Ejecutar auditoría ejecutable de ArqUX siguiendo protocolo ARQUX_EXECUTABLE_AUDIT_PROTOCOL.md y dejar resultados en docs/"}
 
-$3: PROCEDURE
-
-STP:step1{action:"Leer protocolo ARQUX_EXECUTABLE_AUDIT_PROTOCOL.md"}
-STP:step2{action:"Ejecutar pasos de auditoría definidos"}
-STP:step3{action:"Recopilar evidencia y resultados"}
-STP:step4{action:"Guardar informe en docs/"}
-STP:step5{action:"Notificar finalización"}
-
-$4: ACCEPTANCE
+$3: ACCEPTANCE
 
 CLAIM:ac1{criterion:"Ejecuta auditoría siguiendo protocolo ARQUX_EXECUTABLE_AUDIT_PROTOCOL.md"}
 CLAIM:ac2{criterion:"Guarda resultados en docs/ con nombre ARQUX_AUDIT_REPORT_<timestamp>.md"}
+
+$4: EVIDENCE
+
+AUD:evidence{text:"Fix aplicado en _helpers.py (2 sitios) y synthesize.py: brain_path ahora es root/brain.cortex con fallback legacy a root/.arqux/brain.cortex; selector FCS agnóstico de sección (\"FCS:current\"). Test de regresión nuevo tests/test_find_blueprint_active_cycle.py (4 tests: ciclo activo viejo gana al nuevo, ciclo activo nuevo, FCS en $1 legacy, fallback sin hint). Suite completa: 871 passed, 0 failed. uv tool arqux reinstalado; verificado que la instalación resuelve BLP-001 a CYCLE-03 correctamente."}

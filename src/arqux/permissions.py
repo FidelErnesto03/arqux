@@ -31,6 +31,7 @@ from typing import Any, TypeVar
 logger = logging.getLogger(__name__)
 
 from .constants import (
+    ARQUX_DIR,
     PRODUCT_NAME_UPPER,
     ROLE_AUDITOR,
     ROLE_EXECUTOR,
@@ -190,6 +191,21 @@ class PermissionContext:
     timestamp: int | None = None
     verified: bool = False  # True if HMAC signature has been verified
 
+    @staticmethod
+    def _normalize_project_root(root: str | Path) -> Path:
+        """If *root* points to the .arqux/ directory, return its parent instead.
+
+        ``find_project_root()`` returns the ``.arqux/`` directory, but
+        ``IdentityManager(project_root=...)`` appends ``.arqux/`` internally
+        (``<project_root>/.arqux/identities/``). Without normalization, passing
+        ``.arqux/`` as project_root creates a double-nesting bug:
+        ``.arqux/.arqux/identities/`` (GOV-001 P2).
+        """
+        p = Path(root)
+        if p.name == ARQUX_DIR:
+            return p.parent
+        return p
+
     @classmethod
     def from_env(cls, project_root: str | Path | None = None) -> PermissionContext:
         prefix = f"{PRODUCT_NAME_UPPER}_"
@@ -202,7 +218,7 @@ class PermissionContext:
 
         # Resolve runtime agent_id to canonical ArqUX identity (BLP-008 GOV-001 P2.2)
         if project_root is not None:
-            proj_path = Path(project_root) if isinstance(project_root, str) else project_root
+            proj_path = cls._normalize_project_root(project_root)
             try:
                 im = IdentityManager(project_root=proj_path)
                 artifact = im.resolve(agent_id)
@@ -221,7 +237,8 @@ class PermissionContext:
                 from .state import find_project_root
                 auto_root = find_project_root()
                 if auto_root is not None:
-                    im = IdentityManager(project_root=auto_root)
+                    normalized = cls._normalize_project_root(auto_root)
+                    im = IdentityManager(project_root=normalized)
                     artifact = im.resolve(agent_id)
                     name = _extract_identity_name(artifact.payload)
                     if name:
