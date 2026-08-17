@@ -20,15 +20,14 @@ from pathlib import Path
 import pytest
 
 from arqux.cortex.json_handlers import (
-    cortex_write_json,
     cortex_read_json,
+    cortex_write_json,
     entry_add_json,
-    entry_update_json,
     entry_delete_json,
     entry_list_json,
+    entry_update_json,
 )
 from arqux.cortex.reader import cortex_to_dict
-
 
 # ---------------------------------------------------------------------------
 # Fixtures

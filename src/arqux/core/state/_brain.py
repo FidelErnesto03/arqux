@@ -22,6 +22,7 @@ from ...constants import (
     PRODUCT_NAME,
     TASKS_DIR,
 )
+
 # BLP-fix (T-005/G-9): _HAS_CODEC_CORTEX / _cc_* are defined in
 # core.state.__init__ (as None when CODEC-CORTEX is absent), so a
 # top-level 'from . import' is safe and no longer circular.

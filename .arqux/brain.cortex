@@ -565,6 +565,18 @@ AUD:E_0157{date:"2026-08-17T13:25:57Z", event:"E-0157", task:"-", kind:"handler_
 
 AUD:E_0157{date:"2026-08-17T13:25:57Z", event:"E-0157", task:"-", kind:"handler_call", agent:"anonymous", result:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", evidence:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md"}
 
+AUD:E_0157{date:"2026-08-17T13:31:08Z", event:"E-0157", task:"-", kind:"handler_call", agent:"test", result:"[cortex.ref] sigil=WRK", evidence:"[cortex.ref] sigil=WRK"}
+
+AUD:E_0157{date:"2026-08-17T13:31:09Z", event:"E-0157", task:"-", kind:"handler_call", agent:"test", result:"[cortex.ref] sigil=LNG", evidence:"[cortex.ref] sigil=LNG"}
+
+AUD:E_0157{date:"2026-08-17T13:31:09Z", event:"E-0157", task:"-", kind:"handler_call", agent:"test", result:"[cortex.format] hcortex->cortex", evidence:"[cortex.format] hcortex->cortex"}
+
+AUD:E_0157{date:"2026-08-17T13:31:09Z", event:"E-0157", task:"-", kind:"handler_call", agent:"test", result:"[identity.get] agent_id=governor source=workspace", evidence:"[identity.get] agent_id=governor source=workspace"}
+
+AUD:E_0157{date:"2026-08-17T13:31:09Z", event:"E-0157", task:"-", kind:"handler_call", agent:"anonymous", result:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", evidence:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md"}
+
+AUD:E_0157{date:"2026-08-17T13:31:09Z", event:"E-0157", task:"-", kind:"handler_call", agent:"anonymous", result:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", evidence:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md"}
+
 
 $7: LESSONS
 

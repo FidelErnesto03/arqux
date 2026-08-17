@@ -8,16 +8,16 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from ...cortex.atomic import atomic_write_text
+
+# BLP-005: ArqUX's own writer and atomic writer.
+from ...cortex.writer import write_cortex_from_json
+
 # BLP-fix (T-005/G-9): _cc_* are defined in core.state.__init__
 # (as None when CODEC-CORTEX is absent), so a top-level 'from . import'
 # is safe and no longer circular.
 from . import _cc_parser, _cc_validator
 from ._crud import requires_codec_cortex
-
-# BLP-005: ArqUX's own writer and atomic writer.
-from ...cortex.reader import cortex_to_dict
-from ...cortex.writer import write_cortex_from_json
-from ...cortex.atomic import atomic_write_text
 
 
 def migrate_cortex_file(path: Path, *, dry_run: bool = False) -> bool:

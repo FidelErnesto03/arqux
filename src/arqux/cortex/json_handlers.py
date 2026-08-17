@@ -13,12 +13,10 @@ via :mod:`arqux.cortex.crud`, and writes it back atomically via
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any
 
+from .atomic import atomic_write_json
+from .crud import add_entry, delete_entry, list_entries, select_entries, update_entry
 from .reader import cortex_to_dict
-from .writer import write_cortex_from_json
-from .crud import add_entry, update_entry, delete_entry, select_entries, list_entries
-from .atomic import atomic_write_text, atomic_write_json, WriteResult
 
 __all__ = [
     "cortex_write_json",

@@ -8,26 +8,34 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from . import (
-    _cc_parser,
-    _cc_renderer,
-    _cc_selectors,
-    _cc_validator,
+from ...cortex.atomic import atomic_write_json
+from ...cortex.crud import (
+    add_entry as _ax_add_entry,
+)
+from ...cortex.crud import (
+    delete_entry as _ax_delete_entry,
+)
+from ...cortex.crud import (
+    list_entries as _ax_list_entries,
+)
+from ...cortex.crud import (
+    move_entry as _ax_move_entry,
+)
+from ...cortex.crud import (
+    select_entries as _ax_select_entries,
+)
+from ...cortex.crud import (
+    update_entry as _ax_update_entry,
 )
 
 # --- ArqUX CORTEX components (BLP-001..004) ---------------------------------
-
 from ...cortex.reader import cortex_to_dict
 from ...cortex.writer import write_cortex_from_json
-from ...cortex.crud import (
-    add_entry as _ax_add_entry,
-    update_entry as _ax_update_entry,
-    delete_entry as _ax_delete_entry,
-    move_entry as _ax_move_entry,
-    select_entries as _ax_select_entries,
-    list_entries as _ax_list_entries,
+from . import (
+    _cc_parser,
+    _cc_renderer,
+    _cc_validator,
 )
-from ...cortex.atomic import atomic_write_json, atomic_write_text, WriteResult
 
 # --- CODEC-CORTEX dependency ------------------------------------------------
 
