@@ -12,7 +12,7 @@ import os
 from pathlib import Path
 
 from arqux.handlers import project, session, workspace
-from arqux.permissions import PermissionContext, ROLE_GOVERNOR, ROLE_EXECUTOR
+from arqux.permissions import ROLE_EXECUTOR, ROLE_GOVERNOR, PermissionContext
 
 
 def _handoff_text(project_dir: Path, target_agent: str) -> str:
@@ -79,7 +79,7 @@ def test_handoff_coherence_with_context_set(workspace_root: Path, governor_ctx) 
     assert cset.fields.get("agent") == "heimdall", cset.fields
 
     # Handoff from the same identity must preserve it.
-    hoff = _run_in_project(
+    _run_in_project(
         project_dir,
         session.handoff,
         target_agent="jarvis",

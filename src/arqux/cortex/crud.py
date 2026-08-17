@@ -108,10 +108,7 @@ def _entry_matches(entry: dict, sigil: str | None, name: str | None) -> bool:
     """True if *entry* matches the parsed selector's sigil/name constraints."""
     if sigil is not None and entry.get("sigil") != sigil:
         return False
-    if name is not None and name not in ("*", "_"):
-        if entry.get("name") != name:
-            return False
-    return True
+    return not (name is not None and name not in ("*", "_") and entry.get("name") != name)
 
 
 def _project_entry(entry: dict, section_id: str) -> dict:

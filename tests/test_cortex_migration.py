@@ -4,14 +4,15 @@ Verifies that all existing .cortex files work with ArqUX's own
 reader, writer, CRUD, and atomic modules. No files are modified.
 """
 
-import pytest
 from pathlib import Path
+
+import pytest
+
+from arqux.core.state._migrate import migrate_cortex_file
+from arqux.cortex.atomic import atomic_write_json
+from arqux.cortex.crud import add_entry, delete_entry, select_entries, update_entry
 from arqux.cortex.reader import cortex_to_dict
 from arqux.cortex.writer import write_cortex_from_json
-from arqux.cortex.crud import select_entries, add_entry, update_entry, delete_entry, list_entries
-from arqux.cortex.atomic import atomic_write_json
-from arqux.core.state._migrate import migrate_cortex_file
-
 
 # Find all .cortex files
 ARQUX_ROOT = Path("/home/vatrox/workspace/ARQUX")
@@ -33,7 +34,7 @@ CORTEX_FILES = _find_cortex_files()
 
 class TestReadAllCortex:
     """AC-01/03/05/06: All .cortex files can be read by cortex_to_dict()."""
-    
+
     @pytest.mark.parametrize("cortex_file", CORTEX_FILES, ids=lambda f: f.name)
     def test_read_cortex_file(self, cortex_file):
         text = cortex_file.read_text(encoding="utf-8")
@@ -44,18 +45,18 @@ class TestReadAllCortex:
 
 class TestRoundTripAllCortex:
     """AC-02/04: Round-trip preserves entries for all .cortex files."""
-    
+
     @pytest.mark.parametrize("cortex_file", CORTEX_FILES, ids=lambda f: f.name)
     def test_round_trip_preserves_entries(self, cortex_file):
         text = cortex_file.read_text(encoding="utf-8")
         doc = cortex_to_dict(text)
         original_count = sum(len(s.get("entries", [])) for s in doc["sections"])
-        
+
         # Write and re-read
         text2 = write_cortex_from_json(doc)
         doc2 = cortex_to_dict(text2)
         new_count = sum(len(s.get("entries", [])) for s in doc2["sections"])
-        
+
         assert new_count == original_count, f"Entry count changed: {original_count} → {new_count}"
 
     @pytest.mark.parametrize("cortex_file", CORTEX_FILES, ids=lambda f: f.name)
@@ -70,7 +71,7 @@ class TestRoundTripAllCortex:
 
         # Compare section by section
         assert len(doc2["sections"]) == len(doc["sections"])
-        for i, (s1, s2) in enumerate(zip(doc["sections"], doc2["sections"])):
+        for i, (s1, s2) in enumerate(zip(doc["sections"], doc2["sections"], strict=False)):
             assert s2.get("id") == s1.get("id"), f"Section {i} id mismatch"
             assert s2.get("title") == s1.get("title"), f"Section {i} title mismatch"
 
@@ -78,7 +79,7 @@ class TestRoundTripAllCortex:
             e2 = s2.get("entries", [])
             assert len(e2) == len(e1), f"Section {i} entry count mismatch"
 
-            for j, (ent1, ent2) in enumerate(zip(e1, e2)):
+            for j, (ent1, ent2) in enumerate(zip(e1, e2, strict=False)):
                 assert ent2.get("sigil") == ent1.get("sigil"), f"Section {i} entry {j} sigil mismatch"
                 assert ent2.get("name") == ent1.get("name"), f"Section {i} entry {j} name mismatch"
                 # Compare attrs or body
@@ -93,14 +94,14 @@ class TestRoundTripAllCortex:
 
 class TestBrainCortex:
     """AC-01/02: Specific tests for brain.cortex."""
-    
+
     def test_brain_reads_correctly(self):
         text = (ARQUX_ROOT / ".arqux" / "brain.cortex").read_text(encoding="utf-8")
         doc = cortex_to_dict(text)
         assert len(doc["sections"]) > 0
         total = sum(len(s.get("entries", [])) for s in doc["sections"])
         assert total > 100  # brain has 298+ entries
-    
+
     def test_brain_round_trip(self):
         text = (ARQUX_ROOT / ".arqux" / "brain.cortex").read_text(encoding="utf-8")
         doc = cortex_to_dict(text)
@@ -113,7 +114,7 @@ class TestBrainCortex:
 
 class TestIdentities:
     """AC-03/04: All identity files read and round-trip correctly."""
-    
+
     @pytest.mark.parametrize("identity_file", list(IDENTITIES.glob("*.cortex")), ids=lambda f: f.stem)
     def test_identity_round_trip(self, identity_file):
         text = identity_file.read_text(encoding="utf-8")
@@ -127,14 +128,14 @@ class TestIdentities:
 
 class TestMigrationDryRun:
     """AC-07: migrate_cortex_file(dry_run=True) doesn't modify files."""
-    
+
     def test_brain_dry_run_no_modification(self):
         brain = ARQUX_ROOT / ".arqux" / "brain.cortex"
         original_size = brain.stat().st_size
         original_content = brain.read_text(encoding="utf-8")
-        
-        result = migrate_cortex_file(brain, dry_run=True)
-        
+
+        migrate_cortex_file(brain, dry_run=True)
+
         # File should be unchanged
         assert brain.stat().st_size == original_size
         assert brain.read_text(encoding="utf-8") == original_content
@@ -144,7 +145,7 @@ class TestMigrationDryRun:
 
 class TestCRUDOnCopy:
     """AC-08: CRUD operations work on a copy of brain.cortex."""
-    
+
     def test_crud_on_brain_copy(self, tmp_path):
         # Copy brain.cortex to temp
         brain = ARQUX_ROOT / ".arqux" / "brain.cortex"
@@ -257,7 +258,7 @@ class TestMigrationExecution:
         temp_file = tmp_path / "jarvis_copy.cortex"
         temp_file.write_text(identity.read_text(encoding="utf-8"), encoding="utf-8")
 
-        result = migrate_cortex_file(temp_file, dry_run=False)
+        migrate_cortex_file(temp_file, dry_run=False)
 
         assert temp_file.exists()
         text = temp_file.read_text(encoding="utf-8")
@@ -270,7 +271,7 @@ class TestMigrationExecution:
         temp_file = tmp_path / "cycle_copy.cortex"
         temp_file.write_text(cycle.read_text(encoding="utf-8"), encoding="utf-8")
 
-        result = migrate_cortex_file(temp_file, dry_run=False)
+        migrate_cortex_file(temp_file, dry_run=False)
 
         assert temp_file.exists()
         text = temp_file.read_text(encoding="utf-8")

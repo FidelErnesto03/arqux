@@ -14,15 +14,12 @@ Covers:
 
 from __future__ import annotations
 
-import sys
-from pathlib import Path
 from unittest.mock import patch
 
 import pytest
 
 from arqux.cortex.reader import cortex_to_dict
 from arqux.cortex.writer import write_cortex_from_json
-
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -209,11 +206,11 @@ class TestRoundTrip:
         doc2 = cortex_to_dict(text)
         # Compare sections and entries
         assert len(doc1["sections"]) == len(doc2["sections"])
-        for s1, s2 in zip(doc1["sections"], doc2["sections"]):
+        for s1, s2 in zip(doc1["sections"], doc2["sections"], strict=False):
             assert s1["id"] == s2["id"]
             assert s1["title"] == s2["title"]
             assert len(s1["entries"]) == len(s2["entries"])
-            for e1, e2 in zip(s1["entries"], s2["entries"]):
+            for e1, e2 in zip(s1["entries"], s2["entries"], strict=False):
                 assert e1["sigil"] == e2["sigil"]
                 assert e1["name"] == e2["name"]
 

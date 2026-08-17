@@ -8,6 +8,7 @@ and integration with :mod:`arqux.cortex.writer`.
 from __future__ import annotations
 
 import copy
+from pathlib import Path
 
 import pytest
 
@@ -21,7 +22,6 @@ from arqux.cortex.crud import (
     update_entry,
 )
 from arqux.cortex.writer import write_cortex_from_json
-
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -468,7 +468,7 @@ class TestNoCodecImports:
     def test_no_codec_cortex_import(self) -> None:
         import arqux.cortex.crud as mod
 
-        src = open(mod.__file__).read()
+        src = Path(mod.__file__).read_text()
         # No import statements referencing codec_cortex or cortex.core.
         for line in src.splitlines():
             stripped = line.lstrip()

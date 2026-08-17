@@ -872,10 +872,7 @@ def handoff(
     project_name = fm.get("project", "") or root.parent.name
     # BLP-fix (T-004 / Heimdall audit): respect explicit ctx.agent_id;
     # never silently mask the active identity with the default fallback.
-    if ctx is not None:
-        agent_id = ctx.agent_id
-    else:
-        agent_id = PermissionContext.from_env().agent_id
+    agent_id = ctx.agent_id if ctx is not None else PermissionContext.from_env().agent_id
 
     # Build CORTEX handoff payload.
     handoff_lines = [

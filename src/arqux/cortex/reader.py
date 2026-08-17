@@ -255,7 +255,7 @@ def _convert_idea_codec_cortex(idea: Any) -> dict[str, Any] | None:
     """Convert a ``codec_cortex`` Idea to our entry dict format."""
     sigil = getattr(idea, "symbol", None) or getattr(idea, "sigil", None)
     name = idea.name
-    shape = getattr(idea, "shape", None) or getattr(idea, "type", None)
+    getattr(idea, "shape", None) or getattr(idea, "type", None)
     payload = getattr(idea, "payload", None)
     if payload is None:
         payload = getattr(idea, "value", None)

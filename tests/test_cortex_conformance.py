@@ -17,9 +17,9 @@ Acceptance criteria
 """
 
 import sys
+from pathlib import Path
 
 import pytest
-from pathlib import Path
 
 from arqux.cortex.reader import cortex_to_dict
 from arqux.cortex.writer import write_cortex_from_json

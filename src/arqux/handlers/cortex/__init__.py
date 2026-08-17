@@ -29,13 +29,13 @@ from .entries import (
     file_validate_handler,
 )
 from .format import format_handler
+from .gc import gc_handler
 from .learning import (
     learn_elevate_handler,
     learn_scan_handler,
     record_lesson_handler,
     record_lesson_handler_legacy,
 )
-from .gc import gc_handler
 from .migrate import migrate_handler
 from .patch import patch_handler
 from .read_write import (

@@ -8,12 +8,12 @@ No dependency on CODEC-CORTEX (``cortex.core`` or ``codec_cortex``).
 
 from __future__ import annotations
 
+import contextlib
 import os
 import shutil
 import tempfile
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any
 
 from .writer import write_cortex_from_json
 
@@ -160,10 +160,8 @@ def atomic_write_text(
             f.flush()
             os.fsync(f.fileno())
     except OSError as e:
-        try:
+        with contextlib.suppress(OSError):
             os.remove(tmp_path)
-        except OSError:
-            pass
         raise AtomicWriteError(f"Cannot write tmp file: {e}")
 
     # OBS-001: Preserve permissions from the original file (best-effort)
@@ -181,20 +179,16 @@ def atomic_write_text(
             shutil.copy2(path, bak_path)
             backup_created = bak_path
         except OSError as e:
-            try:
+            with contextlib.suppress(OSError):
                 os.remove(tmp_path)
-            except OSError:
-                pass
             raise AtomicWriteError(f"Cannot create backup: {e}")
 
     # Atomic rename
     try:
         os.replace(tmp_path, path)
     except OSError as e:
-        try:
+        with contextlib.suppress(OSError):
             os.remove(tmp_path)
-        except OSError:
-            pass
         raise AtomicWriteError(f"Cannot replace target file: {e}")
 
     return WriteResult(

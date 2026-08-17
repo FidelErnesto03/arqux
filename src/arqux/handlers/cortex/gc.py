@@ -69,7 +69,7 @@ def gc_handler(
         if len(group) <= 1:
             continue
         # Keep the first, mark the rest as duplicates
-        for dup in group[1:]:
+        for _dup in group[1:]:
             duplicates.append({
                 "section": sec,
                 "sigil": sigil,

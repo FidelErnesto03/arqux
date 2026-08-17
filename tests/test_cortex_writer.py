@@ -56,7 +56,6 @@ requires_parser = pytest.mark.skipif(
 
 from arqux.cortex.writer import write_cortex_from_json  # noqa: E402
 
-
 # ---------------------------------------------------------------------------
 # Shared fixtures
 # ---------------------------------------------------------------------------

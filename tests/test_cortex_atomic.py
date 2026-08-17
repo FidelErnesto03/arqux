@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import os
 import stat
-import sys
+from pathlib import Path
 
 import pytest
 
@@ -21,7 +21,6 @@ from arqux.cortex.atomic import (
     atomic_write_text,
 )
 from arqux.cortex.writer import write_cortex_from_json
-
 
 # ---------------------------------------------------------------------------
 # Fixtures & helpers
@@ -107,9 +106,9 @@ def large_doc() -> dict:
 class TestAtomicWriteJson:
     def test_writes_valid_cortex(self, doc: dict, tmp_path) -> None:
         path = str(tmp_path / "out.cortex")
-        result = atomic_write_json(doc, path)
+        atomic_write_json(doc, path)
         assert os.path.isfile(path)
-        content = open(path, encoding="utf-8").read()
+        content = Path(path).read_text(encoding="utf-8")
         expected = write_cortex_from_json(doc)
         assert content == expected
 
@@ -141,7 +140,7 @@ class TestBackupCreation:
         result = atomic_write_json(doc, path)
         assert result.backup is not None
         assert os.path.isfile(result.backup)
-        assert open(result.backup, encoding="utf-8").read() == "ORIGINAL CONTENT\n"
+        assert Path(result.backup).read_text(encoding="utf-8") == "ORIGINAL CONTENT\n"
 
     def test_overwrite_creates_backup(self, doc: dict, tmp_path) -> None:
         """AC-11: Overwrite existing file: backup created, new content written."""
@@ -152,9 +151,9 @@ class TestBackupCreation:
         result = atomic_write_json(doc, path)
         assert result.backup is not None
         # backup has old content
-        assert open(result.backup, encoding="utf-8").read() == original
+        assert Path(result.backup).read_text(encoding="utf-8") == original
         # path has new content
-        assert open(path, encoding="utf-8").read() == write_cortex_from_json(doc)
+        assert Path(path).read_text(encoding="utf-8") == write_cortex_from_json(doc)
 
 
 # ---------------------------------------------------------------------------
@@ -171,7 +170,7 @@ class TestNoBackup:
         assert result.backup is None
         assert not os.path.isfile(path + ".bak")
         # new content written
-        assert open(path, encoding="utf-8").read() == write_cortex_from_json(doc)
+        assert Path(path).read_text(encoding="utf-8") == write_cortex_from_json(doc)
 
     def test_no_backup_for_new_file(self, doc: dict, tmp_path) -> None:
         """AC-12: Write to new file: no backup, content written."""
@@ -180,7 +179,7 @@ class TestNoBackup:
         assert result.backup is None
         assert not os.path.isfile(path + ".bak")
         assert os.path.isfile(path)
-        assert open(path, encoding="utf-8").read() == write_cortex_from_json(doc)
+        assert Path(path).read_text(encoding="utf-8") == write_cortex_from_json(doc)
 
 
 # ---------------------------------------------------------------------------
@@ -208,7 +207,7 @@ class TestDryRun:
         path = str(tmp_path / "dry.txt")
         result = atomic_write_text("hello\n", path, dry_run=True)
         assert result.dry_run is True
-        assert result.bytes_written == len("hello\n".encode("utf-8"))
+        assert result.bytes_written == len(b"hello\n")
         assert not os.path.isfile(path)
 
 
@@ -274,15 +273,15 @@ class TestParentDirCreation:
         nested = tmp_path / "a" / "b" / "c"
         path = str(nested / "out.cortex")
         assert not nested.exists()
-        result = atomic_write_json(doc, path)
+        atomic_write_json(doc, path)
         assert os.path.isfile(path)
-        assert open(path, encoding="utf-8").read() == write_cortex_from_json(doc)
+        assert Path(path).read_text(encoding="utf-8") == write_cortex_from_json(doc)
 
     def test_deep_nested_dirs(self, tmp_path) -> None:
         path = str(tmp_path / "x" / "y" / "z" / "file.txt")
         atomic_write_text("content\n", path)
         assert os.path.isfile(path)
-        assert open(path, encoding="utf-8").read() == "content\n"
+        assert Path(path).read_text(encoding="utf-8") == "content\n"
 
 
 # ---------------------------------------------------------------------------
@@ -295,7 +294,7 @@ class TestAtomicWriteText:
         path = str(tmp_path / "raw.txt")
         result = atomic_write_text("raw text content\n", path)
         assert isinstance(result, WriteResult)
-        assert open(path, encoding="utf-8").read() == "raw text content\n"
+        assert Path(path).read_text(encoding="utf-8") == "raw text content\n"
 
     def test_bytes_written_text(self, tmp_path) -> None:
         path = str(tmp_path / "raw.txt")
@@ -309,8 +308,8 @@ class TestAtomicWriteText:
             f.write("old\n")
         result = atomic_write_text("new\n", path, keep_backup=True)
         assert result.backup is not None
-        assert open(result.backup).read() == "old\n"
-        assert open(path).read() == "new\n"
+        assert Path(result.backup).read_text() == "old\n"
+        assert Path(path).read_text() == "new\n"
 
 
 # ---------------------------------------------------------------------------
@@ -353,7 +352,7 @@ class TestNoCodecImports:
     def test_no_codec_cortex_import(self) -> None:
         import arqux.cortex.atomic as mod
 
-        src = open(mod.__file__).read()
+        src = Path(mod.__file__).read_text()
         for line in src.splitlines():
             stripped = line.lstrip()
             if stripped.startswith("#"):
@@ -382,7 +381,7 @@ class TestRoundTrip:
     def test_json_to_file_matches_writer(self, doc: dict, tmp_path) -> None:
         path = str(tmp_path / "rt.cortex")
         atomic_write_json(doc, path)
-        on_disk = open(path, encoding="utf-8").read()
+        on_disk = Path(path).read_text(encoding="utf-8")
         expected = write_cortex_from_json(doc)
         assert on_disk == expected
 
@@ -390,7 +389,7 @@ class TestRoundTrip:
         path = str(tmp_path / "rt.txt")
         text = "line1\nline2\nline3\n"
         atomic_write_text(text, path)
-        assert open(path, encoding="utf-8").read() == text
+        assert Path(path).read_text(encoding="utf-8") == text
 
     def test_round_trip_preserves_unicode(self, doc: dict, tmp_path) -> None:
         doc["sections"][0]["entries"].append(
@@ -398,7 +397,7 @@ class TestRoundTrip:
         )
         path = str(tmp_path / "uni.cortex")
         atomic_write_json(doc, path)
-        on_disk = open(path, encoding="utf-8").read()
+        on_disk = Path(path).read_text(encoding="utf-8")
         assert "café — naïve résumé ñ" in on_disk
 
 
@@ -444,7 +443,7 @@ class TestUnicode:
         path = str(tmp_path / "uni.txt")
         text = "héllo wörld — café ☃ 日本語\n"
         result = atomic_write_text(text, path)
-        assert open(path, encoding="utf-8").read() == text
+        assert Path(path).read_text(encoding="utf-8") == text
         assert result.bytes_written == len(text.encode("utf-8"))
 
     def test_unicode_json(self, doc: dict, tmp_path) -> None:
@@ -453,7 +452,7 @@ class TestUnicode:
         )
         path = str(tmp_path / "uni.cortex")
         atomic_write_json(doc, path)
-        content = open(path, encoding="utf-8").read()
+        content = Path(path).read_text(encoding="utf-8")
         assert "café" in content
         assert "☃" in content
 
@@ -467,7 +466,7 @@ class TestLargeDocument:
     def test_large_doc_written(self, large_doc: dict, tmp_path) -> None:
         path = str(tmp_path / "large.cortex")
         result = atomic_write_json(large_doc, path)
-        content = open(path, encoding="utf-8").read()
+        content = Path(path).read_text(encoding="utf-8")
         expected = write_cortex_from_json(large_doc)
         assert content == expected
         assert result.bytes_written == len(expected.encode("utf-8"))
@@ -478,7 +477,7 @@ class TestLargeDocument:
     def test_large_doc_entry_count(self, large_doc: dict, tmp_path) -> None:
         path = str(tmp_path / "large.cortex")
         atomic_write_json(large_doc, path)
-        content = open(path, encoding="utf-8").read()
+        content = Path(path).read_text(encoding="utf-8")
         # 200 entries
         assert content.count("LNG:lesson_") == 200
 
@@ -488,8 +487,8 @@ class TestLargeDocument:
             f.write("old\n")
         result = atomic_write_json(large_doc, path)
         assert result.backup is not None
-        assert open(result.backup).read() == "old\n"
-        assert "lesson_199" in open(path, encoding="utf-8").read()
+        assert Path(result.backup).read_text() == "old\n"
+        assert "lesson_199" in Path(path).read_text(encoding="utf-8")
 
 
 # ---------------------------------------------------------------------------
@@ -526,7 +525,7 @@ class TestUniqueTmpFile:
 
         assert errors == [], f"Concurrent writes failed: {errors}"
         # Final content must be one of the two (deterministic per run)
-        final = open(path, encoding="utf-8").read()
+        final = Path(path).read_text(encoding="utf-8")
         assert final in ("CONTENT_A\n", "CONTENT_B\n")
         # No tmp files should linger in the directory
         leftovers = [
@@ -542,7 +541,7 @@ class TestUniqueTmpFile:
         # The predictable name should never have been used
         assert not os.path.isfile(path + ".tmp")
         # Final content is correct
-        assert open(path, encoding="utf-8").read() == "second\n"
+        assert Path(path).read_text(encoding="utf-8") == "second\n"
 
 
 # ---------------------------------------------------------------------------
@@ -608,7 +607,7 @@ class TestFsyncBeforeRename:
 
         assert len(fsync_called) >= 1, "os.fsync was not called"
         # File content is correct
-        assert open(path, encoding="utf-8").read() == "synced content\n"
+        assert Path(path).read_text(encoding="utf-8") == "synced content\n"
 
     def test_fsync_called_on_overwrite(self, tmp_path, monkeypatch) -> None:
         """fsync is called even when overwriting an existing file."""

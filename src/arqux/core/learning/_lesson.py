@@ -7,7 +7,7 @@ from collections.abc import Callable
 from pathlib import Path
 
 from ...constants import W003_LEARNING_DEBT_BEHAVIORAL
-from ._common import _HAS_CLE, logger
+from ._common import logger
 from ._models import (
     _LNG_RE,
     InsufficientConfidenceError,

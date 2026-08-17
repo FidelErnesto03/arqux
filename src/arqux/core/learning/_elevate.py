@@ -153,12 +153,12 @@ def elevate_candidate(
         from ...constants import BRAIN_SECTION_LESSONS, BRAIN_SECTION_SESSIONS
         from ...state import crud_add
 
-        _SIGIL_SECTION: dict[str, str] = {
+        sigil_section: dict[str, str] = {
             "LNG": BRAIN_SECTION_LESSONS,
             "KNW": "KNOWLEDGE",
             "SES": BRAIN_SECTION_SESSIONS,
         }
-        section = _SIGIL_SECTION.get(new_sigil, "KNOWLEDGE")
+        section = sigil_section.get(new_sigil, "KNOWLEDGE")
 
         def _quote_cortex_val(val: Any) -> str:
             s = str(val)
