@@ -67,12 +67,19 @@ def temp_project(tmp_path: Path):
     tmpl_dir = arqx_dir / "templates"
     tmpl_dir.mkdir(parents=True, exist_ok=True)
 
-    # Copy the template from the workspace if available, otherwise create minimal
+    # Copy the template from the package if available, otherwise create minimal
+    # Try workspace first, then package templates, then minimal fallback
     ws_tmpl = Path("/home/vatrox/workspace/.arqux/templates/CYCLE_MANIFEST_TEMPLATE.md")
     if ws_tmpl.exists():
         tmpl_text = ws_tmpl.read_text(encoding="utf-8")
     else:
-        tmpl_text = _make_minimal_manifest_template()
+        # Try package templates (available in CI via editable install)
+        import arqux
+        pkg_tmpl = Path(arqux.__file__).resolve().parent / "templates" / "CYCLE_MANIFEST_TEMPLATE.md"
+        if pkg_tmpl.exists():
+            tmpl_text = pkg_tmpl.read_text(encoding="utf-8")
+        else:
+            tmpl_text = _make_minimal_manifest_template()
 
     (tmpl_dir / "CYCLE_MANIFEST_TEMPLATE.md").write_text(tmpl_text, encoding="utf-8")
 

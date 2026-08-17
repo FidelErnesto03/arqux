@@ -24,8 +24,18 @@ import pytest
 from arqux.cortex.reader import cortex_to_dict
 from arqux.cortex.writer import write_cortex_from_json
 
-ARQUX_ROOT = Path("/home/vatrox/workspace/ARQUX")
+ARQUX_ROOT = Path(__file__).resolve().parent.parent
 CODEC_ROOT = Path("/home/vatrox/workspace/CODEC-CORTEX")
+
+# Files required for workspace-dependent tests
+_BRAIN_CORTEX = ARQUX_ROOT / ".arqux" / "brain.cortex"
+_JARVIS_CORTEX = ARQUX_ROOT / ".arqux" / "identities" / "jarvis.cortex"
+
+_HAS_WORKSPACE_FILES = _BRAIN_CORTEX.exists() and _JARVIS_CORTEX.exists()
+_skip_no_workspace = pytest.mark.skipif(
+    not _HAS_WORKSPACE_FILES,
+    reason="workspace .cortex files not available in CI checkout",
+)
 
 
 # ---------------------------------------------------------------------------
@@ -46,11 +56,12 @@ def _ensure_codec_v1_importable() -> None:
 class TestConformanceCodec062:
     """AC-01: ArqUX CORTEX output is parseable by CODEC 0.6.2 (installed)."""
 
+    @_skip_no_workspace
     def test_brain_cortex_parseable(self):
         """brain.cortex → ArqUX reader → ArqUX writer → parse with CODEC 0.6.2."""
         from cortex.core.parser import parse_cortex
 
-        text = (ARQUX_ROOT / ".arqux" / "brain.cortex").read_text(encoding="utf-8")
+        text = _BRAIN_CORTEX.read_text(encoding="utf-8")
         doc = cortex_to_dict(text)
         output = write_cortex_from_json(doc)
 
@@ -60,6 +71,7 @@ class TestConformanceCodec062:
         total = sum(len(s.entries) for s in parsed.sections)
         assert total > 100
 
+    @_skip_no_workspace
     def test_brain_cortex_parseable_with_content(self):
         """brain.cortex → ArqUX writer → parse with CODEC 0.6.2 → verify content.
 
@@ -68,7 +80,7 @@ class TestConformanceCodec062:
         """
         from cortex.core.parser import parse_cortex
 
-        text = (ARQUX_ROOT / ".arqux" / "brain.cortex").read_text(encoding="utf-8")
+        text = _BRAIN_CORTEX.read_text(encoding="utf-8")
         doc = cortex_to_dict(text)
         output = write_cortex_from_json(doc)
 
@@ -88,13 +100,12 @@ class TestConformanceCodec062:
                     assert parsed_entries[0].sigil == orig_entries[0]["sigil"]
                     assert parsed_entries[0].name == orig_entries[0]["name"]
 
+    @_skip_no_workspace
     def test_identity_parseable(self):
         """Identity file → ArqUX reader → ArqUX writer → parse with CODEC 0.6.2."""
         from cortex.core.parser import parse_cortex
 
-        text = Path(
-            "/home/vatrox/workspace/.arqux/identities/jarvis.cortex"
-        ).read_text(encoding="utf-8")
+        text = _JARVIS_CORTEX.read_text(encoding="utf-8")
         doc = cortex_to_dict(text)
         output = write_cortex_from_json(doc)
 
