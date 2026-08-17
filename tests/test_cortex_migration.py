@@ -18,6 +18,19 @@ from arqux.cortex.writer import write_cortex_from_json
 ARQUX_ROOT = Path(__file__).resolve().parent.parent
 IDENTITIES = ARQUX_ROOT / ".arqux" / "identities"
 
+# Workspace files required by some tests; skip in CI if absent
+_BRAIN_CORTEX = ARQUX_ROOT / ".arqux" / "brain.cortex"
+_JARVIS_CORTEX = IDENTITIES / "jarvis.cortex"
+_CYCLE11_CORTEX = ARQUX_ROOT / ".arqux" / "cycles" / "CYCLE-11" / "cycle.cortex"
+
+_HAS_WORKSPACE_FILES = (
+    _BRAIN_CORTEX.exists() and _JARVIS_CORTEX.exists() and _CYCLE11_CORTEX.exists()
+)
+_skip_no_workspace = pytest.mark.skipif(
+    not _HAS_WORKSPACE_FILES,
+    reason="workspace .cortex files not available in CI checkout",
+)
+
 def _find_cortex_files():
     files = []
     # ARQUX .cortex files
@@ -95,15 +108,17 @@ class TestRoundTripAllCortex:
 class TestBrainCortex:
     """AC-01/02: Specific tests for brain.cortex."""
 
+    @_skip_no_workspace
     def test_brain_reads_correctly(self):
-        text = (ARQUX_ROOT / ".arqux" / "brain.cortex").read_text(encoding="utf-8")
+        text = _BRAIN_CORTEX.read_text(encoding="utf-8")
         doc = cortex_to_dict(text)
         assert len(doc["sections"]) > 0
         total = sum(len(s.get("entries", [])) for s in doc["sections"])
         assert total > 100  # brain has 298+ entries
 
+    @_skip_no_workspace
     def test_brain_round_trip(self):
-        text = (ARQUX_ROOT / ".arqux" / "brain.cortex").read_text(encoding="utf-8")
+        text = _BRAIN_CORTEX.read_text(encoding="utf-8")
         doc = cortex_to_dict(text)
         original = sum(len(s.get("entries", [])) for s in doc["sections"])
         text2 = write_cortex_from_json(doc)
@@ -129,8 +144,9 @@ class TestIdentities:
 class TestMigrationDryRun:
     """AC-07: migrate_cortex_file(dry_run=True) doesn't modify files."""
 
+    @_skip_no_workspace
     def test_brain_dry_run_no_modification(self):
-        brain = ARQUX_ROOT / ".arqux" / "brain.cortex"
+        brain = _BRAIN_CORTEX
         original_size = brain.stat().st_size
         original_content = brain.read_text(encoding="utf-8")
 
@@ -146,9 +162,10 @@ class TestMigrationDryRun:
 class TestCRUDOnCopy:
     """AC-08: CRUD operations work on a copy of brain.cortex."""
 
+    @_skip_no_workspace
     def test_crud_on_brain_copy(self, tmp_path):
         # Copy brain.cortex to temp
-        brain = ARQUX_ROOT / ".arqux" / "brain.cortex"
+        brain = _BRAIN_CORTEX
         temp_file = tmp_path / "brain_copy.cortex"
         temp_file.write_text(brain.read_text(encoding="utf-8"), encoding="utf-8")
 
@@ -190,9 +207,10 @@ class TestCRUDOnCopy:
         after_delete = sum(len(s.get("entries", [])) for s in doc2["sections"])
         assert after_delete == original_count
 
+    @_skip_no_workspace
     def test_crud_update_on_brain_copy(self, tmp_path):
         """OBS-001: update_entry works on brain.cortex copy."""
-        brain = ARQUX_ROOT / ".arqux" / "brain.cortex"
+        brain = _BRAIN_CORTEX
         temp_file = tmp_path / "brain_copy.cortex"
         temp_file.write_text(brain.read_text(encoding="utf-8"), encoding="utf-8")
 
@@ -223,9 +241,10 @@ class TestCRUDOnCopy:
 class TestMigrationExecution:
     """OBS-003: Test actual migration logic on copies."""
 
+    @_skip_no_workspace
     def test_migrate_brain_copy(self, tmp_path):
         """Test actual migration on a copy of brain.cortex."""
-        brain = ARQUX_ROOT / ".arqux" / "brain.cortex"
+        brain = _BRAIN_CORTEX
         temp_file = tmp_path / "brain_copy.cortex"
         temp_file.write_text(brain.read_text(encoding="utf-8"), encoding="utf-8")
 
@@ -252,9 +271,10 @@ class TestMigrationExecution:
         new_count = sum(len(s.get("entries", [])) for s in doc2["sections"])
         assert new_count == original_count
 
+    @_skip_no_workspace
     def test_migrate_identity_copy(self, tmp_path):
         """Test migration on a copy of an identity file."""
-        identity = IDENTITIES / "jarvis.cortex"
+        identity = _JARVIS_CORTEX
         temp_file = tmp_path / "jarvis_copy.cortex"
         temp_file.write_text(identity.read_text(encoding="utf-8"), encoding="utf-8")
 
@@ -265,9 +285,10 @@ class TestMigrationExecution:
         doc = cortex_to_dict(text)
         assert len(doc["sections"]) > 0
 
+    @_skip_no_workspace
     def test_migrate_cycle_copy(self, tmp_path):
         """Test migration on a copy of a cycle.cortex file."""
-        cycle = ARQUX_ROOT / ".arqux" / "cycles" / "CYCLE-11" / "cycle.cortex"
+        cycle = _CYCLE11_CORTEX
         temp_file = tmp_path / "cycle_copy.cortex"
         temp_file.write_text(cycle.read_text(encoding="utf-8"), encoding="utf-8")
 
@@ -278,9 +299,10 @@ class TestMigrationExecution:
         doc = cortex_to_dict(text)
         assert len(doc["sections"]) > 0
 
+    @_skip_no_workspace
     def test_migrate_preserves_entries(self, tmp_path):
         """Test that migration preserves entry count."""
-        brain = ARQUX_ROOT / ".arqux" / "brain.cortex"
+        brain = _BRAIN_CORTEX
         temp_file = tmp_path / "brain_copy.cortex"
         temp_file.write_text(brain.read_text(encoding="utf-8"), encoding="utf-8")
 
@@ -315,12 +337,13 @@ class TestMigrationExecution:
         # File untouched
         assert bck.exists()
 
+    @_skip_no_workspace
     def test_migrate_dry_run_on_multiple_files(self, tmp_path):
         """OBS-004: Test dry-run on multiple files, not just brain."""
         files_to_test = [
-            ARQUX_ROOT / ".arqux" / "brain.cortex",
-            ARQUX_ROOT / ".arqux" / "cycles" / "CYCLE-11" / "cycle.cortex",
-            IDENTITIES / "jarvis.cortex",
+            _BRAIN_CORTEX,
+            _CYCLE11_CORTEX,
+            _JARVIS_CORTEX,
             IDENTITIES / "alfred.cortex",
         ]
         for f in files_to_test:
