@@ -2,6 +2,38 @@
 
 All notable changes to ArqUX are documented here.
 
+## [0.7.0] - 2026-08-17
+
+### Added - CYCLE-11: Decoupling CODEC-CORTEX
+- `arqux.cortex.writer.write_cortex_from_json()` — ArqUX's own CORTEX writer (BLP-001)
+- `arqux.cortex.crud` — CRUD operations over JSON dict (BLP-002): parse_selector, select_entries, add_entry, update_entry, delete_entry, move_entry, list_entries
+- `arqux.cortex.atomic` — Atomic file writing (BLP-003): atomic_write_json, atomic_write_text with WriteResult
+- `arqux.cortex.reader.cortex_to_dict()` — CORTEX text to JSON dict converter with fallback parser (BLP-004)
+- `arqux.cortex.json_handlers` — JSON-facing handlers (BLP-004): cortex_write_json, cortex_read_json, entry_add_json, entry_update_json, entry_delete_json, entry_list_json
+- 242 new tests across 5 test files for new cortex modules
+- 205 migration verification tests (BLP-006)
+- 15 conformance tests (BLP-007)
+
+### Changed - CYCLE-11: Decoupling
+- `core/state/_crud.py` — Rewritten to use arqux.cortex.crud + atomic_write_json instead of cortex.crud.mutations/transactions
+- `core/state/_migrate.py` — Rewritten to use write_cortex_from_json instead of cortex.core.writer
+- `formats.py` — Uses string builders as primary path, no CODEC writer dependency
+- `handlers/cortex/entries.py` — Uses atomic_write_json instead of cortex.crud.transactions
+- `core/learning/_common.py` — Graceful degradation without CODEC writer
+- `state.py` — Removed re-exports of _cc_writer, _cc_mutations, _cc_transactions
+- `codec-cortex` is now an optional dependency (was required)
+
+### Removed - CYCLE-11
+- All imports of `cortex.core.writer`, `cortex.crud.mutations`, `cortex.crud.transactions` from ArqUX source
+
+### Verified
+- 1325 tests pass
+- 62/62 existing .cortex files round-trip with 100% entry preservation
+- brain.cortex (367 entries) round-trip perfect
+- CODEC 0.6.2 conformance confirmed
+- CODEC 1.0.0-rc.1 evaluated (requires $0:KERNEL, $0:format, declared sigils)
+- CORTEX 0.2 slots evaluated, NOT adopted (future cycle)
+
 ## [0.6.0] — 2026-07-15
 
 ### Added

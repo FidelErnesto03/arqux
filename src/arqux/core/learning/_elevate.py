@@ -58,6 +58,11 @@ def _validate_elevation_payload(
         problems.append("proposed elevation contains generic or placeholder content")
     if new_sigil not in {"SES", "LNG", "KNW"}:
         problems.append(f"unexpected elevation target: {new_sigil}")
+    boilerplate = {"active", "pending", "follow_policy", "not_applicable", "not_specified"}
+    for key, val in new_value.items():
+        v = str(val).strip()
+        if v.lower() in boilerplate:
+            problems.append(f"boilerplate value in {key}: {v!r} — elevation refused")
     return problems
 
 
@@ -145,16 +150,34 @@ def elevate_candidate(
                 "diff": diff,
             }
 
-        from ...state import read_brain, write_brain_sections
+        from ...constants import BRAIN_SECTION_LESSONS, BRAIN_SECTION_SESSIONS
+        from ...state import crud_add
 
-        fm, sections, _ = read_brain(project_root)
-        knw_line = f"{new_sigil}:{new_name} " + " ".join(f'{k}="{v}"' for k, v in new_value.items())
-        existing = sections.get("KNOWLEDGE", "").strip()
-        if existing:
-            sections["KNOWLEDGE"] = existing + "\n" + knw_line
-        else:
-            sections["KNOWLEDGE"] = knw_line
-        write_brain_sections(project_root, fm, sections)
+        _SIGIL_SECTION: dict[str, str] = {
+            "LNG": BRAIN_SECTION_LESSONS,
+            "KNW": "KNOWLEDGE",
+            "SES": BRAIN_SECTION_SESSIONS,
+        }
+        section = _SIGIL_SECTION.get(new_sigil, "KNOWLEDGE")
+
+        def _quote_cortex_val(val: Any) -> str:
+            s = str(val)
+            if any(c in s for c in (" ", ",", '"', "'", "{")):
+                return f'"{s}"'
+            return s
+
+        value_body = ", ".join(
+            f"{k}:{_quote_cortex_val(v)}" for k, v in new_value.items()
+        )
+
+        result = crud_add(
+            str(brain_path), section, new_sigil, new_name, value_body,
+            create_section=True,
+            force=True,
+        )
+        if "error" in result:
+            return {"error": f"elevation write failed: {result['error']}",
+                    "preview_hash": preview_hash, "diff": diff}
 
         return {"mode": "applied", "diff": diff, "candidate": candidate_id, "preview_hash": preview_hash}
 

@@ -35,6 +35,7 @@ from .learning import (
     record_lesson_handler,
     record_lesson_handler_legacy,
 )
+from .gc import gc_handler
 from .migrate import migrate_handler
 from .patch import patch_handler
 from .read_write import (
@@ -68,6 +69,7 @@ __all__ = [
     "learn_elevate_handler",
     "ref_handler",
     "format_handler",
+    "gc_handler",
     "patch_handler",
     "migrate_handler",
     "handler_schemas",
@@ -423,6 +425,25 @@ handler_schemas = [
                 "dry_run": {"type": "boolean", "default": False},
             },
             "required": ["source_path", "target_path", "transform"],
+        },
+    },
+    {
+        "name": "cortex.gc",
+        "fn": gc_handler,
+        "description": (
+            "Garbage-collect duplicate entries in a .cortex file. "
+            "Duplicates share the same (section, sigil, name). "
+            "dry_run=True (default) previews without mutating; "
+            "force=True removes duplicates conserving first occurrence."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "path": {"type": "string", "description": "Path to .cortex file."},
+                "dry_run": {"type": "boolean", "default": True, "description": "Preview duplicates without mutating."},
+                "force": {"type": "boolean", "default": False, "description": "Required to perform deletion."},
+            },
+            "required": ["path"],
         },
     },
     {

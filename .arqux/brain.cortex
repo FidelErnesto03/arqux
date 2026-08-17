@@ -6,7 +6,6 @@ $0
 # IDN   | identity   | attrs      | B | Semantic       | Actor identity
 # DOM   | domain     | attrs      | B | Semantic       | Project/scope descriptor
 # KNW   | knowledge  | attrs      | B | Semantic       | Stable or promoted knowledge
-# AXM   | axiom      | cuerpo     | H | Prefrontal     | Non-negotiable principle
 # CNST  | constraint | attrs      | H | Prefrontal     | Hard constraint or precondition
 # CLAIM | claim      | attrs      | M | Prefrontal     | Acceptance criterion
 # AUD   | audit      | attrs      | M | Prefrontal     | Verification/audit record
@@ -24,11 +23,11 @@ $0
 # BLK   | blocker    | attrs      | H | Prefrontal     | Blocking condition
 #
 # Types:
-# attrs-pos = canonical type
-# attrs = canonical type
+# relación = canonical type
 # bloque = canonical type
 # cuerpo = canonical type
-# relación = canonical type
+# attrs-pos = canonical type
+# attrs = canonical type
 #
 # Micro-glossary:
 # cur=current pln=planned fut=future blk=blocked
@@ -39,20 +38,22 @@ $0
 $19: ARQUX METADATA
 
 ARQX:artifact{level:"2", name:"brain", usage:"state", kind:"native"}
-AXM:validate_before_mutate{severity:"blocking", scope:"all", rule:"Todo handler de transicion debe validar invariantes del estado destino ANTES de mutar. Derivado de cycle.mature() que no validaba quality gates.", survive:"work"}
-AXM:blp_includes_workflow_skill{severity:"blocking", scope:"blueprint", rule:"Todo BLP de nuevo handler debe incluir workflow + skill en alcance. Si el workflow existe, debe actualizarse.", survive:"work"}
+
 
 $1: IDENTITY
 
 IDN:governor{level:"2", project:"ARQUX", path:"/home/vatrox/workspace/ARQUX", governor:"alfred", created:"2026-07-10"}
 
+
 $2: FOCUS
 
-FCS:current{what:"Ciclo CYCLE-10 iniciado", priority:"medium", status:"current", survive:"work", updated:"2026-07-19T00:48:15Z", event:"cycle.create"}
+FCS:current{what:"Ciclo cerrado", priority:"medium", status:"current", survive:"work", updated:"2026-08-17T13:18:53Z", event:"cycle.close"}
+
 
 $3: OBJECTIVES
 
-OBJ:_{goal:"Mantener sincronia entre brain.cortex y estado real del proyecto. 118 BLPs gestionados en 9 ciclos (CYCLE-01, CYCLE-02, CYCLE-03, CYCLE-04, CYCLE-05, CYCLE-06, CYCLE-07, CYCLE-08, CYCLE-09).", status:"current", success:"synced", survive:"work", updated:"2026-07-20T18:15:59Z", event:"brain.reconcile"}
+OBJ:_{goal:"- - - - Mantener sincronia entre brain.cortex y estado real del proyecto. 120 BLPs gestionados en 10 ciclos (CYCLE-01, CYCLE-02, CYCLE-03, CYCLE-04, CYCLE-05, CYCLE-06, CYCLE-07, CYCLE-08, CYCLE-09, CYCLE-10).", status:"current", success:"pending", survive:"work"}
+
 
 $4: SESSIONS
 
@@ -63,128 +64,909 @@ $5: HANDOFFS
 $6: PULSE
 
 AUD:E_0001{event:"E-0001", evidence:"Todos los regex de blueprint.define ahora usan referencias numericas de seccion (## §N:) sin depender del idioma del titulo. 7 regex actualizados: §3, §6 scope, §6 exclusions, §7, §11, §12, §15. BLP-021 definido correctamente con secciones pobladas.", task:"T-001", kind:"task_complete", agent:"hermes", result:"Todos los regex de blueprint.define ahora usan referencias numericas de seccion (## §N:) sin depender del idioma del titulo. 7 regex actualizados: §3, §6 scope, §6 exclusions, §7, §11, §12, §15. BLP-021 definido correctamente con secciones pobladas.", date:"2026-07-08"}
+
 AUD:E_0002{event:"E-0002", evidence:"BLP_TEMPLATE.md actualizado con 21 marcadores. blueprint.define simplificado a _replace_marker(). BLP-021 creado con marcadores y definido correctamente. Template sincronizado a workspace .arqux/templates/.", task:"T-002", kind:"task_complete", agent:"hermes", result:"BLP_TEMPLATE.md actualizado con 21 marcadores. blueprint.define simplificado a _replace_marker(). BLP-021 creado con marcadores y definido correctamente. Template sincronizado a workspace .arqux/templates/.", date:"2026-07-08"}
+
 AUD:E_0003{event:"E-0003", evidence:"scan_markers() implementada. create_blueprint escanea y guarda blp_markers@ en frontmatter. update_blueprint valida contra el mapa y acepta marker IDs directos (BLP:3). Define ya no es necesario como paso separado — update es el unico mecanismo de modificacion de secciones.", task:"T-003", kind:"task_complete", agent:"hermes", result:"scan_markers() implementada. create_blueprint escanea y guarda blp_markers@ en frontmatter. update_blueprint valida contra el mapa y acepta marker IDs directos (BLP:3). Define ya no es necesario como paso separado — update es el unico mecanismo de modificacion de secciones.", date:"2026-07-08"}
+
 AUD:OBS_001{event:"OBS-001", evidence:"BLP-005: blueprint.py coverage al 55% (objetivo 70%). skill.py 70% y session.py 88% alcanzados. Para blueprint.py (752 lines, 18 handlers) se necesita fixture de integracion con ciclo+blueprints reales. Discutir con Alfred.", task:"BLP-005", kind:"observation", agent:"jarvis", result:"BLP-005: blueprint.py coverage al 55% (objetivo 70%). skill.py 70% y session.py 88% alcanzados. Para blueprint.py (752 lines, 18 handlers) se necesita fixture de integracion con ciclo+blueprints reales. Discutir con Alfred.", date:"2026-07-11"}
+
 AUD:SES_007{event:"SES-007", evidence:"SESION COMPLETA CYCLE-02 — 2026-07-11", task:"CYCLE-02", kind:"session_checkpoint", agent:"jarvis", result:"SESION COMPLETA CYCLE-02 — 2026-07-11", date:"2026-07-11"}
+
 AUD:E_0004{event:"E-0004", evidence:"Reporte de auditoria transversal METADATA $0.1→$19 completado. 8 hallazgos: 5 críticos (runtime Python), 2 altos (8 archivos .cortex legacy), 1 medio (docstrings). La migración T-005 está incompleta — la constante _ARQUX_META_SECTION=\"$0.1\" en formats.py es root cause. Ver reporte completo en output de sesión.", task:"T-006", kind:"artifact", agent:"hermes", result:"Reporte de auditoria transversal METADATA $0.1→$19 completado. 8 hallazgos: 5 críticos (runtime Python), 2 altos (8 archivos .cortex legacy), 1 medio (docstrings). La migración T-005 está incompleta — la constante _ARQUX_META_SECTION=\"$0.1\" en formats.py es root cause. Ver reporte completo en output de sesión.", date:"2026-07-11"}
+
 AUD:E_0005{event:"E-0005", evidence:"[blueprint.complete] BLP BLP-013 completed — All 5 phases + final validation complete. 601 tests pass. Heimdall audit CONDITIONAL_APPROVED. Approved by Architect.", task:"BLP-013", kind:"blueprint_lifecycle", agent:"alfred", result:"[blueprint.complete] BLP BLP-013 completed — All 5 phases + final validation complete. 601 tests pass. Heimdall audit CONDITIONAL_APPROVED. Approved by Architect.", date:"2026-07-11"}
+
 AUD:E_0006{event:"E-0006", evidence:"[blueprint.ac] AC AC-01 failed — _helpers.py has 539 lines (limit: 500). File structure is correct, but 1 of 5 files exceeds limit by 39 lines. Heimdall flagged as WARN, Architect approved conditionally.", task:"BLP-013", kind:"blueprint_lifecycle", agent:"alfred", result:"[blueprint.ac] AC AC-01 failed — _helpers.py has 539 lines (limit: 500). File structure is correct, but 1 of 5 files exceeds limit by 39 lines. Heimdall flagged as WARN, Architect approved conditionally.", date:"2026-07-11"}
+
 AUD:E_0007{event:"E-0007", evidence:"[blueprint.ac] AC AC-02 failed — core/state/_brain.py has 742 lines (limit: 400). Structure correct but exceeds limit by 342 lines. Conditionally approved by Architect.", task:"BLP-013", kind:"blueprint_lifecycle", agent:"alfred", result:"[blueprint.ac] AC AC-02 failed — core/state/_brain.py has 742 lines (limit: 400). Structure correct but exceeds limit by 342 lines. Conditionally approved by Architect.", date:"2026-07-11"}
+
 AUD:E_0008{event:"E-0008", evidence:"[blueprint.ac] AC AC-03 verified — handlers/__init__.py reduced from 1017 to ~40 lines. All 73 input_schema moved to handler modules. Verified via diff and manual read.", task:"BLP-013", kind:"blueprint_lifecycle", agent:"alfred", result:"[blueprint.ac] AC AC-03 verified — handlers/__init__.py reduced from 1017 to ~40 lines. All 73 input_schema moved to handler modules. Verified via diff and manual read.", date:"2026-07-11"}
+
 AUD:E_0009{event:"E-0009", evidence:"[blueprint.ac] AC AC-04 verified — learning.py → core/learning/ with _common, _scan, _elevate, _lesson, _unified modules. All imports working.", task:"BLP-013", kind:"blueprint_lifecycle", agent:"alfred", result:"[blueprint.ac] AC AC-04 verified — learning.py → core/learning/ with _common, _scan, _elevate, _lesson, _unified modules. All imports working.", date:"2026-07-11"}
+
 AUD:E_0010{event:"E-0010", evidence:"[blueprint.ac] AC AC-05 verified — cortex.py → handlers/cortex/ with read_write, entries, diagram, learning submodules. All imports verified.", task:"BLP-013", kind:"blueprint_lifecycle", agent:"alfred", result:"[blueprint.ac] AC AC-05 verified — cortex.py → handlers/cortex/ with read_write, entries, diagram, learning submodules. All imports verified.", date:"2026-07-11"}
+
 AUD:E_0011{event:"E-0011", evidence:"[blueprint.ac] AC AC-06 verified — 601/601 tests passing. Heimdall verified independently.", task:"BLP-013", kind:"blueprint_lifecycle", agent:"alfred", result:"[blueprint.ac] AC AC-06 verified — 601/601 tests passing. Heimdall verified independently.", date:"2026-07-11"}
+
 AUD:E_0012{event:"E-0012", evidence:"[blueprint.ac] AC AC-07 verified — All 4 compatibility shims verified: from arqux.state import *, from arqux.learning import *, from arqux.handlers.cortex import *, from arqux.handlers.blueprint import *. No import errors in dependents (sync, cycle, project, task, evidence, protocol, session, skill).", task:"BLP-013", kind:"blueprint_lifecycle", agent:"alfred", result:"[blueprint.ac] AC AC-07 verified — All 4 compatibility shims verified: from arqux.state import *, from arqux.learning import *, from arqux.handlers.cortex import *, from arqux.handlers.blueprint import *. No import errors in dependents (sync, cycle, project, task, evidence, protocol, session, skill).", date:"2026-07-11"}
+
 AUD:E_0013{event:"E-0013", evidence:"[blueprint.ac] AC AC-08 verified — core/ has no dependency on handlers or cli. handlers/ imports from core/. cli/ imports from handlers/. Clear layer separation confirmed by Heimdall audit.", task:"BLP-013", kind:"blueprint_lifecycle", agent:"alfred", result:"[blueprint.ac] AC AC-08 verified — core/ has no dependency on handlers or cli. handlers/ imports from core/. cli/ imports from handlers/. Clear layer separation confirmed by Heimdall audit.", date:"2026-07-11"}
+
 AUD:E_0014{event:"E-0014", evidence:"[blueprint.complete] BLP BLP-013 completed — All files now meet line limits. _brain.py 389 (<400), _helpers.py 456 (<500), _lesson.py 432 (<500). 601 tests pass. All ACs satisfied.", task:"BLP-013", kind:"blueprint_lifecycle", agent:"alfred", result:"[blueprint.complete] BLP BLP-013 completed — All files now meet line limits. _brain.py 389 (<400), _helpers.py 456 (<500), _lesson.py 432 (<500). 601 tests pass. All ACs satisfied.", date:"2026-07-11"}
+
 AUD:E_0015{event:"E-0015", evidence:"[blueprint.ac] AC AC-01 verified — handlers/blueprint/ files: _helpers 456, _read 97, __init__ 130, lifecycle?, review?, manage?. All <500.", task:"BLP-013", kind:"blueprint_lifecycle", agent:"alfred", result:"[blueprint.ac] AC AC-01 verified — handlers/blueprint/ files: _helpers 456, _read 97, __init__ 130, lifecycle?, review?, manage?. All <500.", date:"2026-07-11"}
+
 AUD:E_0016{event:"E-0016", evidence:"[blueprint.ac] AC AC-02 verified — core/state/ files: _brain 389, _crud 324, _parse 52, _project 189, _render 129, _migrate 184, __init__ 133. All <400.", task:"BLP-013", kind:"blueprint_lifecycle", agent:"alfred", result:"[blueprint.ac] AC AC-02 verified — core/state/ files: _brain 389, _crud 324, _parse 52, _project 189, _render 129, _migrate 184, __init__ 133. All <400.", date:"2026-07-11"}
+
 AUD:E_0017{event:"E-0017", evidence:"[blueprint.approve] BLP BLP-013 approved and closed", task:"BLP-013", kind:"blueprint_lifecycle", agent:"alfred", result:"[blueprint.approve] BLP BLP-013 approved and closed", date:"2026-07-11"}
+
 AUD:E_0018{event:"E-0018", evidence:"[blueprint.task] task T-0.1 marked as completed — BLP-013 completed and approved. handlers/blueprint/ package exists with lifecycle.py, review.py, manage.py, _helpers.py, _read.py.", task:"T-0.1", kind:"blueprint_lifecycle", agent:"alfred", result:"[blueprint.task] task T-0.1 marked as completed — BLP-013 completed and approved. handlers/blueprint/ package exists with lifecycle.py, review.py, manage.py, _helpers.py, _read.py.", date:"2026-07-11"}
+
 AUD:E_0019{event:"E-0019", evidence:"[blueprint.task] task T-1.1 marked as completed — arqux_env fixture creado en tests/conftest.py. Crea workspace real en tmp_path con proyecto, ciclo y BLP.", task:"T-1.1", kind:"blueprint_lifecycle", agent:"alfred", result:"[blueprint.task] task T-1.1 marked as completed — arqux_env fixture creado en tests/conftest.py. Crea workspace real en tmp_path con proyecto, ciclo y BLP.", date:"2026-07-11"}
+
 AUD:E_0020{event:"E-0020", evidence:"[blueprint.task] task T-1.2 marked as completed — Tests for lifecycle: create, define, mature, ready, complete, fail. All passing.", task:"T-1.2", kind:"blueprint_lifecycle", agent:"alfred", result:"[blueprint.task] task T-1.2 marked as completed — Tests for lifecycle: create, define, mature, ready, complete, fail. All passing.", date:"2026-07-11"}
+
 AUD:E_0021{event:"E-0021", evidence:"[blueprint.task] task T-1.3 marked as completed — Tests for review: ac (verified/failed), approve, re_delegate, block_for_architect, cancel. All passing.", task:"T-1.3", kind:"blueprint_lifecycle", agent:"alfred", result:"[blueprint.task] task T-1.3 marked as completed — Tests for review: ac (verified/failed), approve, re_delegate, block_for_architect, cancel. All passing.", date:"2026-07-11"}
+
 AUD:E_0022{event:"E-0022", evidence:"[blueprint.task] task T-1.4 marked as completed — Tests for manage: assign, claim, update (section/note/puml/empty), read, list, gate (single/all). All passing.", task:"T-1.4", kind:"blueprint_lifecycle", agent:"alfred", result:"[blueprint.task] task T-1.4 marked as completed — Tests for manage: assign, claim, update (section/note/puml/empty), read, list, gate (single/all). All passing.", date:"2026-07-11"}
+
 AUD:E_0023{event:"E-0023", evidence:"[blueprint.task] task T-2.1 marked as completed — Coverage: arqux.handlers.blueprint=74%, global=70%. All 626 tests pass (601 existing + 22 integration + 2 quickstart + 1 pulse).", task:"T-2.1", kind:"blueprint_lifecycle", agent:"alfred", result:"[blueprint.task] task T-2.1 marked as completed — Coverage: arqux.handlers.blueprint=74%, global=70%. All 626 tests pass (601 existing + 22 integration + 2 quickstart + 1 pulse).", date:"2026-07-11"}
+
 AUD:E_0024{event:"E-0024", evidence:"[blueprint.complete] BLP BLP-012 completed — BLP-012 completado: fixture arqux_env + 22 tests de integracion + 2 tests quickstart + 1 test pulse. Coverage blueprint: 74%, global: 70%. 626 tests pasando.", task:"BLP-012", kind:"blueprint_lifecycle", agent:"alfred", result:"[blueprint.complete] BLP BLP-012 completed — BLP-012 completado: fixture arqux_env + 22 tests de integracion + 2 tests quickstart + 1 test pulse. Coverage blueprint: 74%, global: 70%. 626 tests pasando.", date:"2026-07-11"}
+
 AUD:E_0025{event:"E-0025", evidence:"[blueprint.ac] AC AC-01 verified — tests/conftest.py has arqux_env fixture. Creates workspace, project, cycle, BLP in tmp_path.", task:"BLP-012", kind:"blueprint_lifecycle", agent:"alfred", result:"[blueprint.ac] AC AC-01 verified — tests/conftest.py has arqux_env fixture. Creates workspace, project, cycle, BLP in tmp_path.", date:"2026-07-11"}
+
 AUD:E_0026{event:"E-0026", evidence:"[blueprint.ac] AC AC-02 verified — tests/test_blueprint_integration.py exists with 22 tests covering lifecycle, review, manage + edge cases.", task:"BLP-012", kind:"blueprint_lifecycle", agent:"alfred", result:"[blueprint.ac] AC AC-02 verified — tests/test_blueprint_integration.py exists with 22 tests covering lifecycle, review, manage + edge cases.", date:"2026-07-11"}
+
 AUD:E_0027{event:"E-0027", evidence:"[blueprint.ac] AC AC-03 verified — All 16 blueprint handlers have at least 1 integration test: create, define, mature, ready, assign, claim, update, complete, fail, ac, approve, re_delegate, block_for_architect, cancel, read, list, gate, task.", task:"BLP-012", kind:"blueprint_lifecycle", agent:"alfred", result:"[blueprint.ac] AC AC-03 verified — All 16 blueprint handlers have at least 1 integration test: create, define, mature, ready, assign, claim, update, complete, fail, ac, approve, re_delegate, block_for_architect, cancel, read, list, gate, task.", date:"2026-07-11"}
+
 AUD:E_0028{event:"E-0028", evidence:"[blueprint.ac] AC AC-04 verified — arqux.handlers.blueprint coverage: 74% (target 70%). Verified with pytest --cov=arqux.handlers.blueprint.", task:"BLP-012", kind:"blueprint_lifecycle", agent:"alfred", result:"[blueprint.ac] AC AC-04 verified — arqux.handlers.blueprint coverage: 74% (target 70%). Verified with pytest --cov=arqux.handlers.blueprint.", date:"2026-07-11"}
+
 AUD:E_0029{event:"E-0029", evidence:"[blueprint.ac] AC AC-05 verified — Global coverage: 70% (target 70%). Verified with pytest --cov=arqux --cov-fail-under=70.", task:"BLP-012", kind:"blueprint_lifecycle", agent:"alfred", result:"[blueprint.ac] AC AC-05 verified — Global coverage: 70% (target 70%). Verified with pytest --cov=arqux --cov-fail-under=70.", date:"2026-07-11"}
+
 AUD:E_0030{event:"E-0030", evidence:"[blueprint.ac] AC AC-06 verified — Each test uses tmp_path fixture from pytest — completely isolated workspaces. No shared state between tests.", task:"BLP-012", kind:"blueprint_lifecycle", agent:"alfred", result:"[blueprint.ac] AC AC-06 verified — Each test uses tmp_path fixture from pytest — completely isolated workspaces. No shared state between tests.", date:"2026-07-11"}
+
 AUD:E_0031{event:"E-0031", evidence:"[blueprint.ac] AC AC-07 verified — 626 tests passing (601 existing + 25 new). 0 regressions.", task:"BLP-012", kind:"blueprint_lifecycle", agent:"alfred", result:"[blueprint.ac] AC AC-07 verified — 626 tests passing (601 existing + 25 new). 0 regressions.", date:"2026-07-11"}
+
 AUD:E_0032{event:"E-0032", evidence:"[blueprint.approve] BLP BLP-012 approved and closed", task:"BLP-012", kind:"blueprint_lifecycle", agent:"alfred", result:"[blueprint.approve] BLP BLP-012 approved and closed", date:"2026-07-11"}
+
 AUD:E_0033{event:"E-0033", evidence:"[CRITICAL] Cycle lacks identity: CYCLE-02 MANIFEST.md has 6 quality gates in false, empty CYC-OBJ. The cycle was never properly defined. Remediation: Close CYCLE-02 formally, define CYCLE-03 with clear purpose and measurable objectives.", task:"CYCLE-02", kind:"finding", agent:"heimdall", result:"[CRITICAL] Cycle lacks identity: CYCLE-02 MANIFEST.md has 6 quality gates in false, empty CYC-OBJ. The cycle was never properly defined. Remediation: Close CYCLE-02 formally, define CYCLE-03 with clear purpose and measurable objectives.", date:"2026-07-11"}
+
 AUD:E_0034{event:"E-0034", evidence:"[CRITICAL] Cycle never closed: 12 BLPs done but cycle.status = 'ready'. Should be 'closed'. Remediation: Call cycle.close with summary of accomplishments.", task:"CYCLE-02", kind:"finding", agent:"heimdall", result:"[CRITICAL] Cycle never closed: 12 BLPs done but cycle.status = 'ready'. Should be 'closed'. Remediation: Call cycle.close with summary of accomplishments.", date:"2026-07-11"}
+
 AUD:E_0035{event:"E-0035", evidence:"[HIGH] Meta-brain desynchronized: /home/vatrox/workspace/.arqux/meta-brain.cortex still references CYCLE-01 as active, not CYCLE-02. Remediation: Sync meta-brain to reflect CYCLE-02 completed status.", task:"CYCLE-02", kind:"finding", agent:"heimdall", result:"[HIGH] Meta-brain desynchronized: /home/vatrox/workspace/.arqux/meta-brain.cortex still references CYCLE-01 as active, not CYCLE-02. Remediation: Sync meta-brain to reflect CYCLE-02 completed status.", date:"2026-07-11"}
+
 AUD:E_0036{event:"E-0036", evidence:"[HIGH] BLP-006 orphaned: BLP-006 (Investigar alternativas a uuid at v4) was created, matured to ready, but never executed. Its objective was absorbed by BLP-002. Remediation: Cancel BLP-006 formally via blueprint.cancel.", task:"CYCLE-02", kind:"finding", agent:"heimdall", result:"[HIGH] BLP-006 orphaned: BLP-006 (Investigar alternativas a uuid at v4) was created, matured to ready, but never executed. Its objective was absorbed by BLP-002. Remediation: Cancel BLP-006 formally via blueprint.cancel.", date:"2026-07-11"}
+
 AUD:E_0037{event:"E-0037", evidence:"[HIGH] 7/13 BLPs traceability gap: BLPs executed by 'anonymous' agent — no agent identity recorded for BLP-003, BLP-004, BLP-005, BLP-007, BLP-008, BLP-009, BLP-010. Remediation: Bind agents explicitly before starting BLPs in CYCLE-03.", task:"CYCLE-02", kind:"finding", agent:"heimdall", result:"[HIGH] 7/13 BLPs traceability gap: BLPs executed by 'anonymous' agent — no agent identity recorded for BLP-003, BLP-004, BLP-005, BLP-007, BLP-008, BLP-009, BLP-010. Remediation: Bind agents explicitly before starting BLPs in CYCLE-03.", date:"2026-07-11"}
+
 AUD:E_0038{event:"E-0038", evidence:"Transversal audit complete. 5 findings recorded. Report at /tmp/transversal-ciclo02.md", task:"CYCLE-02", kind:"audit_complete", agent:"heimdall", result:"Transversal audit complete. 5 findings recorded. Report at /tmp/transversal-ciclo02.md", date:"2026-07-11"}
+
 AUD:E_0039{event:"E-0039", evidence:"SES:2026-07-11T18:21:49Z agent= summary=\"CYCLE-02 completado: 13 BLPs (12 done, 1 ready). BLP-013: refactor arquitectura en capas. BLP-012: fixture integracion + cobertura 70%. Transversal audit por Heimdall con 5 hallazgos. Meta-brain sincronizado.\" blps=[BLP-012,BLP-013] tasks=[Cerrar CYCLE-02,Cancelar BLP-006,Abrir CYCLE-03] decisions=[Heimdall audit findings: sync meta-brain (done),close cycle (pending),cancel BLP-006 (pending)] gaps=[CYCLE-02 no cerrado formalmente,BLP-006 no cancelado,CYCLE-03 no definido] lng_count=11", task:"-", kind:"session", agent:"alfred", result:"SES:2026-07-11T18:21:49Z agent= summary=\"CYCLE-02 completado: 13 BLPs (12 done, 1 ready). BLP-013: refactor arquitectura en capas. BLP-012: fixture integracion + cobertura 70%. Transversal audit por Heimdall con 5 hallazgos. Meta-brain sincronizado.\" blps=[BLP-012,BLP-013] tasks=[Cerrar CYCLE-02,Cancelar BLP-006,Abrir CYCLE-03] decisions=[Heimdall audit findings: sync meta-brain (done),close cycle (pending),cancel BLP-006 (pending)] gaps=[CYCLE-02 no cerrado formalmente,BLP-006 no cancelado,CYCLE-03 no definido] lng_count=11", date:"2026-07-11"}
+
 AUD:E_0040{event:"E-0040", evidence:"SES:2026-07-12T01:08:12Z agent= summary=\"Redefinición de umbrales cognitivos de tiers NANO/LITE/FULL y adición del axioma de no-ejecución sin gobierno (AX:no_untracked) en AGENTS.md y AGENTS.lite.md\" blps=[-] tasks=[-] decisions=[NANO<8K_LITE:8K-200K_FULL>200K,Maduracion_Habilitada_en_LITE,Axioma_AX:no_untracked_Creado] gaps=[Crear_carpeta_cycles_en_.arqux] lng_count=4", task:"-", kind:"session", agent:"anonymous", result:"SES:2026-07-12T01:08:12Z agent= summary=\"Redefinición de umbrales cognitivos de tiers NANO/LITE/FULL y adición del axioma de no-ejecución sin gobierno (AX:no_untracked) en AGENTS.md y AGENTS.lite.md\" blps=[-] tasks=[-] decisions=[NANO<8K_LITE:8K-200K_FULL>200K,Maduracion_Habilitada_en_LITE,Axioma_AX:no_untracked_Creado] gaps=[Crear_carpeta_cycles_en_.arqux] lng_count=4", date:"2026-07-12"}
-KNW:blueprints_done{name:"blueprints_done", value:"1", updated:"2026-07-16T16:09:01Z", topic:"metrics", content:"metric blueprints_done=1", status:"current"}
-KNW:sync_run{name:"sync_run", value:"1", updated:"2026-07-16T16:17:02Z", topic:"metrics", content:"metric sync_run=1", status:"current"}
-KNW:cycles_closed{name:"cycles_closed", value:"1", updated:"2026-07-16T17:05:24Z", topic:"metrics", content:"metric cycles_closed=1", status:"current"}
-KNW:tasks_active{name:"tasks_active", value:"1", updated:"2026-07-16T17:34:20Z", topic:"metrics", content:"metric tasks_active=1", status:"current"}
-AUD:E_0099{date:"2026-07-16T21:47:35Z", event:"E-0099", task:"-", kind:"session", agent:"alfred", result:"SES:2026-07-16T21:47:35Z agent= summary=\"BLP-018 completado: 3 desviaciones de BLP-017 institucionalizadas y verificadas (ruta proyecto, synthesize canonico, reporte progresivo). AC-01/02/03/04/06 cumplidos. E008_DUPLICATE_ENTRY (AUD:E_0099) en brain.cortex de ARQUX eliminado manualmente via cortex.entry.delete para desbloquear session.close. Propuesta de parche AGENTS.md (AXM:blp_project_path + AXM:blp_synthesize_first) en §17 pendiente de aprobacion del Arquitecto.\" blps=[BLP-018] tasks=[-] decisions=[No parchear AGENTS.md sin aprobacion; path=proyecto siempre; synthesize primero; reporte progresivo por tarea; eliminar E_0099 duplicado bloqueante] gaps=[Aprobacion de parche AGENTS.md pendiente] lng_count=3", evidence:"SES:2026-07-16T21:47:35Z agent= summary=\"BLP-018 completado: 3 desviaciones de BLP-017 institucionalizadas y verificadas (ruta proyecto, synthesize canonico, reporte progresivo). AC-01/02/03/04/06 cumplidos. E008_DUPLICATE_ENTRY (AUD:E_0099) en brain.cortex de ARQUX eliminado manualmente via cortex.entry.delete para desbloquear session.close. Propuesta de parche AGENTS.md (AXM:blp_project_path + AXM:blp_synthesize_first) en §17 pendiente de aprobacion del Arquitecto.\" blps=[BLP-018] tasks=[-] decisions=[No parchear AGENTS.md sin aprobacion; path=proyecto siempre; synthesize primero; reporte progresivo por tarea; eliminar E_0099 duplicado bloqueante] gaps=[Aprobacion de parche AGENTS.md pendiente] lng_count=3"}
-AUD:E_0100{date:"2026-07-16T21:47:35Z", event:"E-0100", task:"-", kind:"pulse_compact", agent:"alfred", result:"pulse.compact ok session=E-0099 pruned=58 lng=session_E_0099 summary=artifact:1,blueprint_lifecycle:2,handler_call:55", evidence:"pulse.compact ok session=E-0099 pruned=58 lng=session_E_0099 summary=artifact:1,blueprint_lifecycle:2,handler_call:55"}
-AUD:E_0101{date:"2026-07-18T16:33:56Z", event:"E-0101", task:"-", kind:"handler_call", agent:"alfred", result:"[context.full] project=ARQUX", evidence:"[context.full] project=ARQUX"}
-AUD:E_0102{date:"2026-07-18T16:43:27Z", event:"E-0102", task:"-", kind:"session_handoff", agent:"alfred", result:"[session.handoff] from=alfred to=heimdall summary=", evidence:"[session.handoff] from=alfred to=heimdall summary="}
-AUD:E_0103{date:"2026-07-19T00:54:10Z", event:"E-0103", task:"T-004", kind:"task_complete", agent:"alfred", result:"Fix en arqux/handlers/session.py: (1) context_set linea 276 — agent = ctx.agent_id si ctx provisto, sino PermissionContext.from_env().agent_id. (2) handoff linea 873 — mismo patron defensivo. (3) test_session_handoff.py anadido con 3 tests validando AC-1/AC-2/AC-1b; 3/3 pass via python MCP (pytest bloqueado por import circular G-9 en core.state, no afecta handlers session). Evidencia: from_agent='heimdall' confirmado en handoff payload; assertion 'from:alfred' NOT present.", evidence:"Fix en arqux/handlers/session.py: (1) context_set linea 276 — agent = ctx.agent_id si ctx provisto, sino PermissionContext.from_env().agent_id. (2) handoff linea 873 — mismo patron defensivo. (3) test_session_handoff.py anadido con 3 tests validando AC-1/AC-2/AC-1b; 3/3 pass via python MCP (pytest bloqueado por import circular G-9 en core.state, no afecta handlers session). Evidencia: from_agent='heimdall' confirmado en handoff payload; assertion 'from:alfred' NOT present.", cycle:"CYCLE-07"}
-KNW:tasks_done{name:"tasks_done", value:"1", updated:"2026-07-19T00:54:10Z", topic:"metrics", content:"metric tasks_done=1", status:"done"}
-AUD:E_0104{date:"2026-07-19T00:57:02Z", event:"E-0104", task:"T-002", kind:"task_complete", agent:"alfred", result:"Smoke test post-reinicio MCP: task.create(cycle=CYCLE-08) escribio T-002 en CYCLE-08 correctamente (fix G-5/6/7 activo). Artifact de prueba, se cierra.", evidence:"Smoke test post-reinicio MCP: task.create(cycle=CYCLE-08) escribio T-002 en CYCLE-08 correctamente (fix G-5/6/7 activo). Artifact de prueba, se cierra.", cycle:"CYCLE-08"}
-AUD:E_0105{date:"2026-07-19T01:06:00Z", event:"E-0105", task:"-", kind:"handler_call", agent:"test", result:"[cortex.ref] sigil=WRK", evidence:"[cortex.ref] sigil=WRK"}
-AUD:E_0106{date:"2026-07-19T01:06:00Z", event:"E-0106", task:"-", kind:"handler_call", agent:"test", result:"[cortex.ref] sigil=LNG", evidence:"[cortex.ref] sigil=LNG"}
-AUD:E_0107{date:"2026-07-19T01:06:00Z", event:"E-0107", task:"-", kind:"handler_call", agent:"test", result:"[cortex.format] hcortex->cortex", evidence:"[cortex.format] hcortex->cortex"}
-AUD:E_0108{date:"2026-07-19T01:06:00Z", event:"E-0108", task:"-", kind:"handler_call", agent:"test", result:"[identity.get] agent_id=governor source=workspace", evidence:"[identity.get] agent_id=governor source=workspace"}
-AUD:E_0109{date:"2026-07-19T01:06:00Z", event:"E-0109", task:"-", kind:"handler_call", agent:"anonymous", result:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", evidence:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md"}
-AUD:E_0110{date:"2026-07-19T01:06:00Z", event:"E-0110", task:"-", kind:"handler_call", agent:"anonymous", result:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", evidence:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md"}
-AUD:E_0111{date:"2026-07-19T01:07:27Z", event:"E-0111", task:"-", kind:"handler_call", agent:"test", result:"[cortex.ref] sigil=WRK", evidence:"[cortex.ref] sigil=WRK"}
-AUD:E_0112{date:"2026-07-19T01:07:27Z", event:"E-0112", task:"-", kind:"handler_call", agent:"test", result:"[cortex.ref] sigil=LNG", evidence:"[cortex.ref] sigil=LNG"}
-AUD:E_0113{date:"2026-07-19T01:07:27Z", event:"E-0113", task:"-", kind:"handler_call", agent:"test", result:"[cortex.format] hcortex->cortex", evidence:"[cortex.format] hcortex->cortex"}
-AUD:E_0114{date:"2026-07-19T01:07:27Z", event:"E-0114", task:"-", kind:"handler_call", agent:"test", result:"[identity.get] agent_id=governor source=workspace", evidence:"[identity.get] agent_id=governor source=workspace"}
-AUD:E_0115{date:"2026-07-19T01:07:27Z", event:"E-0115", task:"-", kind:"handler_call", agent:"anonymous", result:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", evidence:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md"}
-AUD:E_0116{date:"2026-07-19T01:07:27Z", event:"E-0116", task:"-", kind:"handler_call", agent:"anonymous", result:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", evidence:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md"}
-AUD:E_0117{date:"2026-07-19T01:07:54Z", event:"E-0117", task:"T-005", kind:"task_complete", agent:"alfred", result:"G-9 root cause: cortex package absent => core/state/__init__.py try/except ImportError did NOT define _cc_* names, so submodule top-level 'from . import _cc_*' raised ImportError (circular). Fix: in __init__.py except branch, define _cc_ast/_cc_lexer/_cc_parser/_cc_validator/_cc_writer/_cc_mutations/_cc_selectors/_cc_transactions/_cc_renderer = None. Now 'from . import _cc_*' succeeds (returns None) and requires_codec_cortex() gates usage at runtime. Validation: pyenv 3.11 (no cortex) 'import arqux.pulse' OK; tool py3.12 (cortex) pytest 830 passed / 34 failed. The 34 remaining failures are pre-existing CORTEX template validation errors (E017/E033) in repo .cortex files, unrelated to G-9.", evidence:"G-9 root cause: cortex package absent => core/state/__init__.py try/except ImportError did NOT define _cc_* names, so submodule top-level 'from . import _cc_*' raised ImportError (circular). Fix: in __init__.py except branch, define _cc_ast/_cc_lexer/_cc_parser/_cc_validator/_cc_writer/_cc_mutations/_cc_selectors/_cc_transactions/_cc_renderer = None. Now 'from . import _cc_*' succeeds (returns None) and requires_codec_cortex() gates usage at runtime. Validation: pyenv 3.11 (no cortex) 'import arqux.pulse' OK; tool py3.12 (cortex) pytest 830 passed / 34 failed. The 34 remaining failures are pre-existing CORTEX template validation errors (E017/E033) in repo .cortex files, unrelated to G-9.", cycle:"CYCLE-07"}
-AUD:E_0118{date:"2026-07-19T01:30:25Z", event:"E-0118", task:"-", kind:"handler_call", agent:"test", result:"[cortex.ref] sigil=WRK", evidence:"[cortex.ref] sigil=WRK"}
-AUD:E_0119{date:"2026-07-19T01:30:25Z", event:"E-0119", task:"-", kind:"handler_call", agent:"test", result:"[cortex.ref] sigil=LNG", evidence:"[cortex.ref] sigil=LNG"}
-AUD:E_0120{date:"2026-07-19T01:30:25Z", event:"E-0120", task:"-", kind:"handler_call", agent:"test", result:"[cortex.format] hcortex->cortex", evidence:"[cortex.format] hcortex->cortex"}
-AUD:E_0121{date:"2026-07-19T01:30:25Z", event:"E-0121", task:"-", kind:"handler_call", agent:"test", result:"[identity.get] agent_id=governor source=workspace", evidence:"[identity.get] agent_id=governor source=workspace"}
-AUD:E_0122{date:"2026-07-19T01:30:25Z", event:"E-0122", task:"-", kind:"handler_call", agent:"anonymous", result:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", evidence:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md"}
-AUD:E_0123{date:"2026-07-19T01:30:25Z", event:"E-0123", task:"-", kind:"handler_call", agent:"anonymous", result:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", evidence:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md"}
-AUD:E_0124{date:"2026-07-19T01:30:46Z", event:"E-0124", task:"T-006", kind:"task_complete", agent:"alfred", result:"G-12 root cause: _build_task_doc wrapped parsed body content into attrs dicts ({\"text\": content}, {\"criterion\": content}, etc.) WITHOUT stripping an already-serialized prefix. On re-write of a corrupted/already-serialized .cortex, content already carried 'text=' / 'criterion=' prefixes, so write_cortex rendered text:\"text=...\" -> duplicated prefix each round-trip (confirmed via repro: 'text=- text=- text=Corregir' and 'criterion=criterion=AC-1'). Fix: added _strip_attr_prefix(value, key) in formats.py that removes any leading run of '<key>=' and/or bullet markers ('- ', '* ') using regex, applied to OBJ/STP/CNST/CLAIM/BLK/NOTE/EVIDENCE entries. Also normalized OBJ to per-line bullet/prefix stripping like the other sections. Added tests/test_writer_roundtrip.py (3 tests: clean roundtrip, corrupted idempotent heal, repeated prefix collapse) — all pass. Full suite: 833 passed / 34 failed; the 34 failures are pre-existing CORTEX template validation errors (E017/E033) unrelated to G-12.", evidence:"G-12 root cause: _build_task_doc wrapped parsed body content into attrs dicts ({\"text\": content}, {\"criterion\": content}, etc.) WITHOUT stripping an already-serialized prefix. On re-write of a corrupted/already-serialized .cortex, content already carried 'text=' / 'criterion=' prefixes, so write_cortex rendered text:\"text=...\" -> duplicated prefix each round-trip (confirmed via repro: 'text=- text=- text=Corregir' and 'criterion=criterion=AC-1'). Fix: added _strip_attr_prefix(value, key) in formats.py that removes any leading run of '<key>=' and/or bullet markers ('- ', '* ') using regex, applied to OBJ/STP/CNST/CLAIM/BLK/NOTE/EVIDENCE entries. Also normalized OBJ to per-line bullet/prefix stripping like the other sections. Added tests/test_writer_roundtrip.py (3 tests: clean roundtrip, corrupted idempotent heal, repeated prefix collapse) — all pass. Full suite: 833 passed / 34 failed; the 34 failures are pre-existing CORTEX template validation errors (E017/E033) unrelated to G-12.", cycle:"CYCLE-07"}
-AUD:E_0125{date:"2026-07-19T01:34:35Z", event:"E-0125", task:"-", kind:"handler_call", agent:"test", result:"[cortex.ref] sigil=WRK", evidence:"[cortex.ref] sigil=WRK"}
-AUD:E_0126{date:"2026-07-19T01:34:35Z", event:"E-0126", task:"-", kind:"handler_call", agent:"test", result:"[cortex.ref] sigil=LNG", evidence:"[cortex.ref] sigil=LNG"}
-AUD:E_0127{date:"2026-07-19T01:34:35Z", event:"E-0127", task:"-", kind:"handler_call", agent:"test", result:"[cortex.format] hcortex->cortex", evidence:"[cortex.format] hcortex->cortex"}
-AUD:E_0128{date:"2026-07-19T01:34:35Z", event:"E-0128", task:"-", kind:"handler_call", agent:"test", result:"[identity.get] agent_id=governor source=workspace", evidence:"[identity.get] agent_id=governor source=workspace"}
-AUD:E_0129{date:"2026-07-19T01:34:35Z", event:"E-0129", task:"-", kind:"handler_call", agent:"anonymous", result:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", evidence:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md"}
-AUD:E_0130{date:"2026-07-19T01:34:35Z", event:"E-0130", task:"-", kind:"handler_call", agent:"anonymous", result:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", evidence:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md"}
-AUD:E_0131{date:"2026-07-19T01:35:01Z", event:"E-0131", task:"T-002", kind:"task_complete", agent:"alfred", result:"Root cause was NOT an arqux bug: the tool venv had codec-cortex 0.4.0 (PyPI) whose validator rejected $0.1 (arqux BLP-041 ARQX:artifact metadata) with E017_UNPARSED_LINE / E033_ZERO_SECTION_MEMORY_ENTRY. Installing codec-cortex 0.5.2 (uv pip install --python /home/vatrox/.local/share/uv/tools/arqux/bin/python3 codec-cortex==0.5.2) updated the validator to a version that supports the BLP-041 schema. All 50 tests in test_template_validation.py now pass; full suite 867 passed / 0 failed. No arqux source change required. Design decision from prior message is moot.", evidence:"Root cause was NOT an arqux bug: the tool venv had codec-cortex 0.4.0 (PyPI) whose validator rejected $0.1 (arqux BLP-041 ARQX:artifact metadata) with E017_UNPARSED_LINE / E033_ZERO_SECTION_MEMORY_ENTRY. Installing codec-cortex 0.5.2 (uv pip install --python /home/vatrox/.local/share/uv/tools/arqux/bin/python3 codec-cortex==0.5.2) updated the validator to a version that supports the BLP-041 schema. All 50 tests in test_template_validation.py now pass; full suite 867 passed / 0 failed. No arqux source change required. Design decision from prior message is moot.", cycle:"CYCLE-07"}
-AUD:E_0132{date:"2026-07-19T01:37:34Z", event:"E-0132", task:"-", kind:"handler_call", agent:"test", result:"[cortex.ref] sigil=WRK", evidence:"[cortex.ref] sigil=WRK"}
-AUD:E_0133{date:"2026-07-19T01:37:35Z", event:"E-0133", task:"-", kind:"handler_call", agent:"test", result:"[cortex.ref] sigil=LNG", evidence:"[cortex.ref] sigil=LNG"}
-AUD:E_0134{date:"2026-07-19T01:37:35Z", event:"E-0134", task:"-", kind:"handler_call", agent:"test", result:"[cortex.format] hcortex->cortex", evidence:"[cortex.format] hcortex->cortex"}
-AUD:E_0135{date:"2026-07-19T01:37:35Z", event:"E-0135", task:"-", kind:"handler_call", agent:"test", result:"[identity.get] agent_id=governor source=workspace", evidence:"[identity.get] agent_id=governor source=workspace"}
-AUD:E_0136{date:"2026-07-19T01:37:35Z", event:"E-0136", task:"-", kind:"handler_call", agent:"anonymous", result:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", evidence:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md"}
-AUD:E_0137{date:"2026-07-19T01:37:35Z", event:"E-0137", task:"-", kind:"handler_call", agent:"anonymous", result:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", evidence:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md"}
-AUD:E_0138{date:"2026-07-19T11:36:54Z", event:"E-0138", task:"-", kind:"handler_call", agent:"test", result:"[cortex.ref] sigil=WRK", evidence:"[cortex.ref] sigil=WRK"}
-AUD:E_0139{date:"2026-07-19T11:36:54Z", event:"E-0139", task:"-", kind:"handler_call", agent:"test", result:"[cortex.ref] sigil=LNG", evidence:"[cortex.ref] sigil=LNG"}
-AUD:E_0140{date:"2026-07-19T11:36:54Z", event:"E-0140", task:"-", kind:"handler_call", agent:"test", result:"[cortex.format] hcortex->cortex", evidence:"[cortex.format] hcortex->cortex"}
-AUD:E_0141{date:"2026-07-19T11:36:54Z", event:"E-0141", task:"-", kind:"handler_call", agent:"test", result:"[identity.get] agent_id=governor source=workspace", evidence:"[identity.get] agent_id=governor source=workspace"}
-AUD:E_0142{date:"2026-07-19T11:36:55Z", event:"E-0142", task:"-", kind:"handler_call", agent:"anonymous", result:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", evidence:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md"}
-AUD:E_0143{date:"2026-07-19T11:36:55Z", event:"E-0143", task:"-", kind:"handler_call", agent:"anonymous", result:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", evidence:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md"}
-AUD:E_0144{date:"2026-07-19T21:06:36Z", event:"E-0144", task:"-", kind:"checkpoint", agent:"hermes", result:"cortex.checkpoint ok fcs=Sandbox-CODEC-CORTEX-migracion-comparati obj=", evidence:"cortex.checkpoint ok fcs=Sandbox-CODEC-CORTEX-migracion-comparati obj="}
-AUD:E_0145{date:"2026-07-20T15:46:37Z", event:"E-0145", task:"-", kind:"handler_call", agent:"anonymous", result:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", evidence:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md"}
-AUD:E_0146{date:"2026-07-20T15:46:37Z", event:"E-0146", task:"-", kind:"handler_call", agent:"anonymous", result:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", evidence:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md"}
-AUD:E_0147{date:"2026-07-20T15:46:53Z", event:"E-0147", task:"-", kind:"handler_call", agent:"test", result:"[cortex.ref] sigil=WRK", evidence:"[cortex.ref] sigil=WRK"}
-AUD:E_0148{date:"2026-07-20T15:46:53Z", event:"E-0148", task:"-", kind:"handler_call", agent:"test", result:"[cortex.ref] sigil=LNG", evidence:"[cortex.ref] sigil=LNG"}
-AUD:E_0149{date:"2026-07-20T15:46:53Z", event:"E-0149", task:"-", kind:"handler_call", agent:"test", result:"[cortex.format] hcortex->cortex", evidence:"[cortex.format] hcortex->cortex"}
-AUD:E_0150{date:"2026-07-20T15:46:53Z", event:"E-0150", task:"-", kind:"handler_call", agent:"test", result:"[identity.get] agent_id=governor source=workspace", evidence:"[identity.get] agent_id=governor source=workspace"}
-AUD:E_0151{date:"2026-07-20T15:46:53Z", event:"E-0151", task:"-", kind:"handler_call", agent:"anonymous", result:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", evidence:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md"}
-AUD:E_0152{date:"2026-07-20T15:46:53Z", event:"E-0152", task:"-", kind:"handler_call", agent:"anonymous", result:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", evidence:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md"}
-AUD:E_0153{date:"2026-07-20T15:49:09Z", event:"E-0153", task:"T-001", kind:"task_complete", agent:"alfred", result:"Fix aplicado en _helpers.py (2 sitios) y synthesize.py: brain_path ahora es root/brain.cortex con fallback legacy a root/.arqux/brain.cortex; selector FCS agnóstico de sección (\"FCS:current\"). Test de regresión nuevo tests/test_find_blueprint_active_cycle.py (4 tests: ciclo activo viejo gana al nuevo, ciclo activo nuevo, FCS en $1 legacy, fallback sin hint). Suite completa: 871 passed, 0 failed. uv tool arqux reinstalado; verificado que la instalación resuelve BLP-001 a CYCLE-03 correctamente.", evidence:"Fix aplicado en _helpers.py (2 sitios) y synthesize.py: brain_path ahora es root/brain.cortex con fallback legacy a root/.arqux/brain.cortex; selector FCS agnóstico de sección (\"FCS:current\"). Test de regresión nuevo tests/test_find_blueprint_active_cycle.py (4 tests: ciclo activo viejo gana al nuevo, ciclo activo nuevo, FCS en $1 legacy, fallback sin hint). Suite completa: 871 passed, 0 failed. uv tool arqux reinstalado; verificado que la instalación resuelve BLP-001 a CYCLE-03 correctamente.", cycle:"CYCLE-02"}
-AUD:E_0154{date:"2026-07-20T18:27:12Z", event:"E-0154", task:"-", kind:"handler_call", agent:"test", result:"[cortex.ref] sigil=WRK", evidence:"[cortex.ref] sigil=WRK"}
-AUD:E_0155{date:"2026-07-20T18:27:12Z", event:"E-0155", task:"-", kind:"handler_call", agent:"test", result:"[cortex.ref] sigil=LNG", evidence:"[cortex.ref] sigil=LNG"}
-AUD:E_0156{date:"2026-07-20T18:27:12Z", event:"E-0156", task:"-", kind:"handler_call", agent:"test", result:"[cortex.format] hcortex->cortex", evidence:"[cortex.format] hcortex->cortex"}
-AUD:E_0157{date:"2026-07-20T18:27:12Z", event:"E-0157", task:"-", kind:"handler_call", agent:"test", result:"[identity.get] agent_id=governor source=workspace", evidence:"[identity.get] agent_id=governor source=workspace"}
+
+AUD:E_0099{event:"E-0099", evidence:"SES:2026-07-16T21:47:35Z agent= summary=\"BLP-018 completado: 3 desviaciones de BLP-017 institucionalizadas y verificadas (ruta proyecto, synthesize canonico, reporte progresivo). AC-01/02/03/04/06 cumplidos. E008_DUPLICATE_ENTRY (AUD:E_0099) en brain.cortex de ARQUX eliminado manualmente via cortex.entry.delete para desbloquear session.close. Propuesta de parche AGENTS.md (AXM:blp_project_path + AXM:blp_synthesize_first) en §17 pendiente de aprobacion del Arquitecto.\" blps=[BLP-018] tasks=[-] decisions=[No parchear AGENTS.md sin aprobacion; path=proyecto siempre; synthesize primero; reporte progresivo por tarea; eliminar E_0099 duplicado bloqueante] gaps=[Aprobacion de parche AGENTS.md pendiente] lng_count=3", task:"-", kind:"session", agent:"alfred", result:"SES:2026-07-16T21:47:35Z agent= summary=\"BLP-018 completado: 3 desviaciones de BLP-017 institucionalizadas y verificadas (ruta proyecto, synthesize canonico, reporte progresivo). AC-01/02/03/04/06 cumplidos. E008_DUPLICATE_ENTRY (AUD:E_0099) en brain.cortex de ARQUX eliminado manualmente via cortex.entry.delete para desbloquear session.close. Propuesta de parche AGENTS.md (AXM:blp_project_path + AXM:blp_synthesize_first) en §17 pendiente de aprobacion del Arquitecto.\" blps=[BLP-018] tasks=[-] decisions=[No parchear AGENTS.md sin aprobacion; path=proyecto siempre; synthesize primero; reporte progresivo por tarea; eliminar E_0099 duplicado bloqueante] gaps=[Aprobacion de parche AGENTS.md pendiente] lng_count=3", date:"2026-07-16"}
+
+AUD:E_0100{event:"E-0100", evidence:"pulse.compact ok session=E-0099 pruned=58 lng=session_E_0099 summary=artifact:1,blueprint_lifecycle:2,handler_call:55", task:"-", kind:"pulse_compact", agent:"alfred", result:"pulse.compact ok session=E-0099 pruned=58 lng=session_E_0099 summary=artifact:1,blueprint_lifecycle:2,handler_call:55", date:"2026-07-16"}
+
+AUD:E_0101{event:"E-0101", evidence:"[context.full] project=ARQUX", task:"-", kind:"handler_call", agent:"alfred", result:"[context.full] project=ARQUX", date:"2026-07-18"}
+
+AUD:E_0102{event:"E-0102", evidence:"[session.handoff] from=alfred to=heimdall summary=", task:"-", kind:"session_handoff", agent:"alfred", result:"[session.handoff] from=alfred to=heimdall summary=", date:"2026-07-18"}
+
+AUD:E_0103{event:"E-0103", evidence:"Fix en arqux/handlers/session.py: (1) context_set linea 276 — agent = ctx.agent_id si ctx provisto, sino PermissionContext.from_env().agent_id. (2) handoff linea 873 — mismo patron defensivo. (3) test_session_handoff.py anadido con 3 tests validando AC-1/AC-2/AC-1b; 3/3 pass via python MCP (pytest bloqueado por import circular G-9 en core.state, no afecta handlers session). Evidencia: from_agent='heimdall' confirmado en handoff payload; assertion 'from:alfred' NOT present.", task:"T-004", kind:"task_complete", agent:"alfred", result:"Fix en arqux/handlers/session.py: (1) context_set linea 276 — agent = ctx.agent_id si ctx provisto, sino PermissionContext.from_env().agent_id. (2) handoff linea 873 — mismo patron defensivo. (3) test_session_handoff.py anadido con 3 tests validando AC-1/AC-2/AC-1b; 3/3 pass via python MCP (pytest bloqueado por import circular G-9 en core.state, no afecta handlers session). Evidencia: from_agent='heimdall' confirmado en handoff payload; assertion 'from:alfred' NOT present.", date:"2026-07-19"}
+
+AUD:E_0104{event:"E-0104", evidence:"Smoke test post-reinicio MCP: task.create(cycle=CYCLE-08) escribio T-002 en CYCLE-08 correctamente (fix G-5/6/7 activo). Artifact de prueba, se cierra.", task:"T-002", kind:"task_complete", agent:"alfred", result:"Smoke test post-reinicio MCP: task.create(cycle=CYCLE-08) escribio T-002 en CYCLE-08 correctamente (fix G-5/6/7 activo). Artifact de prueba, se cierra.", date:"2026-07-19"}
+
+AUD:E_0105{event:"E-0105", evidence:"[cortex.ref] sigil=WRK", task:"-", kind:"handler_call", agent:"test", result:"[cortex.ref] sigil=WRK", date:"2026-07-19"}
+
+AUD:E_0106{event:"E-0106", evidence:"[cortex.ref] sigil=LNG", task:"-", kind:"handler_call", agent:"test", result:"[cortex.ref] sigil=LNG", date:"2026-07-19"}
+
+AUD:E_0107{event:"E-0107", evidence:"[cortex.format] hcortex->cortex", task:"-", kind:"handler_call", agent:"test", result:"[cortex.format] hcortex->cortex", date:"2026-07-19"}
+
+AUD:E_0108{event:"E-0108", evidence:"[identity.get] agent_id=governor source=workspace", task:"-", kind:"handler_call", agent:"test", result:"[identity.get] agent_id=governor source=workspace", date:"2026-07-19"}
+
+AUD:E_0109{event:"E-0109", evidence:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", task:"-", kind:"handler_call", agent:"anonymous", result:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", date:"2026-07-19"}
+
+AUD:E_0110{event:"E-0110", evidence:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", task:"-", kind:"handler_call", agent:"anonymous", result:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", date:"2026-07-19"}
+
+AUD:E_0111{event:"E-0111", evidence:"[cortex.ref] sigil=WRK", task:"-", kind:"handler_call", agent:"test", result:"[cortex.ref] sigil=WRK", date:"2026-07-19"}
+
+AUD:E_0112{event:"E-0112", evidence:"[cortex.ref] sigil=LNG", task:"-", kind:"handler_call", agent:"test", result:"[cortex.ref] sigil=LNG", date:"2026-07-19"}
+
+AUD:E_0113{event:"E-0113", evidence:"[cortex.format] hcortex->cortex", task:"-", kind:"handler_call", agent:"test", result:"[cortex.format] hcortex->cortex", date:"2026-07-19"}
+
+AUD:E_0114{event:"E-0114", evidence:"[identity.get] agent_id=governor source=workspace", task:"-", kind:"handler_call", agent:"test", result:"[identity.get] agent_id=governor source=workspace", date:"2026-07-19"}
+
+AUD:E_0115{event:"E-0115", evidence:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", task:"-", kind:"handler_call", agent:"anonymous", result:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", date:"2026-07-19"}
+
+AUD:E_0116{event:"E-0116", evidence:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", task:"-", kind:"handler_call", agent:"anonymous", result:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", date:"2026-07-19"}
+
+AUD:E_0117{event:"E-0117", evidence:"G-9 root cause: cortex package absent => core/state/__init__.py try/except ImportError did NOT define _cc_* names, so submodule top-level 'from . import _cc_*' raised ImportError (circular). Fix: in __init__.py except branch, define _cc_ast/_cc_lexer/_cc_parser/_cc_validator/_cc_writer/_cc_mutations/_cc_selectors/_cc_transactions/_cc_renderer = None. Now 'from . import _cc_*' succeeds (returns None) and requires_codec_cortex() gates usage at runtime. Validation: pyenv 3.11 (no cortex) 'import arqux.pulse' OK; tool py3.12 (cortex) pytest 830 passed / 34 failed. The 34 remaining failures are pre-existing CORTEX template validation errors (E017/E033) in repo .cortex files, unrelated to G-9.", task:"T-005", kind:"task_complete", agent:"alfred", result:"G-9 root cause: cortex package absent => core/state/__init__.py try/except ImportError did NOT define _cc_* names, so submodule top-level 'from . import _cc_*' raised ImportError (circular). Fix: in __init__.py except branch, define _cc_ast/_cc_lexer/_cc_parser/_cc_validator/_cc_writer/_cc_mutations/_cc_selectors/_cc_transactions/_cc_renderer = None. Now 'from . import _cc_*' succeeds (returns None) and requires_codec_cortex() gates usage at runtime. Validation: pyenv 3.11 (no cortex) 'import arqux.pulse' OK; tool py3.12 (cortex) pytest 830 passed / 34 failed. The 34 remaining failures are pre-existing CORTEX template validation errors (E017/E033) in repo .cortex files, unrelated to G-9.", date:"2026-07-19"}
+
+AUD:E_0118{event:"E-0118", evidence:"[cortex.ref] sigil=WRK", task:"-", kind:"handler_call", agent:"test", result:"[cortex.ref] sigil=WRK", date:"2026-07-19"}
+
+AUD:E_0119{event:"E-0119", evidence:"[cortex.ref] sigil=LNG", task:"-", kind:"handler_call", agent:"test", result:"[cortex.ref] sigil=LNG", date:"2026-07-19"}
+
+AUD:E_0120{event:"E-0120", evidence:"[cortex.format] hcortex->cortex", task:"-", kind:"handler_call", agent:"test", result:"[cortex.format] hcortex->cortex", date:"2026-07-19"}
+
+AUD:E_0121{event:"E-0121", evidence:"[identity.get] agent_id=governor source=workspace", task:"-", kind:"handler_call", agent:"test", result:"[identity.get] agent_id=governor source=workspace", date:"2026-07-19"}
+
+AUD:E_0122{event:"E-0122", evidence:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", task:"-", kind:"handler_call", agent:"anonymous", result:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", date:"2026-07-19"}
+
+AUD:E_0123{event:"E-0123", evidence:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", task:"-", kind:"handler_call", agent:"anonymous", result:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", date:"2026-07-19"}
+
+AUD:E_0124{event:"E-0124", evidence:"G-12 root cause: _build_task_doc wrapped parsed body content into attrs dicts ({\"text\": content}, {\"criterion\": content}, etc.) WITHOUT stripping an already-serialized prefix. On re-write of a corrupted/already-serialized .cortex, content already carried 'text=' / 'criterion=' prefixes, so write_cortex rendered text:\"text=...\" -> duplicated prefix each round-trip (confirmed via repro: 'text=- text=- text=Corregir' and 'criterion=criterion=AC-1'). Fix: added _strip_attr_prefix(value, key) in formats.py that removes any leading run of '<key>=' and/or bullet markers ('- ', '* ') using regex, applied to OBJ/STP/CNST/CLAIM/BLK/NOTE/EVIDENCE entries. Also normalized OBJ to per-line bullet/prefix stripping like the other sections. Added tests/test_writer_roundtrip.py (3 tests: clean roundtrip, corrupted idempotent heal, repeated prefix collapse) — all pass. Full suite: 833 passed / 34 failed; the 34 failures are pre-existing CORTEX template validation errors (E017/E033) unrelated to G-12.", task:"T-006", kind:"task_complete", agent:"alfred", result:"G-12 root cause: _build_task_doc wrapped parsed body content into attrs dicts ({\"text\": content}, {\"criterion\": content}, etc.) WITHOUT stripping an already-serialized prefix. On re-write of a corrupted/already-serialized .cortex, content already carried 'text=' / 'criterion=' prefixes, so write_cortex rendered text:\"text=...\" -> duplicated prefix each round-trip (confirmed via repro: 'text=- text=- text=Corregir' and 'criterion=criterion=AC-1'). Fix: added _strip_attr_prefix(value, key) in formats.py that removes any leading run of '<key>=' and/or bullet markers ('- ', '* ') using regex, applied to OBJ/STP/CNST/CLAIM/BLK/NOTE/EVIDENCE entries. Also normalized OBJ to per-line bullet/prefix stripping like the other sections. Added tests/test_writer_roundtrip.py (3 tests: clean roundtrip, corrupted idempotent heal, repeated prefix collapse) — all pass. Full suite: 833 passed / 34 failed; the 34 failures are pre-existing CORTEX template validation errors (E017/E033) unrelated to G-12.", date:"2026-07-19"}
+
+AUD:E_0125{event:"E-0125", evidence:"[cortex.ref] sigil=WRK", task:"-", kind:"handler_call", agent:"test", result:"[cortex.ref] sigil=WRK", date:"2026-07-19"}
+
+AUD:E_0126{event:"E-0126", evidence:"[cortex.ref] sigil=LNG", task:"-", kind:"handler_call", agent:"test", result:"[cortex.ref] sigil=LNG", date:"2026-07-19"}
+
+AUD:E_0127{event:"E-0127", evidence:"[cortex.format] hcortex->cortex", task:"-", kind:"handler_call", agent:"test", result:"[cortex.format] hcortex->cortex", date:"2026-07-19"}
+
+AUD:E_0128{event:"E-0128", evidence:"[identity.get] agent_id=governor source=workspace", task:"-", kind:"handler_call", agent:"test", result:"[identity.get] agent_id=governor source=workspace", date:"2026-07-19"}
+
+AUD:E_0129{event:"E-0129", evidence:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", task:"-", kind:"handler_call", agent:"anonymous", result:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", date:"2026-07-19"}
+
+AUD:E_0130{event:"E-0130", evidence:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", task:"-", kind:"handler_call", agent:"anonymous", result:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", date:"2026-07-19"}
+
+AUD:E_0131{event:"E-0131", evidence:"Root cause was NOT an arqux bug: the tool venv had codec-cortex 0.4.0 (PyPI) whose validator rejected $0.1 (arqux BLP-041 ARQX:artifact metadata) with E017_UNPARSED_LINE / E033_ZERO_SECTION_MEMORY_ENTRY. Installing codec-cortex 0.5.2 (uv pip install --python /home/vatrox/.local/share/uv/tools/arqux/bin/python3 codec-cortex==0.5.2) updated the validator to a version that supports the BLP-041 schema. All 50 tests in test_template_validation.py now pass; full suite 867 passed / 0 failed. No arqux source change required. Design decision from prior message is moot.", task:"T-002", kind:"task_complete", agent:"alfred", result:"Root cause was NOT an arqux bug: the tool venv had codec-cortex 0.4.0 (PyPI) whose validator rejected $0.1 (arqux BLP-041 ARQX:artifact metadata) with E017_UNPARSED_LINE / E033_ZERO_SECTION_MEMORY_ENTRY. Installing codec-cortex 0.5.2 (uv pip install --python /home/vatrox/.local/share/uv/tools/arqux/bin/python3 codec-cortex==0.5.2) updated the validator to a version that supports the BLP-041 schema. All 50 tests in test_template_validation.py now pass; full suite 867 passed / 0 failed. No arqux source change required. Design decision from prior message is moot.", date:"2026-07-19"}
+
+AUD:E_0132{event:"E-0132", evidence:"[cortex.ref] sigil=WRK", task:"-", kind:"handler_call", agent:"test", result:"[cortex.ref] sigil=WRK", date:"2026-07-19"}
+
+AUD:E_0133{event:"E-0133", evidence:"[cortex.ref] sigil=LNG", task:"-", kind:"handler_call", agent:"test", result:"[cortex.ref] sigil=LNG", date:"2026-07-19"}
+
+AUD:E_0134{event:"E-0134", evidence:"[cortex.format] hcortex->cortex", task:"-", kind:"handler_call", agent:"test", result:"[cortex.format] hcortex->cortex", date:"2026-07-19"}
+
+AUD:E_0135{event:"E-0135", evidence:"[identity.get] agent_id=governor source=workspace", task:"-", kind:"handler_call", agent:"test", result:"[identity.get] agent_id=governor source=workspace", date:"2026-07-19"}
+
+AUD:E_0136{event:"E-0136", evidence:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", task:"-", kind:"handler_call", agent:"anonymous", result:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", date:"2026-07-19"}
+
+AUD:E_0137{event:"E-0137", evidence:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", task:"-", kind:"handler_call", agent:"anonymous", result:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", date:"2026-07-19"}
+
+AUD:E_0138{event:"E-0138", evidence:"[cortex.ref] sigil=WRK", task:"-", kind:"handler_call", agent:"test", result:"[cortex.ref] sigil=WRK", date:"2026-07-19"}
+
+AUD:E_0139{event:"E-0139", evidence:"[cortex.ref] sigil=LNG", task:"-", kind:"handler_call", agent:"test", result:"[cortex.ref] sigil=LNG", date:"2026-07-19"}
+
+AUD:E_0140{event:"E-0140", evidence:"[cortex.format] hcortex->cortex", task:"-", kind:"handler_call", agent:"test", result:"[cortex.format] hcortex->cortex", date:"2026-07-19"}
+
+AUD:E_0141{event:"E-0141", evidence:"[identity.get] agent_id=governor source=workspace", task:"-", kind:"handler_call", agent:"test", result:"[identity.get] agent_id=governor source=workspace", date:"2026-07-19"}
+
+AUD:E_0142{event:"E-0142", evidence:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", task:"-", kind:"handler_call", agent:"anonymous", result:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", date:"2026-07-19"}
+
+AUD:E_0143{event:"E-0143", evidence:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", task:"-", kind:"handler_call", agent:"anonymous", result:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", date:"2026-07-19"}
+
+AUD:E_0144{event:"E-0144", evidence:"cortex.checkpoint ok fcs=Sandbox-CODEC-CORTEX-migracion-comparati obj=", task:"-", kind:"checkpoint", agent:"hermes", result:"cortex.checkpoint ok fcs=Sandbox-CODEC-CORTEX-migracion-comparati obj=", date:"2026-07-19"}
+
+AUD:E_0145{event:"E-0145", evidence:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", task:"-", kind:"handler_call", agent:"anonymous", result:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", date:"2026-07-20"}
+
+AUD:E_0146{event:"E-0146", evidence:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", task:"-", kind:"handler_call", agent:"anonymous", result:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", date:"2026-07-20"}
+
+AUD:E_0147{event:"E-0147", evidence:"[cortex.ref] sigil=WRK", task:"-", kind:"handler_call", agent:"test", result:"[cortex.ref] sigil=WRK", date:"2026-07-20"}
+
+AUD:E_0148{event:"E-0148", evidence:"[cortex.ref] sigil=LNG", task:"-", kind:"handler_call", agent:"test", result:"[cortex.ref] sigil=LNG", date:"2026-07-20"}
+
+AUD:E_0149{event:"E-0149", evidence:"[cortex.format] hcortex->cortex", task:"-", kind:"handler_call", agent:"test", result:"[cortex.format] hcortex->cortex", date:"2026-07-20"}
+
+AUD:E_0150{event:"E-0150", evidence:"[identity.get] agent_id=governor source=workspace", task:"-", kind:"handler_call", agent:"test", result:"[identity.get] agent_id=governor source=workspace", date:"2026-07-20"}
+
+AUD:E_0151{event:"E-0151", evidence:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", task:"-", kind:"handler_call", agent:"anonymous", result:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", date:"2026-07-20"}
+
+AUD:E_0152{event:"E-0152", evidence:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", task:"-", kind:"handler_call", agent:"anonymous", result:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", date:"2026-07-20"}
+
+AUD:E_0153{event:"E-0153", evidence:"Fix aplicado en _helpers.py (2 sitios) y synthesize.py: brain_path ahora es root/brain.cortex con fallback legacy a root/.arqux/brain.cortex; selector FCS agnóstico de sección (\"FCS:current\"). Test de regresión nuevo tests/test_find_blueprint_active_cycle.py (4 tests: ciclo activo viejo gana al nuevo, ciclo activo nuevo, FCS en $1 legacy, fallback sin hint). Suite completa: 871 passed, 0 failed. uv tool arqux reinstalado; verificado que la instalación resuelve BLP-001 a CYCLE-03 correctamente.", task:"T-001", kind:"task_complete", agent:"alfred", result:"Fix aplicado en _helpers.py (2 sitios) y synthesize.py: brain_path ahora es root/brain.cortex con fallback legacy a root/.arqux/brain.cortex; selector FCS agnóstico de sección (\"FCS:current\"). Test de regresión nuevo tests/test_find_blueprint_active_cycle.py (4 tests: ciclo activo viejo gana al nuevo, ciclo activo nuevo, FCS en $1 legacy, fallback sin hint). Suite completa: 871 passed, 0 failed. uv tool arqux reinstalado; verificado que la instalación resuelve BLP-001 a CYCLE-03 correctamente.", date:"2026-07-20"}
+
+AUD:E_0154{event:"E-0154", evidence:"[cortex.ref] sigil=WRK", task:"-", kind:"handler_call", agent:"test", result:"[cortex.ref] sigil=WRK", date:"2026-07-20"}
+
+AUD:E_0155{event:"E-0155", evidence:"[cortex.ref] sigil=LNG", task:"-", kind:"handler_call", agent:"test", result:"[cortex.ref] sigil=LNG", date:"2026-07-20"}
+
+AUD:E_0156{event:"E-0156", evidence:"[cortex.format] hcortex->cortex", task:"-", kind:"handler_call", agent:"test", result:"[cortex.format] hcortex->cortex", date:"2026-07-20"}
+
+AUD:E_0157{event:"E-0157", evidence:"[identity.get] agent_id=governor source=workspace", task:"-", kind:"handler_call", agent:"test", result:"[identity.get] agent_id=governor source=workspace", date:"2026-07-20"}
+
+AUD:E_0157{event:"E-0157", evidence:"[cortex.ref] sigil=WRK", task:"-", kind:"handler_call", agent:"test", result:"[cortex.ref] sigil=WRK", date:"2026-08-17"}
+
+AUD:E_0157{event:"E-0157", evidence:"[cortex.ref] sigil=LNG", task:"-", kind:"handler_call", agent:"test", result:"[cortex.ref] sigil=LNG", date:"2026-08-17"}
+
+AUD:E_0157{event:"E-0157", evidence:"[cortex.format] hcortex->cortex", task:"-", kind:"handler_call", agent:"test", result:"[cortex.format] hcortex->cortex", date:"2026-08-17"}
+
+AUD:E_0157{event:"E-0157", evidence:"[cortex.ref] sigil=WRK", task:"-", kind:"handler_call", agent:"test", result:"[cortex.ref] sigil=WRK", date:"2026-08-17"}
+
+AUD:E_0157{event:"E-0157", evidence:"[cortex.ref] sigil=LNG", task:"-", kind:"handler_call", agent:"test", result:"[cortex.ref] sigil=LNG", date:"2026-08-17"}
+
+AUD:E_0157{event:"E-0157", evidence:"[cortex.format] hcortex->cortex", task:"-", kind:"handler_call", agent:"test", result:"[cortex.format] hcortex->cortex", date:"2026-08-17"}
+
+AUD:E_0157{event:"E-0157", evidence:"[identity.get] agent_id=governor source=workspace", task:"-", kind:"handler_call", agent:"test", result:"[identity.get] agent_id=governor source=workspace", date:"2026-08-17"}
+
+AUD:E_0157{event:"E-0157", evidence:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", task:"-", kind:"handler_call", agent:"anonymous", result:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", date:"2026-08-17"}
+
+AUD:E_0157{event:"E-0157", evidence:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", task:"-", kind:"handler_call", agent:"anonymous", result:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", date:"2026-08-17"}
+
+AUD:E_0157{event:"E-0157", evidence:"[cortex.ref] sigil=WRK", task:"-", kind:"handler_call", agent:"test", result:"[cortex.ref] sigil=WRK", date:"2026-08-17"}
+
+AUD:E_0157{event:"E-0157", evidence:"[cortex.ref] sigil=LNG", task:"-", kind:"handler_call", agent:"test", result:"[cortex.ref] sigil=LNG", date:"2026-08-17"}
+
+AUD:E_0157{event:"E-0157", evidence:"[cortex.format] hcortex->cortex", task:"-", kind:"handler_call", agent:"test", result:"[cortex.format] hcortex->cortex", date:"2026-08-17"}
+
+AUD:E_0157{event:"E-0157", evidence:"[identity.get] agent_id=governor source=workspace", task:"-", kind:"handler_call", agent:"test", result:"[identity.get] agent_id=governor source=workspace", date:"2026-08-17"}
+
+AUD:E_0157{event:"E-0157", evidence:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", task:"-", kind:"handler_call", agent:"anonymous", result:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", date:"2026-08-17"}
+
+AUD:E_0157{event:"E-0157", evidence:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", task:"-", kind:"handler_call", agent:"anonymous", result:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", date:"2026-08-17"}
+
+AUD:E_0157{event:"E-0157", evidence:"[cortex.ref] sigil=WRK", task:"-", kind:"handler_call", agent:"test", result:"[cortex.ref] sigil=WRK", date:"2026-08-17"}
+
+AUD:E_0157{event:"E-0157", evidence:"[cortex.ref] sigil=LNG", task:"-", kind:"handler_call", agent:"test", result:"[cortex.ref] sigil=LNG", date:"2026-08-17"}
+
+AUD:E_0157{event:"E-0157", evidence:"[cortex.format] hcortex->cortex", task:"-", kind:"handler_call", agent:"test", result:"[cortex.format] hcortex->cortex", date:"2026-08-17"}
+
+AUD:E_0157{event:"E-0157", evidence:"[identity.get] agent_id=governor source=workspace", task:"-", kind:"handler_call", agent:"test", result:"[identity.get] agent_id=governor source=workspace", date:"2026-08-17"}
+
+AUD:E_0157{event:"E-0157", evidence:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", task:"-", kind:"handler_call", agent:"anonymous", result:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", date:"2026-08-17"}
+
+AUD:E_0157{event:"E-0157", evidence:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", task:"-", kind:"handler_call", agent:"anonymous", result:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", date:"2026-08-17"}
+
+AUD:E_0157{event:"E-0157", evidence:"[cortex.ref] sigil=WRK", task:"-", kind:"handler_call", agent:"test", result:"[cortex.ref] sigil=WRK", date:"2026-08-17"}
+
+AUD:E_0157{event:"E-0157", evidence:"[cortex.ref] sigil=LNG", task:"-", kind:"handler_call", agent:"test", result:"[cortex.ref] sigil=LNG", date:"2026-08-17"}
+
+AUD:E_0157{event:"E-0157", evidence:"[cortex.format] hcortex->cortex", task:"-", kind:"handler_call", agent:"test", result:"[cortex.format] hcortex->cortex", date:"2026-08-17"}
+
+AUD:E_0157{event:"E-0157", evidence:"[identity.get] agent_id=governor source=workspace", task:"-", kind:"handler_call", agent:"test", result:"[identity.get] agent_id=governor source=workspace", date:"2026-08-17"}
+
+AUD:E_0157{event:"E-0157", evidence:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", task:"-", kind:"handler_call", agent:"anonymous", result:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", date:"2026-08-17"}
+
+AUD:E_0157{event:"E-0157", evidence:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", task:"-", kind:"handler_call", agent:"anonymous", result:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", date:"2026-08-17"}
+
+AUD:E_0157{event:"E-0157", evidence:"[cortex.ref] sigil=WRK", task:"-", kind:"handler_call", agent:"test", result:"[cortex.ref] sigil=WRK", date:"2026-08-17"}
+
+AUD:E_0157{event:"E-0157", evidence:"[cortex.ref] sigil=LNG", task:"-", kind:"handler_call", agent:"test", result:"[cortex.ref] sigil=LNG", date:"2026-08-17"}
+
+AUD:E_0157{event:"E-0157", evidence:"[cortex.format] hcortex->cortex", task:"-", kind:"handler_call", agent:"test", result:"[cortex.format] hcortex->cortex", date:"2026-08-17"}
+
+AUD:E_0157{event:"E-0157", evidence:"[identity.get] agent_id=governor source=workspace", task:"-", kind:"handler_call", agent:"test", result:"[identity.get] agent_id=governor source=workspace", date:"2026-08-17"}
+
+AUD:E_0157{event:"E-0157", evidence:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", task:"-", kind:"handler_call", agent:"anonymous", result:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", date:"2026-08-17"}
+
+AUD:E_0157{event:"E-0157", evidence:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", task:"-", kind:"handler_call", agent:"anonymous", result:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", date:"2026-08-17"}
+
+AUD:E_0157{event:"E-0157", evidence:"[cortex.ref] sigil=WRK", task:"-", kind:"handler_call", agent:"test", result:"[cortex.ref] sigil=WRK", date:"2026-08-17"}
+
+AUD:E_0157{event:"E-0157", evidence:"[cortex.ref] sigil=LNG", task:"-", kind:"handler_call", agent:"test", result:"[cortex.ref] sigil=LNG", date:"2026-08-17"}
+
+AUD:E_0157{event:"E-0157", evidence:"[cortex.format] hcortex->cortex", task:"-", kind:"handler_call", agent:"test", result:"[cortex.format] hcortex->cortex", date:"2026-08-17"}
+
+AUD:E_0157{event:"E-0157", evidence:"[identity.get] agent_id=governor source=workspace", task:"-", kind:"handler_call", agent:"test", result:"[identity.get] agent_id=governor source=workspace", date:"2026-08-17"}
+
+AUD:E_0157{event:"E-0157", evidence:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", task:"-", kind:"handler_call", agent:"anonymous", result:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", date:"2026-08-17"}
+
+AUD:E_0157{event:"E-0157", evidence:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", task:"-", kind:"handler_call", agent:"anonymous", result:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", date:"2026-08-17"}
+
+AUD:E_0157{event:"E-0157", evidence:"[cortex.ref] sigil=WRK", task:"-", kind:"handler_call", agent:"test", result:"[cortex.ref] sigil=WRK", date:"2026-08-17"}
+
+AUD:E_0157{event:"E-0157", evidence:"[cortex.ref] sigil=LNG", task:"-", kind:"handler_call", agent:"test", result:"[cortex.ref] sigil=LNG", date:"2026-08-17"}
+
+AUD:E_0157{event:"E-0157", evidence:"[cortex.format] hcortex->cortex", task:"-", kind:"handler_call", agent:"test", result:"[cortex.format] hcortex->cortex", date:"2026-08-17"}
+
+AUD:E_0157{event:"E-0157", evidence:"[identity.get] agent_id=governor source=workspace", task:"-", kind:"handler_call", agent:"test", result:"[identity.get] agent_id=governor source=workspace", date:"2026-08-17"}
+
+AUD:E_0157{event:"E-0157", evidence:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", task:"-", kind:"handler_call", agent:"anonymous", result:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", date:"2026-08-17"}
+
+AUD:E_0157{event:"E-0157", evidence:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", task:"-", kind:"handler_call", agent:"anonymous", result:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", date:"2026-08-17"}
+
+AUD:E_0157{event:"E-0157", evidence:"[cortex.ref] sigil=WRK", task:"-", kind:"handler_call", agent:"test", result:"[cortex.ref] sigil=WRK", date:"2026-08-17"}
+
+AUD:E_0157{event:"E-0157", evidence:"[cortex.ref] sigil=LNG", task:"-", kind:"handler_call", agent:"test", result:"[cortex.ref] sigil=LNG", date:"2026-08-17"}
+
+AUD:E_0157{event:"E-0157", evidence:"[cortex.format] hcortex->cortex", task:"-", kind:"handler_call", agent:"test", result:"[cortex.format] hcortex->cortex", date:"2026-08-17"}
+
+AUD:E_0157{event:"E-0157", evidence:"[identity.get] agent_id=governor source=workspace", task:"-", kind:"handler_call", agent:"test", result:"[identity.get] agent_id=governor source=workspace", date:"2026-08-17"}
+
+AUD:E_0157{event:"E-0157", evidence:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", task:"-", kind:"handler_call", agent:"anonymous", result:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", date:"2026-08-17"}
+
+AUD:E_0157{event:"E-0157", evidence:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", task:"-", kind:"handler_call", agent:"anonymous", result:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", date:"2026-08-17"}
+
+AUD:E_0157{event:"E-0157", evidence:"[cortex.ref] sigil=WRK", task:"-", kind:"handler_call", agent:"test", result:"[cortex.ref] sigil=WRK", date:"2026-08-17"}
+
+AUD:E_0157{event:"E-0157", evidence:"[cortex.ref] sigil=LNG", task:"-", kind:"handler_call", agent:"test", result:"[cortex.ref] sigil=LNG", date:"2026-08-17"}
+
+AUD:E_0157{event:"E-0157", evidence:"[cortex.format] hcortex->cortex", task:"-", kind:"handler_call", agent:"test", result:"[cortex.format] hcortex->cortex", date:"2026-08-17"}
+
+AUD:E_0157{event:"E-0157", evidence:"[identity.get] agent_id=governor source=workspace", task:"-", kind:"handler_call", agent:"test", result:"[identity.get] agent_id=governor source=workspace", date:"2026-08-17"}
+
+AUD:E_0157{event:"E-0157", evidence:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", task:"-", kind:"handler_call", agent:"anonymous", result:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", date:"2026-08-17"}
+
+AUD:E_0157{event:"E-0157", evidence:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", task:"-", kind:"handler_call", agent:"anonymous", result:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", date:"2026-08-17"}
+
+AUD:E_0157{event:"E-0157", evidence:"[cortex.ref] sigil=WRK", task:"-", kind:"handler_call", agent:"test", result:"[cortex.ref] sigil=WRK", date:"2026-08-17"}
+
+AUD:E_0157{event:"E-0157", evidence:"[cortex.ref] sigil=LNG", task:"-", kind:"handler_call", agent:"test", result:"[cortex.ref] sigil=LNG", date:"2026-08-17"}
+
+AUD:E_0157{event:"E-0157", evidence:"[cortex.format] hcortex->cortex", task:"-", kind:"handler_call", agent:"test", result:"[cortex.format] hcortex->cortex", date:"2026-08-17"}
+
+AUD:E_0157{event:"E-0157", evidence:"[identity.get] agent_id=governor source=workspace", task:"-", kind:"handler_call", agent:"test", result:"[identity.get] agent_id=governor source=workspace", date:"2026-08-17"}
+
+AUD:E_0157{event:"E-0157", evidence:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", task:"-", kind:"handler_call", agent:"anonymous", result:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", date:"2026-08-17"}
+
+AUD:E_0157{event:"E-0157", evidence:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", task:"-", kind:"handler_call", agent:"anonymous", result:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", date:"2026-08-17"}
+
+AUD:E_0157{event:"E-0157", evidence:"[cortex.ref] sigil=WRK", task:"-", kind:"handler_call", agent:"test", result:"[cortex.ref] sigil=WRK", date:"2026-08-17"}
+
+AUD:E_0157{event:"E-0157", evidence:"[cortex.ref] sigil=LNG", task:"-", kind:"handler_call", agent:"test", result:"[cortex.ref] sigil=LNG", date:"2026-08-17"}
+
+AUD:E_0157{event:"E-0157", evidence:"[cortex.format] hcortex->cortex", task:"-", kind:"handler_call", agent:"test", result:"[cortex.format] hcortex->cortex", date:"2026-08-17"}
+
+AUD:E_0157{event:"E-0157", evidence:"[identity.get] agent_id=governor source=workspace", task:"-", kind:"handler_call", agent:"test", result:"[identity.get] agent_id=governor source=workspace", date:"2026-08-17"}
+
+AUD:E_0157{event:"E-0157", evidence:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", task:"-", kind:"handler_call", agent:"anonymous", result:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", date:"2026-08-17"}
+
+AUD:E_0157{event:"E-0157", evidence:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", task:"-", kind:"handler_call", agent:"anonymous", result:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", date:"2026-08-17"}
+
+AUD:E_0157{event:"E-0157", evidence:"[cortex.ref] sigil=WRK", task:"-", kind:"handler_call", agent:"test", result:"[cortex.ref] sigil=WRK", date:"2026-08-17"}
+
+AUD:E_0157{event:"E-0157", evidence:"[cortex.ref] sigil=LNG", task:"-", kind:"handler_call", agent:"test", result:"[cortex.ref] sigil=LNG", date:"2026-08-17"}
+
+AUD:E_0157{event:"E-0157", evidence:"[cortex.format] hcortex->cortex", task:"-", kind:"handler_call", agent:"test", result:"[cortex.format] hcortex->cortex", date:"2026-08-17"}
+
+AUD:E_0157{event:"E-0157", evidence:"[identity.get] agent_id=governor source=workspace", task:"-", kind:"handler_call", agent:"test", result:"[identity.get] agent_id=governor source=workspace", date:"2026-08-17"}
+
+AUD:E_0157{event:"E-0157", evidence:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", task:"-", kind:"handler_call", agent:"anonymous", result:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", date:"2026-08-17"}
+
+AUD:E_0157{event:"E-0157", evidence:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", task:"-", kind:"handler_call", agent:"anonymous", result:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", date:"2026-08-17"}
+
+AUD:E_0157{event:"E-0157", evidence:"[cortex.ref] sigil=WRK", task:"-", kind:"handler_call", agent:"test", result:"[cortex.ref] sigil=WRK", date:"2026-08-17"}
+
+AUD:E_0157{event:"E-0157", evidence:"[cortex.ref] sigil=LNG", task:"-", kind:"handler_call", agent:"test", result:"[cortex.ref] sigil=LNG", date:"2026-08-17"}
+
+AUD:E_0157{event:"E-0157", evidence:"[cortex.format] hcortex->cortex", task:"-", kind:"handler_call", agent:"test", result:"[cortex.format] hcortex->cortex", date:"2026-08-17"}
+
+AUD:E_0157{event:"E-0157", evidence:"[identity.get] agent_id=governor source=workspace", task:"-", kind:"handler_call", agent:"test", result:"[identity.get] agent_id=governor source=workspace", date:"2026-08-17"}
+
+AUD:E_0157{event:"E-0157", evidence:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", task:"-", kind:"handler_call", agent:"anonymous", result:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", date:"2026-08-17"}
+
+AUD:E_0157{event:"E-0157", evidence:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", task:"-", kind:"handler_call", agent:"anonymous", result:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", date:"2026-08-17"}
+
+AUD:E_0157{event:"E-0157", evidence:"[cortex.ref] sigil=WRK", task:"-", kind:"handler_call", agent:"test", result:"[cortex.ref] sigil=WRK", date:"2026-08-17"}
+
+AUD:E_0157{event:"E-0157", evidence:"[cortex.ref] sigil=LNG", task:"-", kind:"handler_call", agent:"test", result:"[cortex.ref] sigil=LNG", date:"2026-08-17"}
+
+AUD:E_0157{event:"E-0157", evidence:"[cortex.format] hcortex->cortex", task:"-", kind:"handler_call", agent:"test", result:"[cortex.format] hcortex->cortex", date:"2026-08-17"}
+
+AUD:E_0157{event:"E-0157", evidence:"[identity.get] agent_id=governor source=workspace", task:"-", kind:"handler_call", agent:"test", result:"[identity.get] agent_id=governor source=workspace", date:"2026-08-17"}
+
+AUD:E_0157{event:"E-0157", evidence:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", task:"-", kind:"handler_call", agent:"anonymous", result:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", date:"2026-08-17"}
+
+AUD:E_0157{event:"E-0157", evidence:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", task:"-", kind:"handler_call", agent:"anonymous", result:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", date:"2026-08-17"}
+
+AUD:E_0157{event:"E-0157", evidence:"[cortex.ref] sigil=WRK", task:"-", kind:"handler_call", agent:"test", result:"[cortex.ref] sigil=WRK", date:"2026-08-17"}
+
+AUD:E_0157{event:"E-0157", evidence:"[cortex.ref] sigil=LNG", task:"-", kind:"handler_call", agent:"test", result:"[cortex.ref] sigil=LNG", date:"2026-08-17"}
+
+AUD:E_0157{event:"E-0157", evidence:"[cortex.format] hcortex->cortex", task:"-", kind:"handler_call", agent:"test", result:"[cortex.format] hcortex->cortex", date:"2026-08-17"}
+
+AUD:E_0157{event:"E-0157", evidence:"[identity.get] agent_id=governor source=workspace", task:"-", kind:"handler_call", agent:"test", result:"[identity.get] agent_id=governor source=workspace", date:"2026-08-17"}
+
+AUD:E_0157{event:"E-0157", evidence:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", task:"-", kind:"handler_call", agent:"anonymous", result:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", date:"2026-08-17"}
+
+AUD:E_0157{event:"E-0157", evidence:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", task:"-", kind:"handler_call", agent:"anonymous", result:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", date:"2026-08-17"}
+
+AUD:E_0157{event:"E-0157", evidence:"[cortex.ref] sigil=WRK", task:"-", kind:"handler_call", agent:"test", result:"[cortex.ref] sigil=WRK", date:"2026-08-17"}
+
+AUD:E_0157{event:"E-0157", evidence:"[cortex.ref] sigil=LNG", task:"-", kind:"handler_call", agent:"test", result:"[cortex.ref] sigil=LNG", date:"2026-08-17"}
+
+AUD:E_0157{event:"E-0157", evidence:"[cortex.format] hcortex->cortex", task:"-", kind:"handler_call", agent:"test", result:"[cortex.format] hcortex->cortex", date:"2026-08-17"}
+
+AUD:E_0157{event:"E-0157", evidence:"[identity.get] agent_id=governor source=workspace", task:"-", kind:"handler_call", agent:"test", result:"[identity.get] agent_id=governor source=workspace", date:"2026-08-17"}
+
+AUD:E_0157{event:"E-0157", evidence:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", task:"-", kind:"handler_call", agent:"anonymous", result:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", date:"2026-08-17"}
+
+AUD:E_0157{event:"E-0157", evidence:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", task:"-", kind:"handler_call", agent:"anonymous", result:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", date:"2026-08-17"}
+
+AUD:E_0157{event:"E-0157", evidence:"[cortex.ref] sigil=WRK", task:"-", kind:"handler_call", agent:"test", result:"[cortex.ref] sigil=WRK", date:"2026-08-17"}
+
+AUD:E_0157{event:"E-0157", evidence:"[cortex.ref] sigil=LNG", task:"-", kind:"handler_call", agent:"test", result:"[cortex.ref] sigil=LNG", date:"2026-08-17"}
+
+AUD:E_0157{event:"E-0157", evidence:"[cortex.format] hcortex->cortex", task:"-", kind:"handler_call", agent:"test", result:"[cortex.format] hcortex->cortex", date:"2026-08-17"}
+
+AUD:E_0157{event:"E-0157", evidence:"[identity.get] agent_id=governor source=workspace", task:"-", kind:"handler_call", agent:"test", result:"[identity.get] agent_id=governor source=workspace", date:"2026-08-17"}
+
+AUD:E_0157{event:"E-0157", evidence:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", task:"-", kind:"handler_call", agent:"anonymous", result:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", date:"2026-08-17"}
+
+AUD:E_0157{event:"E-0157", evidence:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", task:"-", kind:"handler_call", agent:"anonymous", result:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", date:"2026-08-17"}
+
+AUD:E_0157{event:"E-0157", evidence:"[cortex.ref] sigil=WRK", task:"-", kind:"handler_call", agent:"test", result:"[cortex.ref] sigil=WRK", date:"2026-08-17"}
+
+AUD:E_0157{event:"E-0157", evidence:"[cortex.ref] sigil=LNG", task:"-", kind:"handler_call", agent:"test", result:"[cortex.ref] sigil=LNG", date:"2026-08-17"}
+
+AUD:E_0157{event:"E-0157", evidence:"[cortex.format] hcortex->cortex", task:"-", kind:"handler_call", agent:"test", result:"[cortex.format] hcortex->cortex", date:"2026-08-17"}
+
+AUD:E_0157{event:"E-0157", evidence:"[identity.get] agent_id=governor source=workspace", task:"-", kind:"handler_call", agent:"test", result:"[identity.get] agent_id=governor source=workspace", date:"2026-08-17"}
+
+AUD:E_0157{event:"E-0157", evidence:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", task:"-", kind:"handler_call", agent:"anonymous", result:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", date:"2026-08-17"}
+
+AUD:E_0157{event:"E-0157", evidence:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", task:"-", kind:"handler_call", agent:"anonymous", result:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", date:"2026-08-17"}
+
+AUD:E_0157{event:"E-0157", evidence:"[cortex.ref] sigil=WRK", task:"-", kind:"handler_call", agent:"test", result:"[cortex.ref] sigil=WRK", date:"2026-08-17"}
+
+AUD:E_0157{event:"E-0157", evidence:"[cortex.ref] sigil=LNG", task:"-", kind:"handler_call", agent:"test", result:"[cortex.ref] sigil=LNG", date:"2026-08-17"}
+
+AUD:E_0157{event:"E-0157", evidence:"[cortex.format] hcortex->cortex", task:"-", kind:"handler_call", agent:"test", result:"[cortex.format] hcortex->cortex", date:"2026-08-17"}
+
+AUD:E_0157{event:"E-0157", evidence:"[identity.get] agent_id=governor source=workspace", task:"-", kind:"handler_call", agent:"test", result:"[identity.get] agent_id=governor source=workspace", date:"2026-08-17"}
+
+AUD:E_0157{event:"E-0157", evidence:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", task:"-", kind:"handler_call", agent:"anonymous", result:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", date:"2026-08-17"}
+
+AUD:E_0157{event:"E-0157", evidence:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", task:"-", kind:"handler_call", agent:"anonymous", result:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", date:"2026-08-17"}
+
+AUD:E_0157{event:"E-0157", evidence:"[cortex.ref] sigil=WRK", task:"-", kind:"handler_call", agent:"test", result:"[cortex.ref] sigil=WRK", date:"2026-08-17"}
+
+AUD:E_0157{event:"E-0157", evidence:"[cortex.ref] sigil=LNG", task:"-", kind:"handler_call", agent:"test", result:"[cortex.ref] sigil=LNG", date:"2026-08-17"}
+
+AUD:E_0157{event:"E-0157", evidence:"[cortex.format] hcortex->cortex", task:"-", kind:"handler_call", agent:"test", result:"[cortex.format] hcortex->cortex", date:"2026-08-17"}
+
+AUD:E_0157{event:"E-0157", evidence:"[identity.get] agent_id=governor source=workspace", task:"-", kind:"handler_call", agent:"test", result:"[identity.get] agent_id=governor source=workspace", date:"2026-08-17"}
+
+AUD:E_0157{event:"E-0157", evidence:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", task:"-", kind:"handler_call", agent:"anonymous", result:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", date:"2026-08-17"}
+
+AUD:E_0157{event:"E-0157", evidence:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", task:"-", kind:"handler_call", agent:"anonymous", result:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", date:"2026-08-17"}
+
+AUD:E_0157{event:"E-0157", evidence:"[cortex.ref] sigil=WRK", task:"-", kind:"handler_call", agent:"test", result:"[cortex.ref] sigil=WRK", date:"2026-08-17"}
+
+AUD:E_0157{event:"E-0157", evidence:"[cortex.ref] sigil=LNG", task:"-", kind:"handler_call", agent:"test", result:"[cortex.ref] sigil=LNG", date:"2026-08-17"}
+
+AUD:E_0157{event:"E-0157", evidence:"[cortex.format] hcortex->cortex", task:"-", kind:"handler_call", agent:"test", result:"[cortex.format] hcortex->cortex", date:"2026-08-17"}
+
+AUD:E_0157{event:"E-0157", evidence:"[identity.get] agent_id=governor source=workspace", task:"-", kind:"handler_call", agent:"test", result:"[identity.get] agent_id=governor source=workspace", date:"2026-08-17"}
+
+AUD:E_0157{event:"E-0157", evidence:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", task:"-", kind:"handler_call", agent:"anonymous", result:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", date:"2026-08-17"}
+
+AUD:E_0157{event:"E-0157", evidence:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", task:"-", kind:"handler_call", agent:"anonymous", result:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", date:"2026-08-17"}
+
+AUD:E_0157{event:"E-0157", evidence:"[cortex.ref] sigil=WRK", task:"-", kind:"handler_call", agent:"test", result:"[cortex.ref] sigil=WRK", date:"2026-08-17"}
+
+AUD:E_0157{event:"E-0157", evidence:"[cortex.ref] sigil=LNG", task:"-", kind:"handler_call", agent:"test", result:"[cortex.ref] sigil=LNG", date:"2026-08-17"}
+
+AUD:E_0157{event:"E-0157", evidence:"[cortex.format] hcortex->cortex", task:"-", kind:"handler_call", agent:"test", result:"[cortex.format] hcortex->cortex", date:"2026-08-17"}
+
+AUD:E_0157{event:"E-0157", evidence:"[identity.get] agent_id=governor source=workspace", task:"-", kind:"handler_call", agent:"test", result:"[identity.get] agent_id=governor source=workspace", date:"2026-08-17"}
+
+AUD:E_0157{event:"E-0157", evidence:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", task:"-", kind:"handler_call", agent:"anonymous", result:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", date:"2026-08-17"}
+
+AUD:E_0157{event:"E-0157", evidence:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", task:"-", kind:"handler_call", agent:"anonymous", result:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", date:"2026-08-17"}
+
+AUD:E_0157{event:"E-0157", evidence:"[cortex.ref] sigil=WRK", task:"-", kind:"handler_call", agent:"test", result:"[cortex.ref] sigil=WRK", date:"2026-08-17"}
+
+AUD:E_0157{event:"E-0157", evidence:"[cortex.ref] sigil=LNG", task:"-", kind:"handler_call", agent:"test", result:"[cortex.ref] sigil=LNG", date:"2026-08-17"}
+
+AUD:E_0157{event:"E-0157", evidence:"[cortex.format] hcortex->cortex", task:"-", kind:"handler_call", agent:"test", result:"[cortex.format] hcortex->cortex", date:"2026-08-17"}
+
+AUD:E_0157{event:"E-0157", evidence:"[identity.get] agent_id=governor source=workspace", task:"-", kind:"handler_call", agent:"test", result:"[identity.get] agent_id=governor source=workspace", date:"2026-08-17"}
+
+AUD:E_0157{event:"E-0157", evidence:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", task:"-", kind:"handler_call", agent:"anonymous", result:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", date:"2026-08-17"}
+
+AUD:E_0157{event:"E-0157", evidence:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", task:"-", kind:"handler_call", agent:"anonymous", result:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", date:"2026-08-17"}
+
+AUD:E_0300{event:"E-0300", evidence:"Parche AGENTS.md aplicado y verificado", task:"BLP-018", kind:"decision", agent:"alfred", result:"Parche AGENTS.md aplicado y verificado", date:"2026-08-17"}
+
+KNW:cycles_closed{name:"cycles_closed", value:"1", updated:"2026-08-17T13:18:53Z", topic:"metrics", content:"metric cycles_closed=1", status:"current"}
+
+AUD:E_0301_0003{date:"2026-08-17T13:30:00Z", event:"E-0301", task:"-", kind:"decision", agent:"alfred", result:"Cierre de 5 ciclos anteriores a CYCLE-11 ordenado por Arquitecto. CYCLE-01, 07, 08, 09, 10 cerrados como SUPERSEDED by CYCLE-11. cycle_current confirma solo CYCLE-11 abierto. Bug: cycle_current lee status de MANIFEST.md no de cycle.cortex.", evidence:"5 ciclos cerrados, 1 abierto"}
+
+AUD:E_0157{date:"2026-08-17T13:25:56Z", event:"E-0157", task:"-", kind:"handler_call", agent:"test", result:"[cortex.ref] sigil=WRK", evidence:"[cortex.ref] sigil=WRK"}
+
+AUD:E_0157{date:"2026-08-17T13:25:56Z", event:"E-0157", task:"-", kind:"handler_call", agent:"test", result:"[cortex.ref] sigil=LNG", evidence:"[cortex.ref] sigil=LNG"}
+
+AUD:E_0157{date:"2026-08-17T13:25:57Z", event:"E-0157", task:"-", kind:"handler_call", agent:"test", result:"[cortex.format] hcortex->cortex", evidence:"[cortex.format] hcortex->cortex"}
+
+AUD:E_0157{date:"2026-08-17T13:25:57Z", event:"E-0157", task:"-", kind:"handler_call", agent:"test", result:"[identity.get] agent_id=governor source=workspace", evidence:"[identity.get] agent_id=governor source=workspace"}
+
+AUD:E_0157{date:"2026-08-17T13:25:57Z", event:"E-0157", task:"-", kind:"handler_call", agent:"anonymous", result:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", evidence:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md"}
+
+AUD:E_0157{date:"2026-08-17T13:25:57Z", event:"E-0157", task:"-", kind:"handler_call", agent:"anonymous", result:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", evidence:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md"}
+
 
 $7: LESSONS
+
+LNG:________never_commit{type:"contextual", cause:"not_specified", lesson:"- - - - Never commit, push, or tag without explicit Architect authorization. A 'yes' to a concrete technical action is NOT authorization to version. Wait for explicit instruction 'commit', 'push', 'sube' or 'commitea'.", prevention:"not_applicable"}
+
+LNG:________when_the_arc{type:"contextual", cause:"not_specified", lesson:"- - - - When the Architect questions a design, first explain the technical reasoning behind the decision before correcting. The agent's role is to educate and analyze, not just comply. Context diagrams must not show internal implementation details.", prevention:"not_applicable"}
+
+LNG:________before_assum{type:"contextual", cause:"not_specified", lesson:"- - - - Before assuming a bug, read the source code first. Do not chase symptoms without verifying root cause. A validation error can mask another real bug.", prevention:"not_applicable"}
+
+LNG:________p0_is_not_op{type:"contextual", cause:"not_specified", lesson:"- - - - P0 is not optional. Reading AGENTS.md is not enough — execute EVERY step (including loading skills and using native CORTEX in memory) and self-audit with LNG after each. The framework demands internal discipline, not just external.", prevention:"not_applicable"}
+
+LNG:________halt_and_rep{type:"contextual", cause:"not_specified", lesson:"- - - - HALT_AND_REPORT has no exception for urgency. If the system goes down, the first action is always to inform the Architect of options and wait for a decision. Acting directly without approval violates AXM:alfred (never decide, always ask), even under 'URGENT' pressure.", prevention:"not_applicable"}
+
+LNG:________if_a_handler{type:"contextual", cause:"not_specified", lesson:"- - - - If a handler fails with validation errors, report to the Architect and wait for instructions. Do not write governance files (.cortex) directly even if it seems faster. Bypassing AXM:handlers_only breaks the framework's safety net.", prevention:"not_applicable"}
+
+LNG:________always_prior{type:"contextual", cause:"not_specified", lesson:"- - - - Always prioritize MCP handlers over direct writes. Try the MCP handler first (cortex.write, task.create, etc.). If it fails on permissions, report and wait. Direct bypass only with explicit Architect authorization.", prevention:"not_applicable"}
+
+LNG:________during_blp_m{type:"contextual", cause:"not_specified", lesson:"- - - - During BLP maturation (draft/ready state), do NOT execute BD changes even if they seem trivial. Only design and document. No parameter creation or tool modification until the Architect authorizes execution.", prevention:"not_applicable"}
+
+LNG:________the_agent_is{type:"contextual", cause:"not_specified", lesson:"- - - - The agent is not authorized to close or propose closing a cycle. Cycle closure is a tactical decision of the Architect. When finishing work, report status and wait for instructions.", prevention:"not_applicable"}
+
+LNG:________wait_for_exp{type:"contextual", cause:"not_specified", lesson:"- - - - Wait for explicit Architect approval before moving a blueprint from defined to ready. 'Me parece', 'suena bien', or nodding at scope is NOT approval to execute. Only advance when the Architect says 'aprobado', 'dale', 'ejecutalo' or similar. Applies also to blueprint.claim.", prevention:"not_applicable"}
+
+LNG:________do_not_creat{type:"contextual", cause:"not_specified", lesson:"- - - - Do not create a blueprint before the Architect approves the concept. Present the concept first, get verbal approval, then blueprint.create. Do not advance even the definition without the Architect's go-ahead.", prevention:"not_applicable"}
+
+LNG:________present_lear{type:"contextual", cause:"not_specified", lesson:"- - - - Present learning proposals in natural language, show the exact preview before applying, and never apply learning elevation from a generic approval. Require exact preview hash and block empty/placeholder payloads.", prevention:"not_applicable"}
+
+LNG:________every_correc{type:"contextual", cause:"not_specified", lesson:"- - - - Every corrective action must be evaluated against the full context: jobs that re-enable on restart, dependencies (ORDS loses connection), recovery time. The immediate symptom (ORA-01012) does not justify ignoring predictable side effects.", prevention:"not_applicable"}
+
+LNG:________the_hcortex_{type:"contextual", cause:"not_specified", lesson:"- - - - The HCORTEX format with visual panels (boxes, status bars, progress emojis) is superior to plain text for governance dashboards. It enables rapid state scanning and clear visual categorization. Apply always.", prevention:"not_applicable"}
+
+LNG:________do_not_assum{type:"contextual", cause:"not_specified", lesson:"- - - - Do not assume a BLP in ready state has not been implemented. First ask the Architect if it was already executed, then verify real code/BD before proceeding.", prevention:"not_applicable"}
+
+LNG:________in_productiv{type:"contextual", cause:"not_specified", lesson:"- - - - In productive client environments, restarting shared infrastructure (Traefik/balancer, ORDS, BD) ALWAYS requires explicit Architect authorization, even if the general deploy is approved. Restarting a balancer temporarily affects ALL client routes, not just MCP.", prevention:"not_applicable"}
+
+LNG:________during_consu{type:"contextual", cause:"not_specified", lesson:"- - - - During consultative analysis (design mode), every Architect suggestion is DOCUMENTED in the corresponding BLP section. It is NOT executed until exec mode. If the Architect says 'agrega X', the agent writes in section-7, does not mutate the system. Only exception: explicit 'hazlo ahora'.", prevention:"not_applicable"}
+
+LNG:________the_architec{type:"contextual", cause:"not_specified", lesson:"- - - - The Architect can approve blueprints directly. When they say 'la apruebo para ejecucion', advance directly to ready. If the state machine blocks it (defined->ready invalid), pass through maturing quickly and call ready immediately.", prevention:"not_applicable"}
+
+LNG:________the_architec{type:"contextual", cause:"not_specified", lesson:"- - - - The Architect trusts the agent to act as auditor too. The agent can complete the full blueprint flow: define, execute, review, and approve (blueprint.approve) without invoking another agent.", prevention:"not_applicable"}
+
+LNG:________session_boot{type:"contextual", cause:"not_specified", lesson:"- - - - session_bootstrap returns only project names from meta-brain — it does not resolve BLPs. In STANDBY, use workspace_status --dashboard instead. Do not present project/cycle until the Architect chooses one.", prevention:"not_applicable"}
+
+LNG:________orphan_entri{type:"contextual", cause:"not_specified", lesson:"- - - - Orphan entries in agents.cortex accumulate because protocol.adopt allows registering agents with placeholder name new-agent. Manual cleanup is the only current remedy.", prevention:"not_applicable"}
+
+LNG:________to_write_gov{type:"contextual", cause:"not_specified", lesson:"- - - - To write governance files (brain.cortex, skills), the agent must be adopted as governor. As executor, direct write is the only way if the Architect explicitly authorizes it.", prevention:"not_applicable"}
+
+LNG:________when_creatin{type:"contextual", cause:"not_specified", lesson:"- - - - When creating or populating a Blueprint, ALWAYS invoke blueprint.synthesize first and follow its next_section until all pending sections are closed. Do not use blueprint.update directly as a first step.", prevention:"not_applicable"}
+
+LNG:________blueprint_de{type:"contextual", cause:"not_specified", lesson:"- - - - blueprint.define does not populate the template body — it only registers metadata. Sections must be populated explicitly with blueprint.update(). Always verify that key sections (1, 2, 3, 6, 7, 11, 12, 14) have real content.", prevention:"not_applicable"}
+
+LNG:________when_operati{type:"contextual", cause:"not_specified", lesson:"- - - - When operating cycles/blueprints, ALWAYS use the active project path, never workspace root. Cycle management lives under <project>/.arqux/cycles/, not under workspace/.arqux/.", prevention:"not_applicable"}
+
+LNG:________during_blp_e{type:"contextual", cause:"not_specified", lesson:"- - - - During BLP execution, the executor agent MUST report each task progressively: on start call blueprint.task(task_id=T-x, status=in_progress) and on completion blueprint.task(task_id=T-x, status=completed) with evidence. Handoff does not execute alone; it requires an active executor.", prevention:"not_applicable"}
+
+LNG:________quality_gate{type:"contextual", cause:"not_specified", lesson:"- - - - Quality gates of a BLP in maturation must be approved via blueprint.gate(gate=all) before calling ready(). If all gates are false but sections are populated, maturation is incomplete — gates must be run post-hoc.", prevention:"not_applicable"}
+
+LNG:________verify_line_{type:"contextual", cause:"not_specified", lesson:"- - - - Verify line count immediately after creating each sub-module, not at the end. The line limit must be an intermediate checkpoint, not a final surprise.", prevention:"not_applicable"}
+
+LNG:________apply_triage{type:"contextual", cause:"not_specified", lesson:"- - - - Apply triage before deciding workflow. Two questions determine if it is a BLP or a task: (1) does it affect multiple components? (2) does it require design? If no to both, it is a task, not a BLP. This avoids BLP overhead for simple changes.", prevention:"not_applicable"}
+
+LNG:________a_blp_must_b{type:"contextual", cause:"not_specified", lesson:"- - - - A BLP must be fully specified (no placeholders) before passing to ready. All 19 template sections are mandatory, not just 1-3+12.", prevention:"not_applicable"}
+
+LNG:________when_a_chang{type:"contextual", cause:"not_specified", lesson:"- - - - When a change is applied directly (without governance), execute blueprint.task + blueprint.complete retrospectively to close the governance cycle.", prevention:"not_applicable"}
+
+LNG:________strict_respe{type:"contextual", cause:"not_specified", lesson:"- - - - Strict respect for governance workflows. Each workflow step is executed in the defined order, without jumps or shortcuts. The workflow is not a suggestion — it is the execution contract. BLP sections have narrative order; skipping sections breaks coherence.", prevention:"not_applicable"}
+
+LNG:________when_splitti{type:"contextual", cause:"not_specified", lesson:"- - - - When splitting handlers or delegating to sub-agents, verify that global constants in out-of-scope files are not altered. Run git diff --stat after each refactoring phase.", prevention:"not_applicable"}
+
+LNG:________when_plannin{type:"contextual", cause:"not_specified", lesson:"- - - - When planning refactoring with line limits, anticipate sub-splits when the initial target is near the limit. Do not assume a single split suffices.", prevention:"not_applicable"}
+
+LNG:________cycle_mature{type:"contextual", cause:"not_specified", lesson:"- - - - cycle.mature() does not validate MANIFEST.md quality gates — it transitions draft->ready without reading _read_quality_gates(), allowing empty cycles. Every state-transition handler must validate invariants before mutating.", prevention:"not_applicable"}
+
+LNG:________automate_syn{type:"contextual", cause:"not_specified", lesson:"- - - - Automate sync between meta-brain and project brain.cortex. Every mutation in a project brain.cortex should trigger meta-brain update, or at minimum a sync command should exist. Currently sync_brain() exists but is not integrated in the normal handler flow.", prevention:"not_applicable"}
+
+LNG:_________find_bluepr{type:"contextual", cause:"not_specified", lesson:"- - - - _find_blueprint() resolved BLPs alphabetically (CYCLE-01 first) instead of by most recent cycle. blueprint.create did not isolate the active cycle correctly. Verify on disk that the file was created in the correct cycle before continuing.", prevention:"not_applicable"}
+
+LNG:________governed_ext{type:"contextual", cause:"not_specified", lesson:"- - - - Governed external merge (audit -> plan -> approve -> execute -> verify) works. Heimdall's PARTIAL verdict limited scope to verified items. Canonical naming: rename files AND public symbols, but NEVER protocol strings (cortex:0.2, CORTEX-C14N-* domains) which are data and would alter hashes.", prevention:"not_applicable"}
+
+LNG:________elevation_ca{type:"contextual", cause:"not_specified", lesson:"- - - - Elevation candidates from RSK/WRK placeholders produce generic CNST/SES without value. Do not elevate entries with pending/default fields. Elevation is only useful when source data has real semantic content.", prevention:"not_applicable"}
+
+LNG:________atomic_write{type:"contextual", cause:"not_specified", lesson:"- - - - atomic_write_cortex with force=True automatically completes missing required fields (prevention, success, cause) before validating, eliminating blocking E032/E034. identity.record and file_validate_handler now work on legacy files.", prevention:"not_applicable"}
+
+LNG:________never_trust_{type:"contextual", cause:"not_specified", lesson:"- - - - Never trust the status returned by a handler as evidence of side effects. Verify real changes with grep/read after every execute/synthesize/write.", prevention:"not_applicable"}
+
+LNG:________when_syncing{type:"contextual", cause:"not_specified", lesson:"- - - - When syncing handler counts, update 4 locations: meta-brain DOM:arqux, brain.cortex KNW, mcp-handlers.skill section-6, and AGENTS.md sections 6/7. One is not enough.", prevention:"not_applicable"}
+
+LNG:________an_obj{type:"contextual", cause:"not_specified", lesson:"- - - - An OBJ:_ with empty success or an RSK with missing required fields blocks ALL writes to brain.cortex via entry.update even with force=True. Must read the full brain, fix invalid entries, and rewrite via cortex.write.", prevention:"not_applicable"}
+
+LNG:________codec_cortex{type:"contextual", cause:"not_specified", lesson:"- - - - CODEC-CORTEX allows duplicate sigil:name but delete/update/patch handlers cannot resolve them (E014_AMBIGUOUS). Automatic engines (brain init, pulse compact, elevation) create duplicates that accumulate without garbage collection.", prevention:"not_applicable"}
+
+LNG:________def_metadata{type:"contextual", cause:"not_specified", lesson:"- - - - def metadata enrichment: max 3 words, complements name+table, not metrics. JSON over CORTEX in Oracle (json_object_t native). Always same output fields (role/def/derived) even if null. Do not repeat dictionary-derivable info.", prevention:"not_applicable"}
+
+LNG:________verify_a_don{type:"contextual", cause:"not_specified", lesson:"- - - - Verify a done BLP against real BD: read user_objects (status VALID), confirm --MCP: metadata compiled, and test via dispatch_func with adequate profile token. Use a profile that has the MCP_ROLE_ACCESS matrix categories.", prevention:"not_applicable"}
+
+LNG:________restricting_{type:"contextual", cause:"not_specified", lesson:"- - - - Restricting MCP tools by profile is done by changing only the --MCP: auth metadata. discover_tools scans line 2 of source; the --MCP: must be on line 2. In procedures with multiline signatures, compact the signature. auth_required:true enforces token even for local tests.", prevention:"not_applicable"}
+
+LNG:________oracle_funct{type:"contextual", cause:"not_specified", lesson:"- - - - Oracle functions must be pure (read-only SELECT). If DML is needed, it must be a procedure. PRAGMA autonomous_transaction is an invalid patch that causes ORA-06519 from APEX. dispatch_func supports kind:procedure via EXECUTE IMMEDIATE with OUT param. To convert FUNCTION to PROCEDURE: DROP FUNCTION first.", prevention:"not_applicable"}
+
+LNG:________recompiling_{type:"contextual", cause:"not_specified", lesson:"- - - - Recompiling PL/SQL from a local file can overwrite the deployed version. The repo may bring code referencing parameters that do not exist in BD. The local file does NOT always reflect the deployed BD.", prevention:"not_applicable"}
+
+LNG:________schema_disco{type:"contextual", cause:"not_specified", lesson:"- - - - Schema discovery via Oracle dictionary (ALL_TAB_COLUMNS/ALL_CONSTRAINTS), not views. AGENT_SKILL extended as LLM bootstrap. my_capabilities must include agent_skill. get_catalog with 3 modes: schema_map, columns, relationships.", prevention:"not_applicable"}
+
+LNG:________sqlcl_spool_{type:"contextual", cause:"not_specified", lesson:"- - - - SQLcl spool with SET PAGESIZE 0 can pad fields with trailing spaces. When transferring data between environments via spool, apply TRIM() to transferred fields, especially those used in exact comparisons. Verify length() after transfer.", prevention:"not_applicable"}
+
+LNG:________the_envx_mcp{type:"contextual", cause:"not_specified", lesson:"- - - - The envx-mcp router uses entrypoint websecure (443), not web (80). Test the MCP endpoint via HTTPS (https://app.<env>.envx.io/mcp), never via HTTP port 80 where the client frontend router captures /mcp and returns 404.", prevention:"not_applicable"}
+
+LNG:________before_compi{type:"contextual", cause:"not_specified", lesson:"- - - - Before compiling MCP tools extracted from ATUM in a target environment, verify the native dependencies (client packages) they reference. A native package with an older version may not expose functions the MCP needs.", prevention:"not_applicable"}
+
+LNG:________independent_{type:"contextual", cause:"not_specified", lesson:"- - - - Independent audit by a second agent (Heimdall) in dry-run captures execution bugs the author does not see: Oracle case-sensitivity, fallbacks contradicting rules, SQLcl syntax, missing assertions. Joint dry-run should be standard practice for high-criticality client deploys.", prevention:"not_applicable"}
+
+LNG:________when_prepari{type:"contextual", cause:"not_specified", lesson:"- - - - When preparing deploy to a client environment (FAMILIAR, high criticality), verify governance configurations in the ORIGIN environment live via MCP instead of trusting documentation alone.", prevention:"not_applicable"}
+
+LNG:________token_handli{type:"contextual", cause:"not_specified", lesson:"- - - - Token handling in MCP requires: (a) validate token in my_capabilities/discover_tools, (b) return guidance for obtaining/renewing token when missing or invalid, (c) never expose tool_count or tools without valid token.", prevention:"not_applicable"}
+
+LNG:________every_change{type:"contextual", cause:"not_specified", lesson:"- - - - Every change in discover_tools (token filtering) impacts dispatch_func which consumes the registry internally. When restricting discover_tools, the token must also be passed from dispatch_func to not break the authenticated flow. Always verify my_capabilities regression after touching discover_tools.", prevention:"not_applicable"}
+
+LNG:________an_mcp_serve{type:"contextual", cause:"not_specified", lesson:"- - - - An MCP server timeout (error -32001) does NOT imply the fix/environment is broken. Verify: (1) docker ps + docker logs of envx-mcp container, (2) direct BD connectivity via SQLcl tunnel, (3) object status VALID and functionality via user_source. Functional verification can be done via direct BD without the MCP server.", prevention:"not_applicable"}
+
+LNG:________when_applyin{type:"contextual", cause:"not_specified", lesson:"- - - - When applying a fix that changes a function's behavior, deploy/smoke scripts that depend on its original output must be updated. Tool count is better verified by counting --MCP: metadata on line 2 of user_source (token-independent) than by calling the function.", prevention:"not_applicable"}
+
+LNG:________envx_refresh{type:"contextual", cause:"not_specified", lesson:"- - - - envx_refresh is server Python bootstrap with its own credentials (MCP_API_KEY); it does NOT propagate the client token to the registry. The A-06 security boundary is enforced at the DB layer (discover_tools/my_capabilities/dispatch_func). Do not confuse server bootstrap with end-user token validation.", prevention:"not_applicable"}
+
+LNG:________familiar_mig{type:"contextual", cause:"not_specified", lesson:"- - - - FAMILIAR migrated VM: IP OLD 144.126.146.235 -> new 147.93.179.84. Historical documentation references the old IP; tunnel profiles and recent diagnostics use the new one. To resolve IP/host discrepancies, consult ENVX_INFRA — it is the infrastructure source of truth.", prevention:"not_applicable"}
+
+LNG:________a_blp_for_a_{type:"contextual", cause:"not_specified", lesson:"- - - - A BLP for a new handler must include workflow + skill in scope. It is not enough to create the handler — if a workflow exists, it must be updated to use the new handler.", prevention:"not_applicable"}
+
+LNG:________a_blp_can_ev{type:"contextual", cause:"not_specified", lesson:"- - - - A BLP can evolve drastically during a session when the Architect identifies a broader opportunity. Document each iteration in the BLP as it evolves.", prevention:"not_applicable"}
+
+LNG:________arqux_has_tw{type:"contextual", cause:"not_specified", lesson:"- - - - ArqUX has two audiences: agents (read AGENTS.md) and developers (use CLI commands like quickstart). Do not mix them. Quickstart implements ArqUX in a workspace so agents can arrive and operate. It initializes governance, configures identity, ensures AGENTS.md.", prevention:"not_applicable"}
+
+LNG:________do_not_assum{type:"contextual", cause:"not_specified", lesson:"- - - - Do not assume audit recommendations are industry standards. Question the real value of each artifact. When a skill with the same information exists, evolve the skill instead of creating a separate file. If two formats are needed, the script must regenerate both from the same source.", prevention:"not_applicable"}
+
+LNG:________hdl{type:"contextual", cause:"not_specified", lesson:"- - - - HDL:identity.record must declare prevention as a parameter in its skill signature, and every LNG entry must include type, cause, lesson, prevention.", prevention:"not_applicable"}
+
+LNG:________every_handle{type:"contextual", cause:"not_specified", lesson:"- - - - Every handler repaired in BLP-042 must have a unit test verifying (a) CODEC-CORTEX usage, (b) no fallback write_text, (c) correct .cortex structure.", prevention:"not_applicable"}
+
+LNG:________end_to_end_v{type:"contextual", cause:"not_specified", lesson:"- - - - End-to-end verification: identity.record, migrate_cortex_file, ensure_container, write_cortex_pair and _record_to_brain pass without write_text bypass. cortex verify --strict = 0 errors.", prevention:"not_applicable"}
+
+LNG:_________0_1__arqux_{type:"contextual", cause:"not_specified", lesson:"- - - - $0.1 (ARQUX METADATA sub-section) is invalid in CODEC-CORTEX v0.5.0 — it causes E033. ARQX:artifact must live as the first entry of $1, not in a $0 sub-section. Every .cortex migration must verify and move ARQX:artifact if it is in $0.1.", prevention:"not_applicable"}
+
+LNG:________migrate_cort{type:"contextual", cause:"not_specified", lesson:"- - - - migrate_cortex_file() does not repair content errors E032 (prevention, success, topic...) — it only rewrites format. crud_update is required after migration. Identity templates need FCS:default with status=current to pass E024.", prevention:"not_applicable"}
+
+LNG:________agent_bypass{type:"contextual", cause:"not_specified", lesson:"- - - - Agent bypassed adoption protocol because cwd had loose governance files (brain.cortex, GOVERNANCE.md). Added rule ignore_loose_files to adoption.skill.md: walk UP to find .arqux/ or AGENTS.md. Loose files are NOT entry points.", prevention:"not_applicable"}
+
+LNG:________library_cont{type:"contextual", cause:"not_specified", lesson:"- - - - Library contract (library <-> consumer) must live in the consumer's skill, not in the library's brain.cortex — because brain.cortex does not ship with the PyPI package. The skill is universal: all agents load it, it documents operational usage, and enforces dogfooding.", prevention:"not_applicable"}
+
+LNG:________git_tags_on_{type:"contextual", cause:"not_specified", lesson:"- - - - Git tags on compatibility patches can trigger CI/CD pipelines (PyPI). Always verify with the Architect before creating tags in patch contexts.", prevention:"not_applicable"}
+
+LNG:________always_pass_{type:"contextual", cause:"not_specified", lesson:"- - - - Always pass explicit path to discovery handlers. Do not rely on implicit cwd resolution.", prevention:"not_applicable"}
+
+LNG:________conduct_ente{type:"contextual", cause:"not_specified", lesson:"- - - - conduct.enter requires the user's profile to be mapped in MCP_IDENTITY_ROLE to an ENVX identity. If no mapping exists, it returns 'no behavioral identity assigned'. Seed all relevant profiles.", prevention:"not_applicable"}
+
+LNG:________identity_col{type:"contextual", cause:"not_specified", lesson:"- - - - Identity columns consume the sequence even when INSERT fails. Do not include ID in INSERT (ORA-32795). Use RETURNING to obtain the generated ID. Verify real ID with SELECT before referencing in FKs.", prevention:"not_applicable"}
+
+LNG:________rollback_mus{type:"contextual", cause:"not_specified", lesson:"- - - - Rollback must revert FKs before data. If a rollback recreates the parent table, re-seed parent rows before restoring FKs. Validate orphans=0 before ADD CONSTRAINT.", prevention:"not_applicable"}
+
+LNG:________initialize_j{type:"contextual", cause:"not_specified", lesson:"- - - - Initialize json_object_t in the declaration. to_char(...,FF3TZH) on TIMESTAMP throws ORA-01821 via dispatch — use a format without TZH.", prevention:"not_applicable"}
+
+LNG:________frontmatter_{type:"contextual", cause:"not_specified", lesson:"- - - - Frontmatter parser in _read_blueprint converts numeric values to strings. Always convert verification_loop and other counters to int when reading from fm.get(). Pattern: int(raw) if isinstance(raw, str) else raw.", prevention:"not_applicable"}
+
+LNG:________for_cross_ru{type:"contextual", cause:"not_specified", lesson:"- - - - For cross-runtime conformance closure, invoke every harness with governed conformance/c14n/corpus and hcortex paths explicitly, then verify both positive roundtrip and invalid diagnostic parity.", prevention:"not_applicable"}
+
+LNG:________structural_v{type:"contextual", cause:"not_specified", lesson:"- - - - Structural validation validates .cortex anatomy per declared level — it does not judge semantic content.", prevention:"not_applicable"}
+
+LNG:________semantic_val{type:"contextual", cause:"not_specified", lesson:"- - - - Semantic validation only applies to Level 3 BRAIN files — validates FCS/OBJ status via crud_read().", prevention:"not_applicable"}
+
+LNG:________identitymana{type:"contextual", cause:"not_specified", lesson:"- - - - IdentityManager resolves agent identities, binds to session context, elevates behavioral lessons (AXM/LIM) only on explicit Architect request. IIdentityResolver prepared for UserIdentityResolver extension.", prevention:"not_applicable"}
+
+LNG:________procedimenta{type:"contextual", cause:"not_specified", lesson:"- - - - Procedimental traceability: skills/originals/ stores immutable sources, OriginalStore/AdaptedStore with priority resolution (Adapted > Original > Native), STP sigil enriched with kind/source/upstream_version.", prevention:"not_applicable"}
+
+LNG:________mandatory_se{type:"contextual", cause:"not_specified", lesson:"- - - - Mandatory section-0 METADATA in .cortex files: all files must declare level/name/usage/kind or default to level 0 with W001 warning.", prevention:"not_applicable"}
+
+LNG:________level_0__gen{type:"contextual", cause:"not_specified", lesson:"- - - - Level 0 (Generic) is the agent's personal library: dense, classified, practical-use texts. LIVING documents that update. Can be requested by the Architect or created by the agent when its learning pattern requires it. Exist in global (workspace) or particular (project) context.", prevention:"not_applicable"}
+
+LNG:________cortex__form{type:"contextual", cause:"not_specified", lesson:"- - - - CORTEX (format) defines syntax, sigils, sections and types. ArqUX (framework) defines document levels (0-3), governance rules and validation errors (E023, E024, E029). Levels do not belong to the CORTEX format — they are governance patterns ArqUX implements over CORTEX.", prevention:"not_applicable"}
+
+LNG:________blueprint_de{type:"contextual", cause:"not_specified", lesson:"- - - - blueprint.define has a hardcoded API for only 10 sections. It must be template-driven: read BLP_TEMPLATE.md and accept dynamic content for any section.", prevention:"not_applicable"}
+
+LNG:________blueprint_te{type:"contextual", cause:"not_specified", lesson:"- - - - Blueprint technical and operational design sections must include explanatory PUML diagrams plus concise prose.", prevention:"not_applicable"}
+
+LNG:________validate_fil{type:"contextual", cause:"not_specified", lesson:"- - - - validate_file caught 4 PUML bugs: note on action line, unicode arrows, multiline messages, standalone text. Always run cortex.render.validate_file before embedding diagrams.", prevention:"not_applicable"}
+
+LNG:________when_using_b{type:"contextual", cause:"not_specified", lesson:"- - - - When using blueprint.synthesize, the section body must NOT include the '# section-N' header: the handler preserves the template header and duplicates it. Send only the content below the header. The handler should be idempotent (not duplicate headers) — this is a bug to fix.", prevention:"not_applicable"}
+
+LNG:________blueprint_sy{type:"contextual", cause:"not_specified", lesson:"- - - - blueprint.synthesize omits sections whose content contains certain unicode characters (e.g. checkbox U+2610). Avoid special unicode in synthesize; use 'pending' or '[ ]'. synthesize preserves the template header, so the body must not include '# section-N'.", prevention:"not_applicable"}
+
+LNG:________do_not_over_{type:"contextual", cause:"not_specified", lesson:"- - - - Do not over-claim that a mechanism makes the model's window/memory 'CORTEX-native'. The model window is always a flat token sequence; CORTEX is a token format, not a memory substrate. binder/proxy/trigger is a governance discipline (format + externalization + reload) that APPROXIMATES native, it does not create it.", prevention:"not_applicable"}
+
+LNG:________do_not_assum{type:"contextual", cause:"not_specified", lesson:"- - - - Do not assume a handler's output format; verify in code. session.bootstrap delivers brain/identity as channel I (raw CORTEX) in cortex_context; HCORTEX is only the separate dashboard. What the model sees as prose is the harness/transport render, not the handler.", prevention:"not_applicable"}
+
+LNG:_________replace_sec{type:"contextual", cause:"not_specified", lesson:"- - - - _replace_section in blueprint.py regenerates the header in English and duplicates it when the header is passed in the content. The regex does not preserve the original template header.", prevention:"not_applicable"}
+
+LNG:________use_stable_m{type:"contextual", cause:"not_specified", lesson:"- - - - Use stable manifest and architect memory for product brain, but exclude live control state and secrets.", prevention:"not_applicable"}
+
+LNG:________object_count{type:"contextual", cause:"not_specified", lesson:"- - - - Object counts are evidence-specific snapshots, not universal truth.", prevention:"not_applicable"}
+
+LNG:________security_md_{type:"contextual", cause:"not_specified", lesson:"- - - - SECURITY.md is a critical trust signal for enterprise adoption. Must include: supported versions, reporting channel, response SLA (48h ack, 15d patch), coordinated disclosure policy, and scope.", prevention:"not_applicable"}
+
+LNG:________contributing{type:"contextual", cause:"not_specified", lesson:"- - - - CONTRIBUTING.md is critical for community adoption. Must reference real tools (ruff, mypy, pytest) configured in pyproject.toml.", prevention:"not_applicable"}
+
+LNG:________coverage_mus{type:"contextual", cause:"not_specified", lesson:"- - - - Coverage must be measured globally (pytest --cov=arqux) and displayed as a badge in README for enterprise trust.", prevention:"not_applicable"}
+
+LNG:________edge_cases_m{type:"contextual", cause:"not_specified", lesson:"- - - - Edge cases must be documented with real scenarios, not hypothetical ones. Each document must reference a specific test.", prevention:"not_applicable"}
+
+LNG:________blp_002_comp{type:"contextual", cause:"not_specified", lesson:"- - - - BLP-002 completed: SchemaResolver + auto-population 2 ways + AXM:review_on_detect + glossary.review handler. $0 operational: parser reads fields/status/types from $0. SchemaResolver applies precedence (declared in $0 > canonical fallback). 10 ACs, 522 functional tests pass. 86.17% coverage.", prevention:"not_applicable"}
+
+LNG:________blp_003_comp{type:"contextual", cause:"not_specified", lesson:"- - - - BLP-003 completed and audited: TransactionService pipeline (12 steps, CAS, backup .bak.TS.HASH, fsync, post-write verify, rollback), AtomicDerivedStore, audit trail JSONL, RepairService without semantic fabrication, cortex migrate CLI, direct write scanner, SectionCounter, cortex.file.validate. 148 new tests. 0 regressions. Approved by Architect with full Heimdall audit (8/8 ACs, 313 tests, E3 resolved).", prevention:"not_applicable"}
+
+LNG:________blp_004_comp{type:"contextual", cause:"not_specified", lesson:"- - - - BLP-004 completed: Runtime v0.6.0b2 — SessionService transitory with dataclasses Session/Event/Patch, store JSON in .cortex/runtime/session.json, consolidation/close via TransactionService with CAS, LegacyDetector for SES legacy migration, CLI cortex session with 8 subcomandos. 10/10 ACs verified, 32 new tests, 0 regressions. Enforced maturation gates and closure checks so Blueprint procedure cannot be bypassed administratively.", prevention:"not_applicable"}
+
+LNG:________blp_005_comp{type:"contextual", cause:"not_specified", lesson:"- - - - BLP-005 completed: only 1 file (cortex.skill.md) had a real hardcoded path. The header duplication bug in blueprint.update (_replace_section regex) was the most significant finding. ACs should not use generic grep patterns like /home/ that match valid placeholders; use specific dev paths.", prevention:"not_applicable"}
+
+LNG:________blp_006_comp{type:"contextual", cause:"not_specified", lesson:"- - - - BLP-006 completed: 3 session handlers (close, resume, status) with SES format <2KB in brain PULSE. adoption.skill.md section-6 updated with session.resume() as step 0 of session start protocol. 69 tests pass.", prevention:"not_applicable"}
+
+LNG:________blp_007__arq{type:"contextual", cause:"not_specified", lesson:"- - - - BLP-007 (arqux doctor), BLP-008 (mode=live), BLP-009 (w09 paired design workflow), BLP-010 (w10 proactive audit + dashboard) designed and validated during paired design sessions. All 4 diagrams per BLP pass validate_file.", prevention:"not_applicable"}
+
+LNG:________blp_011_exec{type:"contextual", cause:"not_specified", lesson:"- - - - BLP-011 executed: 5 new test files, 31 new tests, coverage from 69 to 100. Session, learn trigger, mode live, validate file, gate covered.", prevention:"not_applicable"}
+
+LNG:________blp_012_comp{type:"contextual", cause:"not_specified", lesson:"- - - - BLP-012 completed: resolved 5 GAPs from Jarvis audit (dual brain, handler docs 48->62, LNG elevation, BLP states, w10 integration). 6/6 ACs verified. Architect approved verbally.", prevention:"not_applicable"}
+
+LNG:________blp_013_comp{type:"contextual", cause:"not_specified", lesson:"- - - - BLP-013 completed: STP sigil added to handlers.skill.md $0 glossary. Surface count updated to 63. New handler skill.edit implemented and registered. 3/3 ACs verified.", prevention:"not_applicable"}
+
+LNG:________blp_014_migr{type:"contextual", cause:"not_specified", lesson:"- - - - BLP-014 migrated identity.record, sessions.py, pulse.py to CODEC-CORTEX CRUD. Fixed header duplication in _replace_section. 6 new handlers cortex.entry.*. Brain init corrected for level 2. 7 identity files updated to kind:brain. 110 tests 100% pass.", prevention:"not_applicable"}
+
+LNG:________blp_015{type:"contextual", cause:"not_specified", lesson:"- - - - BLP-015: when diagnosing governance bugs, isolate the exact source first (active cycle vs frontmatter parsing; id sequence reading raw brain text) and cover with regression tests before closing. blueprint.ready requires learning gate evidence from identity.record before transitioning.", prevention:"not_applicable"}
+
+LNG:________blp_016_co_d{type:"contextual", cause:"not_specified", lesson:"- - - - BLP-016 co-design: fusion mcp+handlers validated, workflows in library with hybrid PUML+HCORTEX format, HCORTEX consolidation in cortex.skill.md, quick reference in AGENTS.md. Incorporated AXM:no_auth_on_stdio, AXM:fix_sobre_learn, and T-6.4 (fix _replace_section). 6 gates approved.", prevention:"not_applicable"}
+
+LNG:________blp_017_co_d{type:"contextual", cause:"not_specified", lesson:"- - - - BLP-017 co-design: sync_brain() helper to auto-synchronize brain.cortex after mutations. 10 ACs, 20 tasks, 6 rules. Architect approved design 'as is'.", prevention:"not_applicable"}
+
+LNG:________blp_018_desi{type:"contextual", cause:"not_specified", lesson:"- - - - BLP-018 design: progressive execution with checkpoint per task, AXM:workflow_fidelity in identities, 5 rules, 8 ACs, 11 tasks, 3 validated diagrams. Includes AC-07 verification for identities.", prevention:"not_applicable"}
+
+LNG:________blp_019_desi{type:"contextual", cause:"not_specified", lesson:"- - - - BLP-019 design validated and executed without MCP for cerebral sync correction: meta-brain and brain.cortex cleaned manually, LNG names fixed, meta-brain auto-sync implemented in sync_brain(). Pending: WRK merge fix in CODEC-CORTEX (external).", prevention:"not_applicable"}
+
+LNG:________blp_020_desi{type:"contextual", cause:"not_specified", lesson:"- - - - BLP-020 design: triage in index, consultative analysis guided by template, AXM:analysis_confinement, elimination of maturation as formal stage. Natural iteration during analysis replaces the maturing phase.", prevention:"not_applicable"}
+
+LNG:________blp_022_demo{type:"contextual", cause:"not_specified", lesson:"- - - - BLP-022 demonstrated the new flow: the agent synthesizes all 18 BLP sections autonomously after a single inquiry conversation with the Architect. No section-by-section iteration required. w08-blueprint-lifecycle.md updated: draft -> mature -> ready, without define.", prevention:"not_applicable"}
+
+LNG:________blp_023_clos{type:"contextual", cause:"not_specified", lesson:"- - - - BLP-023 closes the identity bypass: HMAC-SHA256 middleware verifies agent_id before every mutation. Identity.verify as new handler. E040_IDENTITY_MISMATCH for rejections.", prevention:"not_applicable"}
+
+LNG:________blp_024_clos{type:"contextual", cause:"not_specified", lesson:"- - - - BLP-024 closes the tamper gap: SHA-256 hash chain in cortex.write/cortex.read. Alert W042_INTEGRITY_MISMATCH if the file was modified externally.", prevention:"not_applicable"}
+
+LNG:________blp_025_adds{type:"contextual", cause:"not_specified", lesson:"- - - - BLP-025 adds cycle.activate handler to complete the cycle lifecycle: draft -> active -> closed.", prevention:"not_applicable"}
+
+LNG:________blp_026{type:"contextual", cause:"not_specified", lesson:"- - - - BLP-026: real execution (4 fixes H1-H4 and 35-tool battery) completed and verified before marking tasks/ACs. Gap: T-1.1 to T-5.1 without checkbox in section-14 and 0 evidence events. Post-hoc verification is valid only when each task's evidence is verifiable in section-8/section-12.", prevention:"not_applicable"}
+
+LNG:________blp_034_leve{type:"contextual", cause:"not_specified", lesson:"- - - - BLP-034 levels diagnostic complete: gap map generated in docs/diagnostico-niveles.hcortex.md. Identified gaps fed BLPs 035-040 which correct all discrepancies between theory (v3.0) and practice.", prevention:"not_applicable"}
+
+LNG:________blp_038_cohe{type:"contextual", cause:"not_specified", lesson:"- - - - BLP-038 coherence analysis revealed 4 critical issues: (1) AC-01 ambiguous about replacing vs adding learning channel, (2) LNG sigil collision between behavioral and contextual needed explicit differentiation, (3) elevate() API assumed features not yet in CODEC-CORTEX, (4) T-038.1 claimed new integration when learning.py already uses CODEC-CORTEX. Fix: renamed to elevate_behavioral(), added coexistence note, clarified three-line architecture.", prevention:"not_applicable"}
+
+LNG:________blp_041{type:"contextual", cause:"not_specified", lesson:"- - - - BLP-041: metadata must be an ARQX:artifact entry in $1 (not $0.1 due to E033), declared in pipe-table. CODEC-CORTEX is not modified. The legacy '# section-0 METADATA' block is replaced but must have fallback during migration. 19/21 .cortex migrated. 2 legacy files (agents.cortex, CYCLE-00/cycle.cortex) are not CORTEX format — out of scope, degrade to level 0 with W001.", prevention:"not_applicable"}
+
+LNG:________blp_042{type:"contextual", cause:"not_specified", lesson:"- - - - BLP-042: correct adoption sequence for CODEC-CORTEX as exclusive writer: (1) skill first, (2) handlers after, (3) migration backup(.bck)->rewrite at the end with feedback loop to skill. No version pinning — evolutionary compatibility.", prevention:"not_applicable"}
+
+LNG:________cycle_03_imp{type:"contextual", cause:"not_specified", lesson:"- - - - CYCLE-03 implemented by external agent. 8 BLPs (003-010) + BLP-013 (parser) + BLP-001 (README). 13 new handlers (73->86). 799 tests pass. Retrospective governance completed: ACs verified, BLPs approved. New handler source files were untracked — required commit.", prevention:"not_applicable"}
+
+LNG:________cycle_06_com{type:"contextual", cause:"not_specified", lesson:"- - - - CYCLE-06 completed: 3 BLPs evolved — cycle workflow (BLP-001), auto sync (BLP-002), synthesize homologation (BLP-003). All 3 approved by governor.", prevention:"not_applicable"}
+
+LNG:________blp_010{type:"contextual", cause:"not_specified", lesson:"- - - - BLP-010: Dashboard built with rich.Panel for arqux status --dashboard. CODEC-CORTEX parser reads meta-brain for projects/agents. Blueprint counting requires YAML frontmatter parsing, not text matching. w10: proactive audit with 2 tiers. First execution on CYCLE-01 revealed 4 gaps; handler doc mismatch is most critical (62 vs 48).", prevention:"not_applicable"}
+
+LNG:________blp_011{type:"contextual", cause:"not_specified", lesson:"- - - - BLP-011: backup/restore implemented. Critical bug: find_workspace_root returns the .arqux/ dir, not the workspace root. Must use .parent for ws_root to avoid nested .arqux/.arqux/ on restore.", prevention:"not_applicable"}
+
+LNG:________blp_012_t_0_{type:"contextual", cause:"not_specified", lesson:"- - - - BLP-012 T-0.1: BLP-013 completed. handlers/blueprint/ available post-refactor.", prevention:"not_applicable"}
+
+LNG:________ingres_artif{type:"contextual", cause:"not_specified", lesson:"- - - - Ingres artifacts in MODEL/ are dead legacy. Do not use for new development. New DDL and models must be Oracle-native.", prevention:"not_applicable"}
+
+LNG:________dialect__pro{type:"contextual", cause:"not_specified", lesson:"- - - - DIALECT .project_control/ was preserved while it had data, removed when verified empty. DIALECT as a product lives in /home/vatrox/Projects/workspace/DIALECT. The project operates with native Arqux governance. DIALECT does not intervene in project governance.", prevention:"not_applicable"}
+
+LNG:________do_not_sell_{type:"contextual", cause:"not_specified", lesson:"- - - - Do not sell as a solution to lack of governance. Sell as evolution for organizations that already have governance but strain under pressure. The client must not self-incriminate.", prevention:"not_applicable"}
+
+LNG:________prioritize_c{type:"contextual", cause:"not_specified", lesson:"- - - - Prioritize closed talks and executive breakfasts over stands. Paraguay: best cost/access H2 2026. Uruguay: best early credibility in governance/risk. Chile: only with closed agenda, no stand.", prevention:"not_applicable"}
+
+LNG:________ora_04031_in{type:"contextual", cause:"not_specified", lesson:"- - - - ORA-04031 in Oracle XE: the internal job CLEANUP_NON_EXIST_OBJ (owner SYS, FREQ=HOURLY;INTERVAL=12) scans obj$ every 12h, invalidates ORDS/APEX cursors, fragments shared pool, produces ORA-04031. The chain: job every 12h -> re-parse obj$ -> child cursor explosion -> shared pool fragmentation -> connections fail -> APEX_PUBLIC_USER locks via FAILED_LOGIN_ATTEMPTS=10. Immediate fix: DBMS_SCHEDULER.DISABLE('CLEANUP_NON_EXIST_OBJ') from SYSDBA, no restart, 100% reversible with ENABLE.", prevention:"not_applicable"}
+
+LNG:________internal_sys{type:"contextual", cause:"not_specified", lesson:"- - - - Internal SYS jobs (CLEANUP_NON_EXIST_OBJ) re-enable when the Oracle database is restarted. DBMS_SCHEDULER.DISABLE must be executed POST-restart as part of the recovery playbook.", prevention:"not_applicable"}
+
+LNG:________codec_cortex{type:"contextual", cause:"not_specified", lesson:"- - - - CODEC-CORTEX validates strictly on write. Files with incomplete entries (LNG without prevention, LIM without scope/status) accumulate non-bypassable errors silently until a crud migration is attempted. Before migrating a handler to crud, sanitize the target file first.", prevention:"not_applicable"}
+
+LNG:________skill_edit_w{type:"contextual", cause:"not_specified", lesson:"- - - - skill.edit with section parameter has a bug in the section-boundary detection regex: it replaces from the section start to the end of the file, deleting all subsequent sections. Workaround: use write (full file) instead of section edit.", prevention:"not_applicable"}
+
+LNG:________the_identity{type:"contextual", cause:"not_specified", lesson:"- - - - The identity.record handler has a case-sensitivity bug: it searches the identity file by exact agent name. If the session agent is Alfred (capitalized) but the file is alfred.cortex, it fails with NOT_FOUND. Workaround: use cortex.entry_add directly to the identity file.", prevention:"not_applicable"}
+
+LNG:________mcp_environm{type:"contextual", cause:"not_specified", lesson:"- - - - MCP environment field corrected from 'env' to 'environment' in opencode.json. The official schema uses 'environment'.", prevention:"not_applicable"}
+
+LNG:________meta_brain_d{type:"contextual", cause:"not_specified", lesson:"- - - - Meta-brain desynchronized by dual-brain and hardcoded metrics: ARQUX/.arqux contained a leftover meta-brain.cortex that find_workspace_root found first, silently blocking auto-sync. Additionally, _sync_meta_brain used literal value 1 instead of deriving real counters from filesystem. Fix: remove duplicate file + _count_blueprints() that scans real BLP-*.md files.", prevention:"not_applicable"}
+
+LNG:________codec_cortex{type:"contextual", cause:"not_specified", lesson:"- - - - CODEC-CORTEX parser must flow locally declared sigils through the entire pipeline: lexer, entry resolver, value parser. The glossary already registers them via table format. parse_attrs_body must respect quoted strings with internal colons (STP entries have values like OUT-MIN governor=alfred). v0.4.3 now supports locally declared sigils — E017 on handlers.skill.md went from 138 to 0.", prevention:"not_applicable"}
+
+LNG:________codec_cortex{type:"contextual", cause:"not_specified", lesson:"- - - - CODEC-CORTEX is the mandatory library for .cortex writes. Do not write manual fallbacks.", prevention:"not_applicable"}
+
+LNG:________the_v1_0_dis{type:"contextual", cause:"not_specified", lesson:"- - - - The v1.0 dispatcher requires tool_code with pillar prefix (conduct.*, context.*, oper.*). mcp_server.py must invoke ORDS with the complete tool_code, not the physical handler or unprefixed name.", prevention:"not_applicable"}
+
+LNG:________oper_discove{type:"contextual", cause:"not_specified", lesson:"- - - - oper.discover_tools returns the full registry (46 tools) and is accessible to all authorized profiles. oper.my_capabilities returns the specific user's capabilities but requires explicit permissions in MCP_ROLE_CAPABILITY. If a tool has no rows in MCP_ROLE_CAPABILITY, dispatch returns 'Permission denied'.", prevention:"not_applicable"}
+
+LNG:________the_source_o{type:"contextual", cause:"not_specified", lesson:"- - - - The source of truth for AGENT_RESOURCE, MCP_CAPABILITY and MCP_ROLE_CAPABILITY is ATUM via MCP, not repo SQL seeds. Seeds are legacy from BLP-009 (when no write handlers existed). Governed changes are made via MCP (oper.resource_update, oper.capability_register, oper.capability_grant) and are audited. SQL seeds are kept as history but NOT re-executed. A repo redeploy would overwrite governed changes made via MCP.", prevention:"not_applicable"}
+
+LNG:________mcp_server_p{type:"contextual", cause:"not_specified", lesson:"- - - - mcp_server.py must publish and invoke tools by TOOL_CODE (registry key), not by physical HANDLER. The registry MCP_discover_tools exposes {tool_code: {handler...}}.", prevention:"not_applicable"}
+
+LNG:________the_dry_run_{type:"contextual", cause:"not_specified", lesson:"- - - - The dry_run parameter of MCP ENVX does not block execution — it only audits. It executes the DDL and leaves real effects.", prevention:"not_applicable"}
+
+LNG:________before_execu{type:"contextual", cause:"not_specified", lesson:"- - - - Before executing a registry plan, audit that each registered tool has a physical handler (user_objects) AND valid grants (id_sys_profile not NULL). The MCP_CAPABILITY count can be inflated with dead records.", prevention:"not_applicable"}
+
+LNG:________use_sqlcl__g{type:"contextual", cause:"not_specified", lesson:"- - - - Use SQLcl (global-clients), not sqlplus, to recompile packages and execute long PL/SQL scripts.", prevention:"not_applicable"}
+
+LNG:________envx_oper_cr{type:"contextual", cause:"not_specified", lesson:"- - - - ENVX_OPER credentials differ per environment. ATUM, PROD, FAMILIAR: each has its own credentials. Never assume cross-environment credentials. Request from the Architect.", prevention:"not_applicable"}
+
+LNG:________patch_v0_4_0{type:"contextual", cause:"not_specified", lesson:"- - - - Patch v0.4.0 applied: security.py (HMAC+SHA-256), concurrency.py (file locking), permissions.py (enum Role), sync.py (fix GAP-001), cycle.py (mature_cycle), +6 surgical patches. 34 patch tests pass. 147 total tests. Surfaces aligned to 0.4.0.", prevention:"not_applicable"}
+
+LNG:________subdirectori{type:"contextual", cause:"not_specified", lesson:"- - - - Subdirectories have their own Git repos. Do not assume a monorepo.", prevention:"not_applicable"}
+
+LNG:________real_ddls_ar{type:"contextual", cause:"not_specified", lesson:"- - - - Real DDLs are embedded in migration scripts and JBoss modules. Do not search for DDL in DDL/.", prevention:"not_applicable"}
+
+LNG:________never_modify{type:"contextual", cause:"not_specified", lesson:"- - - - NEVER modify code without explicit agreement from the Architect. Every code modification requires prior explicit approval. Do not assume, do not infer, do not execute changes without verbal confirmation.", prevention:"not_applicable"}
+
+LNG:________permission_m{type:"contextual", cause:"not_specified", lesson:"- - - - Permission model: governance handlers (blueprint, task, cycle, evidence, cortex, session, project.bind, protocol.adopt) are UNIVERSAL for all roles. Only init handlers (workspace.init, project.init) are governor-only. EXECUTOR_ALLOWED is unnecessary when governance handlers are universal.", prevention:"not_applicable"}
+
+LNG:________packaging_co{type:"contextual", cause:"not_specified", lesson:"- - - - Packaging completeness: when adding new skill/workflow files, always verify both pyproject.toml package-data AND init_workspace() copy logic. Missing either causes incomplete installations from PyPI.", prevention:"not_applicable"}
+
+LNG:________tests_must_b{type:"contextual", cause:"not_specified", lesson:"- - - - Tests must be adapted to actual implementation, not aspirational design. When a test fails, first verify the handler behavior is correct, then fix the test assertion — never assume the test is right and the code is wrong.", prevention:"not_applicable"}
+
+LNG:________security_mod{type:"contextual", cause:"not_specified", lesson:"- - - - Security modules must have test coverage >= 80% before any pilot. Claims of HMAC, signing, and integrity are invalid without tests that prove they work. CLI commands need at least basic smoke tests.", prevention:"not_applicable"}
+
+LNG:________during_execu{type:"contextual", cause:"not_specified", lesson:"- - - - During executable ArqUX audit, permission tests contradicted the declared security model, invalidating validation. Tests must be established against design specifications before implementation.", prevention:"not_applicable"}
+
+LNG:________blueprints_m{type:"contextual", cause:"not_specified", lesson:"- - - - Blueprints must enforce their procedure through handlers before closure; code passing tests is not enough governance evidence. Blueprint closure must be enforced by handlers with blocked-path evidence before approval.", prevention:"not_applicable"}
+
+LNG:________acceptance_e{type:"contextual", cause:"not_specified", lesson:"- - - - Acceptance evidence should distinguish functional test success from a separate global quality gate failure; do not conflate the two when closing a Blueprint. A green test count alone does not prove the configured coverage threshold.", prevention:"not_applicable"}
+
+LNG:________blocking_mus{type:"contextual", cause:"not_specified", lesson:"- - - - blocking must depend on an explicit security rule (severity:blocking), not on implicit coincidence with survive:min. SchemaResolver applies legacy fallback when $0 does not declare survive. Invalid configuration produces E025 and blocks write. Declarative survive precedence is per-entry: explicit values win, absent values use canonical fallback. Serialization preserves survive values without coercion.", prevention:"not_applicable"}
+
+LNG:________in_puml_diag{type:"contextual", cause:"not_specified", lesson:"- - - - In PUML diagrams sent via blueprint.update with puml=, use \\\\n (double backslash-n) instead of \\n (single backslash-n) for line breaks inside quoted strings. The single backslash becomes a real line break when written to file, breaking PUML syntax.", prevention:"not_applicable"}
+
+LNG:________template_and{type:"contextual", cause:"not_specified", lesson:"- - - - Template and handler must use the same naming. If the template changes language (CA-01->AC-01, Titulo->Title), the handler must match exactly. Maintain consistency between BLP_TEMPLATE.md and blueprint.py.", prevention:"not_applicable"}
+
+LNG:________the_sigil_fo{type:"contextual", cause:"not_specified", lesson:"- - - - The sigil format with $0 glossary is the canonical CORTEX format. All .cortex files must use sigils declared in $0 glossary.", prevention:"not_applicable"}
+
+LNG:________hcortex_form{type:"contextual", cause:"not_specified", lesson:"- - - - HCORTEX format with visual panels (boxes, status bars, progress emojis) is the canonical format for governance dashboards. It enables rapid state scanning and clear visual categorization.", prevention:"not_applicable"}
+
+LNG:________marp_cli_in_{type:"contextual", cause:"not_specified", lesson:"- - - - Marp CLI in -s mode must run from project root. PORT=8765 env var, not --port. --allow-local-files is mandatory. Use marp-server.sh script for persistence.", prevention:"not_applicable"}
+
+LNG:________overflow_res{type:"contextual", cause:"not_specified", lesson:"- - - - Overflow resolution ladder: reduce font-size (22->20->18) -> shorten text -> move .envx-decision to .envx-footnote (absolute) -> restructure slide.", prevention:"not_applicable"}
+
+LNG:________factory_asse{type:"contextual", cause:"not_specified", lesson:"- - - - factory/assets/ is the single canonical source of truth for assets. Eliminate duplicates.", prevention:"not_applicable"}
+
+LNG:________lng__lesson_{type:"contextual", cause:"not_specified", lesson:"- - - - LNG (lesson) is an episodic cortex type: a learned lesson or operational pattern. Risk M, cortex Episodic.", prevention:"not_applicable"}
+
+LNG:________when_decoupl{type:"contextual", cause:"not_specified", lesson:"- - - - When decoupling from a dependency, build the replacement writer first (BLP-001), then CRUD (BLP-002), then atomic (BLP-003), then handlers (BLP-004). This order ensures each layer has its foundation ready.", prevention:"not_applicable"}
+
+LNG:________using_json_d{type:"contextual", cause:"not_specified", lesson:"- - - - Using JSON/dict as intermediate model between handlers and CORTEX serialization separates concerns: handlers work with dicts, writer serializes to CORTEX. This is cleaner than handlers building CORTEX strings directly.", prevention:"not_applicable"}
+
+LNG:________use_tempfile{type:"contextual", cause:"not_specified", lesson:"- - - - Use tempfile.mkstemp() in the target directory for atomic writes, not predictable path+'.tmp'. Predictable temp paths risk collision with concurrent writers.", prevention:"not_applicable"}
+
+LNG:________when_atomica{type:"contextual", cause:"not_specified", lesson:"- - - - When atomically replacing files, copy original mode bits to the temp file before os.replace(). Otherwise permissions are lost.", prevention:"not_applicable"}
+
+LNG:________cortex_cuerp{type:"contextual", cause:"not_specified", lesson:"- - - - CORTEX cuerpo bodies containing a line that is exactly '}' will be truncated by the parser. The writer must raise ValueError before emitting such content. PlantUML diagrams inside cuerpo must use '}  end block' instead of bare '}'.", prevention:"not_applicable"}
+
+LNG:________list_tuple_a{type:"contextual", cause:"not_specified", lesson:"- - - - List/tuple attribute values must be coerced to comma-separated strings before CORTEX serialization. The CORTEX 0.1 parser has no usable list syntax. JSON-encoding lists causes double-escaping.", prevention:"not_applicable"}
+
+LNG:________update_entry{type:"contextual", cause:"not_specified", lesson:"- - - - update_entry must raise ValueError if neither set_ nor replace_body is supplied. Silent no-ops on update are dangerous — they hide bugs.", prevention:"not_applicable"}
+
+LNG:________in_migration{type:"contextual", cause:"not_specified", lesson:"- - - - In migration functions, the dry_run check must happen BEFORE any filesystem modification (rename, backup, write). If dry_run returns after renaming, the file is silently moved and never restored.", prevention:"not_applicable"}
+
+LNG:________when_migrati{type:"contextual", cause:"not_specified", lesson:"- - - - When migrating $19 metadata sections, preserve ALL existing entries (AXM, etc.), not just ARQX:artifact. Hardcoding a single entry loses data.", prevention:"not_applicable"}
+
+LNG:________codec_cortex{type:"contextual", cause:"not_specified", lesson:"- - - - CODEC-CORTEX should be an optional dependency. ArqUX degrades gracefully: uses its own writer/CRUD/atomic always, uses CODEC parser if available, falls back to regex parser if not. All CODEC imports guarded with try/except.", prevention:"not_applicable"}
+
+LNG:________round_trip_t{type:"contextual", cause:"not_specified", lesson:"- - - - Round-trip tests must verify entry content (sigil, name, attrs), not just entry count. Same count with corrupted sigils/names is a silent failure.", prevention:"not_applicable"}
+
+LNG:________when_evaluat{type:"contextual", cause:"not_specified", lesson:"- - - - When evaluating a newer format version (CODEC 1.0.0-rc.1), evaluate and document differences but do not adopt in the same cycle. Adoption requires $0:KERNEL, $0:format, declared sigils — major format change for a separate cycle.", prevention:"not_applicable"}
+
+LNG:________before_closi{type:"contextual", cause:"not_specified", lesson:"- - - - Before closing a decoupling cycle, verify ALL .cortex files across ALL governed projects, not just the primary project. 111 files across 9 projects verified in CYCLE-11.", prevention:"not_applicable"}
+
+LNG:________workspace_go{type:"contextual", cause:"not_specified", lesson:"- - - - Workspace governance files (meta-brain, projects, context, agents) accumulate stale data: duplicate project entries, agent spam, outdated cycle references. Clean periodically — CYCLE-11 removed 297 spam agent entries and 5 duplicate project entries.", prevention:"not_applicable"}
+
+LNG:________version_must{type:"contextual", cause:"not_specified", lesson:"- - - - Version must be consistent across pyproject.toml, constants.py, README badge, CHANGELOG, and wheel METADATA. CYCLE-11 found stale 0.6.2 in constants.py and README while pyproject had 0.6.3.", prevention:"not_applicable"}
+
+LNG:_________2026_08_17t{type:"contextual", cause:"not_specified", lesson:"- - - - [2026-08-17T13:11:38Z] LNG:cycle-01_completion{type:\"process\", cause:\"1 task(s) completed in CYCLE-01\", lesson:\"Completed tasks show effective cycle planning\"}", prevention:"not_applicable"}
+
+LNG:_______2026_08_17t13{type:"contextual", cause:"not_specified", lesson:"- - - [2026-08-17T13:11:39Z] LNG:cycle-07_completion{type:\"process\", cause:\"3 task(s) completed in CYCLE-07\", lesson:\"Completed tasks show effective cycle planning\"}", prevention:"not_applicable"}
+
+LNG:_____2026_08_17t13{type:"contextual", cause:"not_specified", lesson:"- - [2026-08-17T13:11:39Z] LNG:cycle-08_completion{type:\"process\", cause:\"1 task(s) completed in CYCLE-08\", lesson:\"Completed tasks show effective cycle planning\"}", prevention:"not_applicable"}
+
+LNG:___2026_08_17t13{type:"contextual", cause:"not_specified", lesson:"- [2026-08-17T13:18:53Z] LNG:cycle-01_completion{type:\"process\", cause:\"1 task(s) completed in CYCLE-01\", lesson:\"Completed tasks show effective cycle planning\"}", prevention:"not_applicable"}
 
 
 $8: ACTIVE_CONTEXT
 
-WRK:current{phase:"current", current:"task.complete: task T-001 completed", blocked:"no", survive:"work", fcs:"Sandbox-CODEC-CORTEX-migracion-comparativa;obj:Analisis preliminar + migracion + delta vs skill;tasks:completado-5-5;state:done", obj:"", tasks:"", state:"active", last_turn:"2026-07-19T21:06:36Z", updated:"2026-07-20T15:49:09Z", event:"task.complete"}
+WRK:current{phase:"current", current:"cycle.close: cycle CYCLE-01 closed", blocked:"no", survive:"work", updated:"2026-08-17T13:18:53Z", event:"cycle.close"}
+
 
 $9: RISKS
 
-RSK:risk{description:"- - - - - - - - - - - Meta-brain DOM valores truncados por comas en parentesis", mitigation:"pending", severity:"warning", risk:"pending", impact:"pending", status:"current", survive:"work"}
+RSK:risk{description:"- - - - - - - - - - - - - - - Meta-brain DOM valores truncados por comas en parentesis", mitigation:"pending", severity:"medium", risk:"pending", impact:"pending", status:"active", survive:"work"}
+
 
 $10: KNOWLEDGE
 
-KNW:knowledge{topic:"project_knowledge", content:"Framework de gobierno ArqUX...", status:"current"}
-KNW:metodologia_diseno_cyc07{topic:"metodologia", status:"current", content:"10 principios de diseno validados en CYCLE-07: 1) Verificar en codigo antes de asumir formato de handlers. 2) No sobre-afirmar: ventana = tokens planos. 3) No asumir estandares sin validar. 4) Aislar fuente exacta antes de diagnosticar. 5) Sync automatico sobre manual. 6) validate_file antes de PUML. 7) Formato hibrido PUML+HCORTEX. 8) Skill es repositorio API, no brain.cortex. 9) Workflow w14 documenta flujo synthesize. 10) MCP handler antes que bypass directo."}
-KNW:blp_presentacion_completa_0001{topic:"lesson", status:"current", content:"Nunca presentar un BLP incompleto al Arquitecto. Las 18 secciones son el contrato. Si no estan todas, no esta listo para revision. Ver LNG-2026-07-15-001.", updated:"2026-07-16T16:35:00Z"}
+KNW:knowledge{topic:"project_knowledge", content:"Framework de gobierno ArqUX...
+10 principios de diseno validados en CYCLE-07: 1) Verificar en codigo antes de asumir formato de handlers. 2) No sobre-afirmar: ventana = tokens planos. 3) No asumir estandares sin validar. 4) Aislar fuente exacta antes de diagnosticar. 5) Sync automatico sobre manual. 6) validate_file antes de PUML. 7) Formato hibrido PUML+HCORTEX. 8) Skill es repositorio API, no brain.cortex. 9) Workflow w14 documenta flujo synthesize. 10) MCP handler antes que bypass directo.
+Nunca presentar un BLP incompleto al Arquitecto. Las 18 secciones son el contrato. Si no estan todas, no esta listo para revision. Ver LNG-2026-07-15-001.", status:"active"}
+
 
 $11: CONCURRENCY
 

@@ -32,7 +32,7 @@ STP:w11_repair{
   1:"Backup: `mv <file.cortex> <file.cortex.bck>` — preserve original.",
   2:"Read backup: extract metadata (ARQX:artifact level/name/usage/kind) and all entries.",
   3:"Rewrite: construct a new CortexDocument with clean $0 glossary, $0.1 ARQX:metadata, and all entries from backup.",
-  4:"Write: use `cortex.core.writer.write_cortex()` to produce the new file.",
+  4:"Write: use `arqux.cortex.writer.write_cortex_from_json()` to produce the new file.",
   5:"Verify: `cortex verify --strict <file.cortex>` — passes if structurally valid.",
   6:"If verify fails with structural errors (E001/E002/E015): revert from backup.",
   7:"If verify passes with E032/E034 (historical incompleteness): acceptable — the handler fix prevents new ones.",

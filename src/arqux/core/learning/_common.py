@@ -14,7 +14,6 @@ _HAS_CLE: bool = False
 try:
     from cortex.core.ast import CortexDocument, Entry
     from cortex.core.parser import parse_cortex
-    from cortex.core.writer import write_cortex
     from cortex.learning.candidates import detect_candidates
     from cortex.learning.elevation import apply_patch, plan_patch, render_diff
     from cortex.learning.errors import LearningError
@@ -26,7 +25,6 @@ except ImportError:
     CortexDocument = None  # type: ignore
     Entry = None  # type: ignore
     parse_cortex = None  # type: ignore
-    write_cortex = None  # type: ignore
     rebuild_index = None  # type: ignore
     parse_policy_document = None  # type: ignore
     detect_candidates = None  # type: ignore
@@ -34,6 +32,12 @@ except ImportError:
     apply_patch = None  # type: ignore
     render_diff = None  # type: ignore
     LearningError = None  # type: ignore
+
+# BLP-005: CODEC-CORTEX writer has been removed from ArqUX.
+# Set write_cortex to None — the learning engine degrades gracefully
+# (CLE is optional). When write_cortex functionality is needed,
+# use arqux.cortex.writer.write_cortex_from_json instead.
+write_cortex = None
 
 
 POLICY_FILENAME = "learn-policies.cortex"

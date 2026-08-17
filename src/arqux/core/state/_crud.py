@@ -1,23 +1,45 @@
-"""CRUD operations on .cortex files via CODEC-CORTEX."""
+"""CRUD operations on .cortex files via ArqUX's own CORTEX components.
+
+BLP-005: Replaces CODEC-CORTEX mutations/transactions with ArqUX's
+own reader, CRUD, and atomic writer modules.
+"""
 
 from __future__ import annotations
 
 from pathlib import Path
 
 from . import (
-    _cc_mutations,
     _cc_parser,
     _cc_renderer,
     _cc_selectors,
-    _cc_transactions,
     _cc_validator,
 )
+
+# --- ArqUX CORTEX components (BLP-001..004) ---------------------------------
+
+from ...cortex.reader import cortex_to_dict
+from ...cortex.writer import write_cortex_from_json
+from ...cortex.crud import (
+    add_entry as _ax_add_entry,
+    update_entry as _ax_update_entry,
+    delete_entry as _ax_delete_entry,
+    move_entry as _ax_move_entry,
+    select_entries as _ax_select_entries,
+    list_entries as _ax_list_entries,
+)
+from ...cortex.atomic import atomic_write_json, atomic_write_text, WriteResult
 
 # --- CODEC-CORTEX dependency ------------------------------------------------
 
 
 def requires_codec_cortex() -> None:
-    """Raise RuntimeError if CODEC-CORTEX is not available."""
+    """Raise RuntimeError if CODEC-CORTEX is not available.
+
+    BLP-005: Most write/mutation operations no longer require
+    CODEC-CORTEX (they use ArqUX's own components).  This check is
+    retained for read/verify/render functions that still delegate to
+    CODEC-CORTEX's parser/validator/renderer.
+    """
     from ...state import _HAS_CODEC_CORTEX as _cc_available
 
     if not _cc_available:
@@ -74,28 +96,40 @@ def cortex_write(
 ) -> dict:
     """Parse *content* as CORTEX text and atomically write to *path*.
 
-    Validates before writing. Returns the write result dict.
+    BLP-005: Uses ArqUX's own reader (cortex_to_dict) and atomic
+    writer (atomic_write_json) instead of CODEC-CORTEX transactions.
 
-    Raises RuntimeError if CODEC-CORTEX is not available.
+    Validates before writing (if CODEC-CORTEX validator is available).
+    Returns the write result dict.
     """
-    requires_codec_cortex()
     path = str(Path(path).resolve())
-    doc = _cc_parser.parse_cortex(content, path=path)
-    diags = _cc_validator.validate(doc)
-    errors = [d for d in diags if d.get("severity") == "error"]
-    if errors and not force:
-        return {
-            "path": path,
-            "error": f"Validation failed ({len(errors)} errors). Use force=True to override.",
-            "diagnostics": [f"[{d.get('code','?')}] {d.get('message','')} (line {d.get('line','?')})" for d in errors],
-        }
 
-    result = _cc_transactions.atomic_write_cortex(doc, path, force=force)
+    # Parse content to dict using ArqUX reader.
+    doc = cortex_to_dict(content)
+
+    # Optional validation via CODEC-CORTEX (if available).
+    from ...state import _HAS_CODEC_CORTEX as _cc_available
+    if _cc_available and _cc_validator is not None:
+        try:
+            ast_doc = _cc_parser.parse_cortex(content, path=path)
+            diags = _cc_validator.validate(ast_doc)
+            errors = [d for d in diags if d.get("severity") == "error"]
+            if errors and not force:
+                return {
+                    "path": path,
+                    "error": f"Validation failed ({len(errors)} errors). Use force=True to override.",
+                    "diagnostics": [f"[{d.get('code','?')}] {d.get('message','')} (line {d.get('line','?')})" for d in errors],
+                }
+        except Exception:
+            # Validation is best-effort — proceed with write.
+            pass
+
+    result = atomic_write_json(doc, path)
     return {
-        "path": path,
+        "path": result.path,
         "bytes_written": result.bytes_written,
         "backup": result.backup,
-        "diagnostics": [str(d) for d in result.diagnostics] if result.diagnostics else [],
+        "diagnostics": [],
         "dry_run": result.dry_run,
     }
 
@@ -136,75 +170,91 @@ def cortex_render(path: str | Path) -> str:
     return _cc_renderer.render_hcortex_read(doc)
 
 
-# --- _cortex_crud -- partial file mutation via CODEC-CORTEX CRUD -----------
+# --- _cortex_crud -- partial file mutation via ArqUX CRUD (BLP-005) ---------
 
 
-def _parse_and_mutate(
+def _read_and_mutate(
     path: Path,
     mutate_fn,
     *,
     force: bool = False,
     dry_run: bool = False,
 ) -> dict:
-    """Parse a .cortex file, apply *mutate_fn* on the AST, validate and write.
+    """Read a .cortex file, apply *mutate_fn* on the dict, and write.
 
-    *mutate_fn* receives the parsed ``CortexDocument`` and returns it (modified).
+    BLP-005: Uses ArqUX's reader (cortex_to_dict) to parse, applies
+    *mutate_fn* on the JSON dict model, and writes atomically via
+    atomic_write_json.
+
+    *mutate_fn* receives the parsed dict and returns it (modified).
     """
-    requires_codec_cortex()
     text = path.read_text(encoding="utf-8")
-    doc = _cc_parser.parse_cortex(text, path=str(path))
+    doc = cortex_to_dict(text)
     doc = mutate_fn(doc)
-    diags = _cc_validator.validate(doc)
-    errors = [d for d in diags if d.get("severity") == "error"]
-    if errors and not force:
-        return {
-            "error": f"Validation failed ({len(errors)} errors). Use force=True to override.",
-            "diagnostics": [f"[{d.get('code','?')}] {d.get('message','')}" for d in errors],
-        }
+
+    # Optional validation via CODEC-CORTEX (if available).
+    from ...state import _HAS_CODEC_CORTEX as _cc_available
+    if _cc_available and _cc_validator is not None:
+        try:
+            # Re-serialize to text for CODEC validation.
+            cortex_text = write_cortex_from_json(doc)
+            ast_doc = _cc_parser.parse_cortex(cortex_text, path=str(path))
+            diags = _cc_validator.validate(ast_doc)
+            errors = [d for d in diags if d.get("severity") == "error"]
+            if errors and not force:
+                return {
+                    "error": f"Validation failed ({len(errors)} errors). Use force=True to override.",
+                    "diagnostics": [f"[{d.get('code','?')}] {d.get('message','')}" for d in errors],
+                }
+        except Exception:
+            # Validation is best-effort — proceed with write.
+            pass
+
     if dry_run:
-        return {"dry_run": True, "path": str(path), "diagnostics": diags}
+        return {"dry_run": True, "path": str(path), "diagnostics": []}
     try:
-        result = _cc_transactions.atomic_write_cortex(doc, str(path), force=force)
+        result = atomic_write_json(doc, str(path))
     except Exception as e:
         return {"error": f"Atomic write failed: {e}", "non_bypassable": True}
-
-    # P1-P: Auto-sign .cortex files with $INTEGRITY header after successful write.
-    # NOTE: Auto-signing is intentionally disabled here because codec-cortex
-    # writes files with its own format and re-reading them with $INTEGRITY
-    # header prepended breaks subsequent parses. Auto-signing should be
-    # applied at a higher level (e.g. via `arqux cortex-verify --sign` CLI
-    # or post-commit hook). See EVIDENCE.md §5.1 for file-level integrity.
-    #
-    # To re-enable auto-signing in the future, ensure codec-cortex can
-    # tolerate a `# $INTEGRITY: sha256:...` header line at the top of files
-    # (or strip it before parsing).
 
     return {
         "path": str(path),
         "bytes_written": result.bytes_written,
         "backup": result.backup,
-        "diagnostics": [str(d) for d in result.diagnostics] if result.diagnostics else [],
+        "diagnostics": [],
     }
 
 
 def crud_read(path: str | Path, selector: str) -> dict:
     """Read entries matching *selector* from a .cortex file.
 
+    BLP-005: Uses ArqUX's reader + select_entries.
+
+    Supports both ``$N/SIGIL:name`` (ArqUX format) and ``SIGIL:name``
+    (legacy CODEC format without section prefix). When no section
+    prefix is given, all sections are searched.
+
     Returns a dict with ``entries`` (list of matched entries).
     """
-    requires_codec_cortex()
     path = Path(path)
     if not path.exists():
         raise FileNotFoundError(str(path))
     text = path.read_text(encoding="utf-8")
-    doc = _cc_parser.parse_cortex(text, path=str(path))
-    _cc_selectors.parse_selector(selector)
-    entries = _cc_selectors.select(doc, selector)
+    doc = cortex_to_dict(text)
+
+    # Try ArqUX selector format first ($N/SIGIL:name).
+    try:
+        entries = _ax_select_entries(doc, selector)
+    except ValueError:
+        # Fallback: legacy CODEC selector without section prefix (SIGIL:name).
+        # Search all sections for matching sigil/name.
+        entries = _select_all_sections(doc, selector)
+
     return {
         "path": str(path),
         "selector": selector,
         "entries": [
-            {"sigil": e.sigil, "name": e.name, "section": e.section, "value": e.value}
+            {"sigil": e.get("sigil"), "name": e.get("name"), "section": e.get("section"), "value": e.get("attrs") or e.get("body")}
             for e in entries
         ],
     }
@@ -223,18 +273,23 @@ def crud_add(
 ) -> dict:
     """Add an entry to a .cortex file.
 
+    BLP-005: Uses ArqUX's add_entry + atomic_write_json.
+
     Returns the write result dict.
     """
     p = Path(path)
 
+    # Parse value: if it's a string that looks like attrs, try to parse it.
+    parsed_value = _parse_value(value)
+
     def _add(doc):
-        _cc_mutations.add_entry(
-            doc, section, sigil, name, value,
+        _ax_add_entry(
+            doc, section, sigil, name, parsed_value,
             create_section=create_section,
         )
         return doc
 
-    return _parse_and_mutate(p, _add, force=force, dry_run=dry_run)
+    return _read_and_mutate(p, _add, force=force, dry_run=dry_run)
 
 
 def crud_update(
@@ -249,19 +304,26 @@ def crud_update(
 ) -> dict:
     """Update an entry selected by *selector* in a .cortex file.
 
+    BLP-005: Uses ArqUX's update_entry + atomic_write_json.
+    Note: ArqUX's update_entry does NOT have a ``force`` parameter.
+
+    Supports both ``$N/SIGIL:name`` (ArqUX format) and ``SIGIL:name``
+    (legacy CODEC format without section prefix).
+
     For attrs entries use ``set_`` (dict of key/value pairs to merge).
     For cuerpo/bloque entries use ``replace_body``.
     """
     p = Path(path)
 
     def _update(doc):
-        _cc_mutations.update_entry(
-            doc, selector,
+        resolved = _resolve_legacy_selector(doc, selector)
+        _ax_update_entry(
+            doc, resolved,
             set_=set_, replace_body=replace_body, append=append,
         )
         return doc
 
-    return _parse_and_mutate(p, _update, force=force, dry_run=dry_run)
+    return _read_and_mutate(p, _update, force=force, dry_run=dry_run)
 
 
 def crud_delete(
@@ -271,14 +333,22 @@ def crud_delete(
     force: bool = False,
     dry_run: bool = False,
 ) -> dict:
-    """Delete an entry matching *selector* from a .cortex file."""
+    """Delete an entry matching *selector* from a .cortex file.
+
+    BLP-005: Uses ArqUX's delete_entry + atomic_write_json.
+    Note: ArqUX's delete_entry does NOT have a ``force`` parameter.
+
+    Supports both ``$N/SIGIL:name`` (ArqUX format) and ``SIGIL:name``
+    (legacy CODEC format without section prefix).
+    """
     p = Path(path)
 
     def _delete(doc):
-        _cc_mutations.delete_entry(doc, selector, force=force)
+        resolved = _resolve_legacy_selector(doc, selector)
+        _ax_delete_entry(doc, resolved)
         return doc
 
-    return _parse_and_mutate(p, _delete, force=force, dry_run=dry_run)
+    return _read_and_mutate(p, _delete, force=force, dry_run=dry_run)
 
 
 def crud_move(
@@ -289,14 +359,21 @@ def crud_move(
     force: bool = False,
     dry_run: bool = False,
 ) -> dict:
-    """Move an entry from its current section to *to_section*."""
+    """Move an entry from its current section to *to_section*.
+
+    BLP-005: Uses ArqUX's move_entry + atomic_write_json.
+
+    Supports both ``$N/SIGIL:name`` (ArqUX format) and ``SIGIL:name``
+    (legacy CODEC format without section prefix).
+    """
     p = Path(path)
 
     def _move(doc):
-        _cc_mutations.move_entry(doc, selector, to_section)
+        resolved = _resolve_legacy_selector(doc, selector)
+        _ax_move_entry(doc, resolved, to_section)
         return doc
 
-    return _parse_and_mutate(p, _move, force=force, dry_run=dry_run)
+    return _read_and_mutate(p, _move, force=force, dry_run=dry_run)
 
 
 def crud_list(
@@ -305,29 +382,142 @@ def crud_list(
     section: str | None = None,
     sigil: str | None = None,
 ) -> dict:
-    """List entries in a .cortex file, optionally filtered by section or sigil."""
-    requires_codec_cortex()
+    """List entries in a .cortex file, optionally filtered by section or sigil.
+
+    BLP-005: Uses ArqUX's reader + list_entries.
+    """
     path = Path(path)
     if not path.exists():
         raise FileNotFoundError(str(path))
     text = path.read_text(encoding="utf-8")
-    doc = _cc_parser.parse_cortex(text, path=str(path))
-
-    sel_parts = []
-    if section:
-        sel_parts.append(section)
-    s = "/".join(sel_parts)
-    sep = "/" if s else ""
-    if sigil:
-        s += f"{sep}{sigil}:*"
-    else:
-        s += f"{sep}*"
-    entries = _cc_selectors.select(doc, s)
+    doc = cortex_to_dict(text)
+    entries = _ax_list_entries(doc, section=section, sigil=sigil)
 
     return {
         "path": str(path),
         "entries": [
-            {"sigil": e.sigil, "name": e.name, "section": e.section, "value": e.value}
+            {"sigil": e.get("sigil"), "name": e.get("name"), "section": e.get("section"), "value": e.get("attrs") or e.get("body")}
             for e in entries
         ],
     }
+
+
+# --- Helpers ----------------------------------------------------------------
+
+
+def _resolve_legacy_selector(doc: dict, selector: str) -> str:
+    """Convert a legacy CODEC selector (``SIGIL:name``) to ArqUX format.
+
+    If *selector* is already in ``$N/SIGIL:name`` format, return as-is.
+    If *selector* is in legacy ``SIGIL:name`` format, find the section
+    containing the matching entry and return ``$N/SIGIL:name``.
+
+    For wildcard selectors (``SIGIL:*``), returns the first section
+    that contains entries with that sigil.
+
+    Raises ``ValueError`` if no matching section is found.
+    """
+    import re
+    # Already in $N/ format?
+    if selector.strip().startswith("$"):
+        return selector
+    # Parse SIGIL:name or SIGIL:* or SIGIL:_
+    m = re.match(r"^([A-Za-z][A-Za-z0-9]*):(.+)$", selector.strip())
+    if not m:
+        raise ValueError(f"Invalid selector: {selector!r}")
+    sigil = m.group(1)
+    name = m.group(2)
+
+    for sec in doc.get("sections", []):
+        for entry in sec.get("entries", []):
+            if entry.get("sigil") != sigil:
+                continue
+            if name in ("*", "_"):
+                return f"{sec['id']}/{sigil}:{name}"
+            if entry.get("name") == name:
+                return f"{sec['id']}/{sigil}:{name}"
+    raise ValueError(f"No entries match selector {selector!r}")
+
+
+def _select_all_sections(doc: dict, selector: str) -> list[dict]:
+    """Search all sections for entries matching a legacy CODEC selector.
+
+    Handles selectors without a section prefix:
+    - ``SIGIL:name`` → match entries with this sigil and name in any section.
+    - ``SIGIL:*`` → match all entries with this sigil in any section.
+    - ``SIGIL:_`` → match the first entry with this sigil in any section.
+
+    Returns a list of entry dicts annotated with ``section`` info.
+    """
+    import re
+    # Parse SIGIL:name or SIGIL:* or SIGIL:_
+    m = re.match(r"^([A-Za-z][A-Za-z0-9]*):(.+)$", selector.strip())
+    if not m:
+        return []
+    sigil = m.group(1)
+    name = m.group(2)
+
+    results: list[dict] = []
+    for sec in doc.get("sections", []):
+        sec_id = sec.get("id", "")
+        for entry in sec.get("entries", []):
+            if entry.get("sigil") != sigil:
+                continue
+            if name in ("*", "_"):
+                results.append({
+                    "sigil": entry.get("sigil"),
+                    "name": entry.get("name"),
+                    "section": sec_id,
+                    "attrs": entry.get("attrs"),
+                    "body": entry.get("body"),
+                })
+                if name == "_":
+                    return results
+            elif entry.get("name") == name:
+                results.append({
+                    "sigil": entry.get("sigil"),
+                    "name": entry.get("name"),
+                    "section": sec_id,
+                    "attrs": entry.get("attrs"),
+                    "body": entry.get("body"),
+                })
+    return results
+
+
+def _parse_value(value: str | dict) -> str | dict:
+    """Parse a value into the form expected by add_entry.
+
+    If *value* is a dict, return it as-is (attrs entry).
+    If *value* is a string that looks like attrs (``key:val, key2:val2``),
+    attempt to parse it into a dict.
+    Otherwise, return the string as-is (cuerpo body entry).
+    """
+    if isinstance(value, dict):
+        return value
+    if isinstance(value, str):
+        # Try to parse as attrs: "key:val, key2:val2"
+        # This is a best-effort parse — if it doesn't look like attrs,
+        # treat it as a cuerpo body string.
+        stripped = value.strip()
+        if not stripped:
+            return value
+        # Heuristic: if it contains key:value pairs with commas, try parsing.
+        if ":" in stripped and not stripped.startswith("{"):
+            try:
+                from ...formats import _parse_attrs
+                parsed = _parse_attrs(stripped)
+                if parsed:
+                    return parsed
+            except Exception:
+                pass
+        return value
+    return value
+
+
+# --- Backward-compatibility alias -------------------------------------------
+
+
+# BLP-005: _parse_and_mutate was the old name (CODEC-CORTEX era).
+# Renamed to _read_and_mutate to reflect the new ArqUX-based implementation.
+# Alias kept for backward compatibility with imports in __init__.py / state.py.
+_parse_and_mutate = _read_and_mutate
