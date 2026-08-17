@@ -1,8 +1,10 @@
-"""Bidirectional format conversion: Arqux internal data model ↔ CODEC-CORTEX.
+"""Bidirectional format conversion: Arqux internal data model ↔ CORTEX.
 
-Maps Arqux governance state to/from proper CODEC-CORTEX sigil format.
-All .cortex output passes through ``cortex.core.writer.write_cortex()`` for
-canonical formatting — single-line attrs, body preservation, valid $0 glossary.
+Maps Arqux governance state to/from proper CORTEX sigil format.
+BLP-005: All .cortex output uses ArqUX's own string-based builders
+(``_fmt_entry``, ``_serialise_attrs``) for canonical formatting —
+single-line attrs, body preservation, valid $0 glossary.
+No dependency on CODEC-CORTEX writer.
 
 Design (sigil mapping):
   ArqUX metadata       → $0.1 ARQX:artifact{level, name, usage, kind}
@@ -472,21 +474,15 @@ def _parse_attrs(text: str) -> dict[str, Any]:
 
 
 def render_governance_cortex(stem: str, frontmatter: dict, body: str | dict) -> str:
-    """Render governance file as CORTEX text using the canonical writer.
+    """Render governance file as CORTEX text.
 
-    Uses ``write_cortex()`` via CortexDocument AST to produce canonical
-    single-line attrs with valid $0 glossary.
-    Falls back to string-based builders when unavailable.
+    BLP-005: Uses ArqUX's own string-based builders as the primary path.
+    The ``_build_fallback`` function calls ``brain_from_model``,
+    ``manifest_to_cortex``, etc. which use ``_fmt_entry`` and
+    ``_serialise_attrs`` — ArqUX's own serialization primitives.
+
+    No dependency on CODEC-CORTEX writer.
     """
-    try:
-        from cortex.core.writer import write_cortex as _wc
-        doc = _build_doc(stem, frontmatter, body)
-        if doc is not None:
-            result = _wc(doc)
-            if result:
-                return result
-    except Exception:
-        pass
     return _build_fallback(stem, frontmatter, body)
 
 
@@ -990,8 +986,15 @@ def brain_from_model(frontmatter: dict, sections: dict[str, str]) -> str:
         if line.strip() and not line.strip().startswith("("):
             rsk_lines.append(_fmt_entry("RSK", "risk", {"description": line.strip(), "mitigation": "", "severity": "medium"}))
     parts.append(_fmt_section(9, "RISKS", rsk_lines))
+    # $10: KNOWLEDGE (matches _build_brain_doc section numbering)
+    knw_lines_str = sections.get("KNOWLEDGE", "").strip()
+    knw_entries = []
+    if knw_lines_str:
+        knw_entries.append(_fmt_entry("KNW", "knowledge", {"topic": "project_knowledge", "content": knw_lines_str, "status": "active"}))
+    parts.append(_fmt_section(10, "KNOWLEDGE", knw_entries))
+    # $11: CONCURRENCY (matches _build_brain_doc section numbering)
     version = frontmatter.get("brain_version", "0")
-    parts.append(_fmt_section(10, "CONCURRENCY", [
+    parts.append(_fmt_section(11, "CONCURRENCY", [
         _fmt_entry("ERR", "concurrency", {"version": str(version), "last_writer": frontmatter.get("brain_last_writer", ""), "updated": frontmatter.get("brain_updated", now)})
     ]))
     return "\n".join(parts) + "\n"
@@ -1057,28 +1060,43 @@ def task_to_cortex(frontmatter: dict, body: str) -> str:
             continue
         entry_lines = []
         if sigil == "OBJ":
-            entry_lines.append(_fmt_entry(sigil, "objective", {"text": content}))
+            # OBJ may be a single paragraph or a bulleted list; normalize
+            # by stripping bullets and repeated 'text=' prefixes per line.
+            obj_lines = []
+            for line in content.splitlines():
+                line = line.strip()
+                if not line:
+                    continue
+                obj_lines.append(_strip_attr_prefix(line.lstrip("-* "), "text"))
+            obj_text = " ".join(obj_lines)
+            entry_lines.append(_fmt_entry(sigil, "objective", {"text": obj_text}))
         elif sigil == "STP":
             for i, line in enumerate(content.splitlines()):
                 line = line.strip()
                 if line and re.match(r'^\d+\.', line):
                     action = re.sub(r'^\d+\.\s*', '', line)
+                    action = _strip_attr_prefix(action, "action")
                     entry_lines.append(_fmt_entry(sigil, f"step{i+1}", {"action": action}))
         elif sigil == "CNST":
             for i, line in enumerate(content.splitlines()):
                 line = line.strip()
                 if line and line.startswith("-"):
-                    entry_lines.append(_fmt_entry(sigil, f"pre{i+1}", {"text": line.lstrip("- ")}))
+                    val = line.lstrip("- ")
+                    val = _strip_attr_prefix(val, "text")
+                    entry_lines.append(_fmt_entry(sigil, f"pre{i+1}", {"text": val}))
         elif sigil == "CLAIM":
             for i, line in enumerate(content.splitlines()):
                 line = line.strip()
                 if line and line.startswith("-"):
-                    entry_lines.append(_fmt_entry(sigil, f"ac{i+1}", {"criterion": line.lstrip("- ")}))
+                    val = line.lstrip("- ")
+                    val = _strip_attr_prefix(val, "criterion")
+                    entry_lines.append(_fmt_entry(sigil, f"ac{i+1}", {"criterion": val}))
         elif sigil == "BLK":
             for i, line in enumerate(content.splitlines()):
                 line = line.strip()
                 if line and line.startswith("-"):
-                    entry_lines.append(_fmt_entry(sigil, f"b{i+1}", {"condition": line.lstrip("- "), "action": "HALT_AND_REPORT"}))
+                    cond = _strip_attr_prefix(line.lstrip("- "), "condition")
+                    entry_lines.append(_fmt_entry(sigil, f"b{i+1}", {"condition": cond, "action": "HALT_AND_REPORT"}))
         if entry_lines:
             parts.append(_fmt_section(sec_num, title, entry_lines))
             sec_num += 1

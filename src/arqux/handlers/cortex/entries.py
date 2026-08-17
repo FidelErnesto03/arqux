@@ -12,8 +12,6 @@ from ...cortex.parse_content import parse_content_entry
 from ...cortex_out import CortexOUT
 from ...permissions import PermissionContext
 from ...state import (
-    _cc_parser,
-    _cc_transactions,
     crud_add,
     crud_delete,
     crud_list,
@@ -21,6 +19,10 @@ from ...state import (
     crud_read,
     crud_update,
 )
+# BLP-005: Use ArqUX's own atomic writer instead of CODEC-CORTEX transactions.
+from ...cortex.atomic import atomic_write_json, atomic_write_text
+from ...cortex.reader import cortex_to_dict
+from ...cortex.writer import write_cortex_from_json
 from .read_write import _next_number
 
 
@@ -335,6 +337,9 @@ def file_validate_handler(
     Groups entries by (section, sigil, name). When multiple entries share
     the same name in the same section, they are flagged as duplicates.
     With fix=true, duplicates are renamed with a _XXXX suffix.
+
+    BLP-005: Uses ArqUX's own reader + atomic_write_json instead of
+    CODEC-CORTEX transactions.
     """
 
     target = Path(path)
@@ -343,7 +348,7 @@ def file_validate_handler(
 
     try:
         text = target.read_text(encoding="utf-8")
-        doc = _cc_parser.parse_cortex(text, path=str(path))
+        doc = cortex_to_dict(text)
     except Exception as exc:
         return CortexOUT.error(str(exc), code="PARSE_ERROR")
 
@@ -351,15 +356,17 @@ def file_validate_handler(
         return _re.sub(r"_\d{4}$", "", n)
 
     groups: dict[tuple[str, str, str], list] = defaultdict(list)
-    for sec in doc.sections:
-        for entry in sec.entries or []:
-            base = _strip_suffix(entry.name)
-            groups[(sec.id, entry.sigil, base)].append({
-                "section": sec.id,
-                "sigil": entry.sigil,
-                "name": entry.name,
+    for sec in doc.get("sections", []):
+        sec_id = sec.get("id", "")
+        for entry in sec.get("entries", []):
+            entry_name = entry.get("name", "")
+            entry_sigil = entry.get("sigil", "")
+            base = _strip_suffix(entry_name)
+            groups[(sec_id, entry_sigil, base)].append({
+                "section": sec_id,
+                "sigil": entry_sigil,
+                "name": entry_name,
                 "base": base,
-                "entry": entry,
             })
 
     duplicates = {k: v for k, v in groups.items() if len(v) > 1}
@@ -388,17 +395,18 @@ def file_validate_handler(
             duplicates=report,
         )
 
+    # Apply renames in the dict model.
     for r in report:
-        for sec in doc.sections:
-            if sec.id != r["section"]:
+        for sec in doc.get("sections", []):
+            if sec.get("id") != r["section"]:
                 continue
-            for ent in sec.entries or []:
-                if ent.name == r["old_name"]:
-                    ent.name = r["new_name"]
+            for ent in sec.get("entries", []):
+                if ent.get("name") == r["old_name"]:
+                    ent["name"] = r["new_name"]
                     break
 
     try:
-        result = _cc_transactions.atomic_write_cortex(doc, str(target), force=True)
+        result = atomic_write_json(doc, str(target))
         return CortexOUT.work(
             f"file.validate ok — {len(report)} duplicate(s) renamed",
             path=path, fix=fix, total_duplicates=len(report),

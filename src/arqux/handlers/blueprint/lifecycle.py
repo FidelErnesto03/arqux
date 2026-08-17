@@ -216,6 +216,12 @@ def claim_blueprint(
         return CortexOUT.error(err, code="INVALID_STATE")
 
     caller = (ctx or PermissionContext.from_env(project_root=root)).agent_id
+    declared = fm.get("executor", "").strip()
+    # If blueprint declares an executor and caller is the governor, respect the declaration
+    if declared and declared != caller:
+        gov = fm.get("governor", "").strip().lower()
+        if gov == caller.lower():
+            caller = declared
     fm["status"] = BP_IN_PROGRESS
     fm["executor"] = caller
     fm["updated_at"] = _now_iso()

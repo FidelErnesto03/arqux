@@ -1,17 +1,18 @@
 # ruff: noqa: F401
 """State persistence and discovery helpers.
 
-The framework persists state via CODEC-CORTEX (`.cortex` + `.md`).
+The framework persists state via CORTEX (`.cortex` + `.md`).
 This module provides:
     - Workspace/project root discovery.
-    - A thin abstraction over CODEC-CORTEX for read/write/verify.
+    - A thin abstraction over CORTEX for read/write/verify.
     - Project brain operations: the single shared mind of a project.
     - Handoff and pulse operations: stored INSIDE the brain, not in separate files.
 
-CODEC-CORTEX is a REQUIRED dependency. If not installed, the framework will
-not start. The old YAML-frontmatter fallback is preserved for backward
-compatibility with existing `.arqux/` files produced by v1.0.0, but all NEW
-files are written in proper CODEC-CORTEX sigil format when available.
+Since v0.7.0 (CYCLE-11), ArqUX uses its own CORTEX writer, CRUD, and atomic
+write modules (arqux.cortex.writer, arqux.cortex.crud, arqux.cortex.atomic).
+CODEC-CORTEX is an OPTIONAL dependency used for parsing/reading and
+HCORTEX rendering. If not installed, the framework degrades gracefully
+using a built-in fallback parser.
 """
 
 from __future__ import annotations
@@ -60,10 +61,7 @@ try:
     import cortex.core.lexer as _cc_lexer
     import cortex.core.parser as _cc_parser
     import cortex.core.validator as _cc_validator
-    import cortex.core.writer as _cc_writer
-    import cortex.crud.mutations as _cc_mutations
     import cortex.crud.selectors as _cc_selectors
-    import cortex.crud.transactions as _cc_transactions
     import cortex.hcortex.read_renderer as _cc_renderer
 
     _HAS_CODEC_CORTEX = True
@@ -75,8 +73,15 @@ except ImportError:
     # runtime checks via requires_codec_cortex() still gate usage.
     _HAS_CODEC_CORTEX = False
     _codec_cortex = None
-    _cc_ast = _cc_lexer = _cc_parser = _cc_validator = _cc_writer = None
-    _cc_mutations = _cc_selectors = _cc_transactions = _cc_renderer = None
+    _cc_ast = _cc_lexer = _cc_parser = _cc_validator = None
+    _cc_selectors = _cc_renderer = None
+
+# BLP-005: These CODEC modules have been removed from ArqUX.
+# They are kept as None for backward-compatibility with any code
+# that still references them (e.g. state.py re-exports).
+_cc_writer = None
+_cc_mutations = None
+_cc_transactions = None
 
 # --- Import and re-export submodules ---------------------------------------
 

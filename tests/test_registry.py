@@ -14,9 +14,9 @@ from __future__ import annotations
 from arqux.handlers import REGISTRY, handler_count, list_handlers
 
 
-def test_handler_count_is_87() -> None:
-    """Total handler count is 87."""
-    assert handler_count() == 87
+def test_handler_count_is_88() -> None:
+    """Total handler count is 88 (BLP-002 added cortex.gc)."""
+    assert handler_count() == 88
 
 
 def test_handler_list_accepts_mcp_context() -> None:
@@ -74,7 +74,7 @@ def test_module_handler_counts() -> None:
     expected = {
         "blueprint": 15,  # simplified lifecycle (BLP-004/005)
         "context": 2,
-        "cortex": 20,
+        "cortex": 21,  # +1: cortex.gc (BLP-002)
         "cycle": 5,  # simplified lifecycle (BLP-003)
         "evidence": 3,
         "identity": 2,  # +1: identity.get

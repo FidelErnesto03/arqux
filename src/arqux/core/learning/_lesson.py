@@ -82,49 +82,45 @@ class LessonStore:
     def ensure_container(self) -> None:
         """Create the file with ARQX:artifact metadata if it does not exist.
 
-        Uses CortexDocument + write_cortex() from CODEC-CORTEX (BLP-042).
-        No write_text() bypass.
+        BLP-005: Uses ArqUX's own write_cortex_from_json() instead of
+        CODEC-CORTEX's write_cortex(). Falls back to string-based
+        creation when neither is available.
         """
         if self.path.exists():
             return
         self.path.parent.mkdir(parents=True, exist_ok=True)
 
-        if not _HAS_CLE:
-            # Degradación controlada si CODEC-CORTEX no está disponible.
-            body = (
-                "$0\n"
-                "GSIG:LNG:lesson|attrs|M|Episodic|Learned lesson or pattern\n\n"
-                "$1: LESSONS\n"
-            )
-            self.path.write_text(body, encoding="utf-8")
-            return
+        # BLP-005: Use ArqUX's own writer (always available).
+        from ...cortex.writer import write_cortex_from_json
 
-        from cortex.core.ast import CortexDocument, Entry, Section, SigilDef
-
-        doc = CortexDocument()
-        # $0 glossary
-        sec0 = Section(id="$0", title="")
-        doc.sections.append(sec0)
-        doc.glossary.add_sigil(SigilDef(
-            sigil="LNG", name="lesson", type="attrs",
-            risk="M", layer="Episodic",
-            description="Learned lesson or pattern",
-        ))
-        # $19: ARQUX METADATA
-        sec01 = Section(id="$19", title="ARQUX METADATA")
-        sec01.entries.append(Entry(
-            "$19", sigil="ARQX", name="artifact", type="attrs",
-            value={"level": 0, "name": f"{self.agent}-lessons",
-                   "usage": "lesson", "kind": "native", "agent": self.agent},
-        ))
-        doc.sections.append(sec01)
-        # $1: LESSONS
-        sec1 = Section(id="$1", title="LESSONS")
-        doc.sections.append(sec1)
-
-        from ._common import write_cortex
-
-        cortex_text = write_cortex(doc)
+        doc = {
+            "glossary": {
+                "header": "$0",
+                "comments": [
+                    "# LNG | lesson | attrs | M | Episodic | Learned lesson or pattern",
+                ],
+            },
+            "sections": [
+                {
+                    "id": "$19",
+                    "title": "ARQUX METADATA",
+                    "comments": [],
+                    "entries": [
+                        {"sigil": "ARQX", "name": "artifact", "attrs": {
+                            "level": 0, "name": f"{self.agent}-lessons",
+                            "usage": "lesson", "kind": "native", "agent": self.agent,
+                        }},
+                    ],
+                },
+                {
+                    "id": "$1",
+                    "title": "LESSONS",
+                    "comments": [],
+                    "entries": [],
+                },
+            ],
+        }
+        cortex_text = write_cortex_from_json(doc)
         self.path.write_text(cortex_text, encoding="utf-8")
 
     # --- Capture (BLP-038 §9 Captura) ---
