@@ -31,7 +31,7 @@ jobs:
         run: |
           uv venv
           uv pip install --upgrade pip
-          uv pip install -e ".[dev]"
+          uv pip install -e ".[dev,codec]"
 
       - name: Lint with ruff
         run: |

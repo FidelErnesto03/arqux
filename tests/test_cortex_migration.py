@@ -14,9 +14,9 @@ from arqux.cortex.crud import add_entry, delete_entry, select_entries, update_en
 from arqux.cortex.reader import cortex_to_dict
 from arqux.cortex.writer import write_cortex_from_json
 
-# Find all .cortex files
-ARQUX_ROOT = Path("/home/vatrox/workspace/ARQUX")
-IDENTITIES = Path("/home/vatrox/workspace/.arqux/identities")
+# Find all .cortex files — relative to repo root for CI portability
+ARQUX_ROOT = Path(__file__).resolve().parent.parent
+IDENTITIES = ARQUX_ROOT / ".arqux" / "identities"
 
 def _find_cortex_files():
     files = []
