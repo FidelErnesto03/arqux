@@ -8,7 +8,12 @@ from ...constants import (
 )
 from ...cortex_out import CortexOUT
 from ...permissions import PermissionContext
-from ._helpers import _find_blueprint, _read_blueprint, _resolve_root
+from ._helpers import (
+    _effective_status,
+    _find_blueprint,
+    _read_blueprint,
+    _resolve_root,
+)
 
 # ---------------------------------------------------------------------------
 # blueprint.read
@@ -73,10 +78,10 @@ def list_blueprints(
             fm, _ = _read_blueprint(bp_file)
             if fm is None:
                 continue
-            bp_status = fm.get("status", "")
+            bp_status = _effective_status(fm)
             if status and bp_status != status:
                 continue
-            all_bps.append({
+            entry = {
                 "id": fm.get("blueprint_id", bp_file.stem),
                 "title": fm.get("title", bp_file.stem),
                 "cycle": fm.get("cycle", cdir.name),
@@ -84,7 +89,11 @@ def list_blueprints(
                 "governor": fm.get("governor", ""),
                 "executor": fm.get("executor", ""),
                 "verification_loop": fm.get("verification_loop", 0),
-            })
+            }
+            raw_status = str(fm.get("status", "")).strip().lower()
+            if raw_status != bp_status:
+                entry["raw_status"] = raw_status
+            all_bps.append(entry)
 
     return CortexOUT.work(
         f"blueprints: {len(all_bps)}",

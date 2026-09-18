@@ -47,7 +47,7 @@ IDN:governor{level:"2", project:"ARQUX", path:"/home/vatrox/workspace/ARQUX", go
 
 $2: FOCUS
 
-FCS:current{what:"Próximo BLP o cierre de ciclo", priority:"medium", status:"current", survive:"work", updated:"2026-09-18T15:32:24Z", event:"blueprint.complete"}
+FCS:current{what:"Próximo BLP o cierre de ciclo", priority:"medium", status:"current", survive:"work", updated:"2026-09-18T16:15:03Z", event:"blueprint.complete"}
 
 
 $3: OBJECTIVES
@@ -853,6 +853,76 @@ obj obj="}
 
 AUD:E_0157{date:"2026-09-18T15:33:01Z", event:"E-0157", task:"-", kind:"checkpoint", agent:"alfred", result:"cortex.checkpoint ok fcs=BLP-004 CYCLE-12 cerrado status=done obj=6 defects handlers corregidos D-01..D-06", evidence:"cortex.checkpoint ok fcs=BLP-004 CYCLE-12 cerrado status=done obj=6 defects handlers corregidos D-01..D-06"}
 
+AUD:E_0157{date:"2026-09-18T15:57:30Z", event:"E-0157", task:"-", kind:"handler_call", agent:"alfred", result:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", evidence:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md"}
+
+AUD:E_0157{date:"2026-09-18T16:09:06Z", event:"E-0157", task:"-", kind:"handler_call", agent:"test", result:"[cortex.ref] sigil=WRK", evidence:"[cortex.ref] sigil=WRK"}
+
+AUD:E_0157{date:"2026-09-18T16:09:06Z", event:"E-0157", task:"-", kind:"handler_call", agent:"test", result:"[cortex.ref] sigil=LNG", evidence:"[cortex.ref] sigil=LNG"}
+
+AUD:E_0157{date:"2026-09-18T16:09:06Z", event:"E-0157", task:"-", kind:"handler_call", agent:"test", result:"[cortex.format] hcortex->cortex", evidence:"[cortex.format] hcortex->cortex"}
+
+AUD:E_0157{date:"2026-09-18T16:09:07Z", event:"E-0157", task:"-", kind:"handler_call", agent:"test", result:"[identity.get] agent_id=governor source=workspace", evidence:"[identity.get] agent_id=governor source=workspace"}
+
+AUD:E_0157{date:"2026-09-18T16:09:07Z", event:"E-0157", task:"-", kind:"handler_call", agent:"anonymous", result:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", evidence:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md"}
+
+AUD:E_0157{date:"2026-09-18T16:09:07Z", event:"E-0157", task:"-", kind:"handler_call", agent:"anonymous", result:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", evidence:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md"}
+
+AUD:E_0157{date:"2026-09-18T16:11:21Z", event:"E-0157", task:"-", kind:"handler_call", agent:"test", result:"[cortex.ref] sigil=WRK", evidence:"[cortex.ref] sigil=WRK"}
+
+AUD:E_0157{date:"2026-09-18T16:11:21Z", event:"E-0157", task:"-", kind:"handler_call", agent:"test", result:"[cortex.ref] sigil=LNG", evidence:"[cortex.ref] sigil=LNG"}
+
+AUD:E_0157{date:"2026-09-18T16:11:22Z", event:"E-0157", task:"-", kind:"handler_call", agent:"test", result:"[cortex.format] hcortex->cortex", evidence:"[cortex.format] hcortex->cortex"}
+
+AUD:E_0157{date:"2026-09-18T16:11:23Z", event:"E-0157", task:"-", kind:"handler_call", agent:"test", result:"[identity.get] agent_id=governor source=workspace", evidence:"[identity.get] agent_id=governor source=workspace"}
+
+AUD:E_0157{date:"2026-09-18T16:11:23Z", event:"E-0157", task:"-", kind:"handler_call", agent:"anonymous", result:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", evidence:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md"}
+
+AUD:E_0157{date:"2026-09-18T16:11:23Z", event:"E-0157", task:"-", kind:"handler_call", agent:"anonymous", result:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", evidence:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md"}
+
+AUD:E_0157{date:"2026-09-18T16:12:31Z", event:"E-0157", task:"T-1.1", kind:"blueprint_lifecycle", agent:"alfred", result:"[blueprint.task] task T-1.1 marked as completed — Auditoria del BLP 'defined' real (Banco Familiar CYCLE-001/BLP-003): executor vacio, quality_gates todas false, nunca claimed -> semantica=draft. 'closed' y 'closed_with_observations' tienen closed_at+executor -> done", evidence:"[blueprint.task] task T-1.1 marked as completed — Auditoria del BLP 'defined' real (Banco Familiar CYCLE-001/BLP-003): executor vacio, quality_gates todas false, nunca claimed -> semantica=draft. 'closed' y 'closed_with_observations' tienen closed_at+executor -> done"}
+
+AUD:E_0157{date:"2026-09-18T16:12:36Z", event:"E-0157", task:"T-1.2", kind:"blueprint_lifecycle", agent:"alfred", result:"[blueprint.task] task T-1.2 marked as completed — LEGACY_STATUS_MAP ampliado en _helpers.py: +defined->draft, closed->done, closed_with_observations->done", evidence:"[blueprint.task] task T-1.2 marked as completed — LEGACY_STATUS_MAP ampliado en _helpers.py: +defined->draft, closed->done, closed_with_observations->done"}
+
+AUD:E_0157{date:"2026-09-18T16:12:42Z", event:"E-0157", task:"T-1.3", kind:"blueprint_lifecycle", agent:"alfred", result:"[blueprint.task] task T-1.3 marked as completed — re_delegate usa _effective_status (review.py:226); blueprint.list filtra y reporta estado efectivo + campo raw_status cuando difiere (_read.py)", evidence:"[blueprint.task] task T-1.3 marked as completed — re_delegate usa _effective_status (review.py:226); blueprint.list filtra y reporta estado efectivo + campo raw_status cuando difiere (_read.py)"}
+
+AUD:E_0157{date:"2026-09-18T16:12:49Z", event:"E-0157", task:"T-1.4", kind:"blueprint_lifecycle", agent:"alfred", result:"[blueprint.task] task T-1.4 marked as completed — Barrido grep de fm.get(status) en handlers: lifecycle/complete pasan por _transition (normaliza interno); prior_status crudo = rastro de auditoria correcto; cycle.py lee status de CICLO (otro dominio); task.py = maquina de estados de tasks (otro dominio). Unicas correcciones reales: re_delegate + list", evidence:"[blueprint.task] task T-1.4 marked as completed — Barrido grep de fm.get(status) en handlers: lifecycle/complete pasan por _transition (normaliza interno); prior_status crudo = rastro de auditoria correcto; cycle.py lee status de CICLO (otro dominio); task.py = maquina de estados de tasks (otro dominio). Unicas correcciones reales: re_delegate + list"}
+
+AUD:E_0157{date:"2026-09-18T16:12:55Z", event:"E-0157", task:"T-1.5", kind:"blueprint_lifecycle", agent:"alfred", result:"[blueprint.task] task T-1.5 marked as completed — Defecto real reproducido: _MARKER_IN_BODY matcheaba identificadores SNAKE_CASE (LEGACY_STATUS_MAP->_STATUS_, _DRAFT} + _). Fix: word-boundaries en sequencer.py. Tests test_sequencer_ignores_snake_case_identifiers + test_sequencer_still_detects_real_placeholders verdes", evidence:"[blueprint.task] task T-1.5 marked as completed — Defecto real reproducido: _MARKER_IN_BODY matcheaba identificadores SNAKE_CASE (LEGACY_STATUS_MAP->_STATUS_, _DRAFT} + _). Fix: word-boundaries en sequencer.py. Tests test_sequencer_ignores_snake_case_identifiers + test_sequencer_still_detects_real_placeholders verdes"}
+
+AUD:E_0157{date:"2026-09-18T16:13:02Z", event:"E-0157", task:"T-1.6", kind:"blueprint_lifecycle", agent:"alfred", result:"[blueprint.task] task T-1.6 marked as completed — Inspeccion de update_blueprint/task_blueprint/Updater: ningun emisor de warnings existe — el warning falso de FAMILIAR era la salida sections_pending del mismo Sequencer (misma causa raiz que sintoma a, resuelto por el mismo fix)", evidence:"[blueprint.task] task T-1.6 marked as completed — Inspeccion de update_blueprint/task_blueprint/Updater: ningun emisor de warnings existe — el warning falso de FAMILIAR era la salida sections_pending del mismo Sequencer (misma causa raiz que sintoma a, resuelto por el mismo fix)"}
+
+AUD:E_0157{date:"2026-09-18T16:13:16Z", event:"E-0157", task:"T-1.7", kind:"blueprint_lifecycle", agent:"alfred", result:"[blueprint.task] task T-1.7 marked as completed — Defecto real: split solo por ',' truncaba campos silenciosamente. Fix: split por , y newline (valores son single-line por formato); ';' deliberadamente NO es separador (valores pueden contenerlo) — glued keys ahora emiten hint con el formato esperado. 3 tests verdes", evidence:"[blueprint.task] task T-1.7 marked as completed — Defecto real: split solo por ',' truncaba campos silenciosamente. Fix: split por , y newline (valores son single-line por formato); ';' deliberadamente NO es separador (valores pueden contenerlo) — glued keys ahora emiten hint con el formato esperado. 3 tests verdes"}
+
+AUD:E_0157{date:"2026-09-18T16:13:22Z", event:"E-0157", task:"T-1.8", kind:"blueprint_lifecycle", agent:"alfred", result:"[blueprint.task] task T-1.8 marked as completed — tests/test_blp005_legacy_status_map.py — 14 tests: mapeos, terminal guard sobre closed, lifecycle defined, re_delegate desde closed, list effective+raw_status, sequencer phantom/placeholders, checkpoint separadores+hint", evidence:"[blueprint.task] task T-1.8 marked as completed — tests/test_blp005_legacy_status_map.py — 14 tests: mapeos, terminal guard sobre closed, lifecycle defined, re_delegate desde closed, list effective+raw_status, sequencer phantom/placeholders, checkpoint separadores+hint"}
+
+AUD:E_0157{date:"2026-09-18T16:13:27Z", event:"E-0157", task:"T-1.9", kind:"blueprint_lifecycle", agent:"alfred", result:"[blueprint.task] task T-1.9 marked as completed — Suite: 1344 passed 14 skipped 0 fail. Sonda read-only sobre los 8 BLPs reales: ENVX_MCP 7 BLPs (6 closed + 1 closed_with_observations) listan como done con raw_status; Banco Familiar BLP-003 defined lista como draft", evidence:"[blueprint.task] task T-1.9 marked as completed — Suite: 1344 passed 14 skipped 0 fail. Sonda read-only sobre los 8 BLPs reales: ENVX_MCP 7 BLPs (6 closed + 1 closed_with_observations) listan como done con raw_status; Banco Familiar BLP-003 defined lista como draft"}
+
+AUD:E_0157{date:"2026-09-18T16:13:37Z", event:"E-0157", task:"BLP-005", kind:"blueprint_lifecycle", agent:"alfred", result:"[blueprint.ac] AC AC-01 verified — test_closed_maps_to_done + test_fail_rejects_closed_blueprint verdes: closed->done efectivo y fail rechaza como terminal", evidence:"[blueprint.ac] AC AC-01 verified — test_closed_maps_to_done + test_fail_rejects_closed_blueprint verdes: closed->done efectivo y fail rechaza como terminal"}
+
+AUD:E_0157{date:"2026-09-18T16:13:42Z", event:"E-0157", task:"BLP-005", kind:"blueprint_lifecycle", agent:"alfred", result:"[blueprint.ac] AC AC-02 verified — test_closed_with_observations_maps_to_done verde", evidence:"[blueprint.ac] AC AC-02 verified — test_closed_with_observations_maps_to_done verde"}
+
+AUD:E_0157{date:"2026-09-18T16:13:46Z", event:"E-0157", task:"BLP-005", kind:"blueprint_lifecycle", agent:"alfred", result:"[blueprint.ac] AC AC-03 verified — test_defined_maps_to_draft + test_defined_can_ready_and_claim verdes; mapeo draft decidido con evidencia del BLP real (executor vacio, gates false)", evidence:"[blueprint.ac] AC AC-03 verified — test_defined_maps_to_draft + test_defined_can_ready_and_claim verdes; mapeo draft decidido con evidencia del BLP real (executor vacio, gates false)"}
+
+AUD:E_0157{date:"2026-09-18T16:13:50Z", event:"E-0157", task:"BLP-005", kind:"blueprint_lifecycle", agent:"alfred", result:"[blueprint.ac] AC AC-04 verified — test_re_delegate_from_closed_works verde: closed->in_progress via re_delegate usando estado efectivo", evidence:"[blueprint.ac] AC AC-04 verified — test_re_delegate_from_closed_works verde: closed->in_progress via re_delegate usando estado efectivo"}
+
+AUD:E_0157{date:"2026-09-18T16:13:58Z", event:"E-0157", task:"BLP-005", kind:"blueprint_lifecycle", agent:"alfred", result:"[blueprint.ac] AC AC-05 verified — Barrido grep documentado en T-1.4: unicas lecturas crudas restantes son prior_status (auditoria intencional), status de ciclo y status de task (dominios distintos)", evidence:"[blueprint.ac] AC AC-05 verified — Barrido grep documentado en T-1.4: unicas lecturas crudas restantes son prior_status (auditoria intencional), status de ciclo y status de task (dominios distintos)"}
+
+AUD:E_0157{date:"2026-09-18T16:14:03Z", event:"E-0157", task:"BLP-005", kind:"blueprint_lifecycle", agent:"alfred", result:"[blueprint.ac] AC AC-06 verified — Defecto real: _MARKER_IN_BODY matcheaba SNAKE_CASE. Fix word-boundaries + 2 tests verdes (phantom ignorado, placeholders detectados)", evidence:"[blueprint.ac] AC AC-06 verified — Defecto real: _MARKER_IN_BODY matcheaba SNAKE_CASE. Fix word-boundaries + 2 tests verdes (phantom ignorado, placeholders detectados)"}
+
+AUD:E_0157{date:"2026-09-18T16:14:07Z", event:"E-0157", task:"BLP-005", kind:"blueprint_lifecycle", agent:"alfred", result:"[blueprint.ac] AC AC-07 verified — Inspeccion de codigo: ningun emisor de warnings en update/task/Updater — el warning falso era sections_pending del mismo Sequencer (misma causa raiz que AC-06, mismo fix)", evidence:"[blueprint.ac] AC AC-07 verified — Inspeccion de codigo: ningun emisor de warnings en update/task/Updater — el warning falso era sections_pending del mismo Sequencer (misma causa raiz que AC-06, mismo fix)"}
+
+AUD:E_0157{date:"2026-09-18T16:14:12Z", event:"E-0157", task:"BLP-005", kind:"blueprint_lifecycle", agent:"alfred", result:"[blueprint.ac] AC AC-08 verified — Split por , y newline; ';' no es separador (valores pueden contenerlo) — glued keys emiten hint con formato esperado. 3 tests verdes incl. test_checkpoint_semicolon_warns_instead_of_silent_truncation", evidence:"[blueprint.ac] AC AC-08 verified — Split por , y newline; ';' no es separador (valores pueden contenerlo) — glued keys emiten hint con formato esperado. 3 tests verdes incl. test_checkpoint_semicolon_warns_instead_of_silent_truncation"}
+
+AUD:E_0157{date:"2026-09-18T16:14:15Z", event:"E-0157", task:"BLP-005", kind:"blueprint_lifecycle", agent:"alfred", result:"[blueprint.ac] AC AC-09 verified — 1344 passed 14 skipped 0 fail en suite completa (baseline 1330 + 14 nuevos)", evidence:"[blueprint.ac] AC AC-09 verified — 1344 passed 14 skipped 0 fail en suite completa (baseline 1330 + 14 nuevos)"}
+
+AUD:E_0157{date:"2026-09-18T16:14:34Z", event:"E-0157", task:"BLP-005", kind:"blueprint_lifecycle", agent:"alfred", result:"[blueprint.ac] AC AC-10 verified — Sonda read-only list_blueprints: ENVX_MCP 7 BLPs legados (closed x6 + closed_with_observations x1) -> status=done con raw_status; Banco Familiar BLP-003 defined -> draft. Sin mutaciones a gobernanza ajena", evidence:"[blueprint.ac] AC AC-10 verified — Sonda read-only list_blueprints: ENVX_MCP 7 BLPs legados (closed x6 + closed_with_observations x1) -> status=done con raw_status; Banco Familiar BLP-003 defined -> draft. Sin mutaciones a gobernanza ajena"}
+
+AUD:E_0157{date:"2026-09-18T16:15:03Z", event:"E-0157", task:"BLP-005", kind:"blueprint_lifecycle", agent:"alfred", result:"[blueprint.complete] BLP BLP-005 completed — 9/9 tareas, 10/10 ACs verificados. LEGACY_STATUS_MAP completo (closed/closed_with_observations->done, defined->draft), re_delegate+list con estado efectivo, sequencer word-boundaries, checkpoint loud en separador incorrecto. Suite 1344 passed. Sonda read-only sobre 8 BLPs legados reales OK.", evidence:"[blueprint.complete] BLP BLP-005 completed — 9/9 tareas, 10/10 ACs verificados. LEGACY_STATUS_MAP completo (closed/closed_with_observations->done, defined->draft), re_delegate+list con estado efectivo, sequencer word-boundaries, checkpoint loud en separador incorrecto. Suite 1344 passed. Sonda read-only sobre 8 BLPs legados reales OK."}
+
+KNW:blueprints_done{name:"blueprints_done", value:"1", updated:"2026-09-18T16:15:03Z", topic:"metrics", content:"metric blueprints_done=1", status:"current"}
+
+AUD:E_0157{date:"2026-09-18T16:15:14Z", event:"E-0157", task:"-", kind:"checkpoint", agent:"alfred", result:"cortex.checkpoint ok fcs=BLP-005 CYCLE-12 cerrado status=done obj=normalizacion legados completa - closed/", evidence:"cortex.checkpoint ok fcs=BLP-005 CYCLE-12 cerrado status=done obj=normalizacion legados completa - closed/"}
+
 
 $7: LESSONS
 
@@ -1245,7 +1315,7 @@ LNG:blueprint_update_title_frontmatter_gap_0002{
 
 $8: ACTIVE_CONTEXT
 
-WRK:current{phase:"current", current:"blueprint.complete: BLP BLP-004 completed and approved", blocked:"no", survive:"work", updated:"2026-09-18T15:32:24Z", event:"blueprint.complete", fcs:"BLP-004 CYCLE-12 cerrado status=done", obj:"6 defects handlers corregidos D-01..D-06 (status legado pending + ACs tabla + _section \\xdf->§ + execute persiste + guard terminales)", tasks:"verificar AC-10 FAMILIAR ~12:38 PY en /tmp/blp004_ac10_monitor.log luego evaluar cierre CYCLE-12", state:"suite 1330 passed 14 skipped 0 fail - 10 tasks done - 12 ACs verified - LNG registrada en alfred.cortex", last_turn:"2026-09-18T15:33:01Z"}
+WRK:current{phase:"current", current:"blueprint.complete: BLP BLP-005 completed and approved", blocked:"no", survive:"work", updated:"2026-09-18T16:15:03Z", event:"blueprint.complete", fcs:"BLP-005 CYCLE-12 cerrado status=done", obj:"normalizacion legados completa - closed/closed_with_observations/defined mapeados + re_delegate/list efectivo + sequencer word-boundaries + checkpoint loud", tasks:"reinstalar tool y restart MCP para deploy runtime; pendiente decidir cierre CYCLE-11/12", state:"suite 1344 passed - 9 tasks - 10 ACs - LNG en alfred.cortex - sonda 8 BLPs legados OK", last_turn:"2026-09-18T16:15:13Z"}
 
 
 $9: RISKS

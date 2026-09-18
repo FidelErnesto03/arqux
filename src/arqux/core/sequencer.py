@@ -55,7 +55,11 @@ class Sequencer:
             print(f"Next: §{result.next_pending.id}")
     """
 
-    _MARKER_IN_BODY: ClassVar[re.Pattern] = re.compile(r"_([A-Z][^_]{3,}?)_")
+    # Word boundaries prevent matching inside SNAKE_CASE identifiers
+    # (e.g. LEGACY_STATUS_MAP would otherwise yield a phantom _STATUS_).
+    _MARKER_IN_BODY: ClassVar[re.Pattern] = re.compile(
+        r"(?<![A-Za-z0-9_])_([A-Z][^_]{3,}?)_(?![A-Za-z0-9_])"
+    )
     _HEADER_RE: ClassVar[re.Pattern] = re.compile(r"## §\d+: .*")
 
     def __init__(self, type: str = "BLP") -> None:  # noqa: A002

@@ -61,6 +61,9 @@ TERMINAL_STATES = (BP_DONE, BP_CANCELLED)
 # Normalized in memory only; the canonical state is persisted on next write.
 LEGACY_STATUS_MAP = {
     "pending": BP_DRAFT,
+    "defined": BP_DRAFT,
+    "closed": BP_DONE,
+    "closed_with_observations": BP_DONE,
 }
 
 

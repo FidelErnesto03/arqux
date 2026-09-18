@@ -223,7 +223,7 @@ def re_delegate_blueprint(
     if bp_path is None:
         return CortexOUT.error(f"blueprint {bp_id} not found", code="NOT_FOUND")
 
-    valid_from = fm.get("status", BP_DRAFT)
+    valid_from = _effective_status(fm)
     if valid_from not in (BP_DONE, BP_BLOCKED):
         return CortexOUT.error(
             f"Blueprint is {valid_from} — must be done or blocked to re-delegate",
