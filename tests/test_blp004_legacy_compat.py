@@ -15,11 +15,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
-
 from arqux.handlers.blueprint._helpers import (
     BP_DRAFT,
-    LEGACY_STATUS_MAP,
     _effective_status,
     _find_ac,
     _mark_table_ac,
