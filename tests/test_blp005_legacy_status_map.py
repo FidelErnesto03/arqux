@@ -20,8 +20,6 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
-
 from arqux.core.sequencer import Sequencer
 from arqux.handlers.blueprint._helpers import (
     BP_DONE,

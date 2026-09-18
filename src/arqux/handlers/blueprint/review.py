@@ -5,8 +5,6 @@ complete, ac, re_delegate, block_for_architect, fail, cancel
 
 from __future__ import annotations
 
-import re
-
 from ...cortex_out import CortexOUT
 from ...permissions import PermissionContext
 from ...sync import reconcile_cycle, sync_brain
