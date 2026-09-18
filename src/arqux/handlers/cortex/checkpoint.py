@@ -9,6 +9,7 @@ Format:  WRK:current{fcs:, obj:, tasks:, state:, last_turn:}
 
 from __future__ import annotations
 
+import re
 from pathlib import Path
 
 from ...cortex_out import CortexOUT
@@ -52,14 +53,22 @@ def checkpoint_handler(
             body = body[:-1]
     body = body.strip()
 
-    # Parse key:value pairs
+    # Parse key:value pairs — ',' or newline separators only.
+    # ';' is NOT a separator: values may legitimately contain it;
+    # glued keys are caught by the hint below instead.
     parts: dict[str, str] = {}
-    for pair in body.split(","):
+    for pair in re.split(r"[,\n]", body):
         pair = pair.strip()
         if ":" not in pair:
             continue
         k, _, v = pair.partition(":")
         parts[k.strip()] = v.strip()
+
+    # Detect glued known keys left inside values (e.g. wrong separator)
+    glued = [
+        k for k in ("fcs", "obj", "tasks", "state", "last_turn")
+        if k not in parts and re.search(rf"\b{k}\s*:", body)
+    ]
 
     now = _now_iso()
     value = {
@@ -96,13 +105,18 @@ def checkpoint_handler(
     except Exception:
         pass
 
-    return CortexOUT.work(
-        "cortex.checkpoint ok",
-        fcs=value["fcs"][:60],
-        obj=value["obj"][:60],
-        tasks=value["tasks"][:60],
-        state=value["state"],
-    )
+    fields = {
+        "fcs": value["fcs"][:60],
+        "obj": value["obj"][:60],
+        "tasks": value["tasks"][:60],
+        "state": value["state"],
+    }
+    if glued:
+        fields["hint"] = (
+            f"unparsed key(s) {glued} — expected format "
+            "fcs:...,obj:...,tasks:...,state:... (separators: ',' ';' newline)"
+        )
+    return CortexOUT.work("cortex.checkpoint ok", **fields)
 
 
 def _write_wrk_entry(brain_path: Path, value: dict[str, str]) -> None:
