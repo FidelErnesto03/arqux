@@ -13,6 +13,7 @@ Thanks for your interest in contributing to ArqUX! This document provides guidel
 git clone https://github.com/FidelErnesto03/arqux.git
 cd arqux
 pip install -e ".[dev]"
+pre-commit install  # Enable the ruff pre-commit hook (mirrors CI)
 ```
 
 ### Verify Installation

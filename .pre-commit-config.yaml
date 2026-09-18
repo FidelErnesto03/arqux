@@ -1,0 +1,9 @@
+repos:
+  - repo: local
+    hooks:
+      - id: ruff-check
+        name: ruff check (mirrors CI)
+        entry: uv run ruff check --fix src/ tests/
+        language: system
+        types: [python]
+        pass_filenames: false
