@@ -54,6 +54,26 @@ VALID_TRANSITIONS = {
     BP_CANCELLED: [],
 }
 
+# Terminal states cannot be force-overwritten by fail/cancel/block (BLP-004 D-06)
+TERMINAL_STATES = (BP_DONE, BP_CANCELLED)
+
+# Legacy frontmatter status values written by pre-state-machine versions.
+# Normalized in memory only; the canonical state is persisted on next write.
+LEGACY_STATUS_MAP = {
+    "pending": BP_DRAFT,
+}
+
+
+def _effective_status(fm: dict[str, Any]) -> str:
+    """Return the canonical status for a blueprint frontmatter dict.
+
+    Legacy BLPs may carry status values outside VALID_TRANSITIONS
+    (e.g. "pending"). Mapped values are returned canonical; unknown
+    unmapped values are returned raw so callers fail loudly.
+    """
+    raw = str(fm.get("status", "")).strip().lower()
+    return LEGACY_STATUS_MAP.get(raw, raw)
+
 
 # ---------------------------------------------------------------------------
 # Generic helpers
@@ -96,7 +116,8 @@ def next_blueprint_id_safe(bp_dir: Path) -> str:
 
 def _transition(bp_id: str, from_state: str, to_state: str) -> str | None:
     """Validate transition. Returns error message or None if valid."""
-    if to_state not in VALID_TRANSITIONS.get(from_state, []):
+    effective = LEGACY_STATUS_MAP.get(from_state, from_state)
+    if to_state not in VALID_TRANSITIONS.get(effective, []):
         return f"invalid transition: {from_state} \u2192 {to_state}"
     return None
 
@@ -168,17 +189,41 @@ def scan_markers(text: str) -> list[str]:
 # ---------------------------------------------------------------------------
 
 
-def _find_blueprint(root: Path, bp_id: str, *, path_hint: str | None = None) -> tuple[Path | None, dict[str, Any] | None, str | None]:
+def _split_qualified_bp_id(bp_id: str, cycle: str | None = None) -> tuple[str, str | None]:
+    """Return the plain blueprint ID and an optional cycle qualifier."""
+    if "/" in bp_id:
+        qualified_cycle, plain_id = bp_id.split("/", 1)
+        if qualified_cycle and plain_id:
+            return plain_id, qualified_cycle
+    return bp_id, cycle
+
+
+def _find_blueprint(
+    root: Path,
+    bp_id: str,
+    *,
+    cycle: str | None = None,
+    path_hint: str | None = None,
+) -> tuple[Path | None, dict[str, Any] | None, str | None]:
     """Find a Blueprint by ID. Respects path_hint (explicit path) first,
     then active cycle, then falls back to global search.
 
     Returns (path, fm, body).
     """
+    bp_id, cycle = _split_qualified_bp_id(bp_id, cycle)
     cycles_base = root / CYCLES_DIR
     if not cycles_base.exists():
         return None, None, None
 
-    # 1. Explicit path hint
+    if cycle:
+        bp_path = cycles_base / cycle / BLUEPRINTS_DIR / f"{bp_id}.md"
+        if bp_path.exists():
+            result = _read_blueprint(bp_path)
+            if result:
+                return bp_path, result[0], result[1]
+        return None, None, None
+
+    # 2. Explicit path hint
     if path_hint:
         bp_path = _resolve_blueprint_path(root, bp_id, path_hint=path_hint)
         if bp_path and bp_path.exists():
@@ -187,7 +232,7 @@ def _find_blueprint(root: Path, bp_id: str, *, path_hint: str | None = None) -> 
                 return bp_path, result[0], result[1]
         return None, None, None
 
-    # 2. Active cycle
+    # 3. Active cycle
     from ...state import crud_read
     try:
         # find_project_root returns the .arqux dir; keep legacy fallback for
@@ -208,7 +253,7 @@ def _find_blueprint(root: Path, bp_id: str, *, path_hint: str | None = None) -> 
     except Exception:
         pass
 
-    # 3. Fallback: global search (most recent cycle first)
+    # 4. Fallback: global search (most recent cycle first)
     for cdir in sorted(cycles_base.iterdir(), reverse=True):
         bp_path = cdir / BLUEPRINTS_DIR / f"{bp_id}.md"
         if bp_path.exists():
@@ -266,8 +311,41 @@ def _read_quality_gates(fm: dict[str, Any]) -> dict[str, bool] | None:
 
 
 def _section(body: str, number: int) -> str:
-    match = re.search(rf"## \xdf{number}:.*?(?=\n## \xdf\d+:|$)", body, flags=re.DOTALL)
+    # BLP-004 D-05: previously used \xdf (ß, U+00DF) which never matched the
+    # real § (U+00A7) section marker — leaving completion gates dead.
+    match = re.search(rf"## §{number}:.*?(?=\n## §\d+:|$)", body, flags=re.DOTALL)
     return match.group(0) if match else ""
+
+
+def _find_ac(body: str, ac_id: str) -> tuple[str, str] | None:
+    """Locate an acceptance-criterion line by ID (BLP-004 D-02).
+
+    Supports canonical checkbox items (``- [ ] **AC-01:** ...``) and legacy
+    table rows (``| AC-01 | desc | ... | status |``). Returns
+    ``(line, format)`` where format is ``"checkbox"`` or ``"table"``,
+    or ``None`` when the AC is not present in either format.
+    """
+    esc = re.escape(ac_id)
+    m = re.search(rf"^(- \[[ ~x]\] \*\*{esc}:\*\* .+)$", body, re.MULTILINE)
+    if m:
+        return m.group(1), "checkbox"
+    m = re.search(rf"^(\|\s*{esc}\s*\|[^\n]+)$", body, re.MULTILINE)
+    if m:
+        return m.group(1), "table"
+    return None
+
+
+def _mark_table_ac(line: str, status: str) -> str | None:
+    """Rewrite the last cell of a legacy AC table row to ``status``.
+
+    Returns the rewritten row, or None if the row has fewer than 3 cells
+    (cannot safely identify the status column).
+    """
+    cells = [c.strip() for c in line.strip().strip("|").split("|")]
+    if len(cells) < 3:
+        return None
+    cells[-1] = status
+    return "| " + " | ".join(cells) + " |"
 
 
 def _unchecked_items(body: str, section_number: int, prefix: str) -> list[str]:

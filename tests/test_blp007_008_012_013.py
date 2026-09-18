@@ -273,7 +273,9 @@ def test_bootstrap_identity_loaded(tmp_path: Path) -> None:
     """bootstrap loads identity content from packaged identities."""
     proj_root = _bootstrap_env(tmp_path)
 
-    result = bootstrap(path=str(proj_root), agent_id="alfred", ctx=_CONTEXT)
+    # Explicit identity selectors must match the authenticated context (BLP-002).
+    alfred_ctx = PermissionContext(agent_id="alfred", role="governor")
+    result = bootstrap(path=str(proj_root), agent_id="alfred", ctx=alfred_ctx)
     assert result.profile == "OUT-WORK"
     cortex_ctx = result.fields.get("cortex_context", {})
     assert cortex_ctx.get("identity", "") != ""

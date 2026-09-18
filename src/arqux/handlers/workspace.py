@@ -152,7 +152,7 @@ def status(verbose: bool = False, dashboard: bool = False, path: str | None = No
     """Workspace status. Returns projects, cycles count, governor."""
     if dashboard:
         from ..dashboard import build_dashboard
-        return build_dashboard(path=path)
+        return build_dashboard(path=path, fmt="hcortex")
 
     root = find_workspace_root(start=path)
     if root is None:

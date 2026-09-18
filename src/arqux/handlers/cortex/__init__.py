@@ -230,7 +230,7 @@ handler_schemas = [
     {
         "name": "identity.record",
         "fn": record_lesson_handler,
-        "description": "Record a behavioral lesson into the agent's identity file.",
+        "description": "Record a behavioral lesson into the authenticated agent's identity file; explicit agent_id must match the caller (BLP-002).",
         "input_schema": {
             "type": "object",
             "properties": {

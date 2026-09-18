@@ -321,14 +321,22 @@ def test_blueprint_execute_dry_run(tmp_path: Path) -> None:
     )
     assert result.profile == "OUT-WORK"
     assert result.fields.get("dry_run") is True
-    assert result.fields.get("outcome") == "complete"
+    # BLP-004 D-04: dry_run reports parsed items, never claims completion.
+    assert result.fields.get("outcome") == "dry_run"
 
 
 def test_blueprint_execute_executes(tmp_path: Path) -> None:
-    """blueprint.execute without dry_run runs the BLP."""
+    """blueprint.execute without dry_run runs the BLP (in_progress → done)."""
     proj_root = _bootstrap_env(tmp_path)
     create_result = create_blueprint(obj="Test BLP", path=str(proj_root), ctx=_CONTEXT)
     bp_id = create_result.fields["blueprint_id"]
+
+    # BLP-004 D-04: real execute validates the state transition — a draft
+    # blueprint cannot jump to done; it must be claimed first.
+    from arqux.handlers.blueprint.lifecycle import claim_blueprint, ready_blueprint
+
+    ready_blueprint(bp_id, path=str(proj_root), ctx=_CONTEXT)
+    claim_blueprint(bp_id, path=str(proj_root), ctx=_CONTEXT)
 
     result = execute_blueprint(
         bp_id=bp_id,

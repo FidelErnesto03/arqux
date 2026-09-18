@@ -12,6 +12,7 @@ from ...permissions import PermissionContext
 from ._helpers import (
     BP_DONE,
     BP_IN_PROGRESS,
+    _effective_status,
     _find_blueprint,
     _now_iso,
     _record_bp_evidence,
@@ -60,6 +61,7 @@ def update_blueprint(
     content: str | None = None,
     puml: str | None = None,
     path: str | None = None,
+    cycle: str | None = None,
     ctx: PermissionContext | None = None,
 ) -> CortexOUT:
     """Update Blueprint progress (note) or refine a single section."""
@@ -67,7 +69,7 @@ def update_blueprint(
     if root is None:
         return CortexOUT.error("no project initialized", code="NOT_FOUND")
 
-    bp_path, fm, body = _find_blueprint(root, bp_id)
+    bp_path, fm, body = _find_blueprint(root, bp_id, cycle=cycle)
     if bp_path is None:
         return CortexOUT.error(f"blueprint {bp_id} not found", code="NOT_FOUND")
     assert body is not None  # _find_blueprint guarantees body on success
@@ -194,7 +196,7 @@ def task_blueprint(
     if bp_path is None:
         return CortexOUT.error(f"blueprint {bp_id} not found", code="NOT_FOUND")
 
-    if fm.get("status") not in (BP_IN_PROGRESS, BP_DONE):
+    if _effective_status(fm) not in (BP_IN_PROGRESS, BP_DONE):
         return CortexOUT.error(
             f"blueprint is {fm.get('status')} — must be in_progress to update tasks",
             code="INVALID_STATE",

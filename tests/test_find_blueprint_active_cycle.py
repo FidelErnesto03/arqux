@@ -95,3 +95,27 @@ def test_fallback_newest_without_cycle_hint(tmp_path: Path):
     bp_path, fm, _ = _find_blueprint(arqx, "BLP-001")
     assert bp_path is not None
     assert "CYCLE-03" in str(bp_path)
+
+
+def test_explicit_cycle_qualifier_wins_over_active_cycle(tmp_path: Path):
+    arqx = _make_project(tmp_path, "CYCLE-02")
+    bp_path, fm, _ = _find_blueprint(arqx, "BLP-001", cycle="CYCLE-03")
+    assert bp_path is not None
+    assert "CYCLE-03" in str(bp_path)
+    assert fm["title"] == "newer-cycle-blp"
+
+
+def test_qualified_bp_id_selects_requested_cycle(tmp_path: Path):
+    arqx = _make_project(tmp_path, "CYCLE-03")
+    bp_path, fm, _ = _find_blueprint(arqx, "CYCLE-02/BLP-001")
+    assert bp_path is not None
+    assert "CYCLE-02" in str(bp_path)
+    assert fm["title"] == "older-cycle-blp"
+
+
+def test_explicit_cycle_missing_returns_not_found(tmp_path: Path):
+    arqx = _make_project(tmp_path, "CYCLE-02")
+    bp_path, fm, body = _find_blueprint(arqx, "BLP-001", cycle="CYCLE-99")
+    assert bp_path is None
+    assert fm is None
+    assert body is None

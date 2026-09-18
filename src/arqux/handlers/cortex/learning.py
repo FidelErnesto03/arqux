@@ -19,15 +19,22 @@ def record_lesson_handler(
     path: str | None = None, ctx: PermissionContext | None = None,
 ) -> CortexOUT:
     """Record a behavioral lesson into agent identity with HMAC verification."""
-    enforce_ctx(ctx, "identity.record", require_hmac=os.environ.get("ARQUX_STRICT_SECURITY") == "1")
-    if agent_id and ctx and agent_id != ctx.agent_id:
-        return CortexOUT.error("PERMISSION_DENIED", code="FORBIDDEN")
+    authenticated = enforce_ctx(
+        ctx, "identity.record",
+        require_hmac=os.environ.get("ARQUX_STRICT_SECURITY") == "1",
+    )
+    canonical_agent = authenticated.agent_id.casefold()
+    if agent_id and agent_id.casefold() != canonical_agent:
+        return CortexOUT.error(
+            f"requested agent_id={agent_id!r} does not match authenticated agent={authenticated.agent_id!r}",
+            code="IDENTITY_MISMATCH",
+        )
     return record_lesson_handler_legacy(
         lesson=lesson,
         kind=kind or "behavioral",
         cause=cause or "",
         prevention=prevention or "",
-        agent_id=agent_id or (ctx.agent_id if ctx else "alfred"),
+        agent_id=authenticated.agent_id,
         path=path or "",
         ctx=ctx,
     )
@@ -52,7 +59,7 @@ def record_lesson_handler_legacy(
 
     BLP-042: prevention is REQUIRED. No fallback bypass.
     """
-    agent = agent_id or (ctx.agent_id if ctx else "alfred")
+    agent = (agent_id or (ctx.agent_id if ctx else "alfred")).casefold()
     target_path = Path(path or ".").resolve()
 
     identity_file = None

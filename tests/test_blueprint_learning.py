@@ -128,6 +128,9 @@ def test_blueprint_complete_requires_evidence(workspace_root: Path, governor_ctx
     """Complete blueprint requires evidence to pass."""
     project_dir, bp_path = _setup_blueprint(workspace_root, governor_ctx)
     _set_frontmatter_status(bp_path, "in_progress")
+    # BLP-004 D-05: the EXECUTION_INCOMPLETE gate is alive — §14 tasks must
+    # be checked before complete succeeds.
+    _mark_all_acceptance_criteria(bp_path)
 
     cwd = os.getcwd()
     try:

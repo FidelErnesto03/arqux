@@ -49,13 +49,14 @@ def get_handler(
     """
     if agent_id is None or not agent_id:
         agent_id = DEFAULT_AGENT
+    canonical_agent_id = agent_id.casefold()
 
     start = Path(path or os.getcwd()).resolve()
 
     # 1. Project identities.
     project_arqux = find_project_root(start=start)
     if project_arqux is not None:
-        candidate = project_arqux / "identities" / f"{agent_id}.cortex"
+        candidate = project_arqux / "identities" / f"{canonical_agent_id}.cortex"
         if candidate.exists():
             return _emit(
                 agent_id,
@@ -68,7 +69,7 @@ def get_handler(
     # 2. Workspace identities.
     workspace_arqux = find_workspace_root(start=start)
     if workspace_arqux is not None:
-        candidate = workspace_arqux / "identities" / f"{agent_id}.cortex"
+        candidate = workspace_arqux / "identities" / f"{canonical_agent_id}.cortex"
         if candidate.exists():
             return _emit(
                 agent_id,
@@ -79,7 +80,7 @@ def get_handler(
             )
 
     # 3. Packaged identities.
-    candidate = IDENTITIES_DIR / f"{agent_id}.cortex"
+    candidate = IDENTITIES_DIR / f"{canonical_agent_id}.cortex"
     if candidate.exists():
         return _emit(
             agent_id,
