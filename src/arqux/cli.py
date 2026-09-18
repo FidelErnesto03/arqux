@@ -110,7 +110,8 @@ def cmd_status(path: str | None, verbose: bool, dashboard: bool):
     from .handlers.workspace import status as ws_status
 
     if dashboard:
-        result = ws_status(dashboard=True, path=path)
+        from .dashboard import build_dashboard
+        result = build_dashboard(path=path, fmt="rich")
         click.echo(result.to_text())
         return
 

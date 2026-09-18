@@ -2,4 +2,4 @@ $0
 
 $1: HANDOFF
 
-HOF:handoff{from:"hermes", to:"jarvis", project:"ARQUX", summary:"Ejecutar BLP-001 en CYCLE-07 del proyecto ARQUX. BLP-001 implementa pipeline template-driven para cycle.synthesize usando CYCLE_MANIFEST_TEMPLATE.md", blps:"BLP-001", tasks:"T-1:parse_cycle_template"}
+HOF:handoff{from:"Alfred", to:"jarvis", project:"ARQUX", summary:"BLP-002 ready in ARQUX CYCLE-12; objective fix authenticated identity propagation across session.bootstrap", blps:"BLP-002", tasks:"T-1.1|T-1.2|T-1.3|T-1.4|T-1.5"}

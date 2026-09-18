@@ -1,49 +1,62 @@
 $0
 
-# -- $0: MINIMAL LOCAL GLOSSARY --
-# Required: every .cortex artifact must be locally self-contained.
+# -- $0: ARQUX GOVERNANCE GLOSSARY --
 # Sigil | Name | Type | Risk | Cognitive Layer | Description
+# ARQX  | artifact  | attrs      | B | Semantic       | ArqUX artifact metadata
 # IDN   | identity   | attrs      | B | Semantic       | Actor identity
-# DOM   | domain     | attrs      | B | Semantic       | Project/scope descriptor
-# KNW   | knowledge  | attrs      | B | Semantic       | Stable or promoted knowledge
-# CNST  | constraint | attrs      | H | Prefrontal     | Hard constraint or precondition
-# CLAIM | claim      | attrs      | M | Prefrontal     | Acceptance criterion
-# AUD   | audit      | attrs      | M | Prefrontal     | Verification/audit record
-# RSK   | risk       | attrs      | M | Prefrontal     | Identified risk with mitigation
 # FCS   | focus      | attrs      | H | Working        | Active attention anchor
 # OBJ   | objective  | attrs      | H | Working        | Active goal with success criterion
 # WRK   | work       | attrs      | B | Working        | Current execution state
-# STP   | step       | attrs      | M | Working        | Task procedure step
 # SES   | session    | attrs      | M | Episodic       | Compressed I/O/R episode
-# LNG   | lesson     | attrs      | M | Episodic       | Learned lesson or pattern
 # HDL   | handler    | attrs-pos  | M | Semantic       | Handoff descriptor
-# DESC  | description | cuerpo     | B | Semantic       | Structured textual description
-# ERR   | error      | attrs      | M | Prefrontal     | Concurrency / state info
-# ARQX  | artifact   | attrs      | B | Semantic       | ArqUX artifact metadata
+# AUD   | audit      | attrs      | M | Prefrontal     | Verification/audit record
+# LNG   | lesson     | attrs      | M | Episodic       | Learned lesson or pattern
+# STP   | step       | attrs      | M | Working        | Task procedure step
+# CNST  | constraint | attrs      | H | Prefrontal     | Hard constraint or precondition
+# CLAIM | claim      | attrs      | M | Prefrontal     | Acceptance criterion
 # BLK   | blocker    | attrs      | H | Prefrontal     | Blocking condition
+# RSK   | risk       | attrs      | M | Prefrontal     | Identified risk with mitigation
+# KNW   | knowledge  | attrs      | B | Semantic       | Stable or promoted knowledge
+# DOM   | domain     | attrs      | B | Semantic       | Project/scope descriptor
+# ERR   | error      | attrs      | M | Prefrontal     | Concurrency / state info
+# DESC  | description | cuerpo     | B | Semantic       | Structured textual description
 #
 # Types:
+# bloque = canonical type
+# attrs = canonical type
+# attrs-pos = canonical type
+# cuerpo = canonical type
+# relacion = canonical type
 #
 # Micro-glossary:
+# cur=current pln=planned fut=future blk=blocked
+# min=minimum rec=recovery wrk=work full=full
+# ok=success fail=failure part=partial
 
 
 $19: ARQUX METADATA
 
 ARQX:artifact{level:2, name:"T-001", usage:"state", kind:"native"}
 
+
 $1: TASK
 
-WRK:task{id:"T-001", status:"done", governor:"hermes", assignee:"alfred", priority:"high", complexity:"standard", cycle:"CYCLE-02", created:"2026-07-11T13:29:09Z", updated:"2026-07-20T15:49:09Z"}
+WRK:task{id:"T-001", status:"done", governor:"hermes", assignee:"alfred", priority:"high", complexity:"standard", cycle:"CYCLE-02", created:"2026-07-11T13:29:09Z", updated:"2026-09-01T12:52:44Z"}
+
 
 $2: OBJECTIVE
 
 OBJ:objective{text:"Ejecutar auditoría ejecutable de ArqUX siguiendo protocolo ARQUX_EXECUTABLE_AUDIT_PROTOCOL.md y dejar resultados en docs/"}
 
+
 $3: ACCEPTANCE
 
 CLAIM:ac1{criterion:"Ejecuta auditoría siguiendo protocolo ARQUX_EXECUTABLE_AUDIT_PROTOCOL.md"}
+
 CLAIM:ac2{criterion:"Guarda resultados en docs/ con nombre ARQUX_AUDIT_REPORT_<timestamp>.md"}
 
-$4: EVIDENCE
 
-AUD:evidence{text:"Fix aplicado en _helpers.py (2 sitios) y synthesize.py: brain_path ahora es root/brain.cortex con fallback legacy a root/.arqux/brain.cortex; selector FCS agnóstico de sección (\"FCS:current\"). Test de regresión nuevo tests/test_find_blueprint_active_cycle.py (4 tests: ciclo activo viejo gana al nuevo, ciclo activo nuevo, FCS en $1 legacy, fallback sin hint). Suite completa: 871 passed, 0 failed. uv tool arqux reinstalado; verificado que la instalación resuelve BLP-001 a CYCLE-03 correctamente."}
+$4: NOTE
+
+AUD:note{text:"Pulse de soporte registrado por Heimdall. LNG:fcs_overwrite_sync_run anadida al brain de ArquUX con evidencia detallada. Tarea creada para investigacion y correccion del patron sync.run que sobreescribe FCS. Assignee sugerido: jarvis. Prioridad: high."}
+

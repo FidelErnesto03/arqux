@@ -755,9 +755,16 @@ def bootstrap(
 
     start = _Path(path or _os.getcwd()).resolve()
 
-    # Resolve agent_id (default: caller's agent_id, fallback to alfred).
-    if not agent_id:
-        agent_id = (ctx or PermissionContext.from_env()).agent_id or "alfred"
+    # The authenticated context is authoritative.  An explicit agent_id is
+    # presentation-only input and must not be allowed to impersonate another
+    # identity (BLP-002).
+    authenticated_agent = (ctx or PermissionContext.from_env()).agent_id or "alfred"
+    if agent_id and agent_id.casefold() != authenticated_agent.casefold():
+        return CortexOUT.error(
+            f"requested agent_id={agent_id!r} does not match authenticated agent={authenticated_agent!r}",
+            code="IDENTITY_MISMATCH",
+        )
+    agent_id = authenticated_agent.casefold()
 
     workspace_arqux = find_workspace_root(start=start)
 
@@ -929,7 +936,7 @@ handler_schemas = [
     {"name": "session.status", "fn": status, "description": "Read SES metadata without restoring full context.", "input_schema": {"type": "object", "properties": {"path": {"type": "string", "description": "Path to project root. Defaults to cwd."}}}},
     {"name": "session.context.set", "fn": context_set, "description": "Set the current session context pointer (project + scope + optional BLP). Validates project exists and returns the formatted header.", "input_schema": {"type": "object", "properties": {"project": {"type": "string", "description": "Project name (e.g. ARQUX)"}, "scope": {"type": "string", "description": "Scope within project (e.g. CYCLE-01)"}, "blp": {"type": "string", "description": "Optional active BLP ID (e.g. BLP-014)"}, "path": {"type": "string", "description": "Path to workspace root. Defaults to cwd."}}, "required": ["project", "scope"]}},
     {"name": "session.context.get", "fn": context_get, "description": "Read the current context pointer and return the formatted header.", "input_schema": {"type": "object", "properties": {"path": {"type": "string", "description": "Path to workspace root. Defaults to cwd."}}}},
-    {"name": "session.bootstrap", "fn": bootstrap, "description": "Bootstrap a session by aggregating context.detect + identity.get + context.full + cycle.current + brain.cortex read into 1 call (BLP-008). Returns cortex_context (canal I) and hcortex_dashboard (canal E).", "input_schema": {"type": "object", "properties": {"path": {"type": "string", "description": "Starting path. Defaults to cwd."}, "agent_id": {"type": "string", "description": "Agent ID for identity lookup. Defaults to caller's agent_id."}}}},
+    {"name": "session.bootstrap", "fn": bootstrap, "description": "Bootstrap a session using the authenticated identity. An explicit agent_id must match the caller (BLP-002). Returns cortex_context (canal I) and hcortex_dashboard (canal E).", "input_schema": {"type": "object", "properties": {"path": {"type": "string", "description": "Starting path. Defaults to cwd."}, "agent_id": {"type": "string", "description": "Optional identity selector; must match the authenticated caller."}}}},
     {"name": "session.handoff", "fn": handoff, "description": "Serialize the current session context as CORTEX and write a handoff PULSE for the target agent (BLP-010 meta-handler). Supports dry_run mode.", "input_schema": {"type": "object", "properties": {"target_agent": {"type": "string", "description": "ID of the agent receiving the handoff."}, "content": {"type": "string", "description": "CORTEX content with keys target_agent, summary, blps, tasks."}, "dry_run": {"type": "boolean", "default": False}, "path": {"type": "string"}}, "required": ["target_agent"]}},
     {"name": "session.pulse.compact", "fn": pulse_compact, "description": "Compact pulse entries for a session. Prunes non-SES entries, writes consolidated LNG lesson.", "input_schema": {"type": "object", "properties": {"session_id": {"type": "string"}, "dry_run": {"type": "boolean", "default": False}, "path": {"type": "string"}}, "required": ["session_id"]}},
 ]

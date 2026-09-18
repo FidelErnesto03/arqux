@@ -51,6 +51,67 @@ class TestBuildDashboard:
         assert "arqux" in text.lower() or "workspace" in text.lower() or "ok" in text.lower()
 
 
+class TestHealthClassification:
+    """P0-E: Health section must classify doctor checks by emoji marker, not just text."""
+
+    def test_pass_check_not_classified_as_warn(self, workspace_path: Path) -> None:
+        """A doctor PASS message without 'ok'/'pass'/'correct' keywords
+        must still be classified as PASS via the emoji marker (✅).
+
+        Regression test for bug where 'All 4 expected dirs present' fell to
+        the WARN fallback because it lacked keyword matches.
+        """
+        # Ensure all 4 expected dirs exist (init_workspace doesn't create cycles).
+        (workspace_path / ".arqux" / "cycles").mkdir(exist_ok=True)
+        result = build_dashboard(path=str(workspace_path))
+        text = result.to_text() if hasattr(result, "to_text") else str(result.message)
+        # The dashboard should show PASS for .arqux/ structure, not WARN.
+        # Strip ANSI codes for matching.
+        import re
+        clean = re.sub(r"\x1b\[[0-9;]*m", "", text)
+        # Find the .arqux/ structure line in the Health section.
+        assert ".arqux/ structure" in clean
+        # It should be PASS, not WARN.
+        # Look for the line and check the result column.
+        for line in clean.splitlines():
+            if ".arqux/ structure" in line:
+                assert "PASS" in line, (
+                    f".arqux/ structure should be PASS, got: {line.strip()!r}"
+                )
+                break
+        else:
+            pytest.fail(".arqux/ structure line not found in dashboard output")
+
+
+class TestHcortexFormat:
+    """Dashboard must emit clean HCORTEX (markdown) by default — no ANSI codes."""
+
+    def test_default_format_has_no_ansi(self, workspace_path: Path) -> None:
+        """build_dashboard() default (hcortex) must not contain ANSI escape codes."""
+        result = build_dashboard(path=str(workspace_path))
+        text = result.to_text() if hasattr(result, "to_text") else str(result.message)
+        # No ANSI escape sequences should be present.
+        assert "\x1b[" not in text, "HCORTEX output contains ANSI escape codes"
+
+    def test_default_format_has_markdown_headers(self, workspace_path: Path) -> None:
+        """build_dashboard() default should produce markdown headers (##)."""
+        result = build_dashboard(path=str(workspace_path))
+        text = result.to_text() if hasattr(result, "to_text") else str(result.message)
+        assert "## " in text, "HCORTEX output missing markdown headers"
+
+    def test_default_format_has_markdown_table(self, workspace_path: Path) -> None:
+        """build_dashboard() default should produce markdown tables (|)."""
+        result = build_dashboard(path=str(workspace_path))
+        text = result.to_text() if hasattr(result, "to_text") else str(result.message)
+        assert "|" in text, "HCORTEX output missing markdown table syntax"
+
+    def test_rich_format_has_ansi(self, workspace_path: Path) -> None:
+        """build_dashboard(fmt='rich') should produce ANSI codes for terminal."""
+        result = build_dashboard(path=str(workspace_path), fmt="rich")
+        text = result.to_text() if hasattr(result, "to_text") else str(result.message)
+        assert "\x1b[" in text, "Rich output should contain ANSI escape codes"
+
+
 class TestGetAgentsFromMeta:
     """P0-E: _get_agents_from_meta()."""
 

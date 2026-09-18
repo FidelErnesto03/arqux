@@ -153,6 +153,7 @@ def create_blueprint(
 def ready_blueprint(
     bp_id: str,
     path: str | None = None,
+    cycle: str | None = None,
     ctx: PermissionContext | None = None,
 ) -> CortexOUT:
     """Architect declares Blueprint ready for execution. State → ready (draft→ready directly)."""
@@ -160,7 +161,7 @@ def ready_blueprint(
     if root is None:
         return CortexOUT.error("no project initialized", code="NOT_FOUND")
 
-    bp_path, fm, body = _find_blueprint(root, bp_id)
+    bp_path, fm, body = _find_blueprint(root, bp_id, cycle=cycle)
     if bp_path is None:
         return CortexOUT.error(f"blueprint {bp_id} not found", code="NOT_FOUND")
 
@@ -200,6 +201,7 @@ def ready_blueprint(
 def claim_blueprint(
     bp_id: str,
     path: str | None = None,
+    cycle: str | None = None,
     ctx: PermissionContext | None = None,
 ) -> CortexOUT:
     """Executor claims the Blueprint. State → in_progress. Assigns executor implicitly."""
@@ -207,7 +209,7 @@ def claim_blueprint(
     if root is None:
         return CortexOUT.error("no project initialized", code="NOT_FOUND")
 
-    bp_path, fm, body = _find_blueprint(root, bp_id)
+    bp_path, fm, body = _find_blueprint(root, bp_id, cycle=cycle)
     if bp_path is None:
         return CortexOUT.error(f"blueprint {bp_id} not found", code="NOT_FOUND")
 

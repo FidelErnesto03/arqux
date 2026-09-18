@@ -15,7 +15,16 @@ from ...cortex_out import CortexOUT
 from ...permissions import PermissionContext
 from ...pulse import append_pulse_to_brain, next_pulse_event_id
 from ...state import find_project_root
-from ._helpers import _find_blueprint
+from ._helpers import (
+    BP_DONE,
+    _effective_status,
+    _find_ac,
+    _find_blueprint,
+    _mark_table_ac,
+    _now_iso,
+    _transition,
+    _write_blueprint,
+)
 
 
 def execute_blueprint(
@@ -60,10 +69,11 @@ def execute_blueprint(
     if bp_path is None:
         return CortexOUT.error(f"blueprint {bp_id} not found", code="NOT_FOUND")
 
-    # Extract §3 Preconditions, §14 Tasks, §12 ACs from the body.
+    # Extract §3 Preconditions, §14 Tasks, and AC items (by content, any
+    # section — BLP-004 D-03) from the body.
     preconditions = _extract_section_items(body, 3)
     tasks = _extract_section_items(body, 14)
-    acs = _extract_section_items(body, 12)
+    ac_ids = _extract_ac_ids(body)
 
     # Verify preconditions.
     preconditions_report = [
@@ -77,15 +87,46 @@ def execute_blueprint(
         for t in tasks
     ]
 
-    # Verify ACs.
-    acs_report = [
-        {"ac": a, "status": "assumed_passed" if dry_run else "verified"}
-        for a in acs
-    ]
+    # Mark ACs. dry_run only reports what was parsed; real mode marks the
+    # AC lines in the file (checkbox or table format) — BLP-004 D-04.
+    acs_report: list[dict[str, str]] = []
+    if not dry_run:
+        transition_err = _transition(bp_id, _effective_status(fm), BP_DONE)
+        if transition_err:
+            return CortexOUT.error(transition_err, code="INVALID_STATE")
+        for ac_id in ac_ids:
+            found = _find_ac(body, ac_id)
+            if not found:
+                continue
+            old_line, ac_format = found
+            if ac_format == "table":
+                marked = _mark_table_ac(old_line, "verified")
+                if marked is None:
+                    acs_report.append({"ac": ac_id, "status": "unmarked: ambiguous row"})
+                    continue
+                body = body.replace(old_line, marked, 1)
+            else:
+                body = body.replace(
+                    old_line, old_line.replace(old_line[2:5], "[x]", 1), 1
+                )
+            acs_report.append({"ac": ac_id, "status": "marked_verified"})
+        fm["status"] = BP_DONE
+        fm["closed_at"] = _now_iso()
+        fm["updated_at"] = _now_iso()
+        _write_blueprint(bp_path, fm, body)
+    else:
+        acs_report = [{"ac": a, "status": "parsed"} for a in ac_ids]
 
     # Determine outcome.
-    outcome = "complete"
-    evidence = f"Executed {len(tasks)} tasks, verified {len(acs)} ACs."
+    if dry_run:
+        outcome = "dry_run"
+    elif len(acs_report) != len(ac_ids) or any(
+        a["status"] != "marked_verified" for a in acs_report
+    ):
+        outcome = "partial"
+    else:
+        outcome = "complete"
+    evidence = f"Executed {len(tasks)} tasks, {len(acs_report)}/{len(ac_ids)} ACs marked."
 
     # PULSE.
     if not dry_run:
@@ -104,7 +145,7 @@ def execute_blueprint(
             pass
 
     return CortexOUT.work(
-        f"blueprint.execute ok bp_id={bp_id} tasks={len(tasks)} acs={len(acs)} "
+        f"blueprint.execute ok bp_id={bp_id} tasks={len(tasks)} acs={len(ac_ids)} "
         f"outcome={outcome} dry_run={dry_run}",
         bp_id=bp_id,
         path=str(bp_path),
@@ -115,6 +156,26 @@ def execute_blueprint(
         outcome=outcome,
         evidence=evidence,
     )
+
+
+def _extract_ac_ids(body: str) -> list[str]:
+    """Extract AC IDs from the body by content (BLP-004 D-03).
+
+    Scans for ``AC-NN`` identifiers in both canonical checkbox items and
+    legacy table rows — regardless of which §N section holds them.
+    Returns unique AC IDs in order of appearance.
+    """
+    ids: list[str] = []
+    seen: set[str] = set()
+    for line in body.splitlines():
+        s = line.strip()
+        m = re.match(r"^- \[[ xX~]\] \*\*(AC-\d+):\*\*", s)
+        if not m:
+            m = re.match(r"^\|\s*(AC-\d+)\s*\|", s)
+        if m and m.group(1) not in seen:
+            seen.add(m.group(1))
+            ids.append(m.group(1))
+    return ids
 
 
 def _extract_section_items(body: str, section_number: int) -> list[str]:

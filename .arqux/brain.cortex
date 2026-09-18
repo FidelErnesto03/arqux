@@ -24,9 +24,9 @@ $0
 #
 # Types:
 # relación = canonical type
-# bloque = canonical type
 # cuerpo = canonical type
 # attrs-pos = canonical type
+# bloque = canonical type
 # attrs = canonical type
 #
 # Micro-glossary:
@@ -47,12 +47,12 @@ IDN:governor{level:"2", project:"ARQUX", path:"/home/vatrox/workspace/ARQUX", go
 
 $2: FOCUS
 
-FCS:current{what:"Ciclo cerrado", priority:"medium", status:"current", survive:"work", updated:"2026-08-17T13:18:53Z", event:"cycle.close"}
+FCS:current{what:"Próximo BLP o cierre de ciclo", priority:"medium", status:"current", survive:"work", updated:"2026-09-18T15:32:24Z", event:"blueprint.complete"}
 
 
 $3: OBJECTIVES
 
-OBJ:_{goal:"- - - - Mantener sincronia entre brain.cortex y estado real del proyecto. 120 BLPs gestionados en 10 ciclos (CYCLE-01, CYCLE-02, CYCLE-03, CYCLE-04, CYCLE-05, CYCLE-06, CYCLE-07, CYCLE-08, CYCLE-09, CYCLE-10).", status:"current", success:"pending", survive:"work"}
+OBJ:_{goal:"Mantener sincronia entre brain.cortex y estado real del proyecto. 130 BLPs gestionados en 12 ciclos (CYCLE-01, CYCLE-02, CYCLE-03, CYCLE-04, CYCLE-05, CYCLE-06, CYCLE-07, CYCLE-08, CYCLE-09, CYCLE-10, CYCLE-11, CYCLE-12).", status:"current", success:"synced", survive:"work", updated:"2026-08-31T17:43:01Z", event:"brain.reconcile"}
 
 
 $4: SESSIONS
@@ -589,6 +589,270 @@ AUD:E_0157{date:"2026-08-17T13:45:30Z", event:"E-0157", task:"-", kind:"handler_
 
 AUD:E_0157{date:"2026-08-17T13:45:30Z", event:"E-0157", task:"-", kind:"handler_call", agent:"anonymous", result:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", evidence:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md"}
 
+AUD:E_0157{date:"2026-08-17T13:53:01Z", event:"E-0157", task:"-", kind:"handler_call", agent:"test", result:"[cortex.ref] sigil=WRK", evidence:"[cortex.ref] sigil=WRK"}
+
+AUD:E_0157{date:"2026-08-17T13:53:02Z", event:"E-0157", task:"-", kind:"handler_call", agent:"test", result:"[cortex.ref] sigil=LNG", evidence:"[cortex.ref] sigil=LNG"}
+
+AUD:E_0157{date:"2026-08-17T13:53:02Z", event:"E-0157", task:"-", kind:"handler_call", agent:"test", result:"[cortex.format] hcortex->cortex", evidence:"[cortex.format] hcortex->cortex"}
+
+AUD:E_0157{date:"2026-08-17T13:53:03Z", event:"E-0157", task:"-", kind:"handler_call", agent:"test", result:"[identity.get] agent_id=governor source=workspace", evidence:"[identity.get] agent_id=governor source=workspace"}
+
+AUD:E_0157{date:"2026-08-17T13:53:03Z", event:"E-0157", task:"-", kind:"handler_call", agent:"anonymous", result:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", evidence:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md"}
+
+AUD:E_0157{date:"2026-08-17T13:53:04Z", event:"E-0157", task:"-", kind:"handler_call", agent:"anonymous", result:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", evidence:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md"}
+
+AUD:E_0157{date:"2026-08-17T13:53:34Z", event:"E-0157", task:"-", kind:"handler_call", agent:"test", result:"[cortex.ref] sigil=WRK", evidence:"[cortex.ref] sigil=WRK"}
+
+AUD:E_0157{date:"2026-08-17T13:53:34Z", event:"E-0157", task:"-", kind:"handler_call", agent:"test", result:"[cortex.ref] sigil=LNG", evidence:"[cortex.ref] sigil=LNG"}
+
+AUD:E_0157{date:"2026-08-17T13:53:35Z", event:"E-0157", task:"-", kind:"handler_call", agent:"test", result:"[cortex.format] hcortex->cortex", evidence:"[cortex.format] hcortex->cortex"}
+
+AUD:E_0157{date:"2026-08-17T13:53:35Z", event:"E-0157", task:"-", kind:"handler_call", agent:"test", result:"[identity.get] agent_id=governor source=workspace", evidence:"[identity.get] agent_id=governor source=workspace"}
+
+AUD:E_0157{date:"2026-08-17T13:53:36Z", event:"E-0157", task:"-", kind:"handler_call", agent:"anonymous", result:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", evidence:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md"}
+
+AUD:E_0157{date:"2026-08-17T13:53:36Z", event:"E-0157", task:"-", kind:"handler_call", agent:"anonymous", result:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", evidence:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md"}
+
+AUD:E_0157{date:"2026-08-17T13:54:07Z", event:"E-0157", task:"-", kind:"handler_call", agent:"test", result:"[cortex.ref] sigil=WRK", evidence:"[cortex.ref] sigil=WRK"}
+
+AUD:E_0157{date:"2026-08-17T13:54:07Z", event:"E-0157", task:"-", kind:"handler_call", agent:"test", result:"[cortex.ref] sigil=LNG", evidence:"[cortex.ref] sigil=LNG"}
+
+AUD:E_0157{date:"2026-08-17T13:54:08Z", event:"E-0157", task:"-", kind:"handler_call", agent:"test", result:"[cortex.format] hcortex->cortex", evidence:"[cortex.format] hcortex->cortex"}
+
+AUD:E_0157{date:"2026-08-17T13:54:08Z", event:"E-0157", task:"-", kind:"handler_call", agent:"test", result:"[identity.get] agent_id=governor source=workspace", evidence:"[identity.get] agent_id=governor source=workspace"}
+
+AUD:E_0157{date:"2026-08-17T13:54:08Z", event:"E-0157", task:"-", kind:"handler_call", agent:"anonymous", result:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", evidence:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md"}
+
+AUD:E_0157{date:"2026-08-17T13:54:08Z", event:"E-0157", task:"-", kind:"handler_call", agent:"anonymous", result:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", evidence:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md"}
+
+AUD:E_0157{date:"2026-08-17T17:33:46Z", event:"E-0157", task:"-", kind:"checkpoint", agent:"Alfred", result:"cortex.checkpoint ok fcs=ARQUX project orientation obj=Prepare Jarvis for governed execution in", evidence:"cortex.checkpoint ok fcs=ARQUX project orientation obj=Prepare Jarvis for governed execution in"}
+
+AUD:E_0157{date:"2026-08-17T17:34:31Z", event:"E-0157", task:"-", kind:"checkpoint", agent:"Alfred", result:"cortex.checkpoint ok fcs=BLP-001 review obj=Review BLP-001 in CYCLE-12", evidence:"cortex.checkpoint ok fcs=BLP-001 review obj=Review BLP-001 in CYCLE-12"}
+
+AUD:E_0157{date:"2026-08-17T17:35:35Z", event:"E-0157", task:"T-1.2", kind:"blueprint_lifecycle", agent:"Alfred", result:"[blueprint.task] task T-1.2 marked as in_progress — Beginning shared cycle-qualified blueprint path resolver implementation.", evidence:"[blueprint.task] task T-1.2 marked as in_progress — Beginning shared cycle-qualified blueprint path resolver implementation."}
+
+AUD:E_0157{date:"2026-08-17T17:49:58Z", event:"E-0157", task:"-", kind:"handler_call", agent:"test", result:"[cortex.ref] sigil=WRK", evidence:"[cortex.ref] sigil=WRK"}
+
+AUD:E_0157{date:"2026-08-17T17:49:58Z", event:"E-0157", task:"-", kind:"handler_call", agent:"test", result:"[cortex.ref] sigil=LNG", evidence:"[cortex.ref] sigil=LNG"}
+
+AUD:E_0157{date:"2026-08-17T17:49:58Z", event:"E-0157", task:"-", kind:"handler_call", agent:"test", result:"[cortex.format] hcortex->cortex", evidence:"[cortex.format] hcortex->cortex"}
+
+AUD:E_0157{date:"2026-08-17T17:49:58Z", event:"E-0157", task:"-", kind:"handler_call", agent:"test", result:"[identity.get] agent_id=governor source=workspace", evidence:"[identity.get] agent_id=governor source=workspace"}
+
+AUD:E_0157{date:"2026-08-17T17:49:59Z", event:"E-0157", task:"-", kind:"handler_call", agent:"anonymous", result:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", evidence:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md"}
+
+AUD:E_0157{date:"2026-08-17T17:49:59Z", event:"E-0157", task:"-", kind:"handler_call", agent:"anonymous", result:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", evidence:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md"}
+
+AUD:E_0157{date:"2026-08-17T17:50:21Z", event:"E-0157", task:"T-1.2", kind:"blueprint_lifecycle", agent:"Alfred", result:"[blueprint.task] task T-1.2 marked as completed — Shared _split_qualified_bp_id and cycle-scoped resolver implemented; explicit missing cycle returns NOT_FOUND.", evidence:"[blueprint.task] task T-1.2 marked as completed — Shared _split_qualified_bp_id and cycle-scoped resolver implemented; explicit missing cycle returns NOT_FOUND."}
+
+AUD:E_0157{date:"2026-08-17T17:50:22Z", event:"E-0157", task:"T-1.3", kind:"blueprint_lifecycle", agent:"Alfred", result:"[blueprint.task] task T-1.3 marked as completed — Added optional cycle to the nine transition/read/update handlers and public schemas; backward-compatible default preserved.", evidence:"[blueprint.task] task T-1.3 marked as completed — Added optional cycle to the nine transition/read/update handlers and public schemas; backward-compatible default preserved."}
+
+AUD:E_0157{date:"2026-08-17T17:50:22Z", event:"E-0157", task:"T-1.4", kind:"blueprint_lifecycle", agent:"Alfred", result:"[blueprint.task] task T-1.4 marked as completed — Added cycle-qualified resolver regression tests; focused tests 40 passed and full suite 1290 passed, 14 skipped.", evidence:"[blueprint.task] task T-1.4 marked as completed — Added cycle-qualified resolver regression tests; focused tests 40 passed and full suite 1290 passed, 14 skipped."}
+
+AUD:E_0157{date:"2026-08-17T17:51:20Z", event:"E-0157", task:"T-1.5", kind:"blueprint_lifecycle", agent:"Alfred", result:"[blueprint.task] task T-1.5 marked as completed — Verified against ENVX_MCP: unqualified BLP-006 resolves CYCLE-05; cycle=CYCLE-04 and CYCLE-04/BLP-006 resolve CYCLE-04; missing qualified ID returns NOT_FOUND.", evidence:"[blueprint.task] task T-1.5 marked as completed — Verified against ENVX_MCP: unqualified BLP-006 resolves CYCLE-05; cycle=CYCLE-04 and CYCLE-04/BLP-006 resolve CYCLE-04; missing qualified ID returns NOT_FOUND."}
+
+AUD:E_0157{date:"2026-08-17T17:51:27Z", event:"E-0157", task:"-", kind:"checkpoint", agent:"Alfred", result:"cortex.checkpoint ok fcs=BLP-001 implementation obj=Fix cycle-qualified blueprint resolution", evidence:"cortex.checkpoint ok fcs=BLP-001 implementation obj=Fix cycle-qualified blueprint resolution"}
+
+AUD:E_0157{date:"2026-08-17T17:52:24Z", event:"E-0157", task:"BLP-001", kind:"blueprint_lifecycle", agent:"Alfred", result:"[blueprint.complete] BLP BLP-001 completed — Implemented shared cycle-qualified resolution; added cycle to nine blueprint handlers and schemas; regression tests pass 1290 passed, 14 skipped; ENVX_MCP verification: unqualified BLP-006=CYCLE-05, cycle=CYCLE-04 and CYCLE-04/BLP-006=CYCLE-04, missing qualified ID=NOT_FOUND.", evidence:"[blueprint.complete] BLP BLP-001 completed — Implemented shared cycle-qualified resolution; added cycle to nine blueprint handlers and schemas; regression tests pass 1290 passed, 14 skipped; ENVX_MCP verification: unqualified BLP-006=CYCLE-05, cycle=CYCLE-04 and CYCLE-04/BLP-006=CYCLE-04, missing qualified ID=NOT_FOUND."}
+
+KNW:blueprints_done{name:"blueprints_done", value:"1", updated:"2026-08-17T17:52:24Z", topic:"metrics", content:"metric blueprints_done=1", status:"current"}
+
+AUD:E_0157{date:"2026-08-17T17:52:29Z", event:"E-0157", task:"-", kind:"checkpoint", agent:"Alfred", result:"cortex.checkpoint ok fcs=BLP-001 complete obj=Cycle-qualified blueprint resolution", evidence:"cortex.checkpoint ok fcs=BLP-001 complete obj=Cycle-qualified blueprint resolution"}
+
+AUD:E_0157{date:"2026-08-17T17:56:20Z", event:"E-0157", task:"-", kind:"checkpoint", agent:"Alfred", result:"cortex.checkpoint ok fcs=identity handoff obj=Operate as Alfred governor for ARQUX", evidence:"cortex.checkpoint ok fcs=identity handoff obj=Operate as Alfred governor for ARQUX"}
+
+AUD:E_0157{date:"2026-08-17T17:57:27Z", event:"E-0157", task:"-", kind:"checkpoint", agent:"Alfred", result:"cortex.checkpoint ok fcs=BLP-002 design obj=Fix authenticated identity propagation a", evidence:"cortex.checkpoint ok fcs=BLP-002 design obj=Fix authenticated identity propagation a"}
+
+AUD:E_0157{date:"2026-08-17T18:00:46Z", event:"E-0157", task:"-", kind:"session_handoff", agent:"Alfred", result:"[session.handoff] from=Alfred to=jarvis summary=BLP-002 ready in ARQUX CYCLE-12; objective fix authenticated", evidence:"[session.handoff] from=Alfred to=jarvis summary=BLP-002 ready in ARQUX CYCLE-12; objective fix authenticated"}
+
+AUD:E_0157{date:"2026-08-17T18:00:49Z", event:"E-0157", task:"-", kind:"checkpoint", agent:"Alfred", result:"cortex.checkpoint ok fcs=BLP-002 ready obj=Fix authenticated identity propagation", evidence:"cortex.checkpoint ok fcs=BLP-002 ready obj=Fix authenticated identity propagation"}
+
+AUD:E_0157{date:"2026-08-17T18:02:11Z", event:"E-0157", task:"-", kind:"checkpoint", agent:"Alfred", result:"cortex.checkpoint ok fcs=BLP-002 identity propagation bug obj=Fix authenticated identity and executor ", evidence:"cortex.checkpoint ok fcs=BLP-002 identity propagation bug obj=Fix authenticated identity and executor "}
+
+AUD:E_0157{date:"2026-08-17T18:03:27Z", event:"E-0157", task:"T-1.1", kind:"blueprint_lifecycle", agent:"Alfred", result:"[blueprint.task] task T-1.1 marked as in_progress — Reproducing identity mismatch across session bootstrap, MCP context, and identity.record.", evidence:"[blueprint.task] task T-1.1 marked as in_progress — Reproducing identity mismatch across session bootstrap, MCP context, and identity.record."}
+
+AUD:E_0157{date:"2026-08-17T18:05:11Z", event:"E-0157", task:"-", kind:"handler_call", agent:"test", result:"[identity.get] agent_id=governor source=workspace", evidence:"[identity.get] agent_id=governor source=workspace"}
+
+AUD:E_0157{date:"2026-08-17T18:05:40Z", event:"E-0157", task:"-", kind:"handler_call", agent:"test", result:"[cortex.ref] sigil=WRK", evidence:"[cortex.ref] sigil=WRK"}
+
+AUD:E_0157{date:"2026-08-17T18:05:40Z", event:"E-0157", task:"-", kind:"handler_call", agent:"test", result:"[cortex.ref] sigil=LNG", evidence:"[cortex.ref] sigil=LNG"}
+
+AUD:E_0157{date:"2026-08-17T18:05:40Z", event:"E-0157", task:"-", kind:"handler_call", agent:"test", result:"[cortex.format] hcortex->cortex", evidence:"[cortex.format] hcortex->cortex"}
+
+AUD:E_0157{date:"2026-08-17T18:05:41Z", event:"E-0157", task:"-", kind:"handler_call", agent:"test", result:"[identity.get] agent_id=governor source=workspace", evidence:"[identity.get] agent_id=governor source=workspace"}
+
+AUD:E_0157{date:"2026-08-17T18:05:41Z", event:"E-0157", task:"-", kind:"handler_call", agent:"anonymous", result:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", evidence:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md"}
+
+AUD:E_0157{date:"2026-08-17T18:05:41Z", event:"E-0157", task:"-", kind:"handler_call", agent:"anonymous", result:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", evidence:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md"}
+
+AUD:E_0157{date:"2026-08-17T18:06:15Z", event:"E-0157", task:"-", kind:"handler_call", agent:"test", result:"[cortex.ref] sigil=WRK", evidence:"[cortex.ref] sigil=WRK"}
+
+AUD:E_0157{date:"2026-08-17T18:06:15Z", event:"E-0157", task:"-", kind:"handler_call", agent:"test", result:"[cortex.ref] sigil=LNG", evidence:"[cortex.ref] sigil=LNG"}
+
+AUD:E_0157{date:"2026-08-17T18:06:15Z", event:"E-0157", task:"-", kind:"handler_call", agent:"test", result:"[cortex.format] hcortex->cortex", evidence:"[cortex.format] hcortex->cortex"}
+
+AUD:E_0157{date:"2026-08-17T18:06:15Z", event:"E-0157", task:"-", kind:"handler_call", agent:"test", result:"[identity.get] agent_id=governor source=workspace", evidence:"[identity.get] agent_id=governor source=workspace"}
+
+AUD:E_0157{date:"2026-08-17T18:06:16Z", event:"E-0157", task:"-", kind:"handler_call", agent:"anonymous", result:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", evidence:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md"}
+
+AUD:E_0157{date:"2026-08-17T18:06:16Z", event:"E-0157", task:"-", kind:"handler_call", agent:"anonymous", result:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", evidence:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md"}
+
+AUD:E_0157{date:"2026-08-17T18:07:01Z", event:"E-0157", task:"T-1.1", kind:"blueprint_lifecycle", agent:"Alfred", result:"[blueprint.task] task T-1.1 marked as completed — Reproduced: bootstrap(agent_id=jarvis) could display Jarvis while MCP PermissionContext remained Alfred; blueprint.claim assigned Alfred.", evidence:"[blueprint.task] task T-1.1 marked as completed — Reproduced: bootstrap(agent_id=jarvis) could display Jarvis while MCP PermissionContext remained Alfred; blueprint.claim assigned Alfred."}
+
+AUD:E_0157{date:"2026-08-17T18:07:01Z", event:"E-0157", task:"T-1.2", kind:"blueprint_lifecycle", agent:"Alfred", result:"[blueprint.task] task T-1.2 marked as completed — Implemented authenticated identity resolver: explicit bootstrap agent_id must match ctx.agent_id case-insensitively; mismatch returns IDENTITY_MISMATCH.", evidence:"[blueprint.task] task T-1.2 marked as completed — Implemented authenticated identity resolver: explicit bootstrap agent_id must match ctx.agent_id case-insensitively; mismatch returns IDENTITY_MISMATCH."}
+
+AUD:E_0157{date:"2026-08-17T18:07:01Z", event:"E-0157", task:"T-1.3", kind:"blueprint_lifecycle", agent:"Alfred", result:"[blueprint.task] task T-1.3 marked as completed — Canonicalized session bootstrap identity and identity filename lookup; identity.record compares case-insensitively and writes only authenticated identity.", evidence:"[blueprint.task] task T-1.3 marked as completed — Canonicalized session bootstrap identity and identity filename lookup; identity.record compares case-insensitively and writes only authenticated identity."}
+
+AUD:E_0157{date:"2026-08-17T18:07:01Z", event:"E-0157", task:"T-1.4", kind:"blueprint_lifecycle", agent:"Alfred", result:"[blueprint.task] task T-1.4 marked as completed — Added four BLP-002 regression tests; full suite passes 1294 passed, 14 skipped.", evidence:"[blueprint.task] task T-1.4 marked as completed — Added four BLP-002 regression tests; full suite passes 1294 passed, 14 skipped."}
+
+AUD:E_0157{date:"2026-08-17T18:07:02Z", event:"E-0157", task:"T-1.5", kind:"blueprint_lifecycle", agent:"Alfred", result:"[blueprint.task] task T-1.5 marked as completed — Updated handler schemas/descriptions and verified local implementation; connected MCP still runs pre-fix package and identity.record remains NOT_FOUND for Alfred.", evidence:"[blueprint.task] task T-1.5 marked as completed — Updated handler schemas/descriptions and verified local implementation; connected MCP still runs pre-fix package and identity.record remains NOT_FOUND for Alfred."}
+
+AUD:E_0157{date:"2026-08-17T18:07:06Z", event:"E-0157", task:"BLP-002", kind:"blueprint_lifecycle", agent:"Alfred", result:"[blueprint.complete] BLP BLP-002 completed — Local implementation completed: authenticated identity mismatch is rejected, identity attribution is canonicalized case-insensitively, four BLP-002 regression tests added, full suite 1294 passed and 14 skipped. Connected MCP deployment remains pre-fix and requires package refresh before live smoke validation.", evidence:"[blueprint.complete] BLP BLP-002 completed — Local implementation completed: authenticated identity mismatch is rejected, identity attribution is canonicalized case-insensitively, four BLP-002 regression tests added, full suite 1294 passed and 14 skipped. Connected MCP deployment remains pre-fix and requires package refresh before live smoke validation."}
+
+KNW:blueprints_done{name:"blueprints_done", value:"1", updated:"2026-08-17T18:07:06Z", topic:"metrics", content:"metric blueprints_done=1", status:"current"}
+
+AUD:E_0157{date:"2026-08-17T18:07:14Z", event:"E-0157", task:"-", kind:"checkpoint", agent:"Alfred", result:"cortex.checkpoint ok fcs=BLP-002 complete obj=Fix authenticated identity propagation", evidence:"cortex.checkpoint ok fcs=BLP-002 complete obj=Fix authenticated identity propagation"}
+
+AUD:E_0157{date:"2026-08-17T18:08:03Z", event:"E-0157", task:"-", kind:"handler_call", agent:"test", result:"[identity.get] agent_id=governor source=workspace", evidence:"[identity.get] agent_id=governor source=workspace"}
+
+AUD:E_0157{date:"2026-08-17T18:08:25Z", event:"E-0157", task:"-", kind:"checkpoint", agent:"Alfred", result:"cortex.checkpoint ok fcs=BLP-002 validation obj=Verify identity propagation fix", evidence:"cortex.checkpoint ok fcs=BLP-002 validation obj=Verify identity propagation fix"}
+
+KNW:sync_run{name:"sync_run", value:"1", updated:"2026-08-31T14:08:55Z", topic:"metrics", content:"metric sync_run=1", status:"current"}
+
+KNW:sync_run{name:"sync_run", value:"1", updated:"2026-08-31T16:52:03Z", topic:"metrics", content:"metric sync_run=1", status:"current"}
+
+AUD:E_0157{date:"2026-08-31T17:27:33Z", event:"E-0157", task:"-", kind:"checkpoint", agent:"alfred", result:"cortex.checkpoint ok fcs=Paso 2 completado — legacy del root arch obj=Mantener workspace como contenedor puro ", evidence:"cortex.checkpoint ok fcs=Paso 2 completado — legacy del root arch obj=Mantener workspace como contenedor puro "}
+
+AUD:E_0157{date:"2026-08-31T17:43:01Z", event:"E-0157", task:"-", kind:"checkpoint", agent:"alfred", result:"cortex.checkpoint ok fcs=Proyecto Manhattan creado — ecosistema B obj=Consolidar definicion inicial de Manhatt", evidence:"cortex.checkpoint ok fcs=Proyecto Manhattan creado — ecosistema B obj=Consolidar definicion inicial de Manhatt"}
+
+KNW:tasks_active{name:"tasks_active", value:"1", updated:"2026-09-01T12:51:40Z", topic:"metrics", content:"metric tasks_active=1", status:"current"}
+
+LNG:fcs_overwrite_sync_run_0001{type:"bug", cause:"sync.run sobreescribe FCS de brain.cortex con texto generico despues de cortex.write", lesson:"Patron observado en Manhattan brain donde cortex.write establece FCS con texto especifico pero una operacion posterior de auto-sync sobreescribe FCS con texto generico brain.cortex auto-sync. Los OBJ AXM LIM y LNG si se preservan correctamente. Solo el FCS es afectado. T-001 creado en CYCLE-12 para investigacion y correccion.", prevention:"sync.run debe preservar el contenido existente de FCS o solo actualizar timestamp sin mutar el campo what. Verificar despues de cada cortex.write que el FCS no fue sobreescrito.", status:"current"}
+
+AUD:E_0157{date:"2026-09-18T14:56:51Z", event:"E-0157", task:"-", kind:"handler_call", agent:"alfred", result:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", evidence:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md"}
+
+AUD:E_0157{date:"2026-09-18T15:04:40Z", event:"E-0157", task:"-", kind:"handler_call", agent:"alfred", result:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", evidence:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md"}
+
+AUD:E_0157{date:"2026-09-18T15:05:13Z", event:"E-0157", task:"-", kind:"checkpoint", agent:"alfred", result:"cortex.checkpoint ok fcs=ARQUX CYCLE-12 BLP-004 creado y poblado  obj=BLP-004 normaliza handlers blueprint.* p", evidence:"cortex.checkpoint ok fcs=ARQUX CYCLE-12 BLP-004 creado y poblado  obj=BLP-004 normaliza handlers blueprint.* p"}
+
+AUD:E_0157{date:"2026-09-18T15:14:58Z", event:"E-0157", task:"-", kind:"checkpoint", agent:"alfred", result:"cortex.checkpoint ok fcs=ARQUX CYCLE-12 BLP-004 draft actualizado obj=6 defects cubiertos — D-01 pending sin t", evidence:"cortex.checkpoint ok fcs=ARQUX CYCLE-12 BLP-004 draft actualizado obj=6 defects cubiertos — D-01 pending sin t"}
+
+AUD:E_0157{date:"2026-09-18T15:17:31Z", event:"E-0157", task:"-", kind:"handler_call", agent:"test", result:"[cortex.ref] sigil=WRK", evidence:"[cortex.ref] sigil=WRK"}
+
+AUD:E_0157{date:"2026-09-18T15:17:31Z", event:"E-0157", task:"-", kind:"handler_call", agent:"test", result:"[cortex.ref] sigil=LNG", evidence:"[cortex.ref] sigil=LNG"}
+
+AUD:E_0157{date:"2026-09-18T15:17:32Z", event:"E-0157", task:"-", kind:"handler_call", agent:"test", result:"[cortex.format] hcortex->cortex", evidence:"[cortex.format] hcortex->cortex"}
+
+AUD:E_0157{date:"2026-09-18T15:17:32Z", event:"E-0157", task:"-", kind:"handler_call", agent:"test", result:"[identity.get] agent_id=governor source=workspace", evidence:"[identity.get] agent_id=governor source=workspace"}
+
+AUD:E_0157{date:"2026-09-18T15:17:32Z", event:"E-0157", task:"-", kind:"handler_call", agent:"anonymous", result:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", evidence:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md"}
+
+AUD:E_0157{date:"2026-09-18T15:17:32Z", event:"E-0157", task:"-", kind:"handler_call", agent:"anonymous", result:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", evidence:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md"}
+
+AUD:E_0157{date:"2026-09-18T15:25:59Z", event:"E-0157", task:"-", kind:"handler_call", agent:"test", result:"[cortex.ref] sigil=WRK", evidence:"[cortex.ref] sigil=WRK"}
+
+AUD:E_0157{date:"2026-09-18T15:25:59Z", event:"E-0157", task:"-", kind:"handler_call", agent:"test", result:"[cortex.ref] sigil=LNG", evidence:"[cortex.ref] sigil=LNG"}
+
+AUD:E_0157{date:"2026-09-18T15:25:59Z", event:"E-0157", task:"-", kind:"handler_call", agent:"test", result:"[cortex.format] hcortex->cortex", evidence:"[cortex.format] hcortex->cortex"}
+
+AUD:E_0157{date:"2026-09-18T15:26:00Z", event:"E-0157", task:"-", kind:"handler_call", agent:"test", result:"[identity.get] agent_id=governor source=workspace", evidence:"[identity.get] agent_id=governor source=workspace"}
+
+AUD:E_0157{date:"2026-09-18T15:26:00Z", event:"E-0157", task:"-", kind:"handler_call", agent:"anonymous", result:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", evidence:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md"}
+
+AUD:E_0157{date:"2026-09-18T15:26:00Z", event:"E-0157", task:"-", kind:"handler_call", agent:"anonymous", result:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", evidence:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md"}
+
+AUD:E_0157{date:"2026-09-18T15:26:40Z", event:"E-0157", task:"-", kind:"handler_call", agent:"test", result:"[cortex.ref] sigil=WRK", evidence:"[cortex.ref] sigil=WRK"}
+
+AUD:E_0157{date:"2026-09-18T15:26:40Z", event:"E-0157", task:"-", kind:"handler_call", agent:"test", result:"[cortex.ref] sigil=LNG", evidence:"[cortex.ref] sigil=LNG"}
+
+AUD:E_0157{date:"2026-09-18T15:26:40Z", event:"E-0157", task:"-", kind:"handler_call", agent:"test", result:"[cortex.format] hcortex->cortex", evidence:"[cortex.format] hcortex->cortex"}
+
+AUD:E_0157{date:"2026-09-18T15:26:41Z", event:"E-0157", task:"-", kind:"handler_call", agent:"test", result:"[identity.get] agent_id=governor source=workspace", evidence:"[identity.get] agent_id=governor source=workspace"}
+
+AUD:E_0157{date:"2026-09-18T15:26:41Z", event:"E-0157", task:"-", kind:"handler_call", agent:"anonymous", result:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", evidence:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md"}
+
+AUD:E_0157{date:"2026-09-18T15:26:41Z", event:"E-0157", task:"-", kind:"handler_call", agent:"anonymous", result:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", evidence:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md"}
+
+AUD:E_0157{date:"2026-09-18T15:27:15Z", event:"E-0157", task:"-", kind:"handler_call", agent:"test", result:"[cortex.ref] sigil=WRK", evidence:"[cortex.ref] sigil=WRK"}
+
+AUD:E_0157{date:"2026-09-18T15:27:15Z", event:"E-0157", task:"-", kind:"handler_call", agent:"test", result:"[cortex.ref] sigil=LNG", evidence:"[cortex.ref] sigil=LNG"}
+
+AUD:E_0157{date:"2026-09-18T15:27:15Z", event:"E-0157", task:"-", kind:"handler_call", agent:"test", result:"[cortex.format] hcortex->cortex", evidence:"[cortex.format] hcortex->cortex"}
+
+AUD:E_0157{date:"2026-09-18T15:27:16Z", event:"E-0157", task:"-", kind:"handler_call", agent:"test", result:"[identity.get] agent_id=governor source=workspace", evidence:"[identity.get] agent_id=governor source=workspace"}
+
+AUD:E_0157{date:"2026-09-18T15:27:16Z", event:"E-0157", task:"-", kind:"handler_call", agent:"anonymous", result:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", evidence:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md"}
+
+AUD:E_0157{date:"2026-09-18T15:27:16Z", event:"E-0157", task:"-", kind:"handler_call", agent:"anonymous", result:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", evidence:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md"}
+
+AUD:E_0157{date:"2026-09-18T15:29:18Z", event:"E-0157", task:"-", kind:"handler_call", agent:"test", result:"[cortex.ref] sigil=WRK", evidence:"[cortex.ref] sigil=WRK"}
+
+AUD:E_0157{date:"2026-09-18T15:29:18Z", event:"E-0157", task:"-", kind:"handler_call", agent:"test", result:"[cortex.ref] sigil=LNG", evidence:"[cortex.ref] sigil=LNG"}
+
+AUD:E_0157{date:"2026-09-18T15:29:18Z", event:"E-0157", task:"-", kind:"handler_call", agent:"test", result:"[cortex.format] hcortex->cortex", evidence:"[cortex.format] hcortex->cortex"}
+
+AUD:E_0157{date:"2026-09-18T15:29:19Z", event:"E-0157", task:"-", kind:"handler_call", agent:"test", result:"[identity.get] agent_id=governor source=workspace", evidence:"[identity.get] agent_id=governor source=workspace"}
+
+AUD:E_0157{date:"2026-09-18T15:29:19Z", event:"E-0157", task:"-", kind:"handler_call", agent:"anonymous", result:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", evidence:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md"}
+
+AUD:E_0157{date:"2026-09-18T15:29:19Z", event:"E-0157", task:"-", kind:"handler_call", agent:"anonymous", result:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", evidence:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md"}
+
+AUD:E_0157{date:"2026-09-18T15:29:48Z", event:"E-0157", task:"T-1.1", kind:"blueprint_lifecycle", agent:"alfred", result:"[blueprint.task] task T-1.1 marked as completed — LEGACY_STATUS_MAP + _effective_status + _transition normalizado en _helpers.py; tests test_effective_status_* verdes", evidence:"[blueprint.task] task T-1.1 marked as completed — LEGACY_STATUS_MAP + _effective_status + _transition normalizado en _helpers.py; tests test_effective_status_* verdes"}
+
+AUD:E_0157{date:"2026-09-18T15:29:52Z", event:"E-0157", task:"T-1.2", kind:"blueprint_lifecycle", agent:"alfred", result:"[blueprint.task] task T-1.2 marked as completed — _find_ac + _mark_table_ac en _helpers.py — checkbox y fila de tabla soportados; tests verdes", evidence:"[blueprint.task] task T-1.2 marked as completed — _find_ac + _mark_table_ac en _helpers.py — checkbox y fila de tabla soportados; tests verdes"}
+
+AUD:E_0157{date:"2026-09-18T15:29:57Z", event:"E-0157", task:"T-1.3", kind:"blueprint_lifecycle", agent:"alfred", result:"[blueprint.task] task T-1.3 marked as completed — ac_blueprint usa _find_ac; escribe [x] en checkbox y ultima celda en tabla + evidencia; mensaje de error corregido; tests test_ac_blueprint_* verdes", evidence:"[blueprint.task] task T-1.3 marked as completed — ac_blueprint usa _find_ac; escribe [x] en checkbox y ultima celda en tabla + evidencia; mensaje de error corregido; tests test_ac_blueprint_* verdes"}
+
+AUD:E_0157{date:"2026-09-18T15:30:01Z", event:"E-0157", task:"T-1.4", kind:"blueprint_lifecycle", agent:"alfred", result:"[blueprint.task] task T-1.4 marked as completed — manage.py task check usa _effective_status", evidence:"[blueprint.task] task T-1.4 marked as completed — manage.py task check usa _effective_status"}
+
+AUD:E_0157{date:"2026-09-18T15:30:07Z", event:"E-0157", task:"T-1.5", kind:"blueprint_lifecycle", agent:"alfred", result:"[blueprint.task] task T-1.5 marked as completed — execute.py — _extract_ac_ids por contenido, dry_run reporta parsed, real valida transicion + marca ACs + persiste done; outcome complete/partial/invalid_state honesto", evidence:"[blueprint.task] task T-1.5 marked as completed — execute.py — _extract_ac_ids por contenido, dry_run reporta parsed, real valida transicion + marca ACs + persiste done; outcome complete/partial/invalid_state honesto"}
+
+AUD:E_0157{date:"2026-09-18T15:30:11Z", event:"E-0157", task:"T-1.6", kind:"blueprint_lifecycle", agent:"alfred", result:"[blueprint.task] task T-1.6 marked as completed — tests/fixtures/legacy_BLP_pending_table_acs.md — fixture sanitizado (status=pending, ACs tabla §11, riesgos §12)", evidence:"[blueprint.task] task T-1.6 marked as completed — tests/fixtures/legacy_BLP_pending_table_acs.md — fixture sanitizado (status=pending, ACs tabla §11, riesgos §12)"}
+
+AUD:E_0157{date:"2026-09-18T15:30:18Z", event:"E-0157", task:"T-1.7", kind:"blueprint_lifecycle", agent:"alfred", result:"[blueprint.task] task T-1.7 marked as completed — tests/test_blp004_legacy_compat.py — 25 tests D-01..D-06 + e2e ready->claim->ac->complete sobre fixture legado, todos verdes", evidence:"[blueprint.task] task T-1.7 marked as completed — tests/test_blp004_legacy_compat.py — 25 tests D-01..D-06 + e2e ready->claim->ac->complete sobre fixture legado, todos verdes"}
+
+AUD:E_0157{date:"2026-09-18T15:30:30Z", event:"E-0157", task:"T-1.8", kind:"blueprint_lifecycle", agent:"alfred", result:"[blueprint.task] task T-1.8 marked as completed — Suite completa: 1330 passed, 14 skipped, 0 fail (baseline 1305 + 25 nuevos). 2 tests existentes actualizados por depender de comportamiento muerto (test_blp010 outcome=complete en dry_run; test_blueprint_learning complete sin §14 marcado)", evidence:"[blueprint.task] task T-1.8 marked as completed — Suite completa: 1330 passed, 14 skipped, 0 fail (baseline 1305 + 25 nuevos). 2 tests existentes actualizados por depender de comportamiento muerto (test_blp010 outcome=complete en dry_run; test_blueprint_learning complete sin §14 marcado)"}
+
+AUD:E_0157{date:"2026-09-18T15:30:37Z", event:"E-0157", task:"T-1.9", kind:"blueprint_lifecycle", agent:"alfred", result:"[blueprint.task] task T-1.9 marked as completed — _section() \\xdf->§ corregido; compuerta EXECUTION_INCOMPLETE revivida (test_complete_rejects_unchecked_tasks); auditoria fixtures: ningun test usaba ß — enmascaramiento era por dead code, no por fixtures", evidence:"[blueprint.task] task T-1.9 marked as completed — _section() \\xdf->§ corregido; compuerta EXECUTION_INCOMPLETE revivida (test_complete_rejects_unchecked_tasks); auditoria fixtures: ningun test usaba ß — enmascaramiento era por dead code, no por fixtures"}
+
+AUD:E_0157{date:"2026-09-18T15:30:42Z", event:"E-0157", task:"T-1.10", kind:"blueprint_lifecycle", agent:"alfred", result:"[blueprint.task] task T-1.10 marked as completed — fail/cancel/block_for_architect rechazan estados terminales via _guard_terminal + persisten prior_status; tests test_fail_from_done_rejected, test_cancel_from_done_rejected, test_fail_records_prior_status verdes", evidence:"[blueprint.task] task T-1.10 marked as completed — fail/cancel/block_for_architect rechazan estados terminales via _guard_terminal + persisten prior_status; tests test_fail_from_done_rejected, test_cancel_from_done_rejected, test_fail_records_prior_status verdes"}
+
+AUD:E_0157{date:"2026-09-18T15:30:51Z", event:"E-0157", task:"BLP-004", kind:"blueprint_lifecycle", agent:"alfred", result:"[blueprint.ac] AC AC-01 verified — test_legacy_pending_can_ready_and_claim + test_transition_pending_maps_to_draft verdes: pending->ready->claim OUT-WORK", evidence:"[blueprint.ac] AC AC-01 verified — test_legacy_pending_can_ready_and_claim + test_transition_pending_maps_to_draft verdes: pending->ready->claim OUT-WORK"}
+
+AUD:E_0157{date:"2026-09-18T15:30:56Z", event:"E-0157", task:"BLP-004", kind:"blueprint_lifecycle", agent:"alfred", result:"[blueprint.ac] AC AC-02 verified — test_ac_blueprint_marks_table_row verde: fila | AC-01 | ... | verified | + evidencia persistida", evidence:"[blueprint.ac] AC AC-02 verified — test_ac_blueprint_marks_table_row verde: fila | AC-01 | ... | verified | + evidencia persistida"}
+
+AUD:E_0157{date:"2026-09-18T15:31:01Z", event:"E-0157", task:"BLP-004", kind:"blueprint_lifecycle", agent:"alfred", result:"[blueprint.ac] AC AC-03 verified — test_ac_blueprint_checkbox_still_works verde; tests canonicos existentes intactos", evidence:"[blueprint.ac] AC AC-03 verified — test_ac_blueprint_checkbox_still_works verde; tests canonicos existentes intactos"}
+
+AUD:E_0157{date:"2026-09-18T15:31:07Z", event:"E-0157", task:"BLP-004", kind:"blueprint_lifecycle", agent:"alfred", result:"[blueprint.ac] AC AC-04 verified — test_execute_dry_run_lists_real_acs verde: 12 ACs reales (AC-01..12) como parsed, 0 entradas R-NN", evidence:"[blueprint.ac] AC AC-04 verified — test_execute_dry_run_lists_real_acs verde: 12 ACs reales (AC-01..12) como parsed, 0 entradas R-NN"}
+
+AUD:E_0157{date:"2026-09-18T15:31:12Z", event:"E-0157", task:"BLP-004", kind:"blueprint_lifecycle", agent:"alfred", result:"[blueprint.ac] AC AC-05 verified — test_execute_real_marks_table_acs verde: status=done + closed_at + filas marcadas; test_execute_rejects_invalid_origin verde (draft->done INVALID_STATE)", evidence:"[blueprint.ac] AC AC-05 verified — test_execute_real_marks_table_acs verde: status=done + closed_at + filas marcadas; test_execute_rejects_invalid_origin verde (draft->done INVALID_STATE)"}
+
+AUD:E_0157{date:"2026-09-18T15:31:18Z", event:"E-0157", task:"BLP-004", kind:"blueprint_lifecycle", agent:"alfred", result:"[blueprint.ac] AC AC-06 verified — test_effective_status_unknown_returns_raw + test_transition_unknown_status_fails_loudly verdes: 'weirdo' pasa crudo y el error lo nombra", evidence:"[blueprint.ac] AC AC-06 verified — test_effective_status_unknown_returns_raw + test_transition_unknown_status_fails_loudly verdes: 'weirdo' pasa crudo y el error lo nombra"}
+
+AUD:E_0157{date:"2026-09-18T15:31:23Z", event:"E-0157", task:"BLP-004", kind:"blueprint_lifecycle", agent:"alfred", result:"[blueprint.ac] AC AC-07 verified — test_ac_not_found_error_mentions_formats verde: error menciona ambos formatos (checkbox y tabla)", evidence:"[blueprint.ac] AC AC-07 verified — test_ac_not_found_error_mentions_formats verde: error menciona ambos formatos (checkbox y tabla)"}
+
+AUD:E_0157{date:"2026-09-18T15:31:35Z", event:"E-0157", task:"BLP-004", kind:"blueprint_lifecycle", agent:"alfred", result:"[blueprint.ac] AC AC-08 verified — 1330 passed 14 skipped 0 fail en suite completa", evidence:"[blueprint.ac] AC AC-08 verified — 1330 passed 14 skipped 0 fail en suite completa"}
+
+AUD:E_0157{date:"2026-09-18T15:31:40Z", event:"E-0157", task:"BLP-004", kind:"blueprint_lifecycle", agent:"alfred", result:"[blueprint.ac] AC AC-09 verified — test_complete_rejects_unchecked_tasks verde: _section() fix \\xdf->§ revivo la compuerta; test_blueprint_learning actualizado marca §14 (comportamiento correcto restaurado)", evidence:"[blueprint.ac] AC AC-09 verified — test_complete_rejects_unchecked_tasks verde: _section() fix \\xdf->§ revivo la compuerta; test_blueprint_learning actualizado marca §14 (comportamiento correcto restaurado)"}
+
+AUD:E_0157{date:"2026-09-18T15:31:43Z", event:"E-0157", task:"BLP-004", kind:"blueprint_lifecycle", agent:"alfred", result:"[blueprint.ac] AC AC-10 verified — test_fail_from_done_rejected + test_cancel_from_done_rejected verdes (TERMINAL_STATE); prior_status persistido en reason", evidence:"[blueprint.ac] AC AC-10 verified — test_fail_from_done_rejected + test_cancel_from_done_rejected verdes (TERMINAL_STATE); prior_status persistido en reason"}
+
+AUD:E_0157{date:"2026-09-18T15:31:48Z", event:"E-0157", task:"BLP-004", kind:"blueprint_lifecycle", agent:"alfred", result:"[blueprint.ac] AC AC-11 verified — test_execute_dry_run_reports_dry_run + test_execute_dry_run_does_not_mutate verdes: outcome=dry_run, archivo inalterado", evidence:"[blueprint.ac] AC AC-11 verified — test_execute_dry_run_reports_dry_run + test_execute_dry_run_does_not_mutate verdes: outcome=dry_run, archivo inalterado"}
+
+AUD:E_0157{date:"2026-09-18T15:31:51Z", event:"E-0157", task:"BLP-004", kind:"blueprint_lifecycle", agent:"alfred", result:"[blueprint.ac] AC AC-12 verified — test_e2e_legacy_lifecycle_without_hacks verde: pending->ready->claim->ac->complete sin fail/re_delegate", evidence:"[blueprint.ac] AC AC-12 verified — test_e2e_legacy_lifecycle_without_hacks verde: pending->ready->claim->ac->complete sin fail/re_delegate"}
+
+AUD:E_0157{date:"2026-09-18T15:32:24Z", event:"E-0157", task:"BLP-004", kind:"blueprint_lifecycle", agent:"alfred", result:"[blueprint.complete] BLP BLP-004 completed — execution done", evidence:"[blueprint.complete] BLP BLP-004 completed — execution done"}
+
+KNW:blueprints_done{name:"blueprints_done", value:"1", updated:"2026-09-18T15:32:24Z", topic:"metrics", content:"metric blueprints_done=1", status:"current"}
+
+AUD:E_0157{date:"2026-09-18T15:32:34Z", event:"E-0157", task:"-", kind:"checkpoint", agent:"alfred", result:"cortex.checkpoint ok fcs=BLP-004 CYCLE-12 cerrado status=done;obj obj=", evidence:"cortex.checkpoint ok fcs=BLP-004 CYCLE-12 cerrado status=done;obj obj="}
+
+AUD:E_0157{date:"2026-09-18T15:32:43Z", event:"E-0157", task:"-", kind:"checkpoint", agent:"alfred", result:"cortex.checkpoint ok fcs=BLP-004 CYCLE-12 cerrado status=done
+obj obj=", evidence:"cortex.checkpoint ok fcs=BLP-004 CYCLE-12 cerrado status=done
+obj obj="}
+
+AUD:E_0157{date:"2026-09-18T15:33:01Z", event:"E-0157", task:"-", kind:"checkpoint", agent:"alfred", result:"cortex.checkpoint ok fcs=BLP-004 CYCLE-12 cerrado status=done obj=6 defects handlers corregidos D-01..D-06", evidence:"cortex.checkpoint ok fcs=BLP-004 CYCLE-12 cerrado status=done obj=6 defects handlers corregidos D-01..D-06"}
+
 
 $7: LESSONS
 
@@ -974,10 +1238,14 @@ LNG:_____2026_08_17t13{type:"contextual", cause:"not_specified", lesson:"- - [20
 
 LNG:___2026_08_17t13{type:"contextual", cause:"not_specified", lesson:"- [2026-08-17T13:18:53Z] LNG:cycle-01_completion{type:\"process\", cause:\"1 task(s) completed in CYCLE-01\", lesson:\"Completed tasks show effective cycle planning\"}", prevention:"not_applicable"}
 
+LNG:blueprint_update_title_frontmatter_gap_0002{
+{type:"handler_defect", cause:"In project Manhattan BLP-007 (2026-09-07), blueprint.update(section=TITLE, content=...) rewrote only the <!-- BLP:TITLE --> body block. The YAML frontmatter field title: kept the original value from blueprint.create. blueprint.list and blueprint.read then reported the stale title. Detected by Heimdall audit (OBS-10)", lesson:"blueprint.update does not propagate TITLE changes to frontmatter title:. The two sources of truth diverge silently. Workaround applied: manual edit of frontmatter line, explicitly authorized by the Architect and traced in a progress note", prevention:"Fix blueprint.update: when section == TITLE, also rewrite frontmatter title: (strip leading '# BLP-NNN: ' prefix). Add a validation in blueprint.read that warns when frontmatter title differs from TITLE body. Until fixed: agents must request Architect authorization for the manual frontmatter edit and record it as a progress note", status:"current"}
+}
+
 
 $8: ACTIVE_CONTEXT
 
-WRK:current{phase:"current", current:"cycle.close: cycle CYCLE-01 closed", blocked:"no", survive:"work", updated:"2026-08-17T13:18:53Z", event:"cycle.close"}
+WRK:current{phase:"current", current:"blueprint.complete: BLP BLP-004 completed and approved", blocked:"no", survive:"work", updated:"2026-09-18T15:32:24Z", event:"blueprint.complete", fcs:"BLP-004 CYCLE-12 cerrado status=done", obj:"6 defects handlers corregidos D-01..D-06 (status legado pending + ACs tabla + _section \\xdf->§ + execute persiste + guard terminales)", tasks:"verificar AC-10 FAMILIAR ~12:38 PY en /tmp/blp004_ac10_monitor.log luego evaluar cierre CYCLE-12", state:"suite 1330 passed 14 skipped 0 fail - 10 tasks done - 12 ACs verified - LNG registrada en alfred.cortex", last_turn:"2026-09-18T15:33:01Z"}
 
 
 $9: RISKS

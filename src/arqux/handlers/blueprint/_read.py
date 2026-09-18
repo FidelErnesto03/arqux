@@ -19,6 +19,7 @@ def read_blueprint(
     bp_id: str,
     format: str = "hcortex",
     path: str | None = None,
+    cycle: str | None = None,
     ctx: PermissionContext | None = None,
 ) -> CortexOUT:
     """Read a full Blueprint."""
@@ -26,7 +27,7 @@ def read_blueprint(
     if root is None:
         return CortexOUT.error("no project initialized", code="NOT_FOUND")
 
-    bp_path, fm, body = _find_blueprint(root, bp_id)
+    bp_path, fm, body = _find_blueprint(root, bp_id, cycle=cycle)
     if bp_path is None:
         return CortexOUT.error(f"blueprint {bp_id} not found", code="NOT_FOUND")
 
