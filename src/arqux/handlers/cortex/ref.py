@@ -23,8 +23,6 @@ from __future__ import annotations
 from ...cortex.sigils import get_sigil, list_sigils
 from ...cortex_out import CortexOUT
 from ...permissions import PermissionContext
-from ...pulse import append_pulse_to_brain, next_pulse_event_id
-from ...state import find_project_root
 
 
 def ref_handler(
@@ -35,10 +33,13 @@ def ref_handler(
 ) -> CortexOUT:
     """Return the definition of a CORTEX sigil.
 
+    Strictly read-only (BLP-007): this handler must not mutate governance
+    state — no PULSE writes, no brain updates.
+
     Args:
         sigil: Sigil identifier (case-insensitive), e.g. ``"WRK"``, ``"lng"``.
-        path: Optional path to project root (used only for PULSE recording).
-        ctx: Permission context (used to identify the agent for PULSE).
+        path: Accepted for signature compatibility; not used.
+        ctx: Permission context (not used — the handler writes nothing).
     """
     if not sigil or not isinstance(sigil, str):
         return CortexOUT.error("sigil is required", code="INVALID_ARGS")
@@ -52,8 +53,6 @@ def ref_handler(
             known_sigils=list_sigils(),
         )
 
-    _record_pulse(path, ctx, sigil=sigil, action="cortex.ref")
-
     return CortexOUT.work(
         f"cortex.ref ok sigil={sigil.upper()} name={definition.get('name', '')}",
         sigil=sigil.upper(),
@@ -64,29 +63,3 @@ def ref_handler(
         description=definition.get("description", ""),
         fields=definition.get("fields", ""),
     )
-
-
-def _record_pulse(
-    path: str | None,
-    ctx: PermissionContext | None,
-    *,
-    sigil: str,
-    action: str,
-) -> None:
-    """Append a PULSE event for a cortex.ref call (best-effort)."""
-    try:
-        root = find_project_root(start=path)
-        if root is None:
-            return
-        agent = (ctx or PermissionContext.from_env()).agent_id
-        event_id = next_pulse_event_id(root)
-        append_pulse_to_brain(
-            root,
-            event_id=event_id,
-            task_id="-",
-            kind="handler_call",
-            agent=agent,
-            payload=f"[{action}] sigil={sigil.upper()}",
-        )
-    except Exception:  # noqa: BLE001 — PULSE is best-effort
-        pass

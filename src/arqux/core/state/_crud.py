@@ -481,6 +481,14 @@ def _select_all_sections(doc: dict, selector: str) -> list[dict]:
                 })
                 if name == "_":
                     return results
+            elif name.endswith("*") and str(entry.get("name", "")).startswith(name[:-1]):  # noqa: SIM114 — kept explicit for readability
+                results.append({
+                    "sigil": entry.get("sigil"),
+                    "name": entry.get("name"),
+                    "section": sec_id,
+                    "attrs": entry.get("attrs"),
+                    "body": entry.get("body"),
+                })
             elif entry.get("name") == name:
                 results.append({
                     "sigil": entry.get("sigil"),

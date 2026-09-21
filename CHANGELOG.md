@@ -2,6 +2,59 @@
 
 All notable changes to ArqUX are documented here.
 
+## [0.7.3] - 2026-09-21
+
+Consolidates the CYCLE-12 defect-remediation Blueprints (BLP-004 through
+BLP-009). Versions 0.7.1/0.7.2 were committed but never tagged or published;
+their changes ship in this release.
+
+### Fixed — BLP-004/BLP-005: lifecycle defects + legacy status normalization
+- `blueprint.complete` validates §12 ACs and §14 tasks (`EXECUTION_INCOMPLETE`)
+- `blueprint.ac` supports checkbox and legacy table formats
+- `_transition` fails loudly on unknown statuses; legacy statuses
+  (`pending`, `defined`, `closed`, `closed_with_observations`) map to the
+  canonical state machine via `LEGACY_STATUS_MAP`
+- `re_delegate`/`blueprint.list` use effective status
+
+### Fixed — BLP-006: task resolution across cycles
+- `task.read/run/claim/update/complete/fail` share a deterministic resolver:
+  cycle-scoped when the path implies one, current cycle first, unique
+  cross-cycle match returned, ambiguous → `TASK_AMBIGUOUS` listing candidates
+- Sanitized 4 task artifacts corrupted by the historical `text=` writer bug
+
+### Fixed — BLP-007: project onboarding (BUG-005)
+- `project.init` without seed writes a validator-clean starter brain from
+  `templates/brain.cortex` (canonical layout, 0 diagnostics)
+- Workspace `projects.cortex` created if absent; real `DOM:<name>` entry
+  upserted; `registered_in_workspace` is truthful
+- `cortex.entry.add` preserves requested names; `_NNNN` suffix only on real
+  collision, reported via `renamed:` + `requested`/`renamed` fields
+- Trailing-prefix wildcard selectors (`mi_app*`) in entry matching
+- `cortex.ref` is strictly read-only (no PULSE append on target brain)
+- Onboarding guide (`STP:build_brain`) aligned with validator-required fields
+
+### Fixed — BLP-008: sync project↔meta-brain (BUG-003)
+- `sync.run`/`reconcile` resolve `DOM:<project>` dynamically via
+  `_project_name()` (IDN:project → dir fallback) — no more hardcoded
+  `DOM:arqux`; missing DOM entries are created
+- `reconcile` tolerates brains without `OBJ` entries (records to `errors[]`,
+  continues meta-sync)
+
+### Fixed — BLP-009: core hygiene (find-workspace-root + BUG-004)
+- `_find_workspace_root` never returns a `.arqux` directory — `start=.arqux`
+  normalizes to parent; `.arqux` candidates skipped in walk-up (no more
+  `.arqux/.arqux/` identity paths)
+- `blueprint.ready` refuses BLPs with unfilled template placeholders:
+  `OUT-ERROR code=VALIDATION pending=[...]`, status unchanged; §18 ☐/✅
+  cells excluded from the scan
+- `HANDLERS.md` documents the real Blueprint state machine
+  (`draft → ready → in_progress → done`) with per-transition handlers
+
+### Internal
+- Regression tests: `test_project_init_onboarding`, `test_sync_reconcile`,
+  `test_blp009_guards`, `test_task_cycle_resolution`, `test_import_smoke`
+- Test-suite count: 1355 → 1377 passed, 14 skipped
+
 ## [0.7.0] - 2026-08-17
 
 ### Added - CYCLE-11: Decoupling CODEC-CORTEX

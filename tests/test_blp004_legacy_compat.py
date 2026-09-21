@@ -63,6 +63,26 @@ def _read_fm(path: Path) -> dict:
     return fm
 
 
+def _fill_template_placeholders(arqux_env) -> None:
+    """Fill leftover template markers on the fixture's fresh BLP.
+
+    BLP-009's ``blueprint.ready`` gate refuses unfilled placeholders; these
+    tests exercise lifecycle transitions, not the gate.
+    """
+    from arqux.handlers.blueprint.lifecycle import _pending_placeholders
+
+    bp_file = (
+        arqux_env.proj_root / ".arqux" / "cycles" / arqux_env.cycle_id
+        / "blueprints" / f"{arqux_env.bp_id}.md"
+    )
+    pending = _pending_placeholders(bp_file, arqux_env.proj_root)
+    if pending:
+        text = bp_file.read_text(encoding="utf-8")
+        for marker in pending:
+            text = text.replace(marker, "filled")
+        bp_file.write_text(text, encoding="utf-8")
+
+
 def _read_body(path: Path) -> str:
     return path.read_text(encoding="utf-8").split("---", 2)[2]
 
@@ -171,6 +191,7 @@ def test_ac_blueprint_checkbox_still_works(arqux_env) -> None:
         content="- [ ] **AC-01:** something verifiable",
         path=str(arqux_env.proj_root), ctx=arqux_env.gov_ctx,
     )
+    _fill_template_placeholders(arqux_env)
     ready_blueprint(arqux_env.bp_id, path=str(arqux_env.proj_root), ctx=arqux_env.gov_ctx)
     claim_blueprint(arqux_env.bp_id, path=str(arqux_env.proj_root), ctx=arqux_env.exec_ctx)
     r = ac_blueprint(
@@ -253,6 +274,7 @@ def test_unchecked_items_detects_pending_tasks() -> None:
 
 def test_complete_rejects_unchecked_tasks(arqux_env) -> None:
     """EXECUTION_INCOMPLETE gate revives: template §14 placeholders block done."""
+    _fill_template_placeholders(arqux_env)
     ready_blueprint(arqux_env.bp_id, path=str(arqux_env.proj_root), ctx=arqux_env.gov_ctx)
     claim_blueprint(arqux_env.bp_id, path=str(arqux_env.proj_root), ctx=arqux_env.exec_ctx)
     r = complete_blueprint(arqux_env.bp_id, evidence="done", path=str(arqux_env.proj_root), ctx=arqux_env.exec_ctx)
@@ -261,6 +283,7 @@ def test_complete_rejects_unchecked_tasks(arqux_env) -> None:
 
 
 def test_complete_succeeds_when_tasks_checked(arqux_env) -> None:
+    _fill_template_placeholders(arqux_env)
     ready_blueprint(arqux_env.bp_id, path=str(arqux_env.proj_root), ctx=arqux_env.gov_ctx)
     claim_blueprint(arqux_env.bp_id, path=str(arqux_env.proj_root), ctx=arqux_env.exec_ctx)
     _complete_all_tasks(arqux_env, arqux_env.bp_id)
@@ -275,6 +298,7 @@ def test_complete_succeeds_when_tasks_checked(arqux_env) -> None:
 
 def _done_bp(arqux_env) -> str:
     bp_id = arqux_env.bp_id
+    _fill_template_placeholders(arqux_env)
     ready_blueprint(bp_id, path=str(arqux_env.proj_root), ctx=arqux_env.gov_ctx)
     claim_blueprint(bp_id, path=str(arqux_env.proj_root), ctx=arqux_env.exec_ctx)
     _complete_all_tasks(arqux_env, bp_id)
@@ -298,6 +322,7 @@ def test_cancel_from_done_rejected(arqux_env) -> None:
 
 def test_fail_records_prior_status(arqux_env) -> None:
     bp_id = arqux_env.bp_id
+    _fill_template_placeholders(arqux_env)
     ready_blueprint(bp_id, path=str(arqux_env.proj_root), ctx=arqux_env.gov_ctx)
     claim_blueprint(bp_id, path=str(arqux_env.proj_root), ctx=arqux_env.exec_ctx)
     r = fail_blueprint(bp_id, "real blocker", path=str(arqux_env.proj_root), ctx=arqux_env.exec_ctx)

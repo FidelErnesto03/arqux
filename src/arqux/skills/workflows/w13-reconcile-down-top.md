@@ -29,7 +29,7 @@ actor "Handler Mutante" as HM
 participant "reconcile_cycle()" as RC
 database "MANIFEST.md\n(§6 + §7)" as MAN
 database "brain.cortex\n(OBJ, KNW, ARQX)" as BRAIN
-database "meta-brain.cortex\n(DOM:arqux)" as META
+database "meta-brain.cortex\n(DOM:<proyecto>)" as META
 
 == SIEMPRE: NIVEL CICLO ==
 HM -> RC: reconcile_cycle(project_root, cycle_id)
@@ -55,7 +55,7 @@ note right of RC
   sync_meta_brain() se invoca
   cuando el contexto cambia al workspace
 end note
-RC -> META: Actualiza DOM:arqux
+RC -> META: Actualiza DOM:<proyecto>\n(creado si ausente — BLP-008)
 note right: blueprints_done, draft,\nopen_cycles, tests, etc.
 RC --> HM: meta-brain synced
 
@@ -73,7 +73,6 @@ title w13 — Handlers que disparan reconcile_cycle
 [*] --> task_fail : task.fail
 
 [*] --> bp_create : blueprint.create
-[*] --> bp_define : blueprint.define
 [*] --> bp_ready : blueprint.ready
 [*] --> bp_claim : blueprint.claim
 [*] --> bp_complete : blueprint.complete
@@ -93,7 +92,6 @@ task_update --> RECONCILE
 task_complete --> RECONCILE
 task_fail --> RECONCILE
 bp_create --> RECONCILE
-bp_define --> RECONCILE
 bp_ready --> RECONCILE
 bp_claim --> RECONCILE
 bp_complete --> RECONCILE
@@ -135,8 +133,7 @@ HDL:task.complete{ handler:"task.complete", file:"handlers/task.py", description
 HDL:task.fail{ handler:"task.fail", file:"handlers/task.py", description:"Bloquea tarea → llama reconcile_cycle()." }
 
 HDL:blueprint.create{ handler:"blueprint.create", file:"handlers/blueprint/lifecycle.py", description:"Crea BLP → llama reconcile_cycle()." }
-HDL:blueprint.define{ handler:"blueprint.define", file:"handlers/blueprint/lifecycle.py", description:"Define BLP → llama reconcile_cycle()." }
-HDL:blueprint.ready{ handler:"blueprint.ready", file:"handlers/blueprint/lifecycle.py", description:"Prepara BLP → llama reconcile_cycle()." }
+HDL:blueprint.ready{ handler:"blueprint.ready", file:"handlers/blueprint/lifecycle.py", description:"draft → ready; gate BLP-009: rechaza con VALIDATION + pending[] si quedan placeholders de plantilla → llama reconcile_cycle()." }
 HDL:blueprint.claim{ handler:"blueprint.claim", file:"handlers/blueprint/lifecycle.py", description:"Reclama BLP → llama reconcile_cycle()." }
 HDL:blueprint.complete{ handler:"blueprint.complete", file:"handlers/blueprint/review.py", description:"Completa BLP → llama reconcile_cycle()." }
 HDL:blueprint.fail{ handler:"blueprint.fail", file:"handlers/blueprint/review.py", description:"Bloquea BLP → llama reconcile_cycle()." }

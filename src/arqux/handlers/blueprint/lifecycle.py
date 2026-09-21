@@ -23,6 +23,7 @@ from ._helpers import (
     _prefill_from_context,
     _read_blueprint,
     _resolve_root,
+    _section,
     _transition,
     _write_blueprint,
     next_blueprint_id_safe,
@@ -150,6 +151,40 @@ def create_blueprint(
 # ---------------------------------------------------------------------------
 
 
+def _pending_placeholders(bp_path: Path, root: Path | None = None) -> list[str]:
+    """Template placeholder markers still present in *bp_path*.
+
+    Discovery is template-driven: any ``_…_`` marker present in the
+    effective ``BLP_TEMPLATE.md`` (workspace template first, then the
+    package fallback — same resolution as ``create_blueprint``) that
+    remains in the BLP body counts as unfilled (BLP-009 / BUG-004 P3).
+    §18 is excluded — its ``☐``/``✅`` cells are quality-gate state, not
+    placeholders. The regex (``MARKER_PATTERN``) uses word boundaries, so
+    it cannot match fragments inside identifiers.
+    """
+    from ..cycle import MARKER_PATTERN  # deferred: cycle imports blueprint pkg
+
+    template_src = _find_workspace_template(root, BLUEPRINT_TEMPLATE) if root else None
+    if template_src is None:
+        template_src = Path(__file__).resolve().parent.parent / "templates" / BLUEPRINT_TEMPLATE
+    if not template_src.exists():
+        return []
+    markers = {
+        f"_{m.group(1)}_"
+        for m in MARKER_PATTERN.finditer(template_src.read_text(encoding="utf-8"))
+    }
+    if not markers:
+        return []
+
+    body = bp_path.read_text(encoding="utf-8")
+    parts = body.split("---", 2)
+    body = parts[2] if len(parts) >= 3 else body
+    sec18 = _section(body, 18)
+    if sec18:
+        body = body.replace(sec18, "")
+    return sorted(m for m in markers if m in body)
+
+
 def ready_blueprint(
     bp_id: str,
     path: str | None = None,
@@ -164,6 +199,17 @@ def ready_blueprint(
     bp_path, fm, body = _find_blueprint(root, bp_id, cycle=cycle)
     if bp_path is None:
         return CortexOUT.error(f"blueprint {bp_id} not found", code="NOT_FOUND")
+
+    # BLP-009 / BUG-004 P3: refuse `ready` while template placeholders remain.
+    # §18 ☐/✅ cells are quality-gate state and are excluded from the scan.
+    pending = _pending_placeholders(bp_path, root)
+    if pending:
+        return CortexOUT.error(
+            f"blueprint {bp_id} has {len(pending)} unfilled template placeholders: "
+            + "; ".join(p[:60] for p in pending[:5]),
+            code="VALIDATION",
+            pending=pending,
+        )
 
     err = _transition(bp_id, fm.get("status", BP_DRAFT), BP_READY)
     if err:

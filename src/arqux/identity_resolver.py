@@ -83,7 +83,14 @@ def resolve_agent_identity(
 
 def _find_workspace_root(start: Path) -> Path | None:
     """Walk up from *start* to find the workspace root (has AGENTS.md)."""
+    # A `.arqux` directory is never a workspace root — even if it contains an
+    # AGENTS.md — and resolving identities from it would produce
+    # `.arqux/.arqux/` paths (BLP-009).
+    if start.name == ".arqux":
+        start = start.parent
     for parent in [start] + list(start.parents):
+        if parent.name == ".arqux":
+            continue
         if (parent / "AGENTS.md").exists():
             return parent
         if (parent / ".arqux" / "AGENTS.md").exists():

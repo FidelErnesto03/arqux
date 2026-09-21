@@ -188,13 +188,71 @@ def _count_tests(root: Path) -> int:
         return 0
 
 
+def _normalize_dom_name(name: str) -> str:
+    """Normalize a project display name into a CORTEX DOM entry name.
+
+    Convention (workspace projects.cortex / meta-brain §2): lowercase,
+    ``[^a-z0-9_]`` → ``_``.  ``ARQUX`` → ``arqux``, ``Banco Familiar`` →
+    ``banco_familiar``.
+    """
+    return re.sub(r"[^a-z0-9_]", "_", name.strip().lower())
+
+
+def _project_name(project_root: Path) -> str:
+    """Resolve the DOM entry name for *project_root*.
+
+    Prefers the brain's declared identity (``$1/IDN:project{name}``);
+    falls back to the directory name (parent when *project_root* is the
+    ``.arqux`` directory itself).
+    """
+    try:
+        from arqux.state import crud_read
+
+        if project_root.name == ".arqux":
+            brain_path = project_root / "brain.cortex"
+            fallback = project_root.parent.name
+        else:
+            brain_path = project_root / ".arqux" / "brain.cortex"
+            fallback = project_root.name
+        if brain_path.exists():
+            read = crud_read(brain_path, "$1/IDN:project")
+            for entry in read.get("entries", []):
+                value = entry.get("value") or {}
+                declared = value.get("name") or value.get("product")
+                if declared:
+                    return _normalize_dom_name(str(declared))
+        return _normalize_dom_name(fallback)
+    except Exception:
+        fallback = project_root.parent.name if project_root.name == ".arqux" else project_root.name
+        return _normalize_dom_name(fallback)
+
+
+def _upsert_meta_dom(meta_brain_path: Path, dom_name: str, project_root: Path) -> None:
+    """Ensure ``$2/DOM:<dom_name>`` exists in the meta-brain (create if absent)."""
+    from arqux.state import crud_add, crud_read
+
+    try:
+        existing = crud_read(meta_brain_path, f"$2/DOM:{dom_name}")
+    except Exception:
+        existing = {"entries": []}
+    if existing.get("entries"):
+        return
+    proj_dir = project_root.parent if project_root.name == ".arqux" else project_root
+    crud_add(
+        meta_brain_path, "$2", "DOM", dom_name,
+        {"name": proj_dir.name, "path": str(proj_dir), "status": "current"},
+        create_section=False,
+        force=True,
+    )
+
+
 def _sync_meta_brain(
     project_root: Path,
     metrics: dict[str, Any],
     event: str,
     ts: str,
 ) -> None:
-    """Sync metrics to meta-brain DOM:arqux entry."""
+    """Sync metrics to the meta-brain ``DOM:<project>`` entry."""
     try:
         from arqux.state import crud_update, find_workspace_root
 
@@ -209,6 +267,8 @@ def _sync_meta_brain(
         if not meta_brain_path.exists():
             logger.debug("sync_brain: meta-brain.cortex not found at %s", meta_brain_path)
             return
+
+        dom_name = _project_name(project_root)
 
         dom_updates: dict[str, Any] = {"updated": ts, "last_event": event}
 
@@ -235,14 +295,19 @@ def _sync_meta_brain(
             if key in ("handlers", "tasks_done", "tasks_active", "cycles_closed"):
                 dom_updates[key] = str(value)
 
+        try:
+            _upsert_meta_dom(meta_brain_path, dom_name, project_root)
+        except Exception:
+            logger.debug("sync_brain: could not create DOM:%s (continuing)", dom_name)
+
         crud_update(
             str(meta_brain_path),
-            "$2/DOM:arqux",
+            f"$2/DOM:{dom_name}",
             set_=dom_updates,
             force=True,
         )
     except Exception:
-        logger.exception("sync_brain: failed to sync meta-brain @ DOM:arqux (continuing)")
+        logger.exception("sync_brain: failed to sync meta-brain @ DOM:<project> (continuing)")
 
 
 def reconcile_brain(project_root: Path) -> dict[str, Any]:
@@ -302,7 +367,7 @@ def reconcile_brain(project_root: Path) -> dict[str, Any]:
         }
 
         # 2. Determine context: workspace root vs project root
-        from arqux.state import crud_update, find_workspace_root
+        from arqux.state import crud_read, crud_update, find_workspace_root
 
         ws_root = find_workspace_root(start=project_root)
         if ws_root is None:
@@ -338,7 +403,9 @@ def reconcile_brain(project_root: Path) -> dict[str, Any]:
                 )
                 result["reconciled"] = True
         else:
-            # Project context: update brain.cortex §3 (OBJ) with accurate counts
+            # Project context: update brain.cortex §3 (OBJ) with accurate counts.
+            # Tolerant: resolves the first OBJ:* entry — a missing OBJ is
+            # recorded in errors[] instead of aborting (BLP-008 / BUG-003).
             brain_path = project_root / ".arqux" / "brain.cortex"
             if brain_path.exists():
                 goal = (
@@ -347,22 +414,29 @@ def reconcile_brain(project_root: Path) -> dict[str, Any]:
                     f"({', '.join(sorted(open_cycles + closed_cycles))})."
                 )
 
-                crud_update(
-                    str(brain_path),
-                    "$3/OBJ:_",
-                    set_={
-                        "goal": goal,
-                        "status": "current",
-                        "success": "synced",
-                        "survive": "work",
-                        "updated": ts,
-                        "event": "brain.reconcile",
-                    },
-                    force=True,
-                )
-                result["reconciled"] = True
+                try:
+                    objs = crud_read(str(brain_path), "$3/OBJ:*").get("entries", [])
+                except Exception:
+                    objs = []
+                if objs:
+                    crud_update(
+                        str(brain_path),
+                        f"$3/OBJ:{objs[0].get('name')}",
+                        set_={
+                            "goal": goal,
+                            "status": "current",
+                            "success": "synced",
+                            "survive": "work",
+                            "updated": ts,
+                            "event": "brain.reconcile",
+                        },
+                        force=True,
+                    )
+                    result["reconciled"] = True
+                else:
+                    result["errors"].append("brain has no OBJ entry in §3")
 
-        # 4. Sync to meta-brain DOM:arqux (always)
+        # 4. Sync to meta-brain DOM:<project> (always)
         try:
             if ws_root is not None:
                 meta_brain = ws_root / "meta-brain.cortex"
@@ -380,9 +454,18 @@ def reconcile_brain(project_root: Path) -> dict[str, Any]:
                         "total_blueprints": str(total_blps),
                     }
 
+                    if is_workspace_root:
+                        dom_name = _meta_self_dom(meta_brain) or _project_name(project_root)
+                    else:
+                        dom_name = _project_name(project_root)
+                    try:
+                        _upsert_meta_dom(meta_brain, dom_name, project_root)
+                    except Exception:
+                        logger.debug("reconcile: could not create DOM:%s (continuing)", dom_name)
+
                     crud_update(
                         str(meta_brain),
-                        "$2/DOM:arqux",
+                        f"$2/DOM:{dom_name}",
                         set_=dom_updates,
                         force=True,
                     )
@@ -394,6 +477,22 @@ def reconcile_brain(project_root: Path) -> dict[str, Any]:
         result["errors"].append(f"Reconciliation failed: {e}")
 
     return result
+
+
+def _meta_self_dom(meta_brain: Path) -> str | None:
+    """Return the name of the workspace's self-DOM entry (``path:"."`` or
+    ``domain:"workspace"``) in the meta-brain, or None if absent."""
+    try:
+        from arqux.state import crud_read
+
+        doms = crud_read(meta_brain, "$2/DOM:*").get("entries", [])
+        for entry in doms:
+            value = entry.get("value") or {}
+            if value.get("path") == "." or value.get("domain") == "workspace":
+                return entry.get("name")
+    except Exception:
+        pass
+    return None
 
 
 def _fm_val(fm_text: str, key: str) -> str:

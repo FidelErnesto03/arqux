@@ -19,7 +19,9 @@ from arqux.handlers.blueprint.lifecycle import (
 
 def define_blueprint(bp_id, **kwargs):
     """Legacy wrapper — define_blueprint removed in ISS-002.
-    Uses update_blueprint to write sections (synthesize is guide-only)."""
+    Uses update_blueprint to write sections (synthesize is guide-only).
+    Also fills any leftover template placeholders so blueprint.ready's
+    placeholder gate (BLP-009) doesn't block lifecycle tests."""
     from arqux.cortex_out import CortexOUT
     sections = kwargs.pop("sections", None) or {}
     path = kwargs.get("path")
@@ -44,7 +46,26 @@ def define_blueprint(bp_id, **kwargs):
     if kwargs.get("mandatory_rules"):
         content = "\n".join(f"{i+1}. {r}" for i, r in enumerate(kwargs["mandatory_rules"]))
         update_blueprint(bp_id, section="7", content=content, path=path, ctx=ctx)
+    _scrub_placeholders(Path(path), bp_id)
     return CortexOUT.work(f"blueprint.update ok id={bp_id} sections defined")
+
+
+def _scrub_placeholders(proj_root: Path, bp_id: str) -> None:
+    """Fill any template placeholders still present in *bp_id*.
+
+    BLP-009 added a placeholder gate to ``blueprint.ready``; lifecycle
+    tests that only exercise transitions fill them with neutral content.
+    """
+    from arqux.handlers.blueprint.lifecycle import _pending_placeholders
+
+    bp_file = _bp_path(proj_root, bp_id)
+    pending = _pending_placeholders(bp_file, proj_root)
+    if not pending:
+        return
+    text = bp_file.read_text(encoding="utf-8")
+    for marker in pending:
+        text = text.replace(marker, "filled")
+    bp_file.write_text(text, encoding="utf-8")
 
 from arqux.handlers.blueprint.manage import update_blueprint
 from arqux.handlers.blueprint.review import (

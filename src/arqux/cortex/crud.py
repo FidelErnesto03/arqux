@@ -105,10 +105,18 @@ def _find_section(doc: dict, section_id: str) -> dict | None:
 
 
 def _entry_matches(entry: dict, sigil: str | None, name: str | None) -> bool:
-    """True if *entry* matches the parsed selector's sigil/name constraints."""
+    """True if *entry* matches the parsed selector's sigil/name constraints.
+
+    Name patterns: ``*``/``_`` match any name; a trailing ``*`` (e.g.
+    ``mi_app*``) matches by prefix; anything else is an exact match.
+    """
     if sigil is not None and entry.get("sigil") != sigil:
         return False
-    return not (name is not None and name not in ("*", "_") and entry.get("name") != name)
+    if name is None or name in ("*", "_"):
+        return True
+    if name.endswith("*"):
+        return str(entry.get("name", "")).startswith(name[:-1])
+    return entry.get("name") == name
 
 
 def _project_entry(entry: dict, section_id: str) -> dict:
@@ -140,7 +148,8 @@ def select_entries(doc: dict, selector: str) -> list[dict]:
         [{"sigil":..., "name":..., "section":..., "body":...}]
 
     Wildcard ``*`` matches all names.  Wildcard ``_`` matches the first
-    entry with the matching sigil.
+    entry with the matching sigil.  A trailing ``*`` in the name (e.g.
+    ``$1/DOM:mi_app*``) matches by prefix.
     """
     parts = parse_selector(selector)
     section = _find_section(doc, parts["section"])

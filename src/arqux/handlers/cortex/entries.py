@@ -122,8 +122,10 @@ def entry_add_handler(
 ) -> CortexOUT:
     """Add a new entry to a .cortex file.
 
-    Automatically appends a sequential _XXXX suffix to the name
-    (per-section counter) to prevent silent overwrites.
+    Stores the entry under the requested name. When ``sigil:name``
+    already exists in the section, appends a sequential ``_XXXX``
+    suffix and reports the rename explicitly via the ``requested``
+    and ``renamed`` fields (BLP-007: no silent renames).
 
     BLP-005: ``content`` accepts a CORTEX entry string of the form
     ``$N:{sigil:name{key:val,...}}`` or ``sigil:name{key:val,...}``.
@@ -155,8 +157,10 @@ def entry_add_handler(
                     f'{k}:{_quote_attr(v)}' for k, v in body_keys.items()
                 )
 
-    suffix = _next_number(path, section)
-    numbered_name = f"{name}{suffix}"
+    requested_name = name
+    numbered_name = name
+    while _entry_exists(path, section, sigil, numbered_name):
+        numbered_name = f"{requested_name}{_next_number(path, section)}"
 
     try:
         result = crud_add(path, section, sigil, numbered_name, value, create_section=create_section, force=force)
@@ -167,12 +171,34 @@ def entry_add_handler(
 
     if "error" in result:
         return CortexOUT.error(result["error"], code="CRUD_ERROR")
-    return CortexOUT.work(
-        f"entry.add ok path={path} {sigil}:{numbered_name} in {section}",
-        path=path, section=section, sigil=sigil, name=numbered_name,
-        bytes_written=result.get("bytes_written"),
-        backup=result.get("backup"),
-    )
+
+    renamed = numbered_name != requested_name
+    message = f"entry.add ok path={path} {sigil}:{numbered_name} in {section}"
+    if renamed:
+        message += f" renamed:{requested_name}->{numbered_name}"
+    fields: dict[str, Any] = {
+        "path": path, "section": section, "sigil": sigil, "name": numbered_name,
+        "bytes_written": result.get("bytes_written"),
+        "backup": result.get("backup"),
+    }
+    if renamed:
+        fields["requested"] = requested_name
+        fields["renamed"] = numbered_name
+    return CortexOUT.work(message, **fields)
+
+
+def _entry_exists(path: str, section: str, sigil: str, name: str) -> bool:
+    """True if ``sigil:name`` is already present in *section* of *path*.
+
+    Read failures are treated as "no collision" — ``crud_add`` surfaces the
+    real error (e.g. NOT_FOUND) afterwards.
+    """
+    try:
+        selector = f"{section}/{sigil}:{name}" if section else f"{sigil}:{name}"
+        found = crud_read(path, selector)
+    except Exception:
+        return False
+    return any(e.get("name") == name for e in found.get("entries", []))
 
 
 def entry_update_handler(
