@@ -159,9 +159,9 @@ def claim_task(task_id: str, path: str | None = None, ctx: PermissionContext | N
     if root is None:
         return CortexOUT.error("no project initialized", code="NOT_FOUND")
 
-    path, fm, body = _load_task(root, task_id, cycle=_cycle_from_path(path))
+    path, fm, body = _load_task(root, task_id, cycle=_cycle_from_path(path), path=path)
     if path is None:
-        return CortexOUT.error(f"task {task_id} not found", code="NOT_FOUND")
+        return _task_lookup_error(task_id, fm)
 
     if fm.get("status") not in (TASK_OPEN, TASK_DRAFT):
         return CortexOUT.error(
@@ -199,9 +199,9 @@ def update_task(
     if root is None:
         return CortexOUT.error("no project initialized", code="NOT_FOUND")
 
-    path, fm, body = _load_task(root, task_id, cycle=_cycle_from_path(path))
+    path, fm, body = _load_task(root, task_id, cycle=_cycle_from_path(path), path=path)
     if path is None:
-        return CortexOUT.error(f"task {task_id} not found", code="NOT_FOUND")
+        return _task_lookup_error(task_id, fm)
 
     if status and status != fm.get("status"):
         allowed = TASK_TRANSITIONS.get(fm.get("status", ""), ())
@@ -238,9 +238,9 @@ def complete_task(
     if root is None:
         return CortexOUT.error("no project initialized", code="NOT_FOUND")
 
-    path, fm, body = _load_task(root, task_id, cycle=_cycle_from_path(path))
+    path, fm, body = _load_task(root, task_id, cycle=_cycle_from_path(path), path=path)
     if path is None:
-        return CortexOUT.error(f"task {task_id} not found", code="NOT_FOUND")
+        return _task_lookup_error(task_id, fm)
 
     if fm.get("status") == TASK_DONE:
         return CortexOUT.error("task already done", code="INVALID_STATE")
@@ -294,9 +294,9 @@ def fail_task(
     if root is None:
         return CortexOUT.error("no project initialized", code="NOT_FOUND")
 
-    path, fm, body = _load_task(root, task_id, cycle=_cycle_from_path(path))
+    path, fm, body = _load_task(root, task_id, cycle=_cycle_from_path(path), path=path)
     if path is None:
-        return CortexOUT.error(f"task {task_id} not found", code="NOT_FOUND")
+        return _task_lookup_error(task_id, fm)
 
     fm["status"] = TASK_BLOCKED
     fm["updated"] = _now_iso()
@@ -343,25 +343,19 @@ def read_task(
     if not cycles_base.exists():
         return CortexOUT.error("no cycles", code="NOT_FOUND")
 
-    # BLP-fix (G-7): restringir la busqueda al ciclo derivado del path
-    # en lugar de escanear todos los ciclos (evita colision de task_id).
+    # BLP-fix (G-7): restringir la busqueda al ciclo derivado del path;
+    # BLP-006: sin ciclo derivable el ciclo actual del proyecto gana y
+    # multiples coincidencias fuera de el devuelven TASK_AMBIGUOUS.
     _cycle = _cycle_from_path(path)
-    cdirs = sorted(cycles_base.iterdir())
-    if _cycle:
-        cdirs = [c for c in cdirs if c.name == _cycle]
-
-    target: Path | None = None
-    for cdir in cdirs:
-        candidate = cdir / TASKS_DIR / f"{task_id}.cortex"
-        if candidate.exists():
-            target = candidate
-            break
-        candidate_h = cdir / TASKS_DIR / f"{task_id}.md"
-        if candidate_h.exists():
-            target = candidate_h
-            break
-
+    target, matches = _resolve_task_file(root, task_id, _cycle, _current_cycle_id(root, path))
     if target is None:
+        if len(matches) > 1:
+            cycles = sorted({m.parent.parent.name for m in matches})
+            return CortexOUT.error(
+                f"task {task_id} is ambiguous — exists in cycles "
+                f"{', '.join(cycles)}; pass a cycle-scoped path",
+                code="TASK_AMBIGUOUS",
+            )
         return CortexOUT.error(f"task {task_id} not found", code="NOT_FOUND")
 
     # Pick the requested format.
@@ -444,28 +438,116 @@ def _cycle_from_path(path: str | None) -> str | None:
     return None
 
 
-def _load_task(root: Path, task_id: str, cycle: str | None = None) -> tuple[Path | None, dict[str, Any], str]:
+def _current_cycle_id(root: Path, path: str | None = None) -> str | None:
+    """Return the project's most recent non-closed cycle.
+
+    Same precedence rule as ``create_task``: ``current_cycle()`` open
+    cycles, last entry. Falls back to the last cycle directory by name.
+    """
+    try:
+        from .cycle import current_cycle as _current_cycle
+
+        _cc = _current_cycle(path=path or str(root))
+        _open = _cc.data.get("open_cycles", []) if hasattr(_cc, "data") else []
+        if _open:
+            return _open[-1]
+    except Exception:
+        pass
+    cycles_base = root / CYCLES_DIR
+    if cycles_base.exists():
+        names = [c.name for c in sorted(cycles_base.iterdir()) if c.is_dir()]
+        if names:
+            return names[-1]
+    return None
+
+
+def _resolve_task_file(
+    root: Path,
+    task_id: str,
+    cycle: str | None = None,
+    current_cycle_id: str | None = None,
+) -> tuple[Path | None, list[Path]]:
+    """Resolve a task file with deterministic cycle precedence (BLP-006).
+
+    Returns ``(chosen, matches)``:
+
+    - explicit ``cycle``: search only that cycle directory.
+    - no cycle: the project's current cycle wins if the task exists there.
+    - otherwise all cycles are scanned: a single match becomes ``chosen``;
+      multiple matches leave ``chosen=None`` and ``matches`` lists every
+      candidate so the caller can report TASK_AMBIGUOUS instead of
+      silently returning the first alphabetical cycle.
+    """
+    cycles_base = root / CYCLES_DIR
+    if not cycles_base.exists():
+        return None, []
+
+    def _in(cdir: Path) -> Path | None:
+        for ext in (".cortex", ".md"):
+            candidate = cdir / TASKS_DIR / f"{task_id}{ext}"
+            if candidate.exists():
+                return candidate
+        return None
+
+    cdirs = [c for c in sorted(cycles_base.iterdir()) if c.is_dir()]
+
+    if cycle:
+        for cdir in cdirs:
+            if cdir.name != cycle:
+                continue
+            hit = _in(cdir)
+            return (hit, [hit]) if hit else (None, [])
+        return None, []
+
+    if current_cycle_id:
+        for cdir in cdirs:
+            if cdir.name == current_cycle_id:
+                hit = _in(cdir)
+                if hit:
+                    return hit, [hit]
+                break
+
+    matches = [hit for cdir in cdirs if (hit := _in(cdir)) is not None]
+    if len(matches) == 1:
+        return matches[0], matches
+    return None, matches
+
+
+def _task_lookup_error(task_id: str, fm: dict[str, Any]) -> CortexOUT:
+    """Build the lookup error for ``_load_task`` callers (BLP-006)."""
+    ambiguous = fm.get("_ambiguous_cycles") if isinstance(fm, dict) else None
+    if ambiguous:
+        return CortexOUT.error(
+            f"task {task_id} is ambiguous — exists in cycles "
+            f"{', '.join(ambiguous)}; pass a cycle-scoped path",
+            code="TASK_AMBIGUOUS",
+        )
+    return CortexOUT.error(f"task {task_id} not found", code="NOT_FOUND")
+
+
+def _load_task(
+    root: Path,
+    task_id: str,
+    cycle: str | None = None,
+    path: str | None = None,
+) -> tuple[Path | None, dict[str, Any], str]:
     """Find and parse a task by ID.
 
     BLP-fix (G-5/G-7): if ``cycle`` is provided, restrict the search to
     that cycle only instead of scanning all cycles (which caused task_id
     collisions across cycles).
+
+    BLP-006: without ``cycle``, the project's current cycle wins; a single
+    match elsewhere is returned; multiple matches make the lookup
+    ambiguous and ``fm`` carries ``_ambiguous_cycles`` so callers report
+    TASK_AMBIGUOUS instead of silently picking the first one.
     """
-    cycles_base = root / CYCLES_DIR
-    if not cycles_base.exists():
-        return None, {}, ""
-    cdirs = sorted(cycles_base.iterdir())
-    if cycle:
-        cdirs = [c for c in cdirs if c.name == cycle]
-    for cdir in cdirs:
-        candidate = cdir / TASKS_DIR / f"{task_id}.cortex"
-        if candidate.exists():
-            fm, body = _parse_cortex_file(candidate)
-            return candidate, fm, body
-        candidate_h = cdir / TASKS_DIR / f"{task_id}.md"
-        if candidate_h.exists():
-            fm, body = _parse_cortex_file(candidate_h)
-            return candidate_h, fm, body
+    chosen, matches = _resolve_task_file(root, task_id, cycle, _current_cycle_id(root, path))
+    if chosen is not None:
+        fm, body = _parse_cortex_file(chosen)
+        return chosen, fm, body
+    if len(matches) > 1:
+        return None, {"_ambiguous_cycles": sorted({m.parent.parent.name for m in matches})}, ""
     return None, {}, ""
 
 
@@ -521,20 +603,19 @@ def run_task(
     if root is None:
         return CortexOUT.error("no project initialized", code="NOT_FOUND")
 
-    # Find the task file.
-    cycles_base = root / CYCLES_DIR
-    task_path: Path | None = None
-    if cycles_base.exists():
-        for cdir in cycles_base.iterdir():
-            for ext in (".cortex", ".md"):
-                candidate = cdir / TASKS_DIR / f"{task_id}{ext}"
-                if candidate.exists():
-                    task_path = candidate
-                    break
-            if task_path:
-                break
-
+    # Find the task file (BLP-006: same deterministic resolution as
+    # _load_task/read_task — no arbitrary first-match across cycles).
+    task_path, matches = _resolve_task_file(
+        root, task_id, _cycle_from_path(path), _current_cycle_id(root, path)
+    )
     if task_path is None:
+        if len(matches) > 1:
+            cycles = sorted({m.parent.parent.name for m in matches})
+            return CortexOUT.error(
+                f"task {task_id} is ambiguous — exists in cycles "
+                f"{', '.join(cycles)}; pass a cycle-scoped path",
+                code="TASK_AMBIGUOUS",
+            )
         return CortexOUT.error(
             f"task {task_id} not found in any cycle",
             code="NOT_FOUND",

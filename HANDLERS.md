@@ -45,29 +45,53 @@ The 24-handler governance budget is a design constraint: adding a new governance
 | Handler | Description |
 |---------|-------------|
 | `blueprint.ac` | Verify one AC in §12. Fail triggers auto re-delegate (max 3). |
-| `blueprint.approve` | Auditor approves after cross-verification. State → done. |
-| `blueprint.assign` | Governor assigns an executor to the Blueprint. |
-| `blueprint.block_for_architect` | Block for Architect manual review after 3rd verification fail. |
+| `blueprint.block_for_architect` | Block for Architect manual review. |
 | `blueprint.cancel` | Cancel a Blueprint. Governor-only. State → cancelled. |
-| `blueprint.claim` | Executor claims the Blueprint. State → in_progress. |
-| `blueprint.complete` | Declare execution complete. State → review. |
+| `blueprint.claim` | Executor claims the Blueprint. ready → in_progress + implicit executor assignment. |
+| `blueprint.complete` | Declare execution complete. in_progress → done (single step). |
 | `blueprint.create` | Create a new Blueprint from BLP_TEMPLATE.md in draft state. |
-| `blueprint.define` | Fill the Blueprint's definition sections. State → defined. |
+| `blueprint.execute` | Meta-handler: verify §3 preconditions, run §14 tasks, verify §12 ACs, mark complete. Supports dry_run. |
 | `blueprint.fail` | Blueprint hit an obstacle. State → blocked. |
-| `blueprint.gate` | Approve one or all Blueprint quality gates after Architect maturation. |
 | `blueprint.list` | List Blueprints with optional filters. |
-| `blueprint.mature` | Enter maturation phase. Mode 'live' for synchronous co-design, 'async' (default) for cyclic iteration. |
-| `blueprint.re_delegate` | Re-delegate after verification fail (max 3 loops). |
 | `blueprint.read` | Read a full Blueprint (HCORTEX or CORTEX format). |
-| `blueprint.ready` | Architect declares Blueprint ready for execution. |
+| `blueprint.ready` | Architect declares Blueprint ready for execution. draft → ready. |
+| `blueprint.re_delegate` | Re-delegate after verification failure. Re-opens a done/blocked blueprint. |
+| `blueprint.synthesize` | Guide mode: creates or finds the BLP and returns the next pending section. |
 | `blueprint.task` | Update one task's checkbox in §14. Status: in_progress/completed. |
 | `blueprint.update` | Update Blueprint progress with a note or refine a single section. |
+
+### Blueprint state machine
+
+```
+draft → ready → in_progress → done
+  │        │         │          ▲
+  │        │         ├── blueprint.fail → blocked ── blueprint.re_delegate ──┐
+  │        │         │                                                     │
+  │        │         └── blueprint.block_for_architect → blocked           │
+  │        │                                                               │
+  └── blueprint.cancel → cancelled      (re_delegate reopens → in_progress)┘
+```
+
+| Transition | Handler | Notes |
+|-----------|---------|-------|
+| → `draft` | `blueprint.create`, `blueprint.synthesize` | Create from template; synthesize is guide-only. |
+| `draft → ready` | `blueprint.ready` | **Gate:** refuses with `OUT-ERROR code=VALIDATION` while template placeholders (`_…_` markers from BLP_TEMPLATE.md) remain in the body. §18 `☐`/`✅` cells are quality-gate state and excluded from the scan (BLP-009). Status stays `draft` on rejection. |
+| `ready → in_progress` | `blueprint.claim` | Implicit executor assignment. |
+| `in_progress → done` | `blueprint.complete`, `blueprint.execute` | `complete` validates §12 ACs and §14 tasks are closed (`EXECUTION_INCOMPLETE` otherwise). |
+| `* → blocked` | `blueprint.fail`, `blueprint.block_for_architect` | `fail` records a reason. |
+| `blocked/done → in_progress` | `blueprint.re_delegate` | Max 3 verification loops; `done` and `cancelled` are terminal for `fail`/`cancel`. |
+| `* → cancelled` | `blueprint.cancel` | Governor-only. Terminal. |
+| (no transition) | `blueprint.ac`, `blueprint.task`, `blueprint.update` | In-flight bookkeeping: §12 checkboxes, §14 task checkboxes, progress notes. |
 
 ## cortex
 
 | Handler | Description |
 |---------|-------------|
-| `cortex.entry.add` | Add a new entry to a .cortex file. |
+| `cortex.entry.add` | Add a new entry to a .cortex file. Stores the entry under the
+requested name; on `sigil:name` collision it appends a `_NNNN` suffix and
+reports `renamed:<requested>-><assigned>` plus `requested`/`renamed` fields
+(BLP-007 — no silent renames). Selectors support a trailing `*` prefix
+wildcard (e.g. `$1/DOM:mi_app*`). |
 | `cortex.entry.delete` | Delete an entry matching a CORTEX selector from a .cortex file. |
 | `cortex.entry.get` | Read entries matching a CORTEX selector from a .cortex file. |
 | `cortex.entry.list` | List entries in a .cortex file, optionally filtered. |
@@ -83,6 +107,8 @@ Pass apply=true with confirm_hash from a reviewed dry-run to write the elevation
 | `cortex.render` | Render a .cortex file to HCORTEX READ markdown. |
 | `cortex.render.diagram` | Render a PlantUML diagram to SVG/PNG. Requires plantuml.jar. |
 | `cortex.render.validate_file` | Validate all PUML blocks in a file. Returns D1-D5 checklist. |
+| `cortex.ref` | Return a sigil's definition (name, type, risk, layer, fields).
+Strictly read-only — never mutates governance state (BLP-007). |
 | `cortex.verify` | Verify a .cortex file's structure using CODEC-CORTEX. |
 | `cortex.write` | Write (atomically) a .cortex file from CORTEX source text. |
 
@@ -116,7 +142,11 @@ Pass apply=true with confirm_hash from a reviewed dry-run to write the elevation
 |---------|-------------|
 | `project.bind` | Bind an agent identity to the current project with a role. |
 | `project.init` | Initialize .arqux/ in a project directory and register it in the
-workspace. |
+workspace. Without `seed`, writes the validator-clean level-2 starter brain
+(`templates/brain.cortex`); with `seed`, writes it verbatim. Registration
+writes a real `DOM:<name>` entry into workspace `projects.cortex` (created
+if absent) and reports `registered_in_workspace` honestly — `false` when no
+workspace contains the project or the write fails. |
 | `project.lessons` | List lessons local to the current project. |
 | `project.status` | Active project status (cycles, tasks, agents). |
 | `project.unbind` | Release an agent binding from the current project. |
@@ -168,6 +198,17 @@ workspace. |
 | `task.list` | List tasks with filters. |
 | `task.read` | Read a task (CORTEX or HCORTEX format). |
 | `task.update` | Update task progress, optionally change status. |
+
+**Cycle resolution contract (BLP-006):** `task.read`, `task.claim`,
+`task.update`, `task.complete`, `task.fail` and `task.run` resolve
+`task_id` deterministically:
+
+1. A path inside `.../cycles/CYCLE-XX` scopes the lookup to that cycle.
+2. Without a derivable cycle, the project's current cycle wins.
+3. Otherwise a single match in any other cycle is returned; multiple
+   matches return `TASK_AMBIGUOUS` listing the candidate cycles —
+   lookups never silently pick the first alphabetical cycle.
+
 
 ## workspace
 

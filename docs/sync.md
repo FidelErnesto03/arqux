@@ -42,7 +42,7 @@ Actualiza `brain.cortex` tras una mutación exitosa de un handler. Modifica:
 | `$8/WRK:current` | phase, current, blocked, updated, event | Marca el estado actual del agente |
 | `$2/FCS:current` | what, priority, status, updated, event | Solo si `focus` está provisto |
 | `$6/KNW:*` | métricas | Solo si `metrics` está provisto |
-| `$2/DOM:arqux` (meta-brain) | blueprints, tests, handlers, etc. | Solo si `metrics` está provisto |
+| `$2/DOM:<proyecto>` (meta-brain) | blueprints, tests, handlers, etc. | Solo si `metrics` está provisto |
 
 **Parámetros:**
 - `project_root` — Ruta al directorio del proyecto (o al `.arqux/` mismo; auto-detecta).
@@ -134,13 +134,33 @@ def _sync_meta_brain(
 ```
 
 **Descripción:**
-Sincroniza métricas y conteos al meta-brain (`meta-brain.cortex`, sección `$2/DOM:arqux`).
+Sincroniza métricas y conteos al meta-brain (`meta-brain.cortex`, sección `$2`).
 
-Campos escritos en DOM:arqux:
+Desde BLP-008 (BUG-003) el entry DOM es **dinámico**: se resuelve el nombre
+del proyecto vía `_project_name()` (`IDN:project` del brain → fallback al
+nombre del directorio) y se normaliza con `_normalize_dom_name()`
+(lowercase). Si `DOM:<proyecto>` no existe en el meta-brain,
+`_upsert_meta_dom()` lo crea — nunca se escribe sobre `DOM:arqux` salvo que
+el proyecto se llame realmente `arqux`.
+
+Campos escritos en `DOM:<proyecto>`:
 - `updated`, `last_event` (siempre)
 - `blueprints_done`, `blueprints_draft`, `blueprints_cancelled`, `blueprints_completed` (contados del FS, fallback a valores de `metrics`)
 - `tests` (conteo de archivos)
 - `handlers`, `tasks_done`, `tasks_active`, `cycles_closed` (si están en `metrics`)
+
+### 5b. `reconcile_brain()` — Pública
+
+**Ubicación:** `src/arqux/sync.py`
+
+Sincronización profunda proyecto ↔ meta-brain. Actualiza el `OBJ` del brain
+del proyecto con el objetivo del ciclo activo y refleja métricas en
+`DOM:<proyecto>` del meta-brain.
+
+Comportamiento tolerante (BLP-008): si el brain no tiene ningún entry
+`OBJ:*` en `$3`, no aborta — registra `'brain has no OBJ entry in §3'` en
+`errors[]` del resultado y continúa con la sincronización del meta-brain
+(`meta_synced=True`).
 
 ---
 

@@ -13,26 +13,30 @@ DIAG:w02{
 @startuml
 actor "Arquitecto" as A
 participant Agent as G
-participant "project.init (sin seed)" as PI1
+participant "project.init" as PI
 participant "Proyecto (files)" as PRJ
-participant "project.init (con seed)" as PI2
+database "projects.cortex\n(workspace index)" as PC
 database "meta-brain.cortex" as MB
 
 A -> G: Gobierna el proyecto X
-G -> PI1: project.init(name=X, path=./X)
-PI1 --> G: STP:build_brain instructions
+G -> PI: project.init(name=X, path=./X)
+note right: BLP-007: sin seed escribe brain\nstarter VALIDATOR-CLEAN\n(templates/brain.cortex)
+PI -> PC: upsert DOM:<name>{name,path,domain,status}
+PI --> G: project.init ok + registered_in_workspace\n+ STP:build_brain guidance
 
 G -> PRJ: Leer README, AGENTS.md, estructura
 G -> PRJ: Identificar stack, dominio, riesgos
 note right: LLM agent studies the project
 
-G -> G: Synthesizes brain.cortex in CORTEX
-G -> PI2: project.init(name=X, path=./X, seed=<brain>)
-PI2 -> MB: DOM:project{name, path, domain, stack}
-PI2 --> G: project.init ok brain=seeded
+opt seed enriquecido
+  G -> G: Synthesizes brain.cortex in CORTEX (validator-required fields)
+  G -> PI: project.init(name=X, path=./X, seed=<brain>)
+  PI -> MB: cross-project knowledge
+  PI --> G: project.init ok brain=seeded
+end
 
 G --> A: Project governed. Open cycle?
 @enduml
 }
 
-STP:w02_s{ 1:"project.init(name=X, path=./X) — sin seed", 2:"Recibir STP:build_brain", 3:"Estudiar proyecto (README, AGENTS.md, estructura, stack)", 4:"Sintetizar brain.cortex con FCS, OBJ, KNW, RSK, LNG", 5:"project.init(name=X, path=./X, seed=<brain>)", 6:"Brain poblado + meta-brain actualizado + proyecto registrado" }
+STP:w02_s{ 1:"project.init(name=X, path=./X) — escribe brain starter validator-clean (templates/brain.cortex) y registra DOM:<name> en projects.cortex del workspace", 2:"Recibir STP:build_brain guidance + registered_in_workspace", 3:"Estudiar proyecto (README, AGENTS.md, estructura, stack)", 4:"Opcional: sintetizar brain.cortex enriquecido con FCS, OBJ, KNW, RSK, LNG (campos requeridos del validador)", 5:"project.init(name=X, path=./X, seed=<brain>) si aplica", 6:"Brain poblado + proyecto registrado en workspace" }

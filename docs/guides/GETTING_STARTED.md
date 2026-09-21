@@ -58,14 +58,20 @@ arqux call cycle.create name=CYCLE-01
 
 # Define work
 arqux call blueprint.create obj="My first feature"
-arqux call blueprint.define BLP-001
-arqux call blueprint.ready BLP-001
+arqux call blueprint.synthesize bp_id=BLP-001   # guided section-by-section fill
+# (or write sections directly: blueprint.update bp_id=BLP-001 section=3 content="...")
+arqux call blueprint.ready BLP-001              # requires all template placeholders filled
 
 # Execute
 arqux call blueprint.claim BLP-001
 # ... do the work ...
 arqux call blueprint.complete BLP-001
 ```
+
+> **Note:** `blueprint.ready` refuses a Blueprint that still contains
+> template placeholders (`_…_` markers from BLP_TEMPLATE.md) — fill every
+> section first via `blueprint.synthesize`/`blueprint.update`. The error
+> lists the pending markers; the status stays `draft`.
 
 ## Glossary (Human Language)
 
@@ -106,7 +112,7 @@ arqux call cycle.create name=CYCLE-01
 
 # Define work
 arqux call blueprint.create obj="Add login page"
-arqux call blueprint.define BLP-001
+arqux call blueprint.synthesize bp_id=BLP-001   # fill all sections first
 arqux call blueprint.ready BLP-001
 
 # Execute

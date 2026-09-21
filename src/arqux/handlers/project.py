@@ -11,6 +11,7 @@ Handlers:
 from __future__ import annotations
 
 import os
+import time
 from pathlib import Path
 
 from ..constants import (
@@ -27,12 +28,14 @@ from ..permissions import PermissionContext
 from ..sessions import add_session_to_brain, remove_session_from_brain
 from ..state import (
     cortex_write,
+    crud_add,
+    crud_read,
+    crud_update,
     find_project_root,
     find_workspace_root,
     read_brain,
-    write_brain,
 )
-from ..sync import sync_brain
+from ..sync import _normalize_dom_name, sync_brain
 
 
 def init_project(
@@ -66,13 +69,13 @@ def init_project(
         if not dst.exists():
             dst.write_text(policy_tmpl.read_text(encoding="utf-8"), encoding="utf-8")
 
-    # Register in workspace projects index.
+    # Register in workspace projects index (real DOM:<name> entry).
     ws_root = find_workspace_root(start=target)
-    if ws_root is not None:
-        projects_path = ws_root / PROJECTS_CORTEX
-        entry = f"- {name} at {target}\n"
-        with projects_path.open("a", encoding="utf-8") as fh:
-            fh.write(entry)
+    registered = (
+        _register_in_workspace(ws_root, name, target)
+        if ws_root is not None
+        else False
+    )
 
     if seed:
         # One-step: seed content provided — write directly as brain.cortex.
@@ -95,20 +98,17 @@ def init_project(
             f"project.init ok name={name} path={gov_dir} brain=seeded",
             project=name,
             path=str(gov_dir),
-            registered_in_workspace=ws_root is not None,
+            registered_in_workspace=registered,
             brain="seeded",
         )
 
-    # No seed: create default brain skeleton and detect context.
-    brain = {
-        "level": 2,
-        "project": name,
-        "path": str(target),
-        "brain_version": "0",
-        "brain_last_writer": (ctx or PermissionContext.from_env()).agent_id,
-        "brain_updated": _now_iso(),
-    }
-    write_brain(gov_dir, brain)
+    # No seed: write the level-2 starter brain from templates/brain.cortex
+    # (validator-clean: FCS/OBJ/WRK populated) and detect context.
+    agent_id = (ctx or PermissionContext.from_env()).agent_id
+    seed_text = _default_brain_seed(name, agent_id)
+    result = cortex_write(gov_dir / BRAIN_CORTEX, seed_text)
+    if "error" in result:
+        raise RuntimeError(f"brain.cortex template write rejected: {result['error']}")
 
     # Detect pre-existing project context and build seed instructions.
     seed_notes = _detect_project_context(target)
@@ -117,7 +117,7 @@ def init_project(
         f"project.init ok name={name} path={gov_dir}",
         project=name,
         path=str(gov_dir),
-        registered_in_workspace=ws_root is not None,
+        registered_in_workspace=registered,
     )
 
     if seed_notes:
@@ -178,48 +178,48 @@ def _detect_project_context(project_root: Path) -> list[str]:
     notes.append('  sections:')
     notes.append('    $1:  IDENTITY')
     notes.append('      IDN:project{name, product, version, purpose}')
-    notes.append('      IDN:governor{level, project, path, governor}')
-    notes.append('      DOM:scope{area, purpose}')
+    notes.append('      IDN:governor{name, level, project}')
+    notes.append('      DOM:scope{name, area, purpose}')
     notes.append('')
     notes.append('    $2:  FOCUS')
-    notes.append('      FCS:current{what, priority, status}')
+    notes.append('      FCS:current{name, what, priority, status, survive}')
     notes.append('      One-sentence active focus for the project.')
     notes.append('')
     notes.append('    $3:  OBJECTIVES')
-    notes.append('      OBJ:name{goal, status, success}')
+    notes.append('      OBJ:name{name, goal, status, success, survive}')
     notes.append('      Active goals with measurable success criteria.')
     notes.append('')
     notes.append('    $4:  SESSIONS')
-    notes.append('      SES:agent{input, output, role, outcome, date}')
+    notes.append('      SES:agent{name, input, output, outcome, date}')
     notes.append('      Initial session: the governor adopting the project.')
     notes.append('')
     notes.append('    $5:  HANDOFFS')
-    notes.append('      HDL:handoff{from, to, task, note}')
+    notes.append('      HDL:handoff{name, from, to, task, note}')
     notes.append('      Optional — populate if handoff contracts exist.')
     notes.append('')
     notes.append('    $6:  PULSE')
-    notes.append('      AUD:event{event, evidence, task, kind, agent, result}')
+    notes.append('      AUD:event{name, event, evidence, result, date}')
     notes.append('      Initial evidence: project initialization record.')
     notes.append('')
     notes.append('    $7:  LESSONS')
-    notes.append('      LNG:name{type, context, detail}')
+    notes.append('      LNG:name{name, type, cause, lesson, prevention}')
     notes.append('      Known lessons from previous work. Extract from NOMOS brain')
     notes.append('      or leave empty if none exist yet.')
     notes.append('')
     notes.append('    $8:  ACTIVE_CONTEXT')
-    notes.append('      WRK:current{phase, current, blocked, survive}')
+    notes.append('      WRK:current{name, phase, current, blocked, survive}')
     notes.append('      Current execution phase and state.')
     notes.append('')
     notes.append('    $9:  RISKS')
-    notes.append('      RSK:risk{risk, impact, mitigation, status}')
+    notes.append('      RSK:risk{name, risk, impact, mitigation, status, survive}')
     notes.append('      Known risks from NOMOS brain or discovered during study.')
     notes.append('      Extract at least: description, impact (high/medium/low),')
     notes.append('      mitigation strategy. Empty entries ("-") are NOT acceptable.')
     notes.append('')
     notes.append('    $10: KNOWLEDGE')
-    notes.append('      KNW:stack{tech, framework, runtime}')
-    notes.append('      KNW:architecture{layers, patterns}')
-    notes.append('      KNW:dependencies{external, internal}')
+    notes.append('      KNW:stack{name, topic, content, status}')
+    notes.append('      KNW:architecture{name, topic, content, status}')
+    notes.append('      KNW:dependencies{name, topic, content, status}')
     notes.append('      CRITICAL: this section replaces the project manifest.')
     notes.append('      Populate with:')
     notes.append('        - Technology stack (languages, frameworks, databases, runtimes)')
@@ -228,18 +228,22 @@ def _detect_project_context(project_root: Path) -> list[str]:
     notes.append('        - Conventions, coding standards, and project-specific guidelines')
     notes.append('')
     notes.append("    $11: CONCURRENCY")
-    notes.append('      ERR:concurrency{version, last_writer, updated}')
+    notes.append('      ERR:concurrency{name, version, last_writer, updated}')
     notes.append("      Start at version 1.",)
     notes.append('')
     notes.append('    $12: PACKAGES')
-    notes.append('      DOM:package_name{path, purpose}')
-    notes.append('      DOM:inventory{path:".arqux/packages/inventory.cortex", purpose:"..."}')
+    notes.append('      DOM:package_name{name, path, purpose}')
+    notes.append('      DOM:inventory{name:"inventory", path:".arqux/packages/inventory.cortex", purpose:"..."}')
     notes.append('      Reference to supplemental .cortex packages stored in')
     notes.append('      .arqux/packages/. Each entry points to a package file')
     notes.append('      that can be loaded on-demand for additional context.')
     notes.append('')
     notes.append('  step:"3 - CALL project.init with the built content",')
     notes.append('  action:"project.init(name=..., path=..., seed=<built_content>)",')
+    notes.append('  validator:"status must be one of: current, specification, planned,')
+    notes.append('            future, experimental, deprecated, blocked, done"')
+    notes.append('  validator:"survive must be one of: min, recovery, work, full"')
+    notes.append('  validator:"every entry requires a name field (W001)"')
     notes.append('  warning:"Do NOT use cortex.write for governance files. Use project.init.',)
     notes.append('            The seed content is written directly to brain.cortex",')
     notes.append('  warning:"Do NOT skip sections. Empty sections should have # (empty) placeholder",')
@@ -392,9 +396,73 @@ def _update_meta_brain(ws_root: Path, name: str, path_str: str, seed: str) -> No
         f.write(f"\n{entry}\n")
 
 
-def _now_iso() -> str:
-    import time
-    return time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+_BRAIN_TEMPLATE = "brain.cortex"
+
+_PROJECTS_INDEX_TEMPLATE = """\
+$0
+
+# -- $0: MINIMAL LOCAL GLOSSARY --
+# Sigil | Name | Type | Risk | Cognitive Layer | Description
+# DOM   | domain     | attrs      | B | Semantic       | Project descriptor
+# ARQX  | artifact   | attrs      | B | Semantic       | ArqUX artifact metadata
+#
+# Types:
+# attrs = canonical type
+#
+# Micro-glossary:
+
+
+$1: METADATA
+
+ARQX:artifact{level:0, name:"projects", usage:"config", kind:"native"}
+"""
+
+
+def _default_brain_seed(name: str, agent_id: str) -> str:
+    """Return the level-2 starter brain from ``templates/brain.cortex``.
+
+    The template is validator-clean out of the box (FCS/OBJ/WRK populated).
+    ``__PROJECT__``/``__GOVERNOR__`` tokens are substituted here.
+    """
+    tmpl = Path(__file__).resolve().parent.parent / "templates" / _BRAIN_TEMPLATE
+    text = tmpl.read_text(encoding="utf-8")
+    today = time.strftime("%Y-%m-%d", time.gmtime())
+    return (
+        text.replace("__PROJECT__", name)
+        .replace("__GOVERNOR__", agent_id)
+        .replace("__DATE__", today)
+    )
+
+
+def _register_in_workspace(ws_root: Path, name: str, target: Path) -> bool:
+    """Upsert ``DOM:<name>`` into the workspace ``projects.cortex`` index.
+
+    Creates the index when absent. Returns True only when the DOM entry is
+    actually present afterwards — ``registered_in_workspace`` stays honest.
+    """
+    dom_name = _normalize_dom_name(name)
+    projects_path = ws_root / PROJECTS_CORTEX
+    try:
+        if not projects_path.exists():
+            projects_path.write_text(_PROJECTS_INDEX_TEMPLATE, encoding="utf-8")
+        existing = crud_read(projects_path, f"$1/DOM:{dom_name}")
+        if existing.get("entries"):
+            result = crud_update(
+                projects_path, f"$1/DOM:{dom_name}",
+                set_={"path": str(target)}, force=True,
+            )
+        else:
+            result = crud_add(
+                projects_path, "$1", "DOM", dom_name,
+                {"name": name, "path": str(target), "status": "current"},
+                create_section=True, force=True,
+            )
+        if "error" in result:
+            return False
+        check = crud_read(projects_path, f"$1/DOM:{dom_name}")
+        return any(e.get("name") == dom_name for e in check.get("entries", []))
+    except Exception:
+        return False
 
 
 handler_schemas = [

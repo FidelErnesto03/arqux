@@ -13,26 +13,25 @@ IDN:w08{ name:"Blueprint Lifecycle", purpose:"Complete lifecycle: triage → ind
 
 DIAG:w08{
 @startuml
-title Blueprint Lifecycle — State Machine
+title Blueprint Lifecycle — State Machine (BLP-004 simplified, BLP-009 gate)
 
 state "draft" as D
 state "ready" as R
 state "in_progress" as IP
-state "review" as RV
 state "done" as DN
 state "blocked" as B
 state "cancelled" as CN
 
-[*] --> D : blueprint.create
-D --> R : blueprint.ready
-R --> IP : claim
-IP --> RV : complete
-IP --> B : fail
-B --> D : re-plan
-B --> CN : cancel
-RV --> DN : blueprint.ac(verified) all
-RV --> IP : re_delegate (max 3)
-RV --> CN : 3rd fail
+[*] --> D : blueprint.create / synthesize
+D --> R : blueprint.ready\n(gate: no template placeholders)
+R --> IP : blueprint.claim
+IP --> DN : blueprint.complete\n(validates §12 ACs + §14 tasks)
+IP --> B : blueprint.fail / block_for_architect
+B --> IP : blueprint.re_delegate (reopens)
+DN --> IP : blueprint.re_delegate (reopens)
+D --> CN : blueprint.cancel
+B --> CN : blueprint.cancel
+note right of DN : done y cancelled\nson terminales para fail/cancel
 @enduml
 }
 
@@ -52,7 +51,7 @@ STP:w08_synthesis{
   4_coherencia:"Verificar coherencia transversal: §2 ↔ §6 ↔ §12 ↔ §11. Ajustar si hay contradicciones.",
   5_presentar:"Presentar el BLP completo al Arquitecto para revision holistica.",
   6_ajustar:"Si el Arquitecto solicita cambios, aplicar blueprint.update(section=N) sobre las secciones especificas.",
-  7_aprobar:"Una vez conforme: blueprint.ready() → compuertas de calidad verificadas",
+  7_aprobar:"Una vez conforme: blueprint.ready() → gate de placeholders (BLP-009): OUT-ERROR VALIDATION + pending[] si quedan markers _…_ de la plantilla; §18 ☐/✅ excluido",
 }
 
 
@@ -61,11 +60,10 @@ $8.2: READY — Desde draft directo
 AXM:no_define{ El handler blueprint.define() NO se utiliza. La sintesis se hace via blueprint.update(). Se va de draft → ready. }
 
 STP:w08_ready{
-  1:"Blueprint en draft con diseno validado",
-  2:"Governor: blueprint.ready(BLP-NNN) → state = ready + compuertas de calidad verificadas",
-  3:"Governor: blueprint.claim(BLP-NNN) asigna y reclama en 1 paso",
-  4:"Executor: blueprint.claim(BLP-NNN) → state = in_progress",
-  key_rule:"Ready significa diseno sintetizado y validado por el Arquitecto.",
+  1:"Blueprint en draft con diseno validado y SIN placeholders de plantilla (gate BLP-009: OUT-ERROR code=VALIDATION + pending[] si quedan markers)",
+  2:"Governor: blueprint.ready(BLP-NNN) → state = ready (rechazado si hay placeholders pendientes — el status queda draft)",
+  3:"Executor: blueprint.claim(BLP-NNN) → state = in_progress + asignacion implicita de executor",
+  key_rule:"Ready significa diseno sintetizado, validado por el Arquitecto, y sin placeholders sin llenar.",
 }
 
 
@@ -79,7 +77,7 @@ STP:w08_execution{
   4:"For EACH task: self-check, execute, blueprint.task(completed), sync_brain() checkpoint, verify WRK, then next task",
   5:"On obstacle: blueprint.fail(BLP-NNN, reason)",
   6:"To cancel: blueprint.cancel(BLP-NNN, reason)",
-  7:"When ALL tasks checkpointed: blueprint.complete(BLP-NNN, evidence) → state = review",
+  7:"When ALL tasks checkpointed: blueprint.complete(BLP-NNN, evidence) → state = done (BLP-004: un solo paso; EXECUTION_INCOMPLETE si quedan tareas/ACs abiertos)",
   checkpoint_rule:"Nunca 2 tareas sin checkpoint. Cada tarea = task() + sync_brain().",
   recovery:"Interrupcion? session.resume() + WRK:current restaura ultimo checkpoint.",
 }
@@ -88,10 +86,10 @@ STP:w08_execution{
 $8.4: CROSS-VERIFICATION — AC por AC
 
 STP:w08_verify{
-  1:"Auditor carga BLP + evidence",
-  2:"For each AC: blueprint.ac(verified). Si fail: blueprint.ac(failed) → re_delegate (max 3)",
+  1:"Executor verifica cada AC durante la ejecucion: blueprint.ac(AC-NN, verified, evidence) marca el checkbox en §12",
+  2:"Si un AC falla: blueprint.ac(AC-NN, failed, reason) → blueprint.re_delegate (max 3 loops)",
   3:"3ra falla → blueprint.block_for_architect()",
-  4:"All ACs pass → blueprint.ac(verified) for all → done",
+  4:"Con todos los ACs verificados y tareas cerradas: blueprint.complete → done en un paso",
 }
 
 

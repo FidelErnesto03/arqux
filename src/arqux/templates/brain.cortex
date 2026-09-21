@@ -1,0 +1,79 @@
+$0
+
+# -- $0: MINIMAL LOCAL GLOSSARY --
+# Sigil | Name | Type | Risk | Cognitive Layer | Description
+# IDN   | identity   | attrs      | B | Semantic       | Actor identity
+# DOM   | domain     | attrs      | B | Semantic       | Project/scope descriptor
+# FCS   | focus      | attrs      | H | Working        | Active attention anchor
+# OBJ   | objective  | attrs      | H | Working        | Active goal
+# SES   | session    | attrs      | M | Episodic       | Compressed episode
+# HDL   | handoff    | attrs      | M | Episodic       | Work handed between agents
+# AUD   | audit      | attrs      | M | Prefrontal     | Verification record
+# LNG   | lesson     | attrs      | M | Episodic       | Learned lesson
+# WRK   | work       | attrs      | B | Working        | Current execution state
+# RSK   | risk       | attrs      | M | Prefrontal     | Risk with mitigation
+# KNW   | knowledge  | attrs      | B | Semantic       | Stable knowledge
+# ERR   | error      | attrs      | M | Concurrency    | Optimistic-locking state
+# ARQX  | artifact   | attrs      | B | Semantic       | Artifact metadata
+#
+# Types:
+# attrs = canonical type
+# cuerpo = canonical type
+#
+# Micro-glossary:
+# cur=current wrk=work min=minimum ok=success
+
+
+$19: ARQUX METADATA
+
+ARQX:artifact{level:2, name:"__PROJECT__", usage:"state", kind:"native"}
+
+
+$1: IDENTITY
+
+IDN:project{name:"__PROJECT__", product:"__PROJECT__", version:"0.1.0", purpose:"New governed project"}
+
+IDN:governor{name:"__GOVERNOR__", level:"governor", project:"__PROJECT__"}
+
+DOM:scope{name:"__PROJECT__", area:"__PROJECT__", purpose:"Governed project workspace"}
+
+
+$2: FOCUS
+
+FCS:current{name:"bootstrap", what:"Initial governance bootstrap of __PROJECT__", priority:"high", status:"current", survive:"work"}
+
+
+$3: OBJECTIVES
+
+OBJ:onboard{name:"onboarding", goal:"Complete project onboarding: populate brain sections, open first cycle", status:"current", success:"brain valid and first cycle open", survive:"work"}
+
+
+$4: SESSIONS
+
+
+$5: HANDOFFS
+
+
+$6: PULSE
+
+
+$7: LESSONS
+
+
+$8: ACTIVE_CONTEXT
+
+WRK:current{name:"init", phase:"init", current:"project initialized - pending brain population", blocked:"no", survive:"work"}
+
+
+$9: RISKS
+
+
+$10: KNOWLEDGE
+
+
+$11: CONCURRENCY
+
+ERR:concurrency{name:"concurrency", version:"0", last_writer:"__GOVERNOR__", updated:"__DATE__"}
+
+
+$12: PACKAGES

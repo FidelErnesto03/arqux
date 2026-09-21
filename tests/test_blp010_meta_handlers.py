@@ -333,7 +333,19 @@ def test_blueprint_execute_executes(tmp_path: Path) -> None:
 
     # BLP-004 D-04: real execute validates the state transition — a draft
     # blueprint cannot jump to done; it must be claimed first.
-    from arqux.handlers.blueprint.lifecycle import claim_blueprint, ready_blueprint
+    from arqux.handlers.blueprint.lifecycle import (
+        _pending_placeholders,
+        claim_blueprint,
+        ready_blueprint,
+    )
+
+    # BLP-009: ready refuses unfilled template placeholders — fill them so
+    # this test exercises the transition, not the gate.
+    bp_file = Path(create_result.fields["path"])
+    text = bp_file.read_text(encoding="utf-8")
+    for marker in _pending_placeholders(bp_file, proj_root):
+        text = text.replace(marker, "filled")
+    bp_file.write_text(text, encoding="utf-8")
 
     ready_blueprint(bp_id, path=str(proj_root), ctx=_CONTEXT)
     claim_blueprint(bp_id, path=str(proj_root), ctx=_CONTEXT)
