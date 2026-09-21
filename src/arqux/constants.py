@@ -13,6 +13,8 @@ from __future__ import annotations
 import os
 from dataclasses import dataclass
 from enum import Enum
+from importlib.metadata import PackageNotFoundError
+from importlib.metadata import version as _pkg_version
 from pathlib import Path
 from typing import Any
 
@@ -28,8 +30,17 @@ PRODUCT_NAME_UPPER: str = "ARQUX"
 #: Title-case product name. Used in human-readable documentation.
 PRODUCT_NAME_TITLE: str = "Arqux"
 
-#: Version string — single source of truth.
-ARQUX_VERSION: str = "0.7.0"
+#: Version string — resolved from installed package metadata (pyproject.toml
+#: is the single source of truth); the literal fallback covers src-tree runs
+#: without an installed distribution.
+def _resolve_version() -> str:
+    try:
+        return _pkg_version(PRODUCT_NAME)
+    except PackageNotFoundError:
+        return "0.7.3"
+
+
+ARQUX_VERSION: str = _resolve_version()
 
 # --- Filesystem layout -----------------------------------------------------
 
