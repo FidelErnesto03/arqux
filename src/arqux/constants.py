@@ -37,7 +37,7 @@ def _resolve_version() -> str:
     try:
         return _pkg_version(PRODUCT_NAME)
     except PackageNotFoundError:
-        return "0.7.7"
+        return "0.7.8"
 
 
 ARQUX_VERSION: str = _resolve_version()

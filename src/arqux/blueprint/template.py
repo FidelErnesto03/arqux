@@ -24,7 +24,6 @@ from pathlib import Path
 from ..constants import TEMPLATES_DIR
 from ..cortex_out import CortexOUT
 from ..permissions import PermissionContext
-from ..pulse import append_pulse_to_brain, next_pulse_event_id
 from ..state import find_project_root, find_workspace_root
 
 TEMPLATE_NAME = "BLP_TEMPLATE.md"
@@ -67,8 +66,6 @@ def parse_blp_template(
     markers = _extract_markers(text)
     inline_markers = _extract_inline_markers_by_section(text)
     inline_count = sum(len(v) for v in inline_markers.values())
-
-    _record_pulse(path, ctx, count=len(markers), template_path=str(template_path))
 
     return CortexOUT.work(
         f"parse_blp_template ok markers={len(markers)} inline_markers={inline_count} path={template_path}",
@@ -213,29 +210,3 @@ def list_template_sections(
     if result.profile != "OUT-WORK":
         return []
     return sorted(result.fields.get("markers", {}).keys())
-
-
-def _record_pulse(
-    path: str | None,
-    ctx: PermissionContext | None,
-    *,
-    count: int,
-    template_path: str,
-) -> None:
-    """Append a PULSE event for the parse call (best-effort)."""
-    try:
-        root = find_project_root(start=path)
-        if root is None:
-            return
-        agent = (ctx or PermissionContext.from_env()).agent_id
-        event_id = next_pulse_event_id(root)
-        append_pulse_to_brain(
-            root,
-            event_id=event_id,
-            task_id="-",
-            kind="handler_call",
-            agent=agent,
-            payload=f"[parse_blp_template] count={count} path={template_path}",
-        )
-    except Exception:  # noqa: BLE001
-        pass

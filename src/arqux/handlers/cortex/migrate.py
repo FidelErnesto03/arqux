@@ -205,7 +205,7 @@ def _record_pulse(
             root,
             event_id=event_id,
             task_id="-",
-            kind="handler_call",
+            kind="cortex_migrate",
             agent=agent,
             payload=f"[cortex.migrate] transform={transform} target={target}",
         )

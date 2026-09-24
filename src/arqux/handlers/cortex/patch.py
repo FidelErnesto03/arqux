@@ -159,7 +159,7 @@ def _record_pulse(
             root,
             event_id=event_id,
             task_id="-",
-            kind="handler_call",
+            kind="cortex_patch",
             agent=agent,
             payload=f"[cortex.patch] patched={patched} failed={failed}",
         )

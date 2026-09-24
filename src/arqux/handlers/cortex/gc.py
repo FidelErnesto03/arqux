@@ -389,7 +389,7 @@ def gc_handler(
                 root,
                 event_id=event_id,
                 task_id="-",
-                kind="handler_call",
+                kind="cortex_gc",
                 agent=agent,
                 payload=(
                     f"[cortex.gc] mode={mode} removed={removed} "
