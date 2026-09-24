@@ -2,6 +2,18 @@
 
 All notable changes to ArqUX are documented here.
 
+## [0.7.6] - 2026-09-24
+
+Permission hardening (T-019): destructive cortex handlers now require a
+mutating role under `ARQUX_STRICT_ROLES=1`.
+
+### Fixed — permissions
+- `cortex.gc`, `cortex.patch`, `cortex.migrate`, `cortex.checkpoint`
+  added to `MUTATING_HANDLERS` — auditors can no longer invoke them
+  (gc dedupe/rename, entry-body rewrite, file migration, and shared
+  `WRK:current` writes are now executor/governor-only; prevents
+  cross-agent clobbering of resumable session state)
+
 ## [0.7.5] - 2026-09-24
 
 Scoped `cortex.gc` repair (T-018): the handler can now target duplicate

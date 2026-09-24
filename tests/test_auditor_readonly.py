@@ -37,6 +37,8 @@ class TestMutatingHandlersSet:
             "task.fail", "task.create", "task.update", "task.complete",
             "cortex.entry.delete", "cortex.entry.update", "cortex.write",
             "cortex.entry.add", "cortex.entry.move",
+            # T-019: destructive cortex maintenance handlers
+            "cortex.gc", "cortex.patch", "cortex.migrate", "cortex.checkpoint",
             "protocol.adopt", "protocol.release",
             "evidence.record",
             "session.context.set", "session.close",
@@ -76,6 +78,43 @@ class TestAuditorCannotMutate:
         ctx = PermissionContext(agent_id="heimdall", role=ROLE_AUDITOR)
         with pytest.raises(PermissionDenied):
             ctx.check("protocol.adopt")
+
+
+class TestCortexDestructiveHandlers:
+    """T-019: destructive cortex maintenance handlers must require a
+    mutator role — an auditor invoking them (e.g. ``cortex.gc`` with
+    ``force=True``) deletes or renames governance entries."""
+
+    DESTRUCTIVE_CORTEX = [
+        "cortex.gc",          # dedupe/rename entries (force=True)
+        "cortex.patch",       # rewrites entry bodies from CORTEX payload
+        "cortex.migrate",     # atomic .cortex file rewrite
+        "cortex.checkpoint",  # writes WRK:current into brain.cortex
+    ]
+
+    @pytest.mark.parametrize("handler", DESTRUCTIVE_CORTEX)
+    def test_auditor_denied(self, handler: str) -> None:
+        ctx = PermissionContext(agent_id="heimdall", role=ROLE_AUDITOR)
+        with pytest.raises(PermissionDenied, match="mutating handler"):
+            ctx.check(handler)
+
+    @pytest.mark.parametrize("handler", DESTRUCTIVE_CORTEX)
+    def test_executor_allowed(self, handler: str) -> None:
+        ctx = PermissionContext(agent_id="jarvis", role=ROLE_EXECUTOR)
+        ctx.check(handler)  # should not raise
+
+    @pytest.mark.parametrize("handler", DESTRUCTIVE_CORTEX)
+    def test_governor_allowed(self, handler: str) -> None:
+        ctx = PermissionContext(agent_id="alfred", role=ROLE_GOVERNOR)
+        ctx.check(handler)  # should not raise
+
+    def test_gc_force_call_denied_via_dispatch_check(self) -> None:
+        """Mirror the server dispatch path (server._wrap_handler calls
+        ctx.check(name) before invoking gc_handler)."""
+        ctx = PermissionContext(agent_id="heimdall", role=ROLE_AUDITOR)
+        assert ctx.can("cortex.gc") is False
+        with pytest.raises(PermissionDenied):
+            ctx.check("cortex.gc")
 
 
 class TestAuditorCanRead:

@@ -149,6 +149,9 @@ MUTATING_HANDLERS: frozenset[str] = frozenset({
     # cortex mutations
     "cortex.entry.add", "cortex.entry.delete", "cortex.entry.update",
     "cortex.entry.move", "cortex.write",
+    # T-019: destructive cortex maintenance handlers (dedupe/rename,
+    # entry-body rewrite, file migration, WRK state write)
+    "cortex.gc", "cortex.patch", "cortex.migrate", "cortex.checkpoint",
     # session mutations
     "session.context.set", "session.close", "session.resume",
     # project mutations
