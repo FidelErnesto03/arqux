@@ -128,6 +128,9 @@ def write_handler(
     """Write (atomically) a .cortex file from CORTEX source text.
 
     Validates before writing. Pass force=True to skip validation errors.
+
+    Output metrics: ``bytes_written``/``file_bytes`` report the whole file
+    size written (the mutation is the full file).
     """
     try:
         result = cortex_write(Path(path), content, force=force)
@@ -146,6 +149,7 @@ def write_handler(
         f"cortex.write ok path={path} bytes={result['bytes_written']}",
         path=path,
         bytes_written=result["bytes_written"],
+        file_bytes=result["bytes_written"],
         backup=result.get("backup"),
         diagnostics=result.get("diagnostics", []),
     )
@@ -164,7 +168,7 @@ def _auto_sync_brain(path: str) -> None:
     else:
         return
     with contextlib.suppress(Exception):
-        sync_brain(project_root, "cortex.write", focus="brain.cortex auto-sync")
+        sync_brain(project_root, "cortex.write", focus="brain.cortex auto-sync", focus_create_only=True)
 
 
 def verify_handler(

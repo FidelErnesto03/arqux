@@ -12,7 +12,7 @@ from pathlib import Path
 
 from arqux.constants import ARQUX_DIR
 from arqux.handlers import project, workspace
-from arqux.state import crud_read
+from arqux.state import crud_read, crud_update
 from arqux.sync import reconcile_brain, sync_brain
 
 
@@ -124,3 +124,98 @@ def test_reconcile_after_project_restart(workspace_root: Path, governor_ctx) -> 
     assert attrs.get("open_cycles") == "1", str(attrs)
     assert attrs.get("blueprints_done") == "0", str(attrs)
     assert result["metrics"]["open_cycles"] == 1
+
+
+# ---------------------------------------------------------------------------
+# T-010: reconcile_brain must not overwrite the meta-brain FCS what
+# ---------------------------------------------------------------------------
+
+
+def test_reconcile_workspace_preserves_meta_fcs(workspace_root: Path, governor_ctx) -> None:
+    """Workspace-context reconcile refreshes the timestamp but keeps the
+    existing meta-brain FCS:current what (focus_create_only semantics)."""
+    _ws_and_project(workspace_root, governor_ctx)
+    meta = _meta_brain(workspace_root)
+
+    result = reconcile_brain(workspace_root)
+
+    assert result["reconciled"] is True, str(result["errors"])
+    fcs = crud_read(meta, "$3/FCS:current")
+    assert fcs["entries"], "FCS:current missing in meta-brain"
+    val = fcs["entries"][0]["value"]
+    assert val["what"] == "Workspace initialized"
+    assert val["event"] == "brain.reconcile"
+
+
+def test_reconcile_workspace_creates_fcs_when_absent(workspace_root: Path, governor_ctx) -> None:
+    """Workspace-context reconcile writes the generic FCS only when absent."""
+    _ws_and_project(workspace_root, governor_ctx)
+    meta = _meta_brain(workspace_root)
+
+    text = meta.read_text(encoding="utf-8")
+    text = text.replace(
+        'FCS:current{name:"current", what:"Workspace initialized", priority:"medium", status:"current", survive:"work", updated:"<timestamp>"}',
+        "",
+    )
+    meta.write_text(text, encoding="utf-8")
+    assert not crud_read(meta, "$3/FCS:current")["entries"]
+
+    result = reconcile_brain(workspace_root)
+
+    assert result["reconciled"] is True, str(result["errors"])
+    fcs = crud_read(meta, "$3/FCS:current")
+    assert fcs["entries"], "reconcile must create FCS:current when absent"
+    assert "Reconciliacion completada" in fcs["entries"][0]["value"].get("what", "")
+
+
+# ---------------------------------------------------------------------------
+# T-015: reconcile_brain must not overwrite the project brain OBJ goal
+# ---------------------------------------------------------------------------
+
+
+def test_reconcile_project_preserves_obj_goal(workspace_root: Path, governor_ctx) -> None:
+    """Project-context reconcile refreshes success/updated/event but keeps
+    the operator-authored OBJ goal."""
+    proj = _ws_and_project(workspace_root, governor_ctx)
+    brain = proj / ARQUX_DIR / "brain.cortex"
+
+    crud_update(
+        str(brain),
+        "$3/OBJ:onboard",
+        set_={"goal": "Operator-authored objective: keep me"},
+        force=True,
+    )
+
+    result = reconcile_brain(proj)
+
+    assert result["reconciled"] is True, str(result["errors"])
+    obj = crud_read(brain, "$3/OBJ:onboard")
+    assert obj["entries"], "OBJ:onboard missing"
+    val = obj["entries"][0]["value"]
+    assert val["goal"] == "Operator-authored objective: keep me"
+    assert "Mantener sincronia" not in val["goal"]
+    assert val["event"] == "brain.reconcile"
+    assert val["success"] == "synced"
+    assert val.get("updated"), "reconcile must refresh updated"
+
+
+def test_reconcile_project_creates_obj_when_absent(workspace_root: Path, governor_ctx) -> None:
+    """Project-context reconcile writes the generic OBJ goal only when §3
+    has no OBJ entry at all."""
+    proj = _ws_and_project(workspace_root, governor_ctx)
+    brain = proj / ARQUX_DIR / "brain.cortex"
+
+    text = brain.read_text(encoding="utf-8")
+    text = text.replace(
+        'OBJ:onboard{name:"onboarding", goal:"Complete project onboarding: populate brain sections, open first cycle", status:"current", success:"brain valid and first cycle open", survive:"work"}',
+        "",
+    )
+    brain.write_text(text, encoding="utf-8")
+    assert not crud_read(brain, "$3/OBJ:*")["entries"]
+
+    result = reconcile_brain(proj)
+
+    assert result["reconciled"] is True, str(result["errors"])
+    objs = crud_read(brain, "$3/OBJ:*")["entries"]
+    assert objs, "reconcile must create a generic OBJ when absent"
+    assert "Mantener sincronia" in objs[0]["value"].get("goal", "")

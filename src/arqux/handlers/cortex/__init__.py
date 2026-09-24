@@ -103,7 +103,9 @@ handler_schemas = [
         "fn": ref_handler,
         "description": (
             "Return the definition of a CORTEX sigil (name, type, risk, "
-            "layer, description). Reads from local sigil cache."
+            "layer, description). Reads from local sigil cache. "
+            "sections=true returns the standard brain.cortex section map "
+            "(section id → title → sigils) instead."
         ),
         "input_schema": {
             "type": "object",
@@ -112,9 +114,13 @@ handler_schemas = [
                     "type": "string",
                     "description": "Sigil identifier (case-insensitive), e.g. 'WRK', 'lng'.",
                 },
+                "sections": {
+                    "type": "boolean",
+                    "default": False,
+                    "description": "Return the standard brain.cortex section map ($N → title → sigils) instead of a sigil definition.",
+                },
                 "path": {"type": "string"},
             },
-            "required": ["sigil"],
         },
     },
     {
@@ -141,7 +147,11 @@ handler_schemas = [
     {
         "name": "cortex.write",
         "fn": write_handler,
-        "description": "Write (atomically) a .cortex file from CORTEX source text.",
+        "description": (
+            "Write (atomically) a .cortex file from CORTEX source text. "
+            "Output metrics: bytes_written/file_bytes = whole file size "
+            "written (the mutation is the full file)."
+        ),
         "input_schema": {
             "type": "object",
             "properties": {
@@ -303,7 +313,10 @@ handler_schemas = [
         "description": (
             "Add a new entry to a .cortex file. Accepts a 'content' CORTEX "
             "entry string (BLP-005, canal I) — when provided, fields "
-            "extracted from content override individual params."
+            "extracted from content override individual params. "
+            "Output metrics: bytes_written/entry_bytes = size of the "
+            "serialized entry as written on disk (writer's form, quoting "
+            "included); file_bytes = whole file size after the write."
         ),
         "input_schema": {
             "type": "object",
@@ -312,18 +325,23 @@ handler_schemas = [
                 "section": {"type": "string", "description": "Section ID e.g. $5"},
                 "sigil": {"type": "string", "description": "Sigil e.g. LNG"},
                 "name": {"type": "string", "description": "Entry name"},
-                "value": {"type": "string", "description": "Entry value (attrs body or plain text)"},
+                "value": {"type": "string", "description": "Entry value (attrs body or plain text). Optional when content parses as CORTEX."},
                 "content": {"type": "string", "description": "CORTEX entry string 'sigil:name{key:val,...}' — overrides sigil/name/value when present (canal I)."},
                 "create_section": {"type": "boolean", "default": False},
                 "force": {"type": "boolean", "default": False},
             },
-            "required": ["path", "section", "sigil", "name", "value"],
+            "required": ["path", "section", "sigil", "name"],
         },
     },
     {
         "name": "cortex.entry.update",
         "fn": entry_update_handler,
-        "description": "Update an entry selected by a CORTEX selector.",
+        "description": (
+            "Update an entry selected by a CORTEX selector. "
+            "Output metrics: bytes_written/file_bytes = whole file size "
+            "after the rewrite (unlike entry.add, where bytes_written is "
+            "the serialized entry size)."
+        ),
         "input_schema": {
             "type": "object",
             "properties": {
@@ -340,7 +358,12 @@ handler_schemas = [
     {
         "name": "cortex.entry.delete",
         "fn": entry_delete_handler,
-        "description": "Delete an entry matching a CORTEX selector from a .cortex file.",
+        "description": (
+            "Delete an entry matching a CORTEX selector from a .cortex "
+            "file. Output metrics: bytes_written/file_bytes = whole file "
+            "size after the rewrite (unlike entry.add, where "
+            "bytes_written is the serialized entry size)."
+        ),
         "input_schema": {
             "type": "object",
             "properties": {
@@ -354,7 +377,12 @@ handler_schemas = [
     {
         "name": "cortex.entry.move",
         "fn": entry_move_handler,
-        "description": "Move an entry between sections in a .cortex file.",
+        "description": (
+            "Move an entry between sections in a .cortex file. "
+            "Output metrics: bytes_written/file_bytes = whole file size "
+            "after the rewrite (unlike entry.add, where bytes_written is "
+            "the serialized entry size)."
+        ),
         "input_schema": {
             "type": "object",
             "properties": {
@@ -371,7 +399,10 @@ handler_schemas = [
         "description": (
             "List entries in a .cortex file, optionally filtered. "
             "format='cortex' returns raw CORTEX entries (canal I); "
-            "format='hcortex' (default) returns parsed dicts (canal E)."
+            "format='hcortex' (default) returns parsed dicts (canal E); "
+            "format='compact' returns one raw entry per line. "
+            "Paginated: limit (default 50) + offset; fields total, "
+            "returned, offset, next_offset report the pagination state."
         ),
         "input_schema": {
             "type": "object",
@@ -381,10 +412,12 @@ handler_schemas = [
                 "sigil": {"type": "string", "description": "Filter by sigil"},
                 "format": {
                     "type": "string",
-                    "enum": ["cortex", "hcortex"],
+                    "enum": ["cortex", "hcortex", "compact"],
                     "default": "hcortex",
-                    "description": "Output format: cortex (raw entry strings, canal I) or hcortex (parsed dicts, canal E).",
+                    "description": "Output format: cortex (raw entry strings, canal I), hcortex (parsed dicts, canal E) or compact (one raw entry per line).",
                 },
+                "limit": {"type": "integer", "default": 50, "description": "Max entries per page."},
+                "offset": {"type": "integer", "default": 0, "description": "Entries to skip before the page."},
             },
             "required": ["path"],
         },
@@ -434,7 +467,11 @@ handler_schemas = [
             "Garbage-collect duplicate entries in a .cortex file. "
             "Duplicates share the same (section, sigil, name). "
             "dry_run=True (default) previews without mutating; "
-            "force=True removes duplicates conserving first occurrence."
+            "force=True removes duplicates conserving the first "
+            "first_kept occurrences (default 1). "
+            "Output metrics: bytes_written/file_bytes = whole file size "
+            "after the rewrite (unlike entry.add, where bytes_written is "
+            "the serialized entry size)."
         ),
         "input_schema": {
             "type": "object",
@@ -442,6 +479,7 @@ handler_schemas = [
                 "path": {"type": "string", "description": "Path to .cortex file."},
                 "dry_run": {"type": "boolean", "default": True, "description": "Preview duplicates without mutating."},
                 "force": {"type": "boolean", "default": False, "description": "Required to perform deletion."},
+                "first_kept": {"type": "integer", "default": 1, "description": "Number of occurrences to keep per duplicate group."},
             },
             "required": ["path"],
         },

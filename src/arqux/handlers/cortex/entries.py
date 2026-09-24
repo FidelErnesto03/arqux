@@ -24,6 +24,8 @@ from ...state import (
 )
 from .read_write import _next_number
 
+DEFAULT_LIST_LIMIT = 50
+
 
 def entry_get_handler(
     path: str,
@@ -92,8 +94,10 @@ def _entry_to_cortex(entry: dict[str, Any]) -> str:
         )
         return f"{sigil}:{name}{{{attrs}}}"
     if isinstance(value, str) and value:
-        # cuerpo / bloque entry.
-        return f"{sigil}:{name}{{{value}}}"
+        # cuerpo / bloque entry — collapse newlines so the rendering
+        # stays one line (compact format contract).
+        body = " ".join(value.split("\n"))
+        return f"{sigil}:{name}{{{body}}}"
     return f"{sigil}:{name}"
 
 
@@ -108,12 +112,29 @@ def _quote_attr(val: Any) -> str:
     return s
 
 
+def _crud_error(result: dict[str, Any], code: str) -> CortexOUT:
+    """Enumerate crud diagnostics (index + message) and surface non_bypassable."""
+    diagnostics = result.get("diagnostics") or []
+    message = result["error"]
+    if diagnostics:
+        message += " " + " ".join(
+            f"[{i}] {d}" for i, d in enumerate(diagnostics, 1)
+        )
+    return CortexOUT.error(
+        message,
+        code=code,
+        error_count=len(diagnostics),
+        diagnostics=diagnostics,
+        non_bypassable=bool(result.get("non_bypassable")),
+    )
+
+
 def entry_add_handler(
     path: str,
     section: str,
     sigil: str,
     name: str,
-    value: str,
+    value: str | None = None,
     *,
     content: str | None = None,
     create_section: bool = False,
@@ -131,12 +152,18 @@ def entry_add_handler(
     ``$N:{sigil:name{key:val,...}}`` or ``sigil:name{key:val,...}``.
     When provided, fields extracted from ``content`` override the
     individual ``section``, ``sigil``, ``name`` and ``value`` params
-    (merge rule: content wins).
+    (merge rule: content wins). ``value`` is optional when ``content``
+    parses as CORTEX.
+
+    Output metrics: ``bytes_written``/``entry_bytes`` report the size of
+    the serialized entry as written on disk (writer's form, quoting
+    included); ``file_bytes`` reports the whole file size.
     """
     # Normalise section so empty/None is treated as absent (BLP-017).
     if section is None:
         section = ""
     # Merge content CORTEX (canal I) over individual params.
+    content_ignored: list[str] = []
     if content:
         parsed = parse_content_entry(content)
         if parsed:
@@ -156,6 +183,13 @@ def entry_add_handler(
                 value = ", ".join(
                     f'{k}:{_quote_attr(v)}' for k, v in body_keys.items()
                 )
+        else:
+            content_ignored = ["<content did not parse>"]
+    if value is None:
+        return CortexOUT.error(
+            "value is required when content is absent or does not parse as CORTEX",
+            code="INVALID_ARGS",
+        )
 
     requested_name = name
     numbered_name = name
@@ -170,17 +204,28 @@ def entry_add_handler(
         return CortexOUT.error(str(exc), code="ADD_ERROR")
 
     if "error" in result:
-        return CortexOUT.error(result["error"], code="CRUD_ERROR")
+        return _crud_error(result, "CRUD_ERROR")
 
     renamed = numbered_name != requested_name
     message = f"entry.add ok path={path} {sigil}:{numbered_name} in {section}"
     if renamed:
         message += f" renamed:{requested_name}->{numbered_name}"
+    # entry_text is the writer-serialized entry (crud_add renders it via
+    # the same _format_entry the writer uses), so entry_bytes matches the
+    # bytes actually on disk even when quoting normalization kicks in.
+    entry_text = result.get("entry_text", f"{sigil}:{numbered_name}{{{value}}}")
+    file_bytes = result.get("bytes_written")
     fields: dict[str, Any] = {
         "path": path, "section": section, "sigil": sigil, "name": numbered_name,
-        "bytes_written": result.get("bytes_written"),
+        "bytes_written": len(entry_text.encode("utf-8")),
+        "entry_bytes": len(entry_text.encode("utf-8")),
+        "file_bytes": file_bytes,
         "backup": result.get("backup"),
     }
+    if content_ignored:
+        fields["content_ignored"] = content_ignored
+    if force:
+        fields["applied"] = entry_text
     if renamed:
         fields["requested"] = requested_name
         fields["renamed"] = numbered_name
@@ -215,6 +260,10 @@ def entry_update_handler(
 
     For attrs entries: pass ``set_`` as JSON key:value pairs (e.g. ``status:done,priority:high``).
     For cuerpo entries: pass ``replace_body`` with the new body text.
+
+    Output metrics: ``bytes_written``/``file_bytes`` report the whole file
+    size after the rewrite (unlike ``entry.add``, where ``bytes_written``
+    is the serialized entry size).
     """
     set_dict = None
     if set_:
@@ -242,11 +291,12 @@ def entry_update_handler(
         return CortexOUT.error(str(exc), code="UPDATE_ERROR")
 
     if "error" in result:
-        return CortexOUT.error(result["error"], code="CRUD_ERROR")
+        return _crud_error(result, "CRUD_ERROR")
     return CortexOUT.work(
         f"entry.update ok path={path} selector={selector}",
         path=path, selector=selector,
         bytes_written=result.get("bytes_written"),
+        file_bytes=result.get("bytes_written"),
         backup=result.get("backup"),
     )
 
@@ -258,7 +308,12 @@ def entry_delete_handler(
     force: bool = False,
     ctx: PermissionContext | None = None,
 ) -> CortexOUT:
-    """Delete an entry matching a CORTEX selector from a .cortex file."""
+    """Delete an entry matching a CORTEX selector from a .cortex file.
+
+    Output metrics: ``bytes_written``/``file_bytes`` report the whole file
+    size after the rewrite (unlike ``entry.add``, where ``bytes_written``
+    is the serialized entry size).
+    """
     try:
         result = crud_delete(path, selector, force=force)
     except FileNotFoundError:
@@ -267,11 +322,12 @@ def entry_delete_handler(
         return CortexOUT.error(str(exc), code="DELETE_ERROR")
 
     if "error" in result:
-        return CortexOUT.error(result["error"], code="CRUD_ERROR")
+        return _crud_error(result, "CRUD_ERROR")
     return CortexOUT.work(
         f"entry.delete ok path={path} selector={selector}",
         path=path, selector=selector,
         bytes_written=result.get("bytes_written"),
+        file_bytes=result.get("bytes_written"),
         backup=result.get("backup"),
     )
 
@@ -284,7 +340,12 @@ def entry_move_handler(
     force: bool = False,
     ctx: PermissionContext | None = None,
 ) -> CortexOUT:
-    """Move an entry between sections in a .cortex file."""
+    """Move an entry between sections in a .cortex file.
+
+    Output metrics: ``bytes_written``/``file_bytes`` report the whole file
+    size after the rewrite (unlike ``entry.add``, where ``bytes_written``
+    is the serialized entry size).
+    """
     try:
         result = crud_move(path, selector, to_section, force=force)
     except FileNotFoundError:
@@ -293,11 +354,12 @@ def entry_move_handler(
         return CortexOUT.error(str(exc), code="MOVE_ERROR")
 
     if "error" in result:
-        return CortexOUT.error(result["error"], code="CRUD_ERROR")
+        return _crud_error(result, "CRUD_ERROR")
     return CortexOUT.work(
         f"entry.move ok path={path} selector={selector} to={to_section}",
         path=path, selector=selector, to_section=to_section,
         bytes_written=result.get("bytes_written"),
+        file_bytes=result.get("bytes_written"),
         backup=result.get("backup"),
     )
 
@@ -308,6 +370,8 @@ def entry_list_handler(
     section: str | None = None,
     sigil: str | None = None,
     format: str = "hcortex",
+    limit: int | None = None,
+    offset: int = 0,
     ctx: PermissionContext | None = None,
 ) -> CortexOUT:
     """List entries in a .cortex file, optionally filtered by section or sigil.
@@ -318,11 +382,30 @@ def entry_list_handler(
       dicts (legacy behaviour).
     - ``format="cortex"`` (canal I): returns raw CORTEX entry strings
       for handler-to-handler communication.
+    - ``format="compact"``: one raw CORTEX entry per line in
+      ``content`` — avoids giant single-line dict payloads.
+
+    Output is paginated: ``limit`` (default 50) entries per page starting
+    at ``offset``. Fields ``total``, ``returned``, ``offset`` and
+    ``next_offset`` report the pagination state (``next_offset`` is None
+    on the last page).
     """
-    if format not in ("hcortex", "cortex"):
+    if format not in ("hcortex", "cortex", "compact"):
         return CortexOUT.error(
-            f"invalid format={format!r} (must be 'hcortex' or 'cortex')",
+            f"invalid format={format!r} (must be 'hcortex', 'cortex' or 'compact')",
             code="INVALID_ARGS",
+        )
+
+    try:
+        limit_i = DEFAULT_LIST_LIMIT if limit is None else int(limit)
+        offset_i = int(offset)
+    except (TypeError, ValueError):
+        return CortexOUT.error(
+            "limit and offset must be integers", code="INVALID_ARGS"
+        )
+    if limit_i < 1 or offset_i < 0:
+        return CortexOUT.error(
+            "limit must be >= 1 and offset must be >= 0", code="INVALID_ARGS"
         )
 
     try:
@@ -333,22 +416,45 @@ def entry_list_handler(
         return CortexOUT.error(str(exc), code="LIST_ERROR")
 
     entries = result.get("entries", [])
+    total = len(entries)
+    page = entries[offset_i : offset_i + limit_i]
+    next_offset = offset_i + limit_i if offset_i + limit_i < total else None
+    pagination = {
+        "total": total,
+        "returned": len(page),
+        "offset": offset_i,
+        "next_offset": next_offset,
+    }
+
+    if format == "compact":
+        content = "\n".join(_entry_to_cortex(e) for e in page)
+        return CortexOUT.work(
+            f"entry.list ok path={path} count={len(page)} format=compact",
+            path=path, section=section, sigil=sigil,
+            format="compact",
+            count=len(page),
+            content=content,
+            **pagination,
+        )
+
     if format == "cortex":
-        entries_out = [_entry_to_cortex(e) for e in entries]
+        entries_out = [_entry_to_cortex(e) for e in page]
         return CortexOUT.work(
             f"entry.list ok path={path} count={len(entries_out)} format=cortex",
             path=path, section=section, sigil=sigil,
             format="cortex",
             count=len(entries_out),
             entries=entries_out,
+            **pagination,
         )
 
     return CortexOUT.work(
-        f"entry.list ok path={path} count={len(entries)}",
+        f"entry.list ok path={path} count={len(page)}",
         path=path, section=section, sigil=sigil,
         format="hcortex",
-        count=len(entries),
-        entries=entries,
+        count=len(page),
+        entries=page,
+        **pagination,
     )
 
 

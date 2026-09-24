@@ -53,8 +53,14 @@ def list_blueprints(
     status: str | None = None,
     path: str | None = None,
     ctx: PermissionContext | None = None,
+    limit: int | None = None,
+    offset: int = 0,
 ) -> CortexOUT:
-    """List Blueprints with optional filters."""
+    """List Blueprints with optional filters.
+
+    Paginated when ``limit`` is given: fields total, returned, offset
+    and next_offset report the pagination state.
+    """
     root = _resolve_root(path)
     if root is None:
         return CortexOUT.error("no project initialized", code="NOT_FOUND")
@@ -95,8 +101,30 @@ def list_blueprints(
                 entry["raw_status"] = raw_status
             all_bps.append(entry)
 
+    try:
+        offset_i = int(offset)
+        limit_i = int(limit) if limit is not None else None
+    except (TypeError, ValueError):
+        return CortexOUT.error("limit and offset must be integers", code="INVALID_ARGS")
+    if limit_i is not None and (limit_i < 1 or offset_i < 0):
+        return CortexOUT.error("limit must be >= 1 and offset must be >= 0", code="INVALID_ARGS")
+    if offset_i < 0:
+        return CortexOUT.error("offset must be >= 0", code="INVALID_ARGS")
+
+    total = len(all_bps)
+    page = all_bps[offset_i:] if limit_i is None else all_bps[offset_i : offset_i + limit_i]
+    next_offset = (
+        offset_i + limit_i
+        if limit_i is not None and offset_i + limit_i < total
+        else None
+    )
+
     return CortexOUT.work(
-        f"blueprints: {len(all_bps)}",
-        count=len(all_bps),
-        blueprints=all_bps,
+        f"blueprints: {len(page)}",
+        count=len(page),
+        blueprints=page,
+        total=total,
+        returned=len(page),
+        offset=offset_i,
+        next_offset=next_offset,
     )

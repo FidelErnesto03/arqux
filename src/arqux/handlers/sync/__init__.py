@@ -31,6 +31,7 @@ def sync_run_handler(
             project_root,
             "sync.run",
             focus="sync.run manual trigger",
+            focus_create_only=True,
             metrics={"sync_run": 1},
             detail="sync.run manual trigger — full sync to meta-brain",
         )
@@ -52,8 +53,12 @@ def reconcile_handler(
     """Reconcile brain.cortex persistent state with filesystem reality.
 
     Scans all cycles and blueprints, counts by status, and updates:
-    - brain.cortex §3 (OBJ): goal with accurate counts
-    - meta-brain.cortex $2/DOM:arqux: counts if meta-brain exists
+    - brain.cortex §3 (OBJ): an existing entry keeps its operator-authored
+      goal/status/survive — only success/updated/event are refreshed; a
+      generic goal is created only when no OBJ exists
+    - meta-brain.cortex $3 (FCS): likewise preserved — only updated/event
+      are refreshed on an existing FCS:current (workspace context)
+    - meta-brain.cortex $2/DOM:<project>: counts if meta-brain exists
 
     When ``cycle_id`` is provided, only reconciles that cycle's MANIFEST.md.
     When ``level`` is ``project`` (or ``auto`` at project root), reconciles
@@ -104,7 +109,16 @@ def reconcile_handler(
         is_workspace_context = (ws_root is not None and
                                 ws_root.parent == project_root)
 
-        if is_workspace_context:
+        if level == "workspace":
+            # Explicit workspace level: reconcile the meta-brain.
+            target_root = ws_root.parent if ws_root else project_root
+            result = reconcile_brain(target_root)
+            result["reconciled"] = True
+            result["is_workspace"] = True
+        elif level == "project":
+            # Explicit project level: reconcile the project brain.
+            result = reconcile_brain(project_root)
+        elif is_workspace_context:
             # Workspace context: reconcile meta-brain directly
             result = reconcile_brain(project_root)
             # Override reconciled flag since we're in workspace context

@@ -113,6 +113,120 @@ def test_sync_brain_fail_silent_missing_brain(brain_project: Path) -> None:
     sync_brain(brain_project, "test.event")  # no error
 
 
+# ---------------------------------------------------------------------------
+# T-001: sync.run / auto-sync must not overwrite a specific FCS
+# ---------------------------------------------------------------------------
+
+
+def test_sync_run_preserves_specific_fcs(brain_project: Path) -> None:
+    """sync.run refreshes the timestamp but keeps the existing FCS what."""
+    from arqux.handlers.sync import sync_run_handler
+    from arqux.state import cortex_read
+
+    result = sync_run_handler(path=str(brain_project))
+    assert result.profile == "OUT-WORK", str(result.fields)
+
+    read = cortex_read(str(brain_project / ".arqux" / "brain.cortex"))
+    fcs = [
+        e for s in read["sections"] for e in s["entries"]
+        if e["sigil"] == "FCS" and e["name"] == "current"
+    ]
+    assert len(fcs) == 1
+    val = fcs[0]["value"]
+    assert val["what"] == "Initial focus"
+    assert val["event"] == "sync.run"
+
+
+def test_auto_sync_preserves_fcs_after_cortex_write(brain_project: Path) -> None:
+    """The cortex.write auto-sync hook must not clobber a specific FCS."""
+    from arqux.handlers.cortex.read_write import write_handler
+    from arqux.state import cortex_read
+
+    brain = brain_project / ".arqux" / "brain.cortex"
+    result = write_handler(str(brain), brain.read_text(encoding="utf-8"), force=True)
+    assert result.profile == "OUT-WORK", str(result.fields)
+
+    read = cortex_read(str(brain))
+    fcs = [
+        e for s in read["sections"] for e in s["entries"]
+        if e["sigil"] == "FCS" and e["name"] == "current"
+    ]
+    assert len(fcs) == 1
+    assert fcs[0]["value"]["what"] == "Initial focus"
+    assert fcs[0]["value"]["event"] == "cortex.write"
+
+
+def test_sync_run_creates_fcs_when_absent(brain_project: Path) -> None:
+    """A brain without FCS gets one created by sync.run."""
+    from arqux.handlers.sync import sync_run_handler
+    from arqux.state import cortex_read
+
+    brain = brain_project / ".arqux" / "brain.cortex"
+    text = brain.read_text(encoding="utf-8")
+    text = text.replace(
+        'FCS:current{what:"Initial focus", priority:"medium", status:"current", survive:"work"}\n\n',
+        "",
+    )
+    brain.write_text(text, encoding="utf-8")
+
+    result = sync_run_handler(path=str(brain_project))
+    assert result.profile == "OUT-WORK", str(result.fields)
+
+    read = cortex_read(str(brain))
+    fcs = [
+        e for s in read["sections"] for e in s["entries"]
+        if e["sigil"] == "FCS" and e["name"] == "current"
+    ]
+    assert len(fcs) == 1
+    assert fcs[0]["value"]["what"] == "sync.run manual trigger"
+
+
+def test_sync_brain_creates_fcs_when_section_missing(brain_project: Path) -> None:
+    """T-001 gap: a brain lacking the $2 section entirely still gets an
+    FCS:current created (create_section path)."""
+    from arqux.handlers.sync import sync_run_handler
+    from arqux.state import cortex_read
+
+    brain = brain_project / ".arqux" / "brain.cortex"
+    text = brain.read_text(encoding="utf-8")
+    text = text.replace(
+        '$2: FOCUS\nFCS:current{what:"Initial focus", priority:"medium", status:"current", survive:"work"}\n\n',
+        "",
+    )
+    assert "$2" not in text
+    brain.write_text(text, encoding="utf-8")
+
+    result = sync_run_handler(path=str(brain_project))
+    assert result.profile == "OUT-WORK", str(result.fields)
+
+    read = cortex_read(str(brain))
+    fcs = [
+        e for s in read["sections"] for e in s["entries"]
+        if e["sigil"] == "FCS" and e["name"] == "current"
+    ]
+    assert len(fcs) == 1
+    assert fcs[0]["value"]["what"] == "sync.run manual trigger"
+
+
+def test_sync_run_verify_passes(brain_project: Path) -> None:
+    """cortex_verify passes after sync.run on both FCS variants."""
+    from arqux.handlers.sync import sync_run_handler
+    from arqux.state import cortex_verify
+
+    brain = brain_project / ".arqux" / "brain.cortex"
+    sync_run_handler(path=str(brain_project))
+    assert cortex_verify(str(brain))["valid"]
+
+    text = brain.read_text(encoding="utf-8")
+    text = text.replace(
+        'FCS:current{what:"Initial focus", priority:"medium", status:"current", survive:"work"}\n\n',
+        "",
+    )
+    brain.write_text(text, encoding="utf-8")
+    sync_run_handler(path=str(brain_project))
+    assert cortex_verify(str(brain))["valid"]
+
+
 def test_sync_brain_fail_silent_none_path() -> None:
     """sync_brain() does not raise when project_root is None."""
     from arqux.sync import sync_brain

@@ -22,6 +22,7 @@ def sync_brain(
     event: str,
     *,
     focus: str | None = None,
+    focus_create_only: bool = False,
     metrics: dict[str, Any] | None = None,
     detail: str = "",
 ) -> None:
@@ -42,6 +43,10 @@ def sync_brain(
         Canonical event name, e.g. `blueprint.complete`.
     focus:
         If provided, updates ``FCS:current`` in brain.cortex.
+    focus_create_only:
+        When True, an existing ``FCS:current`` keeps its ``what`` — only
+        ``updated``/``event`` are refreshed. The generic *focus* text is
+        written only when no FCS entry exists yet.
     metrics:
         Optional dict of counters to merge into brain.cortex.
     detail:
@@ -71,17 +76,27 @@ def sync_brain(
         return
 
     try:
-        from arqux.state import crud_update
+        from arqux.cortex.atomic import atomic_write_json
+        from arqux.cortex.crud import add_entry, select_entries, update_entry
+        from arqux.cortex.reader import cortex_to_dict
     except ImportError:
-        logger.warning("sync_brain: crud_update not available, skipping")
+        logger.warning("sync_brain: cortex components not available, skipping")
         return
 
     ts = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
     current_text = f"{event}: {detail}" if detail else event
 
     try:
-        crud_update(
-            str(brain_path),
+        doc = cortex_to_dict(brain_path.read_text(encoding="utf-8"))
+    except Exception:
+        logger.debug("sync_brain: failed to read brain (continuing)")
+        return
+
+    changed = False
+
+    try:
+        update_entry(
+            doc,
             "$8/WRK:current",
             set_={
                 "phase": "current",
@@ -90,65 +105,88 @@ def sync_brain(
                 "updated": ts,
                 "event": event,
             },
-            force=True,
         )
+        changed = True
     except Exception:
         logger.exception("sync_brain: failed to update WRK:current @ $8 (continuing)")
 
     if focus:
         try:
-            crud_update(
-                str(brain_path),
-                "$2/FCS:current",
-                set_={
-                    "what": focus,
-                    "priority": "medium",
-                    "status": "current",
-                    "updated": ts,
-                    "event": event,
-                },
-                force=True,
-            )
+            if select_entries(doc, "$2/FCS:current"):
+                set_ = {"updated": ts, "event": event}
+                if not focus_create_only:
+                    set_.update({
+                        "what": focus,
+                        "priority": "medium",
+                        "status": "current",
+                    })
+                update_entry(doc, "$2/FCS:current", set_=set_)
+                changed = True
+            elif focus_create_only:
+                add_entry(
+                    doc,
+                    "$2",
+                    "FCS",
+                    "current",
+                    {
+                        "name": "current",
+                        "what": focus,
+                        "priority": "medium",
+                        "status": "current",
+                        "survive": "work",
+                        "updated": ts,
+                        "event": event,
+                    },
+                    create_section=True,
+                )
+                changed = True
+            else:
+                logger.debug("sync_brain: no FCS:current @ $2 to update (continuing)")
         except Exception:
             logger.exception("sync_brain: failed to update FCS:current @ $2 (continuing)")
 
+    if metrics and _upsert_metrics(doc, metrics, ts):
+        changed = True
+
+    if changed:
+        try:
+            atomic_write_json(doc, str(brain_path))
+        except Exception:
+            logger.exception("sync_brain: failed to write brain (continuing)")
+
     if metrics:
-        _update_metrics(brain_path, metrics, ts)
         _sync_meta_brain(project_root, metrics, event, ts)
 
 
-def _update_metrics(
-    brain_path: Path,
-    metrics: dict[str, Any],
-    ts: str,
-) -> None:
-    """Merge *metrics* into the brain's PULSE section."""
-    try:
-        from arqux.state import crud_add
-    except ImportError:
-        return
+def _upsert_metrics(doc: dict[str, Any], metrics: dict[str, Any], ts: str) -> bool:
+    """Upsert KNW:<metric> entries in $6 by name (doc-level batch helper).
 
+    Existing entries are updated in place (value/updated/content); new
+    metrics are appended. Metrics are skipped when $6 is absent.
+    """
+    from arqux.cortex.crud import add_entry, select_entries, update_entry
+
+    changed = False
     for key, value in metrics.items():
+        knw_status = "done" if key == "tasks_done" else "current"
+        attrs = {
+            "name": key,
+            "value": str(value),
+            "updated": ts,
+            "topic": "metrics",
+            "content": f"metric {key}={value}",
+            "status": knw_status,
+        }
         try:
-            knw_status = "done" if key == "tasks_done" else "current"
-            crud_add(
-                str(brain_path),
-                section="$6",
-                sigil="KNW",
-                name=key,
-                value={
-                    "name": key,
-                    "value": str(value),
-                    "updated": ts,
-                    "topic": "metrics",
-                    "content": f"metric {key}={value}",
-                    "status": knw_status,
-                },
-                create_section=False,
-                force=True,
-            )
+            if select_entries(doc, f"$6/KNW:{key}"):
+                update_entry(doc, f"$6/KNW:{key}", set_=attrs)
+            else:
+                add_entry(doc, "$6", "KNW", key, attrs, create_section=False)
         except Exception:
-            logger.debug("sync_brain: failed to add metric %s=%s (continuing)", key, value)
+            logger.debug("sync_brain: failed to upsert metric %s=%s (continuing)", key, value)
+            continue
+        changed = True
+    return changed
 
 
 def _count_blueprints(root: Path) -> dict[str, int]:
@@ -314,9 +352,13 @@ def reconcile_brain(project_root: Path) -> dict[str, Any]:
     """Reconcile brain.cortex persistent state with filesystem reality.
 
     Scans all cycles and blueprints, counts by status, and updates:
-    - For project root: brain.cortex §3 (OBJ): goal with accurate counts
-    - For workspace root: meta-brain.cortex $3 (FCS): status with counts
-    - For both: meta-brain.cortex $2/DOM:arqux: counts if meta-brain exists
+    - For project root: brain.cortex §3 (OBJ): an existing entry keeps its
+      operator-authored goal/status/survive — only success/updated/event
+      are refreshed; a generic goal is created only when no OBJ exists
+    - For workspace root: meta-brain.cortex $3 (FCS): an existing
+      FCS:current keeps its what/priority/status — only updated/event
+      are refreshed; a generic FCS is created only when absent
+    - For both: meta-brain.cortex $2/DOM:<project>: counts if meta-brain exists
 
     Returns dict with reconciliation report.
     """
@@ -367,7 +409,7 @@ def reconcile_brain(project_root: Path) -> dict[str, Any]:
         }
 
         # 2. Determine context: workspace root vs project root
-        from arqux.state import crud_read, crud_update, find_workspace_root
+        from arqux.state import crud_add, crud_read, crud_update, find_workspace_root
 
         ws_root = find_workspace_root(start=project_root)
         if ws_root is None:
@@ -380,7 +422,10 @@ def reconcile_brain(project_root: Path) -> dict[str, Any]:
 
         # 3. Update brain or meta-brain based on context
         if is_workspace_root:
-            # Workspace context: update meta-brain $3 (FCS) with reconciliation status
+            # Workspace context: refresh meta-brain $3 (FCS) timestamp.
+            # focus_create_only semantics (T-010): an existing FCS:current
+            # keeps its what/priority/status; the generic reconciliation
+            # text is written only when no FCS entry exists.
             meta_brain = ws_root / "meta-brain.cortex"
             if meta_brain.exists():
                 fcs_text = (
@@ -388,24 +433,42 @@ def reconcile_brain(project_root: Path) -> dict[str, Any]:
                     f"en {len(open_cycles) + len(closed_cycles)} ciclos "
                     f"({', '.join(sorted(open_cycles + closed_cycles))})."
                 )
-                crud_update(
-                    str(meta_brain),
-                    "$3/FCS:current",
-                    set_={
-                        "what": fcs_text,
-                        "priority": "low",
-                        "status": "current",
-                        "survive": "work",
-                        "updated": ts,
-                        "event": "brain.reconcile",
-                    },
-                    force=True,
-                )
+                existing_fcs = crud_read(str(meta_brain), "$3/FCS:current").get("entries", [])
+                if existing_fcs:
+                    crud_update(
+                        str(meta_brain),
+                        "$3/FCS:current",
+                        set_={"updated": ts, "event": "brain.reconcile"},
+                        force=True,
+                    )
+                else:
+                    crud_add(
+                        str(meta_brain),
+                        "$3",
+                        "FCS",
+                        "current",
+                        {
+                            "name": "current",
+                            "what": fcs_text,
+                            "priority": "low",
+                            "status": "current",
+                            "survive": "work",
+                            "updated": ts,
+                            "event": "brain.reconcile",
+                        },
+                        create_section=True,
+                        force=True,
+                    )
                 result["reconciled"] = True
         else:
-            # Project context: update brain.cortex §3 (OBJ) with accurate counts.
+            # Project context: refresh brain.cortex §3 (OBJ), preserving
+            # the operator-authored goal.
             # Tolerant: resolves the first OBJ:* entry — a missing OBJ is
             # recorded in errors[] instead of aborting (BLP-008 / BUG-003).
+            # create_only semantics (T-015): an existing OBJ keeps its
+            # operator-authored goal — only success/updated/event are
+            # refreshed. The generic goal is written only when no OBJ
+            # entry exists.
             brain_path = project_root / ".arqux" / "brain.cortex"
             if brain_path.exists():
                 goal = (
@@ -423,6 +486,21 @@ def reconcile_brain(project_root: Path) -> dict[str, Any]:
                         str(brain_path),
                         f"$3/OBJ:{objs[0].get('name')}",
                         set_={
+                            "success": "synced",
+                            "updated": ts,
+                            "event": "brain.reconcile",
+                        },
+                        force=True,
+                    )
+                else:
+                    result["errors"].append("brain has no OBJ entry in §3")
+                    crud_add(
+                        str(brain_path),
+                        "$3",
+                        "OBJ",
+                        "sync",
+                        {
+                            "name": "sync",
                             "goal": goal,
                             "status": "current",
                             "success": "synced",
@@ -430,11 +508,10 @@ def reconcile_brain(project_root: Path) -> dict[str, Any]:
                             "updated": ts,
                             "event": "brain.reconcile",
                         },
+                        create_section=True,
                         force=True,
                     )
-                    result["reconciled"] = True
-                else:
-                    result["errors"].append("brain has no OBJ entry in §3")
+                result["reconciled"] = True
 
         # 4. Sync to meta-brain DOM:<project> (always)
         try:

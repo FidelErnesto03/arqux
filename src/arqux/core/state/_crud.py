@@ -30,7 +30,7 @@ from ...cortex.crud import (
 
 # --- ArqUX CORTEX components (BLP-001..004) ---------------------------------
 from ...cortex.reader import cortex_to_dict
-from ...cortex.writer import write_cortex_from_json
+from ...cortex.writer import _format_entry, write_cortex_from_json
 from . import (
     _cc_parser,
     _cc_renderer,
@@ -297,7 +297,16 @@ def crud_add(
         )
         return doc
 
-    return _read_and_mutate(p, _add, force=force, dry_run=dry_run)
+    result = _read_and_mutate(p, _add, force=force, dry_run=dry_run)
+    if "error" not in result:
+        # Mirror the entry model add_entry appended so entry_text is the
+        # exact serialized form the writer put on disk (quoting included).
+        if isinstance(parsed_value, dict):
+            entry = {"sigil": sigil, "name": name, "attrs": parsed_value}
+        else:
+            entry = {"sigil": sigil, "name": name, "body": parsed_value}
+        result["entry_text"] = _format_entry(entry)
+    return result
 
 
 def crud_update(

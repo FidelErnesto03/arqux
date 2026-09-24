@@ -40,7 +40,7 @@ from ..sync import reconcile_cycle, sync_brain
 
 
 def create_task(
-    obj: str,
+    obj: str = "",
     pre: list[str] | None = None,
     proc: list[str] | None = None,
     ac: list[str] | None = None,
@@ -68,8 +68,9 @@ def create_task(
         return CortexOUT.error("no project initialized", code="NOT_FOUND")
 
     # BLP-009: merge content CORTEX over individual params.
+    content_ignored: list[str] = []
     if content:
-        from ..cortex.parse_content import parse_content_entry
+        from ..cortex.parse_content import parse_content_entry, unused_content_keys
         parsed = parse_content_entry(content)
         if parsed:
             # Merge rule: content wins if key exists, else individual param.
@@ -77,15 +78,34 @@ def create_task(
             assignee = parsed.get("assignee", assignee or "")
             complexity = parsed.get("complexity", complexity)
             priority = parsed.get("priority", priority)
-            # Lists — only override if the key exists in content.
-            if "pre" in parsed and isinstance(parsed["pre"], list):
-                pre = parsed["pre"]
-            if "proc" in parsed and isinstance(parsed["proc"], list):
-                proc = parsed["proc"]
-            if "ac" in parsed and isinstance(parsed["ac"], list):
-                ac = parsed["ac"]
-            if "blk" in parsed and isinstance(parsed["blk"], list):
-                blk = parsed["blk"]
+            # Lists — content wins; a scalar coerces to a single-item list
+            # instead of being silently dropped.
+            if "pre" in parsed:
+                pre = parsed["pre"] if isinstance(parsed["pre"], list) else [str(parsed["pre"])]
+            if "proc" in parsed:
+                proc = parsed["proc"] if isinstance(parsed["proc"], list) else [str(parsed["proc"])]
+            if "ac" in parsed:
+                ac = parsed["ac"] if isinstance(parsed["ac"], list) else [str(parsed["ac"])]
+            if "blk" in parsed:
+                blk = parsed["blk"] if isinstance(parsed["blk"], list) else [str(parsed["blk"])]
+            content_ignored = unused_content_keys(
+                parsed,
+                {"obj", "assignee", "complexity", "priority", "pre", "proc", "ac", "blk"},
+                raw=content,
+            )
+        else:
+            content_ignored = ["<content did not parse>"]
+
+    pre = [p for p in (pre or []) if str(p).strip()]
+    proc = [p for p in (proc or []) if str(p).strip()]
+    ac = [a for a in (ac or []) if str(a).strip()]
+    blk = [b for b in (blk or []) if str(b).strip()]
+
+    if not obj:
+        return CortexOUT.error(
+            "obj is required (pass obj or content with an obj key)",
+            code="INVALID_ARGS",
+        )
 
     # Find the current cycle.
     cycles_base = root / CYCLES_DIR
@@ -145,12 +165,14 @@ def create_task(
 
     reconcile_cycle(root, cycle_id)
 
-    return CortexOUT.work(
-        f"task.create ok id={task_id}",
-        task_id=task_id,
-        cycle=cycle_id,
-        status=fm["status"],
-    )
+    fields: dict[str, Any] = {
+        "task_id": task_id,
+        "cycle": cycle_id,
+        "status": fm["status"],
+    }
+    if content_ignored:
+        fields["content_ignored"] = content_ignored
+    return CortexOUT.work(f"task.create ok id={task_id}", **fields)
 
 
 def claim_task(task_id: str, path: str | None = None, ctx: PermissionContext | None = None) -> CortexOUT:
@@ -384,8 +406,14 @@ def list_tasks(
     cycle: str | None = None,
     path: str | None = None,
     ctx: PermissionContext | None = None,
+    limit: int | None = None,
+    offset: int = 0,
 ) -> CortexOUT:
-    """List tasks with filters."""
+    """List tasks with filters.
+
+    Paginated when ``limit`` is given: fields total, returned, offset
+    and next_offset report the pagination state.
+    """
     root = find_project_root(start=path)
     if root is None:
         return CortexOUT.error("no project initialized", code="NOT_FOUND")
@@ -410,9 +438,31 @@ def list_tasks(
                 continue
             tasks.append({"id": fm.get("id", tpath.stem), "status": fm.get("status"), "cycle": cdir.name})
 
+    try:
+        offset_i = int(offset)
+        limit_i = int(limit) if limit is not None else None
+    except (TypeError, ValueError):
+        return CortexOUT.error("limit and offset must be integers", code="INVALID_ARGS")
+    if limit_i is not None and (limit_i < 1 or offset_i < 0):
+        return CortexOUT.error("limit must be >= 1 and offset must be >= 0", code="INVALID_ARGS")
+    if offset_i < 0:
+        return CortexOUT.error("offset must be >= 0", code="INVALID_ARGS")
+
+    total = len(tasks)
+    page = tasks[offset_i:] if limit_i is None else tasks[offset_i : offset_i + limit_i]
+    next_offset = (
+        offset_i + limit_i
+        if limit_i is not None and offset_i + limit_i < total
+        else None
+    )
+
     return CortexOUT.work(
-        f"tasks={len(tasks)}",
-        tasks=tasks,
+        f"tasks={len(page)}",
+        tasks=page,
+        total=total,
+        returned=len(page),
+        offset=offset_i,
+        next_offset=next_offset,
     )
 
 
@@ -720,12 +770,12 @@ def _record_run_pulse(
 
 
 handler_schemas = [
-    {"name": "task.create", "fn": create_task, "description": "Create a governed task in the current cycle. Accepts a 'content' CORTEX entry string (BLP-009) with keys obj, pre[], proc[], ac[], blk[], assignee, complexity, priority — parsed values override individual params (merge rule: content wins).", "input_schema": {"type": "object", "properties": {"obj": {"type": "string"}, "pre": {"type": "array", "items": {"type": "string"}}, "proc": {"type": "array", "items": {"type": "string"}}, "ac": {"type": "array", "items": {"type": "string"}}, "blk": {"type": "array", "items": {"type": "string"}}, "assignee": {"type": "string"}, "complexity": {"type": "string", "enum": ["simple", "standard", "complex"]}, "priority": {"type": "string", "enum": ["low", "medium", "high"]}, "content": {"type": "string", "description": "CORTEX entry string with keys obj,pre[],proc[],ac[],blk[],assignee,complexity,priority. Lists as key:[v1,v2,v3]. Parsed values override individual params (BLP-009)."}, "cycle": {"type": "string", "description": "Target cycle ID (e.g. CYCLE-07). If omitted, uses the current cycle."}, "path": {"type": "string", "description": "Path to project root. Defaults to cwd."}}, "required": ["obj"]}},
+    {"name": "task.create", "fn": create_task, "description": "Create a governed task in the current cycle. Accepts a 'content' CORTEX entry string (BLP-009) with keys obj, pre[], proc[], ac[], blk[], assignee, complexity, priority — parsed values override individual params (merge rule: content wins; scalar list values coerce to single-item lists). obj is optional when content carries an obj key; INVALID_ARGS otherwise.", "input_schema": {"type": "object", "properties": {"obj": {"type": "string", "description": "Objective text. Optional when content carries an obj key."}, "pre": {"type": "array", "items": {"type": "string"}}, "proc": {"type": "array", "items": {"type": "string"}}, "ac": {"type": "array", "items": {"type": "string"}}, "blk": {"type": "array", "items": {"type": "string"}}, "assignee": {"type": "string"}, "complexity": {"type": "string", "enum": ["simple", "standard", "complex"]}, "priority": {"type": "string", "enum": ["low", "medium", "high"]}, "content": {"type": "string", "description": "CORTEX entry string with keys obj,pre[],proc[],ac[],blk[],assignee,complexity,priority. Lists as key:[v1,v2,v3] (a scalar value coerces to a single-item list). Parsed values override individual params (BLP-009: content wins)."}, "cycle": {"type": "string", "description": "Target cycle ID (e.g. CYCLE-07). If omitted, uses the current cycle."}, "path": {"type": "string", "description": "Path to project root. Defaults to cwd."}}}},
     {"name": "task.claim", "fn": claim_task, "description": "An executor claims a task → status: in_progress.", "input_schema": {"type": "object", "properties": {"task_id": {"type": "string"}, "path": {"type": "string", "description": "Path to project root. Defaults to cwd."}}, "required": ["task_id"]}},
     {"name": "task.update", "fn": update_task, "description": "Update task progress, optionally change status.", "input_schema": {"type": "object", "properties": {"task_id": {"type": "string"}, "note": {"type": "string"}, "status": {"type": "string"}, "path": {"type": "string", "description": "Path to project root. Defaults to cwd."}}, "required": ["task_id", "note"]}},
     {"name": "task.complete", "fn": complete_task, "description": "Mark a task done and record evidence.", "input_schema": {"type": "object", "properties": {"task_id": {"type": "string"}, "evidence": {"type": "string"}, "path": {"type": "string", "description": "Path to project root. Defaults to cwd."}}, "required": ["task_id"]}},
     {"name": "task.fail", "fn": fail_task, "description": "Mark a task blocked and record the cause.", "input_schema": {"type": "object", "properties": {"task_id": {"type": "string"}, "reason": {"type": "string"}, "path": {"type": "string", "description": "Path to project root. Defaults to cwd."}}, "required": ["task_id", "reason"]}},
     {"name": "task.read", "fn": read_task, "description": "Read a task (CORTEX or HCORTEX format).", "input_schema": {"type": "object", "properties": {"task_id": {"type": "string"}, "format": {"type": "string", "enum": ["cortex", "hcortex"], "default": "cortex"}, "path": {"type": "string", "description": "Path to project root. Defaults to cwd."}}, "required": ["task_id"]}},
-    {"name": "task.list", "fn": list_tasks, "description": "List tasks with filters.", "input_schema": {"type": "object", "properties": {"status": {"type": "string"}, "assignee": {"type": "string"}, "cycle": {"type": "string"}, "path": {"type": "string", "description": "Path to project root. Defaults to cwd."}}}},
+    {"name": "task.list", "fn": list_tasks, "description": "List tasks with filters. Paginated: limit + offset; fields total, returned, offset, next_offset report the pagination state.", "input_schema": {"type": "object", "properties": {"status": {"type": "string"}, "assignee": {"type": "string"}, "cycle": {"type": "string"}, "path": {"type": "string", "description": "Path to project root. Defaults to cwd."}, "limit": {"type": "integer", "description": "Max tasks per page (default: all)."}, "offset": {"type": "integer", "default": 0, "description": "Tasks to skip before the page."}}}},
     {"name": "task.run", "fn": run_task, "description": "Run a governed task: verify preconditions, execute procedure steps, mark complete or fail (BLP-010 meta-handler). Supports dry_run mode.", "input_schema": {"type": "object", "properties": {"task_id": {"type": "string"}, "content": {"type": "string", "description": "CORTEX content with keys task_id, evidence, fail_reason."}, "dry_run": {"type": "boolean", "default": False, "description": "If true, report what would happen without modifying state."}, "path": {"type": "string"}}, "required": ["task_id"]}},
 ]

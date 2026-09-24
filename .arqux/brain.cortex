@@ -1030,6 +1030,394 @@ AUD:E_0158{date:"2026-09-21T20:24:01Z", event:"E-0158", task:"-", kind:"handler_
 
 AUD:E_0158{date:"2026-09-21T20:24:02Z", event:"E-0158", task:"-", kind:"handler_call", agent:"anonymous", result:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", evidence:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md"}
 
+AUD:E_0158{date:"2026-09-24T15:24:36Z", event:"E-0158", task:"-", kind:"handler_call", agent:"test", result:"[cortex.format] hcortex->cortex", evidence:"[cortex.format] hcortex->cortex"}
+
+AUD:E_0158{date:"2026-09-24T15:24:37Z", event:"E-0158", task:"-", kind:"handler_call", agent:"test", result:"[identity.get] agent_id=governor source=workspace", evidence:"[identity.get] agent_id=governor source=workspace"}
+
+AUD:E_0158{date:"2026-09-24T15:24:38Z", event:"E-0158", task:"-", kind:"handler_call", agent:"anonymous", result:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", evidence:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md"}
+
+AUD:E_0158{date:"2026-09-24T15:24:38Z", event:"E-0158", task:"-", kind:"handler_call", agent:"anonymous", result:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", evidence:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md"}
+
+AUD:E_0158{date:"2026-09-24T15:25:30Z", event:"E-0158", task:"-", kind:"handler_call", agent:"test", result:"[cortex.format] hcortex->cortex", evidence:"[cortex.format] hcortex->cortex"}
+
+AUD:E_0158{date:"2026-09-24T15:25:32Z", event:"E-0158", task:"-", kind:"handler_call", agent:"test", result:"[identity.get] agent_id=governor source=workspace", evidence:"[identity.get] agent_id=governor source=workspace"}
+
+AUD:E_0158{date:"2026-09-24T15:25:32Z", event:"E-0158", task:"-", kind:"handler_call", agent:"anonymous", result:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", evidence:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md"}
+
+AUD:E_0158{date:"2026-09-24T15:25:32Z", event:"E-0158", task:"-", kind:"handler_call", agent:"anonymous", result:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", evidence:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md"}
+
+AUD:E_0158{date:"2026-09-24T15:26:22Z", event:"E-0158", task:"-", kind:"handler_call", agent:"test", result:"[cortex.format] hcortex->cortex", evidence:"[cortex.format] hcortex->cortex"}
+
+AUD:E_0158{date:"2026-09-24T15:26:23Z", event:"E-0158", task:"-", kind:"handler_call", agent:"test", result:"[identity.get] agent_id=governor source=workspace", evidence:"[identity.get] agent_id=governor source=workspace"}
+
+AUD:E_0158{date:"2026-09-24T15:26:24Z", event:"E-0158", task:"-", kind:"handler_call", agent:"anonymous", result:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", evidence:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md"}
+
+AUD:E_0158{date:"2026-09-24T15:26:24Z", event:"E-0158", task:"-", kind:"handler_call", agent:"anonymous", result:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", evidence:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md"}
+
+KNW:tasks_active{name:"tasks_active", value:"1", updated:"2026-09-24T15:28:10Z", topic:"metrics", content:"metric tasks_active=1", status:"current"}
+
+AUD:E_0158{date:"2026-09-24T15:28:17Z", event:"E-0158", task:"T-001", kind:"task_complete", agent:"alfred", result:"Fix in src/arqux/sync.py: sync_brain gains focus_create_only flag — preserves existing FCS:current what/priority/status, refreshes only updated/event; generic FCS created via crud_add(create_section=True) only when absent; default False keeps major-event overwrite semantics (blueprint/cycle handlers unchanged, regression anchor test_sync_brain_updates_fcs still passes). Auto-sync hook (read_write.py:167) and sync_run_handler (handlers/sync/__init__.py) now pass focus_create_only=True. 4 tests in tests/test_sync_brain.py on tmp_path fixtures. Heimdall audit CONDITIONAL_APPROVED; gate C1 resolved by Alfred (pytest 1410 passed 14 skipped 0 failed; git scope = sync.py, read_write.py, sync/__init__.py, test file). Follow-up created as T-010 (reconcile_brain meta-brain FCS overwrite + create_section test gap + skill doc).", evidence:"Fix in src/arqux/sync.py: sync_brain gains focus_create_only flag — preserves existing FCS:current what/priority/status, refreshes only updated/event; generic FCS created via crud_add(create_section=True) only when absent; default False keeps major-event overwrite semantics (blueprint/cycle handlers unchanged, regression anchor test_sync_brain_updates_fcs still passes). Auto-sync hook (read_write.py:167) and sync_run_handler (handlers/sync/__init__.py) now pass focus_create_only=True. 4 tests in tests/test_sync_brain.py on tmp_path fixtures. Heimdall audit CONDITIONAL_APPROVED; gate C1 resolved by Alfred (pytest 1410 passed 14 skipped 0 failed; git scope = sync.py, read_write.py, sync/__init__.py, test file). Follow-up created as T-010 (reconcile_brain meta-brain FCS overwrite + create_section test gap + skill doc).", cycle:"CYCLE-12"}
+
+KNW:tasks_done{name:"tasks_done", value:"1", updated:"2026-09-24T15:28:17Z", topic:"metrics", content:"metric tasks_done=1", status:"done"}
+
+AUD:E_0158{date:"2026-09-24T15:34:04Z", event:"E-0158", task:"-", kind:"handler_call", agent:"test", result:"[cortex.format] hcortex->cortex", evidence:"[cortex.format] hcortex->cortex"}
+
+AUD:E_0158{date:"2026-09-24T15:34:05Z", event:"E-0158", task:"-", kind:"handler_call", agent:"test", result:"[identity.get] agent_id=governor source=workspace", evidence:"[identity.get] agent_id=governor source=workspace"}
+
+AUD:E_0158{date:"2026-09-24T15:34:05Z", event:"E-0158", task:"-", kind:"handler_call", agent:"anonymous", result:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", evidence:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md"}
+
+AUD:E_0158{date:"2026-09-24T15:34:05Z", event:"E-0158", task:"-", kind:"handler_call", agent:"anonymous", result:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", evidence:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md"}
+
+AUD:E_0158{date:"2026-09-24T15:34:29Z", event:"E-0158", task:"-", kind:"handler_call", agent:"test", result:"[cortex.format] hcortex->cortex", evidence:"[cortex.format] hcortex->cortex"}
+
+AUD:E_0158{date:"2026-09-24T15:34:31Z", event:"E-0158", task:"-", kind:"handler_call", agent:"test", result:"[identity.get] agent_id=governor source=workspace", evidence:"[identity.get] agent_id=governor source=workspace"}
+
+AUD:E_0158{date:"2026-09-24T15:34:31Z", event:"E-0158", task:"-", kind:"handler_call", agent:"anonymous", result:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", evidence:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md"}
+
+AUD:E_0158{date:"2026-09-24T15:34:31Z", event:"E-0158", task:"-", kind:"handler_call", agent:"anonymous", result:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", evidence:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md"}
+
+AUD:E_0158{date:"2026-09-24T15:36:14Z", event:"E-0158", task:"-", kind:"handler_call", agent:"test", result:"[cortex.format] hcortex->cortex", evidence:"[cortex.format] hcortex->cortex"}
+
+AUD:E_0158{date:"2026-09-24T15:36:16Z", event:"E-0158", task:"-", kind:"handler_call", agent:"test", result:"[identity.get] agent_id=governor source=workspace", evidence:"[identity.get] agent_id=governor source=workspace"}
+
+AUD:E_0158{date:"2026-09-24T15:36:16Z", event:"E-0158", task:"-", kind:"handler_call", agent:"anonymous", result:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", evidence:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md"}
+
+AUD:E_0158{date:"2026-09-24T15:36:16Z", event:"E-0158", task:"-", kind:"handler_call", agent:"anonymous", result:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", evidence:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md"}
+
+AUD:E_0158{date:"2026-09-24T15:39:03Z", event:"E-0158", task:"-", kind:"handler_call", agent:"test", result:"[cortex.format] hcortex->cortex", evidence:"[cortex.format] hcortex->cortex"}
+
+AUD:E_0158{date:"2026-09-24T15:39:05Z", event:"E-0158", task:"-", kind:"handler_call", agent:"test", result:"[identity.get] agent_id=governor source=workspace", evidence:"[identity.get] agent_id=governor source=workspace"}
+
+AUD:E_0158{date:"2026-09-24T15:39:05Z", event:"E-0158", task:"-", kind:"handler_call", agent:"anonymous", result:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", evidence:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md"}
+
+AUD:E_0158{date:"2026-09-24T15:39:05Z", event:"E-0158", task:"-", kind:"handler_call", agent:"anonymous", result:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", evidence:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md"}
+
+AUD:E_0158{date:"2026-09-24T15:40:24Z", event:"E-0158", task:"-", kind:"handler_call", agent:"test", result:"[cortex.format] hcortex->cortex", evidence:"[cortex.format] hcortex->cortex"}
+
+AUD:E_0158{date:"2026-09-24T15:40:25Z", event:"E-0158", task:"-", kind:"handler_call", agent:"test", result:"[identity.get] agent_id=governor source=workspace", evidence:"[identity.get] agent_id=governor source=workspace"}
+
+AUD:E_0158{date:"2026-09-24T15:40:26Z", event:"E-0158", task:"-", kind:"handler_call", agent:"anonymous", result:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", evidence:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md"}
+
+AUD:E_0158{date:"2026-09-24T15:40:26Z", event:"E-0158", task:"-", kind:"handler_call", agent:"anonymous", result:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", evidence:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md"}
+
+KNW:tasks_active{name:"tasks_active", value:"1", updated:"2026-09-24T15:41:03Z", topic:"metrics", content:"metric tasks_active=1", status:"current"}
+
+AUD:E_0158{date:"2026-09-24T15:41:09Z", event:"E-0158", task:"T-002", kind:"task_complete", agent:"alfred", result:"Defects: (1) name-mangling verified absent + 2 pinning tests; (2) cortex.gc first_kept FIXED (gc.py rewritten: doc-model grouping by section/sigil/name, keep first N clamped>=1, single atomic_write_json, dry-run non-mutating; audit minors O1 invalid-arg->INVALID_ARGS and O2 unambiguous report first_kept count + kept_names remediated, +2 tests); (3) write-amplification root cause fixed minimally (_update_metrics batches all metrics into one read-mutate-atomic_write_json; no-op-skip in atomic.py attempted and fully reverted, git diff atomic.py empty); (4) opaque validation already fixed in T-004, pinned; (5) sync.reconcile level workspace/project now force their branches, evidence handlers audited clean. Heimdall audit CONDITIONAL_APPROVED; gates resolved by Alfred (pytest 1426 passed 14 skipped 0 failed; atomic.py diff empty). Follow-up created as T-011 (metrics upsert + sync_brain batch rewrite).", evidence:"Defects: (1) name-mangling verified absent + 2 pinning tests; (2) cortex.gc first_kept FIXED (gc.py rewritten: doc-model grouping by section/sigil/name, keep first N clamped>=1, single atomic_write_json, dry-run non-mutating; audit minors O1 invalid-arg->INVALID_ARGS and O2 unambiguous report first_kept count + kept_names remediated, +2 tests); (3) write-amplification root cause fixed minimally (_update_metrics batches all metrics into one read-mutate-atomic_write_json; no-op-skip in atomic.py attempted and fully reverted, git diff atomic.py empty); (4) opaque validation already fixed in T-004, pinned; (5) sync.reconcile level workspace/project now force their branches, evidence handlers audited clean. Heimdall audit CONDITIONAL_APPROVED; gates resolved by Alfred (pytest 1426 passed 14 skipped 0 failed; atomic.py diff empty). Follow-up created as T-011 (metrics upsert + sync_brain batch rewrite).", cycle:"CYCLE-12"}
+
+KNW:tasks_done{name:"tasks_done", value:"1", updated:"2026-09-24T15:41:09Z", topic:"metrics", content:"metric tasks_done=1", status:"done"}
+
+AUD:E_0158{date:"2026-09-24T15:44:34Z", event:"E-0158", task:"-", kind:"handler_call", agent:"test", result:"[cortex.format] hcortex->cortex", evidence:"[cortex.format] hcortex->cortex"}
+
+AUD:E_0158{date:"2026-09-24T15:44:36Z", event:"E-0158", task:"-", kind:"handler_call", agent:"test", result:"[identity.get] agent_id=governor source=workspace", evidence:"[identity.get] agent_id=governor source=workspace"}
+
+AUD:E_0158{date:"2026-09-24T15:44:36Z", event:"E-0158", task:"-", kind:"handler_call", agent:"anonymous", result:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", evidence:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md"}
+
+AUD:E_0158{date:"2026-09-24T15:44:36Z", event:"E-0158", task:"-", kind:"handler_call", agent:"anonymous", result:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", evidence:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md"}
+
+AUD:E_0158{date:"2026-09-24T15:46:28Z", event:"E-0158", task:"-", kind:"handler_call", agent:"test", result:"[cortex.format] hcortex->cortex", evidence:"[cortex.format] hcortex->cortex"}
+
+AUD:E_0158{date:"2026-09-24T15:46:30Z", event:"E-0158", task:"-", kind:"handler_call", agent:"test", result:"[identity.get] agent_id=governor source=workspace", evidence:"[identity.get] agent_id=governor source=workspace"}
+
+AUD:E_0158{date:"2026-09-24T15:46:30Z", event:"E-0158", task:"-", kind:"handler_call", agent:"anonymous", result:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", evidence:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md"}
+
+AUD:E_0158{date:"2026-09-24T15:46:31Z", event:"E-0158", task:"-", kind:"handler_call", agent:"anonymous", result:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", evidence:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md"}
+
+AUD:E_0158{date:"2026-09-24T15:49:59Z", event:"E-0158", task:"-", kind:"handler_call", agent:"test", result:"[cortex.format] hcortex->cortex", evidence:"[cortex.format] hcortex->cortex"}
+
+AUD:E_0158{date:"2026-09-24T15:50:00Z", event:"E-0158", task:"-", kind:"handler_call", agent:"test", result:"[identity.get] agent_id=governor source=workspace", evidence:"[identity.get] agent_id=governor source=workspace"}
+
+AUD:E_0158{date:"2026-09-24T15:50:01Z", event:"E-0158", task:"-", kind:"handler_call", agent:"anonymous", result:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", evidence:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md"}
+
+AUD:E_0158{date:"2026-09-24T15:50:01Z", event:"E-0158", task:"-", kind:"handler_call", agent:"anonymous", result:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", evidence:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md"}
+
+AUD:E_0158{date:"2026-09-24T15:50:35Z", event:"E-0158", task:"-", kind:"handler_call", agent:"test", result:"[cortex.format] hcortex->cortex", evidence:"[cortex.format] hcortex->cortex"}
+
+AUD:E_0158{date:"2026-09-24T15:50:37Z", event:"E-0158", task:"-", kind:"handler_call", agent:"test", result:"[identity.get] agent_id=governor source=workspace", evidence:"[identity.get] agent_id=governor source=workspace"}
+
+AUD:E_0158{date:"2026-09-24T15:50:37Z", event:"E-0158", task:"-", kind:"handler_call", agent:"anonymous", result:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", evidence:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md"}
+
+AUD:E_0158{date:"2026-09-24T15:50:37Z", event:"E-0158", task:"-", kind:"handler_call", agent:"anonymous", result:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", evidence:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md"}
+
+KNW:tasks_active{name:"tasks_active", value:"1", updated:"2026-09-24T15:51:05Z", topic:"metrics", content:"metric tasks_active=1", status:"current"}
+
+AUD:E_0158{date:"2026-09-24T15:51:10Z", event:"E-0158", task:"T-005", kind:"task_complete", agent:"alfred", result:"Fixes: cortex.entry.list paginated (limit default 50, offset, total/returned/offset/next_offset, last page next_offset=None, no overlap), sigil+section filters documented and AND-tested, format=compact one-entry-per-line (audit defect C1 fixed: multi-line cuerpo bodies collapsed via space-join, regression test added); handler.list paginated+compact with NANO contract preserved (_total=8 unchanged); task.list and blueprint.list additive pagination with default no-cap backward compat. Audit minors O1 (copy-paste assertions) remediated. Heimdall audit CONDITIONAL_APPROVED; gates resolved by Alfred (pytest 1442 passed 14 skipped 0 failed). Follow-up created as T-012 (evidence.list offset). Note: MCP tools/list transport-level truncation mitigated via handler.list discovery path; protocol-level fix out of repo scope.", evidence:"Fixes: cortex.entry.list paginated (limit default 50, offset, total/returned/offset/next_offset, last page next_offset=None, no overlap), sigil+section filters documented and AND-tested, format=compact one-entry-per-line (audit defect C1 fixed: multi-line cuerpo bodies collapsed via space-join, regression test added); handler.list paginated+compact with NANO contract preserved (_total=8 unchanged); task.list and blueprint.list additive pagination with default no-cap backward compat. Audit minors O1 (copy-paste assertions) remediated. Heimdall audit CONDITIONAL_APPROVED; gates resolved by Alfred (pytest 1442 passed 14 skipped 0 failed). Follow-up created as T-012 (evidence.list offset). Note: MCP tools/list transport-level truncation mitigated via handler.list discovery path; protocol-level fix out of repo scope.", cycle:"CYCLE-12"}
+
+KNW:tasks_done{name:"tasks_done", value:"1", updated:"2026-09-24T15:51:11Z", topic:"metrics", content:"metric tasks_done=1", status:"done"}
+
+AUD:E_0158{date:"2026-09-24T15:54:32Z", event:"E-0158", task:"-", kind:"handler_call", agent:"test", result:"[cortex.format] hcortex->cortex", evidence:"[cortex.format] hcortex->cortex"}
+
+AUD:E_0158{date:"2026-09-24T15:54:33Z", event:"E-0158", task:"-", kind:"handler_call", agent:"test", result:"[identity.get] agent_id=governor source=workspace", evidence:"[identity.get] agent_id=governor source=workspace"}
+
+AUD:E_0158{date:"2026-09-24T15:54:33Z", event:"E-0158", task:"-", kind:"handler_call", agent:"anonymous", result:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", evidence:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md"}
+
+AUD:E_0158{date:"2026-09-24T15:54:34Z", event:"E-0158", task:"-", kind:"handler_call", agent:"anonymous", result:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", evidence:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md"}
+
+AUD:E_0158{date:"2026-09-24T15:56:54Z", event:"E-0158", task:"-", kind:"handler_call", agent:"test", result:"[cortex.format] hcortex->cortex", evidence:"[cortex.format] hcortex->cortex"}
+
+AUD:E_0158{date:"2026-09-24T15:56:56Z", event:"E-0158", task:"-", kind:"handler_call", agent:"test", result:"[identity.get] agent_id=governor source=workspace", evidence:"[identity.get] agent_id=governor source=workspace"}
+
+AUD:E_0158{date:"2026-09-24T15:56:56Z", event:"E-0158", task:"-", kind:"handler_call", agent:"anonymous", result:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", evidence:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md"}
+
+AUD:E_0158{date:"2026-09-24T15:56:56Z", event:"E-0158", task:"-", kind:"handler_call", agent:"anonymous", result:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", evidence:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md"}
+
+KNW:tasks_active{name:"tasks_active", value:"1", updated:"2026-09-24T15:57:18Z", topic:"metrics", content:"metric tasks_active=1", status:"current"}
+
+AUD:E_0158{date:"2026-09-24T15:57:24Z", event:"E-0158", task:"T-007", kind:"task_complete", agent:"alfred", result:"Root cause: handlers/task.py create_task merge block had isinstance(list) guards on pre/proc/ac/blk that silently dropped scalar content values while obj merged unconditionally — well-formed list content actually worked (content-wins held). Fix: four list merges coerce scalar content values to single-item lists; content-wins documented in task.create schema. 2 regression tests in tests/test_blp009_content_cortex.py verified against PERSISTED task files via read_task (full content + explicit obj persists all 4 lists + section headers; scalar coercion persisted). Retro contract test_task_create_invalid_content_does_not_crash intact. Forensic audit: .bak snapshots of CYCLE-12 T-003..T-006 confirm original silent loss; live files repaired by Alfred in prose form. Heimdall audit CONDITIONAL_APPROVED; gate C1 resolved by Alfred (pytest 1447 passed 14 skipped 0 failed; diff scope = task.py + test file). Follow-up created as T-013 (content-only task.create + canal-I content_ignored diagnostics + phantom bullet cosmetic).", evidence:"Root cause: handlers/task.py create_task merge block had isinstance(list) guards on pre/proc/ac/blk that silently dropped scalar content values while obj merged unconditionally — well-formed list content actually worked (content-wins held). Fix: four list merges coerce scalar content values to single-item lists; content-wins documented in task.create schema. 2 regression tests in tests/test_blp009_content_cortex.py verified against PERSISTED task files via read_task (full content + explicit obj persists all 4 lists + section headers; scalar coercion persisted). Retro contract test_task_create_invalid_content_does_not_crash intact. Forensic audit: .bak snapshots of CYCLE-12 T-003..T-006 confirm original silent loss; live files repaired by Alfred in prose form. Heimdall audit CONDITIONAL_APPROVED; gate C1 resolved by Alfred (pytest 1447 passed 14 skipped 0 failed; diff scope = task.py + test file). Follow-up created as T-013 (content-only task.create + canal-I content_ignored diagnostics + phantom bullet cosmetic).", cycle:"CYCLE-12"}
+
+KNW:tasks_done{name:"tasks_done", value:"1", updated:"2026-09-24T15:57:24Z", topic:"metrics", content:"metric tasks_done=1", status:"done"}
+
+AUD:E_0158{date:"2026-09-24T15:59:44Z", event:"E-0158", task:"-", kind:"handler_call", agent:"test", result:"[cortex.format] hcortex->cortex", evidence:"[cortex.format] hcortex->cortex"}
+
+AUD:E_0158{date:"2026-09-24T15:59:49Z", event:"E-0158", task:"-", kind:"handler_call", agent:"test", result:"[cortex.format] hcortex->cortex", evidence:"[cortex.format] hcortex->cortex"}
+
+AUD:E_0158{date:"2026-09-24T15:59:50Z", event:"E-0158", task:"-", kind:"handler_call", agent:"test", result:"[identity.get] agent_id=governor source=workspace", evidence:"[identity.get] agent_id=governor source=workspace"}
+
+AUD:E_0158{date:"2026-09-24T15:59:50Z", event:"E-0158", task:"-", kind:"handler_call", agent:"anonymous", result:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", evidence:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md"}
+
+AUD:E_0158{date:"2026-09-24T15:59:50Z", event:"E-0158", task:"-", kind:"handler_call", agent:"anonymous", result:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", evidence:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md"}
+
+AUD:E_0158{date:"2026-09-24T16:02:31Z", event:"E-0158", task:"-", kind:"handler_call", agent:"test", result:"[cortex.format] hcortex->cortex", evidence:"[cortex.format] hcortex->cortex"}
+
+AUD:E_0158{date:"2026-09-24T16:02:56Z", event:"E-0158", task:"-", kind:"handler_call", agent:"test", result:"[cortex.format] hcortex->cortex", evidence:"[cortex.format] hcortex->cortex"}
+
+AUD:E_0158{date:"2026-09-24T16:03:02Z", event:"E-0158", task:"-", kind:"handler_call", agent:"test", result:"[cortex.format] hcortex->cortex", evidence:"[cortex.format] hcortex->cortex"}
+
+AUD:E_0158{date:"2026-09-24T16:03:03Z", event:"E-0158", task:"-", kind:"handler_call", agent:"test", result:"[identity.get] agent_id=governor source=workspace", evidence:"[identity.get] agent_id=governor source=workspace"}
+
+AUD:E_0158{date:"2026-09-24T16:03:03Z", event:"E-0158", task:"-", kind:"handler_call", agent:"anonymous", result:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", evidence:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md"}
+
+AUD:E_0158{date:"2026-09-24T16:03:04Z", event:"E-0158", task:"-", kind:"handler_call", agent:"anonymous", result:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", evidence:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md"}
+
+AUD:E_0158{date:"2026-09-24T16:03:36Z", event:"E-0158", task:"-", kind:"handler_call", agent:"test", result:"[cortex.format] hcortex->cortex", evidence:"[cortex.format] hcortex->cortex"}
+
+AUD:E_0158{date:"2026-09-24T16:03:37Z", event:"E-0158", task:"-", kind:"handler_call", agent:"test", result:"[identity.get] agent_id=governor source=workspace", evidence:"[identity.get] agent_id=governor source=workspace"}
+
+AUD:E_0158{date:"2026-09-24T16:03:38Z", event:"E-0158", task:"-", kind:"handler_call", agent:"anonymous", result:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", evidence:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md"}
+
+AUD:E_0158{date:"2026-09-24T16:03:38Z", event:"E-0158", task:"-", kind:"handler_call", agent:"anonymous", result:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", evidence:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md"}
+
+KNW:tasks_active{name:"tasks_active", value:"1", updated:"2026-09-24T16:04:00Z", topic:"metrics", content:"metric tasks_active=1", status:"current"}
+
+AUD:E_0158{date:"2026-09-24T16:04:05Z", event:"E-0158", task:"T-006", kind:"task_complete", agent:"alfred", result:"Fixes: bytes_written in cortex.entry.add now reports serialized entry size with entry_bytes alias and file_bytes (whole file, old semantics) — schema documented; BRAIN_SECTION_MAP added in handlers/cortex/ref.py sourced from templates/brain.cortex v0.7, exposed via cortex.ref(sections=true) with source provenance, no new handler (fixed-budget respected). Audit remediation: C1 required:[sigil] dropped from cortex.ref schema + sigil param optional (discoverability path schema-clean, test calls without sigil); O1 tautological test replaced with template-parsing drift test. Heimdall audit CONDITIONAL_APPROVED; gate C2 resolved by Alfred (pytest 1452 passed 14 skipped 0 failed). Follow-up created as T-014 (entry_bytes serialization fidelity + bytes_written semantics across sibling handlers).", evidence:"Fixes: bytes_written in cortex.entry.add now reports serialized entry size with entry_bytes alias and file_bytes (whole file, old semantics) — schema documented; BRAIN_SECTION_MAP added in handlers/cortex/ref.py sourced from templates/brain.cortex v0.7, exposed via cortex.ref(sections=true) with source provenance, no new handler (fixed-budget respected). Audit remediation: C1 required:[sigil] dropped from cortex.ref schema + sigil param optional (discoverability path schema-clean, test calls without sigil); O1 tautological test replaced with template-parsing drift test. Heimdall audit CONDITIONAL_APPROVED; gate C2 resolved by Alfred (pytest 1452 passed 14 skipped 0 failed). Follow-up created as T-014 (entry_bytes serialization fidelity + bytes_written semantics across sibling handlers).", cycle:"CYCLE-12"}
+
+KNW:tasks_done{name:"tasks_done", value:"1", updated:"2026-09-24T16:04:05Z", topic:"metrics", content:"metric tasks_done=1", status:"done"}
+
+AUD:E_0158{date:"2026-09-24T16:05:32Z", event:"E-0158", task:"-", kind:"handler_call", agent:"test", result:"[cortex.format] hcortex->cortex", evidence:"[cortex.format] hcortex->cortex"}
+
+AUD:E_0158{date:"2026-09-24T16:05:33Z", event:"E-0158", task:"-", kind:"handler_call", agent:"test", result:"[identity.get] agent_id=governor source=workspace", evidence:"[identity.get] agent_id=governor source=workspace"}
+
+AUD:E_0158{date:"2026-09-24T16:05:33Z", event:"E-0158", task:"-", kind:"handler_call", agent:"anonymous", result:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", evidence:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md"}
+
+AUD:E_0158{date:"2026-09-24T16:05:34Z", event:"E-0158", task:"-", kind:"handler_call", agent:"anonymous", result:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", evidence:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md"}
+
+AUD:E_0158{date:"2026-09-24T16:07:15Z", event:"E-0158", task:"-", kind:"handler_call", agent:"test", result:"[cortex.format] hcortex->cortex", evidence:"[cortex.format] hcortex->cortex"}
+
+AUD:E_0158{date:"2026-09-24T16:07:16Z", event:"E-0158", task:"-", kind:"handler_call", agent:"test", result:"[identity.get] agent_id=governor source=workspace", evidence:"[identity.get] agent_id=governor source=workspace"}
+
+AUD:E_0158{date:"2026-09-24T16:07:16Z", event:"E-0158", task:"-", kind:"handler_call", agent:"anonymous", result:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", evidence:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md"}
+
+AUD:E_0158{date:"2026-09-24T16:07:16Z", event:"E-0158", task:"-", kind:"handler_call", agent:"anonymous", result:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", evidence:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md"}
+
+AUD:E_0158{date:"2026-09-24T16:07:40Z", event:"E-0158", task:"T-009", kind:"task_complete", agent:"alfred", result:"Fixes: shared _crud_error helper in handlers/cortex/entries.py routes all four entry handlers' error paths (add/update/delete/move) through the T-004 enumeration pattern ([i] code message, error_count, structured diagnostics) with non_bypassable always present (True on atomic-write failure, explicit False for validation errors); zero leftover bare error paths. task.create: required:[obj] removed from schema, obj optional with post-merge INVALID_ARGS guard (content-only with obj inside accepted end-to-end, persisted-file verified). 6 tests in tests/test_t009_diagnostics.py (real validation errors via dirty brain, realistic monkeypatched atomic-write failure, content-only task_create persisted check, loud failure both ways). Heimdall audit CONDITIONAL_APPROVED; gate C1 resolved by Alfred (pytest 1461 passed 14 skipped 0 failed). Closes T-004 C2 and T-007 C2 follow-ups.", evidence:"Fixes: shared _crud_error helper in handlers/cortex/entries.py routes all four entry handlers' error paths (add/update/delete/move) through the T-004 enumeration pattern ([i] code message, error_count, structured diagnostics) with non_bypassable always present (True on atomic-write failure, explicit False for validation errors); zero leftover bare error paths. task.create: required:[obj] removed from schema, obj optional with post-merge INVALID_ARGS guard (content-only with obj inside accepted end-to-end, persisted-file verified). 6 tests in tests/test_t009_diagnostics.py (real validation errors via dirty brain, realistic monkeypatched atomic-write failure, content-only task_create persisted check, loud failure both ways). Heimdall audit CONDITIONAL_APPROVED; gate C1 resolved by Alfred (pytest 1461 passed 14 skipped 0 failed). Closes T-004 C2 and T-007 C2 follow-ups.", cycle:"CYCLE-12"}
+
+KNW:tasks_done{name:"tasks_done", value:"1", updated:"2026-09-24T16:07:41Z", topic:"metrics", content:"metric tasks_done=1", status:"done"}
+
+AUD:E_0158{date:"2026-09-24T16:09:37Z", event:"E-0158", task:"-", kind:"handler_call", agent:"test", result:"[cortex.format] hcortex->cortex", evidence:"[cortex.format] hcortex->cortex"}
+
+AUD:E_0158{date:"2026-09-24T16:09:38Z", event:"E-0158", task:"-", kind:"handler_call", agent:"test", result:"[identity.get] agent_id=governor source=workspace", evidence:"[identity.get] agent_id=governor source=workspace"}
+
+AUD:E_0158{date:"2026-09-24T16:09:39Z", event:"E-0158", task:"-", kind:"handler_call", agent:"anonymous", result:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", evidence:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md"}
+
+AUD:E_0158{date:"2026-09-24T16:09:39Z", event:"E-0158", task:"-", kind:"handler_call", agent:"anonymous", result:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", evidence:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md"}
+
+AUD:E_0158{date:"2026-09-24T16:11:11Z", event:"E-0158", task:"-", kind:"handler_call", agent:"test", result:"[cortex.format] hcortex->cortex", evidence:"[cortex.format] hcortex->cortex"}
+
+AUD:E_0158{date:"2026-09-24T16:11:12Z", event:"E-0158", task:"-", kind:"handler_call", agent:"test", result:"[identity.get] agent_id=governor source=workspace", evidence:"[identity.get] agent_id=governor source=workspace"}
+
+AUD:E_0158{date:"2026-09-24T16:11:12Z", event:"E-0158", task:"-", kind:"handler_call", agent:"anonymous", result:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", evidence:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md"}
+
+AUD:E_0158{date:"2026-09-24T16:11:13Z", event:"E-0158", task:"-", kind:"handler_call", agent:"anonymous", result:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", evidence:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md"}
+
+KNW:tasks_active{name:"tasks_active", value:"1", updated:"2026-09-24T16:11:36Z", topic:"metrics", content:"metric tasks_active=1", status:"current"}
+
+AUD:E_0158{date:"2026-09-24T16:11:42Z", event:"E-0158", task:"T-010", kind:"task_complete", agent:"alfred", result:"Fixes: reconcile_brain workspace branch in src/arqux/sync.py now preserves existing meta-brain $3/FCS:current what/priority/status/survive (refresh only updated/event, brain.reconcile), generic text only on create path via crud_add(create_section=True); reconciled=True both paths; project-context OBJ branch untouched (scoped out, follow-up T-015). cortex.skill.md:207 HDL:sync_brain signature documents focus_create_only. 3 tests: test_reconcile_workspace_preserves_meta_fcs + test_reconcile_workspace_creates_fcs_when_absent (tests/test_sync_reconcile.py), test_sync_brain_creates_fcs_when_section_missing (tests/test_sync_brain.py, closes T-001 create_section coverage gap). Heimdall audit CONDITIONAL_APPROVED; gate C1 resolved by Alfred (pytest 1464 passed 14 skipped 0 failed). Closes T-001 Finding 5 follow-up.", evidence:"Fixes: reconcile_brain workspace branch in src/arqux/sync.py now preserves existing meta-brain $3/FCS:current what/priority/status/survive (refresh only updated/event, brain.reconcile), generic text only on create path via crud_add(create_section=True); reconciled=True both paths; project-context OBJ branch untouched (scoped out, follow-up T-015). cortex.skill.md:207 HDL:sync_brain signature documents focus_create_only. 3 tests: test_reconcile_workspace_preserves_meta_fcs + test_reconcile_workspace_creates_fcs_when_absent (tests/test_sync_reconcile.py), test_sync_brain_creates_fcs_when_section_missing (tests/test_sync_brain.py, closes T-001 create_section coverage gap). Heimdall audit CONDITIONAL_APPROVED; gate C1 resolved by Alfred (pytest 1464 passed 14 skipped 0 failed). Closes T-001 Finding 5 follow-up.", cycle:"CYCLE-12"}
+
+KNW:tasks_done{name:"tasks_done", value:"1", updated:"2026-09-24T16:11:42Z", topic:"metrics", content:"metric tasks_done=1", status:"done"}
+
+AUD:E_0158{date:"2026-09-24T16:15:11Z", event:"E-0158", task:"-", kind:"handler_call", agent:"test", result:"[cortex.format] hcortex->cortex", evidence:"[cortex.format] hcortex->cortex"}
+
+AUD:E_0158{date:"2026-09-24T16:15:12Z", event:"E-0158", task:"-", kind:"handler_call", agent:"test", result:"[identity.get] agent_id=governor source=workspace", evidence:"[identity.get] agent_id=governor source=workspace"}
+
+AUD:E_0158{date:"2026-09-24T16:15:12Z", event:"E-0158", task:"-", kind:"handler_call", agent:"anonymous", result:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", evidence:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md"}
+
+AUD:E_0158{date:"2026-09-24T16:15:13Z", event:"E-0158", task:"-", kind:"handler_call", agent:"anonymous", result:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", evidence:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md"}
+
+AUD:E_0158{date:"2026-09-24T16:18:24Z", event:"E-0158", task:"-", kind:"handler_call", agent:"test", result:"[cortex.format] hcortex->cortex", evidence:"[cortex.format] hcortex->cortex"}
+
+AUD:E_0158{date:"2026-09-24T16:18:25Z", event:"E-0158", task:"-", kind:"handler_call", agent:"test", result:"[identity.get] agent_id=governor source=workspace", evidence:"[identity.get] agent_id=governor source=workspace"}
+
+AUD:E_0158{date:"2026-09-24T16:18:25Z", event:"E-0158", task:"-", kind:"handler_call", agent:"anonymous", result:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", evidence:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md"}
+
+AUD:E_0158{date:"2026-09-24T16:18:26Z", event:"E-0158", task:"-", kind:"handler_call", agent:"anonymous", result:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", evidence:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md"}
+
+AUD:E_0158{date:"2026-09-24T16:18:53Z", event:"E-0158", task:"-", kind:"handler_call", agent:"test", result:"[cortex.format] hcortex->cortex", evidence:"[cortex.format] hcortex->cortex"}
+
+AUD:E_0158{date:"2026-09-24T16:18:54Z", event:"E-0158", task:"-", kind:"handler_call", agent:"test", result:"[identity.get] agent_id=governor source=workspace", evidence:"[identity.get] agent_id=governor source=workspace"}
+
+AUD:E_0158{date:"2026-09-24T16:18:54Z", event:"E-0158", task:"-", kind:"handler_call", agent:"anonymous", result:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", evidence:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md"}
+
+AUD:E_0158{date:"2026-09-24T16:18:54Z", event:"E-0158", task:"-", kind:"handler_call", agent:"anonymous", result:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", evidence:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md"}
+
+AUD:E_0158{date:"2026-09-24T16:19:18Z", event:"E-0158", task:"T-011", kind:"task_complete", agent:"alfred", result:"Fixes: _upsert_metrics in src/arqux/sync.py upserts KNW:<metric> by name (update-in-place merging value/updated/content/status, append only when absent, create_section=False and per-metric fail-silence preserved) — duplicate accumulation eliminated. sync_brain rewritten: one cortex_to_dict read -> WRK merge + FCS merge (all four T-001 focus_create_only branches preserved) + metrics upsert on same doc -> ONE atomic_write_json per event (down from 3-4 full rewrites). Audit remediation: C2 meta-brain sync now runs whenever metrics requested regardless of brain-mutation success (regression test with $0-only brain); O1 WRK-failure log restored to logger.exception. 6 tests in tests/test_t011_metrics_batch.py asserting persisted state and rewrite counts; T-001 tests unmodified. Heimdall audit CONDITIONAL_APPROVED; gate C1 resolved by Alfred (pytest 1473 passed 14 skipped 0 failed). Note: pre-existing duplicate KNW entries in live brains still need cortex.gc cleanup (Alfred brain-repair pass).", evidence:"Fixes: _upsert_metrics in src/arqux/sync.py upserts KNW:<metric> by name (update-in-place merging value/updated/content/status, append only when absent, create_section=False and per-metric fail-silence preserved) — duplicate accumulation eliminated. sync_brain rewritten: one cortex_to_dict read -> WRK merge + FCS merge (all four T-001 focus_create_only branches preserved) + metrics upsert on same doc -> ONE atomic_write_json per event (down from 3-4 full rewrites). Audit remediation: C2 meta-brain sync now runs whenever metrics requested regardless of brain-mutation success (regression test with $0-only brain); O1 WRK-failure log restored to logger.exception. 6 tests in tests/test_t011_metrics_batch.py asserting persisted state and rewrite counts; T-001 tests unmodified. Heimdall audit CONDITIONAL_APPROVED; gate C1 resolved by Alfred (pytest 1473 passed 14 skipped 0 failed). Note: pre-existing duplicate KNW entries in live brains still need cortex.gc cleanup (Alfred brain-repair pass).", cycle:"CYCLE-12"}
+
+KNW:tasks_done{name:"tasks_done", value:"1", updated:"2026-09-24T16:19:19Z", topic:"metrics", content:"metric tasks_done=1", status:"done"}
+
+AUD:E_0158{date:"2026-09-24T16:24:15Z", event:"E-0158", task:"-", kind:"handler_call", agent:"test", result:"[cortex.format] hcortex->cortex", evidence:"[cortex.format] hcortex->cortex"}
+
+AUD:E_0158{date:"2026-09-24T16:24:16Z", event:"E-0158", task:"-", kind:"handler_call", agent:"test", result:"[identity.get] agent_id=governor source=workspace", evidence:"[identity.get] agent_id=governor source=workspace"}
+
+AUD:E_0158{date:"2026-09-24T16:24:17Z", event:"E-0158", task:"-", kind:"handler_call", agent:"anonymous", result:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", evidence:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md"}
+
+AUD:E_0158{date:"2026-09-24T16:24:17Z", event:"E-0158", task:"-", kind:"handler_call", agent:"anonymous", result:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", evidence:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md"}
+
+AUD:E_0158{date:"2026-09-24T16:26:10Z", event:"E-0158", task:"-", kind:"handler_call", agent:"test", result:"[cortex.format] hcortex->cortex", evidence:"[cortex.format] hcortex->cortex"}
+
+AUD:E_0158{date:"2026-09-24T16:26:11Z", event:"E-0158", task:"-", kind:"handler_call", agent:"test", result:"[identity.get] agent_id=governor source=workspace", evidence:"[identity.get] agent_id=governor source=workspace"}
+
+AUD:E_0158{date:"2026-09-24T16:26:11Z", event:"E-0158", task:"-", kind:"handler_call", agent:"anonymous", result:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", evidence:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md"}
+
+AUD:E_0158{date:"2026-09-24T16:26:12Z", event:"E-0158", task:"-", kind:"handler_call", agent:"anonymous", result:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", evidence:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md"}
+
+AUD:E_0158{date:"2026-09-24T16:26:35Z", event:"E-0158", task:"T-013", kind:"task_complete", agent:"alfred", result:"Fixes: unused_content_keys helper in src/arqux/cortex/parse_content.py (unused keys + fused-separator heuristic detection, meta keys excluded); content_ignored additive field wired across canal-I consumers (task.create: unused+fused+sentinel; entry.add: sentinel on total parse failure; skill.import/edit/install: unused keys when CORTEX form detected) — attached only when non-empty, backward compatible. Phantom-bullet fix: truthiness filter on all four list params post-merge (pre:'' -> no bare bullet, persisted-file verified). 9 tests in tests/test_t013_content_diagnostics.py. Heimdall audit CONDITIONAL_APPROVED; gate C1 resolved by Alfred (pytest 1482 passed 14 skipped 0 failed). Audit cosmetics O1-O3 noted (None-item bullet, heuristic FP on key: inside values, skill test file re-read gap) — advisory-only severity, accepted as-is.", evidence:"Fixes: unused_content_keys helper in src/arqux/cortex/parse_content.py (unused keys + fused-separator heuristic detection, meta keys excluded); content_ignored additive field wired across canal-I consumers (task.create: unused+fused+sentinel; entry.add: sentinel on total parse failure; skill.import/edit/install: unused keys when CORTEX form detected) — attached only when non-empty, backward compatible. Phantom-bullet fix: truthiness filter on all four list params post-merge (pre:'' -> no bare bullet, persisted-file verified). 9 tests in tests/test_t013_content_diagnostics.py. Heimdall audit CONDITIONAL_APPROVED; gate C1 resolved by Alfred (pytest 1482 passed 14 skipped 0 failed). Audit cosmetics O1-O3 noted (None-item bullet, heuristic FP on key: inside values, skill test file re-read gap) — advisory-only severity, accepted as-is.", cycle:"CYCLE-12"}
+
+KNW:tasks_done{name:"tasks_done", value:"1", updated:"2026-09-24T16:26:36Z", topic:"metrics", content:"metric tasks_done=1", status:"done"}
+
+AUD:E_0158{date:"2026-09-24T17:13:43Z", event:"E-0158", task:"-", kind:"handler_call", agent:"test", result:"[cortex.format] hcortex->cortex", evidence:"[cortex.format] hcortex->cortex"}
+
+AUD:E_0158{date:"2026-09-24T17:13:44Z", event:"E-0158", task:"-", kind:"handler_call", agent:"test", result:"[identity.get] agent_id=governor source=workspace", evidence:"[identity.get] agent_id=governor source=workspace"}
+
+AUD:E_0158{date:"2026-09-24T17:13:45Z", event:"E-0158", task:"-", kind:"handler_call", agent:"anonymous", result:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", evidence:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md"}
+
+AUD:E_0158{date:"2026-09-24T17:13:45Z", event:"E-0158", task:"-", kind:"handler_call", agent:"anonymous", result:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", evidence:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md"}
+
+AUD:E_0158{date:"2026-09-24T17:17:22Z", event:"E-0158", task:"-", kind:"handler_call", agent:"test", result:"[cortex.format] hcortex->cortex", evidence:"[cortex.format] hcortex->cortex"}
+
+AUD:E_0158{date:"2026-09-24T17:17:24Z", event:"E-0158", task:"-", kind:"handler_call", agent:"test", result:"[identity.get] agent_id=governor source=workspace", evidence:"[identity.get] agent_id=governor source=workspace"}
+
+AUD:E_0158{date:"2026-09-24T17:17:24Z", event:"E-0158", task:"-", kind:"handler_call", agent:"anonymous", result:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", evidence:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md"}
+
+AUD:E_0158{date:"2026-09-24T17:17:25Z", event:"E-0158", task:"-", kind:"handler_call", agent:"anonymous", result:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", evidence:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md"}
+
+AUD:E_0158{date:"2026-09-24T17:23:34Z", event:"E-0158", task:"-", kind:"handler_call", agent:"test", result:"[cortex.format] hcortex->cortex", evidence:"[cortex.format] hcortex->cortex"}
+
+AUD:E_0158{date:"2026-09-24T17:23:36Z", event:"E-0158", task:"-", kind:"handler_call", agent:"test", result:"[identity.get] agent_id=governor source=workspace", evidence:"[identity.get] agent_id=governor source=workspace"}
+
+AUD:E_0158{date:"2026-09-24T17:23:36Z", event:"E-0158", task:"-", kind:"handler_call", agent:"anonymous", result:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", evidence:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md"}
+
+AUD:E_0158{date:"2026-09-24T17:23:37Z", event:"E-0158", task:"-", kind:"handler_call", agent:"anonymous", result:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", evidence:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md"}
+
+KNW:tasks_active{name:"tasks_active", value:"1", updated:"2026-09-24T17:24:10Z", topic:"metrics", content:"metric tasks_active=1", status:"current"}
+
+AUD:E_0158{date:"2026-09-24T17:24:17Z", event:"E-0158", task:"T-012", kind:"task_complete", agent:"alfred", result:"Fixes: read_pulse_from_brain (pulse.py:112) gains offset keyword param + limit widened to int|None (limit=None unbounded, offset=0 path byte-identical for all existing callers); list_evidence (handlers/evidence.py:69) adds offset with INVALID_ARGS validation matching entries.py convention, fetches unbounded match set then slices in-handler (total = full match count), reports total/returned/offset/next_offset; schema documented. 5 tests in tests/test_t012_evidence_offset.py (3-page chain without overlap, default unchanged, invalid args, offset beyond total, reader-level offset). Heimdall audit CONDITIONAL_APPROVED; gate resolved by Alfred (pytest 1487 passed 14 skipped 0 failed). Noted deviation: limit=None->100 (entry.list convention) rather than task.list None->all — defensible, preserves capped default. Follow-up created as T-016 (next_pulse_event_id limit=100 latent duplicate-AUD-id bug, one-line fix via limit=None).", evidence:"Fixes: read_pulse_from_brain (pulse.py:112) gains offset keyword param + limit widened to int|None (limit=None unbounded, offset=0 path byte-identical for all existing callers); list_evidence (handlers/evidence.py:69) adds offset with INVALID_ARGS validation matching entries.py convention, fetches unbounded match set then slices in-handler (total = full match count), reports total/returned/offset/next_offset; schema documented. 5 tests in tests/test_t012_evidence_offset.py (3-page chain without overlap, default unchanged, invalid args, offset beyond total, reader-level offset). Heimdall audit CONDITIONAL_APPROVED; gate resolved by Alfred (pytest 1487 passed 14 skipped 0 failed). Noted deviation: limit=None->100 (entry.list convention) rather than task.list None->all — defensible, preserves capped default. Follow-up created as T-016 (next_pulse_event_id limit=100 latent duplicate-AUD-id bug, one-line fix via limit=None).", cycle:"CYCLE-12"}
+
+KNW:tasks_done{name:"tasks_done", value:"1", updated:"2026-09-24T17:24:18Z", topic:"metrics", content:"metric tasks_done=1", status:"done"}
+
+AUD:E_0302{date:"2026-09-24T17:27:57Z", event:"E-0302", task:"-", kind:"handler_call", agent:"test", result:"[cortex.format] hcortex->cortex", evidence:"[cortex.format] hcortex->cortex"}
+
+AUD:E_0303{date:"2026-09-24T17:27:58Z", event:"E-0303", task:"-", kind:"handler_call", agent:"test", result:"[identity.get] agent_id=governor source=workspace", evidence:"[identity.get] agent_id=governor source=workspace"}
+
+AUD:E_0304{date:"2026-09-24T17:27:58Z", event:"E-0304", task:"-", kind:"handler_call", agent:"anonymous", result:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", evidence:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md"}
+
+AUD:E_0305{date:"2026-09-24T17:27:59Z", event:"E-0305", task:"-", kind:"handler_call", agent:"anonymous", result:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", evidence:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md"}
+
+AUD:E_0306{date:"2026-09-24T17:29:01Z", event:"E-0306", task:"-", kind:"handler_call", agent:"test", result:"[cortex.format] hcortex->cortex", evidence:"[cortex.format] hcortex->cortex"}
+
+AUD:E_0307{date:"2026-09-24T17:29:02Z", event:"E-0307", task:"-", kind:"handler_call", agent:"test", result:"[identity.get] agent_id=governor source=workspace", evidence:"[identity.get] agent_id=governor source=workspace"}
+
+AUD:E_0308{date:"2026-09-24T17:29:03Z", event:"E-0308", task:"-", kind:"handler_call", agent:"anonymous", result:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", evidence:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md"}
+
+AUD:E_0309{date:"2026-09-24T17:29:03Z", event:"E-0309", task:"-", kind:"handler_call", agent:"anonymous", result:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", evidence:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md"}
+
+AUD:E_0158{date:"2026-09-24T17:29:50Z", event:"E-0158", task:"T-016", kind:"task_complete", agent:"alfred", result:"One-line fix: pulse.py:43 next_pulse_event_id now calls read_pulse_from_brain(limit=None) — full-trail ID scan, no more duplicate AUD event-ids beyond 100 entries (was computing max_num over oldest 100 chronological entries; also fixes compact_session_pulse meta-event id at pulse.py:348). Bug reproduction verified: revert produced duplicate E-0101 on 110-entry trail; restored fix returns E-0111. 2 regression tests in tests/test_t016_pulse_event_id.py (110-entry -> E-0111, no-duplicate + append keeps 111 unique). Alfred self-audit (Heimdall quota conservation): APPROVED — code+tests verified by direct read, pytest 1492 passed 14 skipped 0 failed, scope = pulse.py + test file.", evidence:"One-line fix: pulse.py:43 next_pulse_event_id now calls read_pulse_from_brain(limit=None) — full-trail ID scan, no more duplicate AUD event-ids beyond 100 entries (was computing max_num over oldest 100 chronological entries; also fixes compact_session_pulse meta-event id at pulse.py:348). Bug reproduction verified: revert produced duplicate E-0101 on 110-entry trail; restored fix returns E-0111. 2 regression tests in tests/test_t016_pulse_event_id.py (110-entry -> E-0111, no-duplicate + append keeps 111 unique). Alfred self-audit (Heimdall quota conservation): APPROVED — code+tests verified by direct read, pytest 1492 passed 14 skipped 0 failed, scope = pulse.py + test file.", cycle:"CYCLE-12"}
+
+KNW:tasks_done{name:"tasks_done", value:"1", updated:"2026-09-24T17:29:50Z", topic:"metrics", content:"metric tasks_done=1", status:"done"}
+
+AUD:E_0310{date:"2026-09-24T17:33:40Z", event:"E-0310", task:"-", kind:"handler_call", agent:"test", result:"[cortex.format] hcortex->cortex", evidence:"[cortex.format] hcortex->cortex"}
+
+AUD:E_0311{date:"2026-09-24T17:33:42Z", event:"E-0311", task:"-", kind:"handler_call", agent:"test", result:"[identity.get] agent_id=governor source=workspace", evidence:"[identity.get] agent_id=governor source=workspace"}
+
+AUD:E_0312{date:"2026-09-24T17:33:42Z", event:"E-0312", task:"-", kind:"handler_call", agent:"anonymous", result:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", evidence:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md"}
+
+AUD:E_0313{date:"2026-09-24T17:33:43Z", event:"E-0313", task:"-", kind:"handler_call", agent:"anonymous", result:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", evidence:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md"}
+
+AUD:E_0314{date:"2026-09-24T17:35:46Z", event:"E-0314", task:"-", kind:"handler_call", agent:"test", result:"[cortex.format] hcortex->cortex", evidence:"[cortex.format] hcortex->cortex"}
+
+AUD:E_0315{date:"2026-09-24T17:35:48Z", event:"E-0315", task:"-", kind:"handler_call", agent:"test", result:"[identity.get] agent_id=governor source=workspace", evidence:"[identity.get] agent_id=governor source=workspace"}
+
+AUD:E_0316{date:"2026-09-24T17:35:48Z", event:"E-0316", task:"-", kind:"handler_call", agent:"anonymous", result:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", evidence:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md"}
+
+AUD:E_0317{date:"2026-09-24T17:35:48Z", event:"E-0317", task:"-", kind:"handler_call", agent:"anonymous", result:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", evidence:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md"}
+
+AUD:E_0318{date:"2026-09-24T17:42:55Z", event:"E-0318", task:"-", kind:"handler_call", agent:"test", result:"[cortex.format] hcortex->cortex", evidence:"[cortex.format] hcortex->cortex"}
+
+AUD:E_0319{date:"2026-09-24T17:42:57Z", event:"E-0319", task:"-", kind:"handler_call", agent:"test", result:"[identity.get] agent_id=governor source=workspace", evidence:"[identity.get] agent_id=governor source=workspace"}
+
+AUD:E_0320{date:"2026-09-24T17:42:58Z", event:"E-0320", task:"-", kind:"handler_call", agent:"anonymous", result:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", evidence:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md"}
+
+AUD:E_0321{date:"2026-09-24T17:42:58Z", event:"E-0321", task:"-", kind:"handler_call", agent:"anonymous", result:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", evidence:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md"}
+
+KNW:tasks_active{name:"tasks_active", value:"1", updated:"2026-09-24T17:43:39Z", topic:"metrics", content:"metric tasks_active=1", status:"current"}
+
+AUD:E_0158{date:"2026-09-24T17:43:58Z", event:"E-0158", task:"T-015", kind:"task_complete", agent:"alfred", result:"Fix in src/arqux/sync.py reconcile_brain project-context OBJ branch (~479-509): OBJ entry exists -> crud_update refreshes only success/updated/event (goal/status/survive preserved); no OBJ -> 'brain has no OBJ entry' note appended to errors[] (BUG-003 tolerance contract preserved) + crud_add creates OBJ:sync with generic text (create_section=True); result[reconciled]=True moved outside if/else. Drive-by: fixed 2 pre-existing ruff errors in uncommitted prior-task code (SIM102 nested-if collapse at sync.py:148 behavior-identical; F841 unused var). 2 regression tests in tests/test_sync_reconcile.py (persisted-state re-read, dual assertions goal-preserved + event/success/updated refreshed; create-when-absent). Existing test_reconcile_tolerates_brain_without_obj still green. Heimdall audit CONDITIONAL_APPROVED; gate resolved by Alfred (pytest 1494 passed 14 skipped 0 failed; ruff clean). Follow-up created as T-017 (doc drift on reconcile OBJ semantics).", evidence:"Fix in src/arqux/sync.py reconcile_brain project-context OBJ branch (~479-509): OBJ entry exists -> crud_update refreshes only success/updated/event (goal/status/survive preserved); no OBJ -> 'brain has no OBJ entry' note appended to errors[] (BUG-003 tolerance contract preserved) + crud_add creates OBJ:sync with generic text (create_section=True); result[reconciled]=True moved outside if/else. Drive-by: fixed 2 pre-existing ruff errors in uncommitted prior-task code (SIM102 nested-if collapse at sync.py:148 behavior-identical; F841 unused var). 2 regression tests in tests/test_sync_reconcile.py (persisted-state re-read, dual assertions goal-preserved + event/success/updated refreshed; create-when-absent). Existing test_reconcile_tolerates_brain_without_obj still green. Heimdall audit CONDITIONAL_APPROVED; gate resolved by Alfred (pytest 1494 passed 14 skipped 0 failed; ruff clean). Follow-up created as T-017 (doc drift on reconcile OBJ semantics).", cycle:"CYCLE-12"}
+
+KNW:tasks_done{name:"tasks_done", value:"1", updated:"2026-09-24T17:43:58Z", topic:"metrics", content:"metric tasks_done=1", status:"done"}
+
+AUD:E_0322{date:"2026-09-24T17:52:20Z", event:"E-0322", task:"-", kind:"handler_call", agent:"test", result:"[cortex.format] hcortex->cortex", evidence:"[cortex.format] hcortex->cortex"}
+
+AUD:E_0323{date:"2026-09-24T17:52:22Z", event:"E-0323", task:"-", kind:"handler_call", agent:"test", result:"[identity.get] agent_id=governor source=workspace", evidence:"[identity.get] agent_id=governor source=workspace"}
+
+AUD:E_0324{date:"2026-09-24T17:52:22Z", event:"E-0324", task:"-", kind:"handler_call", agent:"anonymous", result:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", evidence:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md"}
+
+AUD:E_0325{date:"2026-09-24T17:52:22Z", event:"E-0325", task:"-", kind:"handler_call", agent:"anonymous", result:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", evidence:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md"}
+
+AUD:E_0326{date:"2026-09-24T18:00:40Z", event:"E-0326", task:"-", kind:"handler_call", agent:"test", result:"[cortex.format] hcortex->cortex", evidence:"[cortex.format] hcortex->cortex"}
+
+AUD:E_0327{date:"2026-09-24T18:00:41Z", event:"E-0327", task:"-", kind:"handler_call", agent:"test", result:"[identity.get] agent_id=governor source=workspace", evidence:"[identity.get] agent_id=governor source=workspace"}
+
+AUD:E_0328{date:"2026-09-24T18:00:42Z", event:"E-0328", task:"-", kind:"handler_call", agent:"anonymous", result:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", evidence:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md"}
+
+AUD:E_0329{date:"2026-09-24T18:00:42Z", event:"E-0329", task:"-", kind:"handler_call", agent:"anonymous", result:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", evidence:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md"}
+
+AUD:E_0158{date:"2026-09-24T18:01:21Z", event:"E-0158", task:"T-014", kind:"task_complete", agent:"alfred", result:"Scope 1 (entry_bytes fidelity): _crud.py crud_add now returns entry_text rendered via _format_entry — the exact function write_cortex_from_json uses per entry, byte-identical to disk (quoting normalization, ', ' separators, multi-line cuerpo form); set only on success/dry_run. entry_add_handler reads entry_text with raw-render fallback; bytes_written/entry_bytes/applied now reflect actual serialized bytes (verified live: unquoted input goal:Retro,status:current -> 43B disk, entry_bytes=43). Scope 2 (sibling semantics): chose DOCUMENTATION over re-alignment (repurposing bytes_written would be breaking; mutation size unavailable in _read_and_mutate) — file_bytes added to entry_update/delete/move, cortex.gc, cortex.write + docstring notes + schema descriptions naming the divergence. 10 tests in tests/test_t014_entry_bytes.py asserting byte-exactness against real disk content. Heimdall audit APPROVED (unconditional); Alfred verified pytest 1507 passed 14 skipped 0 failed + ruff clean. Non-blocking audit notes: entry_text parasitic fidelity (reconstructed dict vs appended doc entry), crud_add docstring doesn't document new key, cortex.write schema doesn't name divergence, cortex.file.validate has same ambiguity class.", evidence:"Scope 1 (entry_bytes fidelity): _crud.py crud_add now returns entry_text rendered via _format_entry — the exact function write_cortex_from_json uses per entry, byte-identical to disk (quoting normalization, ', ' separators, multi-line cuerpo form); set only on success/dry_run. entry_add_handler reads entry_text with raw-render fallback; bytes_written/entry_bytes/applied now reflect actual serialized bytes (verified live: unquoted input goal:Retro,status:current -> 43B disk, entry_bytes=43). Scope 2 (sibling semantics): chose DOCUMENTATION over re-alignment (repurposing bytes_written would be breaking; mutation size unavailable in _read_and_mutate) — file_bytes added to entry_update/delete/move, cortex.gc, cortex.write + docstring notes + schema descriptions naming the divergence. 10 tests in tests/test_t014_entry_bytes.py asserting byte-exactness against real disk content. Heimdall audit APPROVED (unconditional); Alfred verified pytest 1507 passed 14 skipped 0 failed + ruff clean. Non-blocking audit notes: entry_text parasitic fidelity (reconstructed dict vs appended doc entry), crud_add docstring doesn't document new key, cortex.write schema doesn't name divergence, cortex.file.validate has same ambiguity class.", cycle:"CYCLE-12"}
+
+KNW:tasks_done{name:"tasks_done", value:"1", updated:"2026-09-24T18:01:21Z", topic:"metrics", content:"metric tasks_done=1", status:"done"}
+
+AUD:E_0330{date:"2026-09-24T18:03:12Z", event:"E-0330", task:"-", kind:"handler_call", agent:"test", result:"[cortex.format] hcortex->cortex", evidence:"[cortex.format] hcortex->cortex"}
+
+AUD:E_0331{date:"2026-09-24T18:03:13Z", event:"E-0331", task:"-", kind:"handler_call", agent:"test", result:"[identity.get] agent_id=governor source=workspace", evidence:"[identity.get] agent_id=governor source=workspace"}
+
+AUD:E_0332{date:"2026-09-24T18:03:14Z", event:"E-0332", task:"-", kind:"handler_call", agent:"anonymous", result:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", evidence:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md"}
+
+AUD:E_0333{date:"2026-09-24T18:03:14Z", event:"E-0333", task:"-", kind:"handler_call", agent:"anonymous", result:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", evidence:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md"}
+
+AUD:E_0334{date:"2026-09-24T18:04:20Z", event:"E-0334", task:"-", kind:"handler_call", agent:"test", result:"[cortex.format] hcortex->cortex", evidence:"[cortex.format] hcortex->cortex"}
+
+AUD:E_0335{date:"2026-09-24T18:04:21Z", event:"E-0335", task:"-", kind:"handler_call", agent:"test", result:"[identity.get] agent_id=governor source=workspace", evidence:"[identity.get] agent_id=governor source=workspace"}
+
+AUD:E_0336{date:"2026-09-24T18:04:22Z", event:"E-0336", task:"-", kind:"handler_call", agent:"anonymous", result:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", evidence:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md"}
+
+AUD:E_0337{date:"2026-09-24T18:04:22Z", event:"E-0337", task:"-", kind:"handler_call", agent:"anonymous", result:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", evidence:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md"}
+
+AUD:E_0158{date:"2026-09-24T18:05:03Z", event:"E-0158", task:"T-017", kind:"task_complete", agent:"alfred", result:"Doc alignment for preserve semantics: reconcile_brain docstring + inline comment (sync.py), reconcile_handler docstring (handlers/sync/__init__.py), docs/sync.md §5b (Spanish, accurate preserve description + OBJ:sync creation + T-010 FCS preservation), w13-reconcile-down-top.md:48 PUML updated. Verified no other stale overwrite claims in repo scope (EVIDENCE.md clean, cortex.skill.md already updated in T-010). Alfred self-audit (docs-only, low risk): diffs read directly, accurate vs implementation, pytest 1507 passed 14 skipped 0 failed. Out-of-scope drift noted: w13:49-50 claims reconcile updates KNW/ARQX (implementation never touches them); deployed workspace copy .arqux/skills/workflows/w13 stale (MCP-governed, needs Architect decision); vendored snapshot arqux-0.7.0-src stale (snapshot, intentionally untouched).", evidence:"Doc alignment for preserve semantics: reconcile_brain docstring + inline comment (sync.py), reconcile_handler docstring (handlers/sync/__init__.py), docs/sync.md §5b (Spanish, accurate preserve description + OBJ:sync creation + T-010 FCS preservation), w13-reconcile-down-top.md:48 PUML updated. Verified no other stale overwrite claims in repo scope (EVIDENCE.md clean, cortex.skill.md already updated in T-010). Alfred self-audit (docs-only, low risk): diffs read directly, accurate vs implementation, pytest 1507 passed 14 skipped 0 failed. Out-of-scope drift noted: w13:49-50 claims reconcile updates KNW/ARQX (implementation never touches them); deployed workspace copy .arqux/skills/workflows/w13 stale (MCP-governed, needs Architect decision); vendored snapshot arqux-0.7.0-src stale (snapshot, intentionally untouched).", cycle:"CYCLE-12"}
+
+KNW:tasks_done{name:"tasks_done", value:"1", updated:"2026-09-24T18:05:03Z", topic:"metrics", content:"metric tasks_done=1", status:"done"}
+
+AUD:E_0158{date:"2026-09-24T18:05:22Z", event:"E-0158", task:"T-008", kind:"task_complete", agent:"alfred", result:"All 6 handler incidents detected 2026-09-24 (documented in T-003..T-007 + T-001/T-002) were resolved, audited and closed: T-003 checkpoint tokenizer (bracket-aware _split_entries), T-004 entry_add content channel + enumerated diagnostics + force applied diff, T-005 unbounded outputs pagination/filters/compact, T-006 observability (entry_bytes/file_bytes + BRAIN_SECTION_MAP via cortex.ref sections=true), T-007 task_create content-wins list coercion, T-001 sync.run/auto-sync FCS preservation, T-002 five Manhattan defects (gc first_kept doc-model, metrics batch write, reconcile level honoring). Audit follow-ups also resolved: T-009 sibling diagnostics + non_bypassable, T-010 reconcile meta-brain FCS, T-011 metrics upsert + single-write batch, T-013 canal-I content_ignored, T-015 reconcile OBJ preserve, T-016 pulse event id unbounded scan, T-012 evidence.list offset, T-014 bytes semantics, T-017 doc alignment. Every ticket: Jarvis implemented, Heimdall audited (gates resolved by Alfred), regression tests added. Suite: 1395 -> 1507 passed (+112 tests), 0 failed, ruff clean. Open residue: none in CYCLE-12 besides this umbrella.", evidence:"All 6 handler incidents detected 2026-09-24 (documented in T-003..T-007 + T-001/T-002) were resolved, audited and closed: T-003 checkpoint tokenizer (bracket-aware _split_entries), T-004 entry_add content channel + enumerated diagnostics + force applied diff, T-005 unbounded outputs pagination/filters/compact, T-006 observability (entry_bytes/file_bytes + BRAIN_SECTION_MAP via cortex.ref sections=true), T-007 task_create content-wins list coercion, T-001 sync.run/auto-sync FCS preservation, T-002 five Manhattan defects (gc first_kept doc-model, metrics batch write, reconcile level honoring). Audit follow-ups also resolved: T-009 sibling diagnostics + non_bypassable, T-010 reconcile meta-brain FCS, T-011 metrics upsert + single-write batch, T-013 canal-I content_ignored, T-015 reconcile OBJ preserve, T-016 pulse event id unbounded scan, T-012 evidence.list offset, T-014 bytes semantics, T-017 doc alignment. Every ticket: Jarvis implemented, Heimdall audited (gates resolved by Alfred), regression tests added. Suite: 1395 -> 1507 passed (+112 tests), 0 failed, ruff clean. Open residue: none in CYCLE-12 besides this umbrella.", cycle:"CYCLE-12"}
+
+KNW:tasks_done{name:"tasks_done", value:"1", updated:"2026-09-24T18:05:22Z", topic:"metrics", content:"metric tasks_done=1", status:"done"}
+
+AUD:E_0158{date:"2026-09-24T18:05:46Z", event:"E-0158", task:"-", kind:"checkpoint", agent:"alfred", result:"cortex.checkpoint ok fcs=Soporte CYCLE-12 completo — 15 tickets c obj=", evidence:"cortex.checkpoint ok fcs=Soporte CYCLE-12 completo — 15 tickets c obj="}
+
 
 $7: LESSONS
 
@@ -1424,7 +1812,7 @@ LNG:session_E_0157{type:"session", entry_count:57, summary:"checkpoint:1,handler
 
 $8: ACTIVE_CONTEXT
 
-WRK:current{phase:"current", current:"blueprint.complete: BLP BLP-009 completed and approved", blocked:"no", survive:"work", updated:"2026-09-21T20:10:20Z", event:"blueprint.complete", fcs:"", obj:"", tasks:"", state:"active", last_turn:"2026-09-21T20:10:57Z"}
+WRK:current{phase:"current", current:"task.complete: task T-008 completed", blocked:"no", survive:"work", updated:"2026-09-24T18:05:22Z", event:"task.complete", fcs:"Soporte CYCLE-12 completo", obj:"15 tickets de soporte resueltos auditados y cerrados", tasks:"T-001..T-017 done", state:"active", last_turn:"loop Jarvis+Heimdall terminado — pendiente pase de reparacion de brains (WRK corruptos ENVX_INFRA; KNW duplicados; stash-0)"}
 
 
 $9: RISKS
