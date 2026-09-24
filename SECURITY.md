@@ -32,31 +32,38 @@ ArqUX implements a **three-role governance model** with optional HMAC-based iden
 
 - **GOVERNOR**: Full access to all handlers (Alfred). Can mutate state.
 - **EXECUTOR**: Universal access except `workspace.init` and `project.init` (Jarvis). Can mutate state.
-- **AUDITOR**: **Strictly read-only** (Heimdall, Seshat). Cannot call any handler in `MUTATING_HANDLERS`. Can only call handlers in `READ_ONLY_PREFIXES` plus governance read handlers.
+- **AUDITOR**: **Read-only** (Heimdall, Seshat). Denylist model — can call any handler except `GOVERNOR_ONLY`, `MUTATING_HANDLERS`, and `CONDITIONAL_MUTATING` invocations that actually mutate (dry-run previews and read modes stay allowed).
 
-### MUTATING_HANDLERS (P0-B)
+### MUTATING_HANDLERS (P0-B, reconciled T-020)
 
-The following handlers mutate state and are denied to AUDITOR role:
+The following handlers mutate state unconditionally (or by default) and are denied to AUDITOR role:
 
 - All `blueprint.*` except `blueprint.read`, `blueprint.list`
-- All `task.create`, `task.claim`, `task.update`, `task.complete`, `task.fail`
-- All `cycle.create`, `cycle.mature`, `cycle.close`
+- All `task.create`, `task.claim`, `task.update`, `task.complete`, `task.fail`, `task.run`
+- `cycle.create`, `cycle.close`, `cycle.synthesize`
 - `evidence.record`
-- `cortex.entry.add`, `cortex.entry.delete`, `cortex.entry.update`, `cortex.entry.move`, `cortex.write`
-- `session.context.set`, `session.close`, `session.resume`
+- `cortex.entry.add`, `cortex.entry.delete`, `cortex.entry.update`, `cortex.entry.move`, `cortex.write`, `cortex.checkpoint`
+- `session.context.set`, `session.close`, `session.bootstrap`, `session.handoff`, `session.pulse.compact` (`session.resume` is a pure read — auditor-allowed)
 - `project.bind`, `project.unbind`, `project.init`
-- `protocol.adopt`, `protocol.release`, `protocol.pause`, `protocol.resume`
+- `protocol.adopt`, `protocol.onboard`, `protocol.release`, `protocol.pause`, `protocol.resume`
 - `identity.record`
-- `skill.record`, `skill.edit`, `skill.evolve`, `skill.import`, `skill.convert`
+- `skill.record`, `skill.import`, `skill.convert`, `skill.install`
+- `sync.run`, `sync.reconcile`, `setup.plantuml`
 - `workspace.init`
-- `cortex.file.validate`
+
+### CONDITIONAL_MUTATING (T-020)
+
+Denied to AUDITOR only when the invocation mutates (all gate flags truthy AND `dry_run` falsy):
+
+- `cortex.learn.elevate` (`apply`), `cortex.file.validate` (`fix`), `cortex.gc` (`force` + `dry_run=false`),
+  `cortex.patch` / `cortex.migrate` (mutate unless `dry_run=true`),
+  `skill.evolve` (`apply`), `skill.edit` (`content` provided)
 
 ### HMAC Identity Verification
 
 Handlers requiring explicit identity verification:
 - `identity.record`
 - `evidence.record`
-- `blueprint.approve`
 - `blueprint.re_delegate`
 
 Set `ARQUX_STRICT_SECURITY=1` to enforce HMAC verification.

@@ -1,4 +1,4 @@
-"""blueprint.synthesize handler — pure sequencer for guided BLP creation.
+"""blueprint.synthesize handler — guided sequencer for BLP creation.
 
 GUIDE MODE:
   1. Create or find the BLP in the active cycle
@@ -6,8 +6,11 @@ GUIDE MODE:
   3. Return the first pending section (lowest ID with unfilled markers)
   4. Agent writes directly via ``blueprint.update()``
 
-synthesize does NOT write files.
-Agent calls ``blueprint.update()`` directly for every section.
+NOTE (T-020 doc fix): synthesize DOES write when the BLP does not exist —
+``_find_or_create_blueprint`` creates ``cycles/<cycle>/blueprints/`` and
+persists the template body to ``<bp_id>.md`` (see ``created`` in the
+return). Existing BLPs are only scanned (no write). Agents write section
+content via ``blueprint.update()``.
 """
 
 from __future__ import annotations

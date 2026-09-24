@@ -18,7 +18,7 @@ Total: **88** handlers
 | `blueprint.re_delegate` | Re-delegate after verification failure. Re-opens a done/blocked blueprint. |
 | `blueprint.read` | Read a full Blueprint (HCORTEX or CORTEX format). |
 | `blueprint.ready` | Architect declares Blueprint ready for execution. draft → ready. |
-| `blueprint.synthesize` | GUIDE MODE: creates or finds the BLP and returns the next pending section. Agent writes directly via blueprint.update(). synthesize does NOT write files. |
+| `blueprint.synthesize` | GUIDE MODE: creates or finds the BLP and returns the next pending section. Agent writes sections via blueprint.update(). Creates and persists the BLP file when it does not exist. |
 | `blueprint.task` | Update one task's checkbox in §14. Status: in_progress/completed. |
 | `blueprint.update` | Update Blueprint progress with a note or refine a single section. |
 
@@ -74,7 +74,7 @@ Pass apply=true with confirm_hash from a reviewed dry-run to write the elevation
 |---------|-------------|
 | `evidence.list` | Query the evidence trail. Paginated: limit (default 100) + offset; fields total, returned, offset, next_offset report the pagination state. |
 | `evidence.read` | Read a single evidence event by ID. |
-| `evidence.record` | Append an evidence entry to pulse.jsonl. |
+| `evidence.record` | Append an evidence entry to the brain's PULSE section. |
 
 ## handler
 

@@ -35,8 +35,10 @@ def _call_handler(name: str, raw_args: list[str]) -> str:
 
     Returns the handler's CORTEX-OUT message as a string.
     """
+    from .constants import OUT_ERROR, PERMISSION_DENIED
+    from .cortex_out import CortexOUT
     from .handlers import REGISTRY
-    from .permissions import PermissionContext
+    from .permissions import PermissionContext, PermissionDenied
 
     if name not in REGISTRY:
         # Try MCP-safe name (underscores → dots)
@@ -69,6 +71,18 @@ def _call_handler(name: str, raw_args: list[str]) -> str:
     # Add path if not provided
     if "path" not in kwargs:
         kwargs["path"] = str(Path.cwd())
+
+    # T-020 audit (C-2): enforce role checks on the CLI path — mirror
+    # server._wrap_handler semantics (ctx.check with the effective call
+    # kwargs so CONDITIONAL_MUTATING is judged on bound defaults;
+    # PermissionDenied → clean OUT-ERROR, not a traceback).
+    try:
+        ctx.check(name, **kwargs)
+    except PermissionDenied as exc:
+        return CortexOUT.profile(
+            OUT_ERROR,
+            f"ERROR code={PERMISSION_DENIED} handler={name} reason={exc.reason}",
+        ).to_text()
 
     # Call handler
     try:
