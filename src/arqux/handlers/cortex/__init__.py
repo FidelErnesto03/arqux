@@ -464,11 +464,25 @@ handler_schemas = [
         "name": "cortex.gc",
         "fn": gc_handler,
         "description": (
-            "Garbage-collect duplicate entries in a .cortex file. "
-            "Duplicates share the same (section, sigil, name). "
-            "dry_run=True (default) previews without mutating; "
-            "force=True removes duplicates conserving the first "
-            "first_kept occurrences (default 1). "
+            "Garbage-collect or repair duplicate entries in a .cortex "
+            "file. Duplicates share the same (section, sigil, name). "
+            "Optional section/sigil/name filters restrict which "
+            "duplicate groups are affected (all provided filters must "
+            "match; unfiltered affects every duplicate group). "
+            "keep='first' (default) conserves the first first_kept "
+            "occurrences in file order; keep='last' conserves the last "
+            "ones (metrics: retains the most recent values). "
+            "mode='dedupe' (default) removes extra occurrences; "
+            "mode='rename' preserves every occurrence and renames extras "
+            "to the next sequential numeric id in the (section, sigil) "
+            "namespace — global max numeric suffix + 1, incremented per "
+            "rename (e.g. E_0157 extras -> E_0343, E_0344...); names "
+            "without a numeric suffix get _001, _002... appended. "
+            "Embedded event/id attrs are updated consistently (storage "
+            "uses E_0157, API/event attr uses E-0157). "
+            "dry_run=True (default) previews removals and the new names "
+            "that would be assigned without mutating; force=True "
+            "applies the mutation in a single atomic rewrite. "
             "Output metrics: bytes_written/file_bytes = whole file size "
             "after the rewrite (unlike entry.add, where bytes_written is "
             "the serialized entry size)."
@@ -477,9 +491,14 @@ handler_schemas = [
             "type": "object",
             "properties": {
                 "path": {"type": "string", "description": "Path to .cortex file."},
-                "dry_run": {"type": "boolean", "default": True, "description": "Preview duplicates without mutating."},
-                "force": {"type": "boolean", "default": False, "description": "Required to perform deletion."},
+                "dry_run": {"type": "boolean", "default": True, "description": "Preview affected occurrences without mutating."},
+                "force": {"type": "boolean", "default": False, "description": "Required to perform the mutation."},
                 "first_kept": {"type": "integer", "default": 1, "description": "Number of occurrences to keep per duplicate group."},
+                "section": {"type": "string", "description": "Only affect duplicate groups in this section (e.g. '$6'; '6' also accepted)."},
+                "sigil": {"type": "string", "description": "Only affect duplicate groups with this sigil (e.g. 'AUD')."},
+                "name": {"type": "string", "description": "Only affect duplicate groups with this entry name (e.g. 'E_0157')."},
+                "keep": {"type": "string", "enum": ["first", "last"], "default": "first", "description": "Which occurrences keep the original name: first or last in file order."},
+                "mode": {"type": "string", "enum": ["dedupe", "rename"], "default": "dedupe", "description": "dedupe removes extra occurrences; rename preserves all and assigns unique sequential names."},
             },
             "required": ["path"],
         },
