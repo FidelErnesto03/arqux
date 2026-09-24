@@ -18,7 +18,6 @@ from pathlib import Path
 
 from ...cortex_out import CortexOUT
 from ...permissions import PermissionContext
-from ...pulse import append_pulse_to_brain, next_pulse_event_id
 from ...state import find_project_root, find_workspace_root
 
 
@@ -31,7 +30,7 @@ def detect_handler(
 
     Args:
         path: Starting path. Defaults to current working directory.
-        ctx: Permission context (used for PULSE recording).
+        ctx: Permission context (unused — read-only handler).
 
     Returns ``OUT-WORK`` with:
 
@@ -46,7 +45,6 @@ def detect_handler(
     # Try project first (closest .arqux/ with brain.cortex).
     project_arqux = find_project_root(start=start)
     if project_arqux is not None and project_arqux.exists():
-        _record_pulse(start, ctx, found=True, kind="project", path=str(project_arqux))
         return CortexOUT.work(
             f"context.detect ok found=project path={project_arqux}",
             found=True,
@@ -58,7 +56,6 @@ def detect_handler(
     # Try workspace (.arqux/ with meta-brain.cortex).
     workspace_arqux = find_workspace_root(start=start)
     if workspace_arqux is not None and workspace_arqux.exists():
-        _record_pulse(start, ctx, found=True, kind="workspace", path=str(workspace_arqux))
         return CortexOUT.work(
             f"context.detect ok found=workspace path={workspace_arqux}",
             found=True,
@@ -75,7 +72,6 @@ def detect_handler(
     while True:
         candidate = cursor / arqux_dir_name
         if candidate.is_dir():
-            _record_pulse(start, ctx, found=True, kind=None, path=str(candidate))
             return CortexOUT.work(
                 f"context.detect ok found=untyped path={candidate}",
                 found=True,
@@ -87,7 +83,6 @@ def detect_handler(
             break
         cursor = cursor.parent
 
-    _record_pulse(start, ctx, found=False, kind=None, path=None)
     return CortexOUT.work(
         f"context.detect ok found=false start={start}",
         found=False,
@@ -95,31 +90,3 @@ def detect_handler(
         path=None,
         start=str(start),
     )
-
-
-def _record_pulse(
-    start: Path,
-    ctx: PermissionContext | None,
-    *,
-    found: bool,
-    kind: str | None,
-    path: str | None,
-) -> None:
-    """Append a PULSE event for the detect call (best-effort)."""
-    try:
-        # Only record PULSE if we found a project root with a brain.cortex.
-        root = find_project_root(start=start)
-        if root is None:
-            return
-        agent = (ctx or PermissionContext.from_env()).agent_id
-        event_id = next_pulse_event_id(root)
-        append_pulse_to_brain(
-            root,
-            event_id=event_id,
-            task_id="-",
-            kind="handler_call",
-            agent=agent,
-            payload=f"[context.detect] found={found} kind={kind}",
-        )
-    except Exception:  # noqa: BLE001
-        pass

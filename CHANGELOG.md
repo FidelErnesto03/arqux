@@ -2,6 +2,25 @@
 
 All notable changes to ArqUX are documented here.
 
+## [0.7.8] - 2026-09-24
+
+Telemetry reduction (T-021 — Architect decision): read-classified
+handlers no longer write to brain.cortex at all. Previously every call
+appended a generic `handler_call` PULSE entry, triggering a full-file
+atomic rewrite per invocation.
+
+### Changed — pulse telemetry
+- `context.detect`, `context.full`, `identity.get`, `cortex.format` and
+  the `parse_blp_template` helper: `_record_pulse` telemetry removed —
+  reads are now true reads (zero file writes; also closes the residual
+  auditor write-primitive noted in T-020)
+- Mutation-gated pulses in `cortex.gc`/`patch`/`migrate` renamed from
+  generic `handler_call` to semantic kinds (`cortex_gc`, `cortex_patch`,
+  `cortex_migrate`), consistent with the `task_run`/`session_handoff`
+  convention — `pulse.compact` kind-summaries are meaningful again
+- Semantic governance events (task lifecycle, session, checkpoint,
+  evidence, learn, blueprint/cycle writes) unchanged
+
 ## [0.7.7] - 2026-09-24
 
 Permission-model reconciliation (T-020): full registry audit — all 88

@@ -18,7 +18,6 @@ from ...constants import (
 )
 from ...cortex_out import CortexOUT
 from ...permissions import PermissionContext
-from ...pulse import append_pulse_to_brain, next_pulse_event_id
 from ...state import find_project_root, find_workspace_root, read_brain
 
 
@@ -108,9 +107,6 @@ def full_handler(
             if f.is_file() and f.name.endswith(".skill.md"):
                 skills.append(f.stem.removesuffix(".skill"))
 
-    # Pulse.
-    _record_pulse(project_arqux, ctx, project=project_name)
-
     return CortexOUT.work(
         f"context.full ok project={project_name} cycles={len(cycles)} "
         f"agents={len(agents)} skills={len(skills)}",
@@ -124,25 +120,3 @@ def full_handler(
         skills=skills,
         workspace_path=str(workspace_arqux.parent) if workspace_arqux else None,
     )
-
-
-def _record_pulse(
-    project_arqux: Path,
-    ctx: PermissionContext | None,
-    *,
-    project: str,
-) -> None:
-    """Append a PULSE event for the full call (best-effort)."""
-    try:
-        agent = (ctx or PermissionContext.from_env()).agent_id
-        event_id = next_pulse_event_id(project_arqux)
-        append_pulse_to_brain(
-            project_arqux,
-            event_id=event_id,
-            task_id="-",
-            kind="handler_call",
-            agent=agent,
-            payload=f"[context.full] project={project}",
-        )
-    except Exception:  # noqa: BLE001
-        pass

@@ -27,8 +27,6 @@ from pathlib import Path
 from ...cortex.sigils import get_sigil
 from ...cortex_out import CortexOUT
 from ...permissions import PermissionContext
-from ...pulse import append_pulse_to_brain, next_pulse_event_id
-from ...state import find_project_root
 
 # ---------------------------------------------------------------------------
 # CORTEX → HCORTEX
@@ -302,7 +300,7 @@ def format_handler(
         target: Target format — ``"hcortex"`` (CORTEX→HCORTEX, default) or
             ``"cortex"`` (HCORTEX→CORTEX).
         path: Optional path to a file. Used as the source when ``content``
-            is not given, and to record PULSE.
+            is not given.
         ctx: Permission context.
 
     The source format is inferred from ``target`` (the handler always
@@ -342,8 +340,6 @@ def format_handler(
     except Exception as exc:  # noqa: BLE001 — permissive parser, but guard anyway
         return CortexOUT.error(str(exc), code="TRANSFORM_ERROR")
 
-    _record_pulse(path, ctx, action="cortex.format", target=target, source=source_format)
-
     return CortexOUT.work(
         f"cortex.format ok {source_format}->{target} bytes={len(rendered)}",
         target=target,
@@ -351,30 +347,3 @@ def format_handler(
         bytes_out=len(rendered),
         content=rendered,
     )
-
-
-def _record_pulse(
-    path: str | None,
-    ctx: PermissionContext | None,
-    *,
-    action: str,
-    target: str,
-    source: str,
-) -> None:
-    """Append a PULSE event for a cortex.format call (best-effort)."""
-    try:
-        root = find_project_root(start=path)
-        if root is None:
-            return
-        agent = (ctx or PermissionContext.from_env()).agent_id
-        event_id = next_pulse_event_id(root)
-        append_pulse_to_brain(
-            root,
-            event_id=event_id,
-            task_id="-",
-            kind="handler_call",
-            agent=agent,
-            payload=f"[{action}] {source}->{target}",
-        )
-    except Exception:  # noqa: BLE001
-        pass

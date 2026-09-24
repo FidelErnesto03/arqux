@@ -14,7 +14,6 @@ from pathlib import Path
 from ...constants import IDENTITIES_DIR
 from ...cortex_out import CortexOUT
 from ...permissions import PermissionContext
-from ...pulse import append_pulse_to_brain, next_pulse_event_id
 from ...state import find_project_root, find_workspace_root
 
 DEFAULT_AGENT = "alfred"
@@ -62,8 +61,6 @@ def get_handler(
                 agent_id,
                 candidate,
                 source="project",
-                ctx=ctx,
-                project_arqux=project_arqux,
             )
 
     # 2. Workspace identities.
@@ -75,8 +72,6 @@ def get_handler(
                 agent_id,
                 candidate,
                 source="workspace",
-                ctx=ctx,
-                project_arqux=project_arqux,
             )
 
     # 3. Packaged identities.
@@ -86,8 +81,6 @@ def get_handler(
             agent_id,
             candidate,
             source="package",
-            ctx=ctx,
-            project_arqux=project_arqux,
         )
 
     return CortexOUT.error(
@@ -111,16 +104,12 @@ def _emit(
     identity_path: Path,
     *,
     source: str,
-    ctx: PermissionContext | None,
-    project_arqux: Path | None,
 ) -> CortexOUT:
     """Read the identity file and return OUT-WORK."""
     try:
         content = identity_path.read_text(encoding="utf-8")
     except OSError as exc:
         return CortexOUT.error(str(exc), code="READ_ERROR")
-
-    _record_pulse(project_arqux, ctx, agent_id=agent_id, source=source)
 
     return CortexOUT.work(
         f"identity.get ok agent_id={agent_id} source={source}",
@@ -130,28 +119,3 @@ def _emit(
         content=content,
         size_bytes=len(content),
     )
-
-
-def _record_pulse(
-    project_arqux: Path | None,
-    ctx: PermissionContext | None,
-    *,
-    agent_id: str,
-    source: str,
-) -> None:
-    """Append a PULSE event for the get call (best-effort)."""
-    try:
-        if project_arqux is None:
-            return
-        agent = (ctx or PermissionContext.from_env()).agent_id
-        event_id = next_pulse_event_id(project_arqux)
-        append_pulse_to_brain(
-            project_arqux,
-            event_id=event_id,
-            task_id="-",
-            kind="handler_call",
-            agent=agent,
-            payload=f"[identity.get] agent_id={agent_id} source={source}",
-        )
-    except Exception:  # noqa: BLE001
-        pass

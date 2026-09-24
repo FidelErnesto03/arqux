@@ -136,15 +136,16 @@ GOVERNOR_ONLY: tuple[str, ...] = (
 # a flag param (apply/fix/force/content or a dry_run preview) live in
 # CONDITIONAL_MUTATING instead — auditors keep their preview/read modes.
 #
-# T-020 reconcile note: best-effort ``kind="handler_call"`` PULSE
-# telemetry on read-classified handlers (context.detect, context.full,
-# identity.get, cortex.format) is NOT treated as mutation — nearly every
-# read handler emits it and treating it as such would make the auditor
-# role useless. Semantic lifecycle/session pulses (session_bootstrap,
-# session_handoff, blueprint_execute, task_run, checkpoint,
-# skill_install) DO count as writes. Ephemeral artifacts written under a
-# fresh mkdtemp (cortex.render.diagram, cortex.render.validate_file)
-# are caller outputs, not governance state.
+# T-020/T-021 note: read-classified handlers emit NO pulse telemetry at
+# all — T-021 removed the best-effort ``kind="handler_call"`` writes from
+# context.detect, context.full, identity.get, cortex.format and the
+# parse_blp_template helper (a read must produce zero file writes).
+# Semantic lifecycle/session pulses (session_bootstrap, session_handoff,
+# blueprint_execute, task_run, checkpoint, skill_install, cortex_gc,
+# cortex_migrate, cortex_patch — mutation-scoped only) DO count as
+# writes. Ephemeral artifacts written under a fresh mkdtemp
+# (cortex.render.diagram, cortex.render.validate_file) are caller
+# outputs, not governance state.
 MUTATING_HANDLERS: frozenset[str] = frozenset({
     # blueprint mutations
     "blueprint.create",

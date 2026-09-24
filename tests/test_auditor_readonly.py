@@ -474,16 +474,17 @@ class TestAuditorCanRead:
         "project.status", "project.lessons",
         "cycle.list", "cycle.current",
         "skill.list",
-        # T-020 borderline resolved as READ — telemetry/ephemeral writes
-        # only, no governance-state mutation (see MUTATING_HANDLERS note):
-        "cortex.format",                # pure transform + handler_call telemetry
+        # T-020 borderline resolved as READ — T-021 removed the generic
+        # handler_call pulse telemetry from read paths (zero writes now);
+        # only ephemeral caller outputs remain (see MUTATING_HANDLERS note):
+        "cortex.format",                # pure transform, no writes
         "cortex.render",                # pure HCORTEX render
         "cortex.render.diagram",        # ephemeral mkdtemp artifacts only
         "cortex.render.validate_file",  # reads + ephemeral render artifacts
         "cortex.ref",                   # sigil definition lookup
-        "context.detect",               # .arqux detection + telemetry
-        "context.full",                 # context aggregation + telemetry
-        "identity.get",                 # identity read + telemetry
+        "context.detect",               # .arqux detection, no writes
+        "context.full",                 # context aggregation, no writes
+        "identity.get",                 # identity read, no writes
         "session.status",               # SES metadata read
         "session.resume",               # pure PULSE+SES read (C-1)
         "session.context.get",          # context pointer read
