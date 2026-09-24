@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import re
 from pathlib import Path
+from typing import Any
 
 from ..cortex_out import CortexOUT
 from ..permissions import PermissionContext
@@ -109,14 +110,18 @@ def import_skill(
     # key, treat it as the CORTEX content form. Otherwise, treat as
     # raw text (retrocompatibility).
     raw_body: str | None = None
+    content_ignored: list[str] = []
     if content:
-        from ..cortex.parse_content import parse_content_entry
+        from ..cortex.parse_content import parse_content_entry, unused_content_keys
         parsed = parse_content_entry(content)
         if parsed and "body" in parsed:
             # CORTEX form — extract fields.
             source = parsed.get("source", source)
             name = parsed.get("name", name)
             raw_body = parsed["body"]
+            content_ignored = unused_content_keys(
+                parsed, {"source", "name", "body"}, raw=content,
+            )
         else:
             raw_body = content
 
@@ -140,13 +145,18 @@ def import_skill(
         )
 
     dest.write_text(raw_body, encoding="utf-8")
+    fields: dict[str, Any] = {
+        "name": name,
+        "source": source,
+        "storage": str(dest),
+        "status": "imported",
+        "next_step": f"Call skill.convert(name={name!r}) to convert to CORTEX ultra-dense format.",
+    }
+    if content_ignored:
+        fields["content_ignored"] = content_ignored
     return CortexOUT.work(
         f"skill.import ok name={name} source={source} size={len(raw_body)}",
-        name=name,
-        source=source,
-        storage=str(dest),
-        status="imported",
-        next_step=f"Call skill.convert(name={name!r}) to convert to CORTEX ultra-dense format.",
+        **fields,
     )
 
 
@@ -449,8 +459,9 @@ def edit_skill(
     # key, treat it as the CORTEX content form. Otherwise, treat as
     # raw text (retrocompatibility).
     raw_body: str | None = None
+    content_ignored: list[str] = []
     if content:
-        from ..cortex.parse_content import parse_content_entry
+        from ..cortex.parse_content import parse_content_entry, unused_content_keys
         parsed = parse_content_entry(content)
         if parsed and "body" in parsed:
             name = parsed.get("name", name)
@@ -459,6 +470,9 @@ def edit_skill(
             if parsed_section:
                 section = parsed_section
             raw_body = parsed["body"]
+            content_ignored = unused_content_keys(
+                parsed, {"name", "body", "section"}, raw=content,
+            )
         else:
             raw_body = content
 
@@ -495,22 +509,32 @@ def edit_skill(
             )
         skill_path.write_text(updated, encoding="utf-8")
         sync_brain(arqux.parent, "skill.edit", detail=f"section ${section} of {name} written")
+        fields: dict[str, Any] = {
+            "name": name,
+            "section": f"${section}",
+            "size": len(raw_body),
+            "status": "section_written",
+        }
+        if content_ignored:
+            fields["content_ignored"] = content_ignored
         return CortexOUT.work(
             f"skill.edit section name={name} section=${section} size={len(raw_body)}",
-            name=name,
-            section=f"${section}",
-            size=len(raw_body),
-            status="section_written",
+            **fields,
         )
 
     skill_path.parent.mkdir(parents=True, exist_ok=True)
     skill_path.write_text(raw_body, encoding="utf-8")
     sync_brain(arqux.parent, "skill.edit", detail=f"full write of {name} ({len(raw_body)} bytes)")
+    fields = {
+        "name": name,
+        "size": len(raw_body),
+        "status": "written",
+    }
+    if content_ignored:
+        fields["content_ignored"] = content_ignored
     return CortexOUT.work(
         f"skill.edit write name={name} size={len(raw_body)}",
-        name=name,
-        size=len(raw_body),
-        status="written",
+        **fields,
     )
 
 
@@ -587,13 +611,17 @@ def install_skill(
     """
     # Merge content CORTEX.
     raw_body: str | None = None
+    content_ignored: list[str] = []
     if content:
-        from ..cortex.parse_content import parse_content_entry
+        from ..cortex.parse_content import parse_content_entry, unused_content_keys
         parsed = parse_content_entry(content)
         if parsed and "body" in parsed:
             source = parsed.get("source", source)
             name = parsed.get("name", name)
             raw_body = parsed["body"]
+            content_ignored = unused_content_keys(
+                parsed, {"source", "name", "body"}, raw=content,
+            )
         else:
             raw_body = content
 
@@ -705,13 +733,18 @@ def install_skill(
         except Exception:  # noqa: BLE001
             pass
 
+    fields: dict[str, Any] = {
+        "name": name,
+        "source": source,
+        "dry_run": dry_run,
+        "steps": steps_report,
+    }
+    if content_ignored:
+        fields["content_ignored"] = content_ignored
     return CortexOUT.work(
         f"skill.install ok name={name} source={source} dry_run={dry_run} "
         f"steps={len(steps_report)}",
-        name=name,
-        source=source,
-        dry_run=dry_run,
-        steps=steps_report,
+        **fields,
     )
 
 

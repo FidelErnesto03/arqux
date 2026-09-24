@@ -70,25 +70,46 @@ def list_evidence(
     task_id: str | None = None,
     cycle: str | None = None,
     since: str | None = None,
-    limit: int = 100,
+    limit: int | None = 100,
     path: str | None = None,
     ctx: PermissionContext | None = None,
+    offset: int = 0,
 ) -> CortexOUT:
-    """Query the evidence trail (reads from the brain's PULSE section)."""
+    """Query the evidence trail (reads from the brain's PULSE section).
+
+    Paginated: fields total, returned, offset and next_offset report
+    the pagination state.
+    """
     root = find_project_root(start=path)
     if root is None:
         return CortexOUT.error("no project initialized", code="NOT_FOUND")
+
+    try:
+        limit_i = 100 if limit is None else int(limit)
+        offset_i = int(offset)
+    except (TypeError, ValueError):
+        return CortexOUT.error("limit and offset must be integers", code="INVALID_ARGS")
+    if limit_i < 1 or offset_i < 0:
+        return CortexOUT.error("limit must be >= 1 and offset must be >= 0", code="INVALID_ARGS")
 
     events = read_pulse_from_brain(
         root,
         task_id=task_id,
         cycle=cycle,
         since=since,
-        limit=limit,
+        limit=None,
     )
+    total = len(events)
+    page = events[offset_i : offset_i + limit_i]
+    next_offset = offset_i + limit_i if offset_i + limit_i < total else None
+
     return CortexOUT.work(
-        f"events={len(events)} (from brain PULSE)",
-        events=[e.get("id", "?") for e in events],
+        f"events={len(page)} (from brain PULSE)",
+        events=[e.get("id", "?") for e in page],
+        total=total,
+        returned=len(page),
+        offset=offset_i,
+        next_offset=next_offset,
         storage="brain.pulse",
     )
 
@@ -116,6 +137,6 @@ def read_evidence(
 
 handler_schemas = [
     {"name": "evidence.record", "fn": record_evidence, "description": "Append an evidence entry to pulse.jsonl.", "input_schema": {"type": "object", "properties": {"task_id": {"type": "string"}, "kind": {"type": "string", "enum": ["note", "artifact", "decision", "metric", "blocker"]}, "payload": {"type": "string"}, "path": {"type": "string", "description": "Path to project root. Defaults to cwd."}}, "required": ["task_id", "kind", "payload"]}},
-    {"name": "evidence.list", "fn": list_evidence, "description": "Query the evidence trail.", "input_schema": {"type": "object", "properties": {"task_id": {"type": "string"}, "cycle": {"type": "string"}, "since": {"type": "string"}, "limit": {"type": "integer", "default": 100}, "path": {"type": "string", "description": "Path to project root. Defaults to cwd."}}}},
+    {"name": "evidence.list", "fn": list_evidence, "description": "Query the evidence trail. Paginated: limit (default 100) + offset; fields total, returned, offset, next_offset report the pagination state.", "input_schema": {"type": "object", "properties": {"task_id": {"type": "string"}, "cycle": {"type": "string"}, "since": {"type": "string"}, "limit": {"type": "integer", "default": 100, "description": "Max events per page."}, "offset": {"type": "integer", "default": 0, "description": "Events to skip before the page."}, "path": {"type": "string", "description": "Path to project root. Defaults to cwd."}}}},
     {"name": "evidence.read", "fn": read_evidence, "description": "Read a single evidence event by ID.", "input_schema": {"type": "object", "properties": {"event_id": {"type": "string"}, "path": {"type": "string", "description": "Path to project root. Defaults to cwd."}}, "required": ["event_id"]}},
 ]

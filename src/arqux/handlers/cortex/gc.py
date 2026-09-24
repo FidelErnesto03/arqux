@@ -1,7 +1,8 @@
 """cortex.gc handler — garbage collection for duplicate entries.
 
 Scans a .cortex file for entries with the same sigil:name in the same
-section and removes duplicates (conserving the first occurrence).
+section and removes duplicates (conserving the first ``first_kept``
+occurrences).
 
 BLP-002 G-5: Created to address the accumulation of duplicate entries
 without any mechanism for automated cleanup.
@@ -12,10 +13,12 @@ from __future__ import annotations
 from collections import defaultdict
 from pathlib import Path
 
+from ...cortex.atomic import atomic_write_json
+from ...cortex.reader import cortex_to_dict
 from ...cortex_out import CortexOUT
 from ...permissions import PermissionContext
 from ...pulse import append_pulse_to_brain, next_pulse_event_id
-from ...state import crud_delete, crud_list, find_project_root
+from ...state import find_project_root
 
 
 def gc_handler(
@@ -23,6 +26,7 @@ def gc_handler(
     *,
     dry_run: bool = True,
     force: bool = False,
+    first_kept: int = 1,
     ctx: PermissionContext | None = None,
 ) -> CortexOUT:
     """Garbage-collect duplicate entries in a .cortex file.
@@ -30,53 +34,68 @@ def gc_handler(
     Duplicates are entries that share the same (section, sigil, name).
     With ``dry_run=True`` (default), returns the list of duplicates
     without modifying the file.  With ``dry_run=False`` and
-    ``force=True``, removes duplicates, conserving the first occurrence.
+    ``force=True``, removes duplicates, conserving the first
+    ``first_kept`` occurrences.
 
     Args:
         path: Path to the .cortex file (e.g., ``brain.cortex``).
         dry_run: If True (default), preview without mutating.
         force: Required to perform the actual deletion.
+        first_kept: Number of occurrences to keep per duplicate group.
         ctx: Permission context.
 
     Returns:
         ``OUT-WORK`` with ``duplicates`` list and ``removed`` count.
+        ``bytes_written``/``file_bytes`` report the whole file size after
+        the rewrite (unlike ``entry.add``, where ``bytes_written`` is the
+        serialized entry size).
     """
     src_path = Path(path)
     if not src_path.exists():
         return CortexOUT.error(f"file not found: {path}", code="NOT_FOUND")
 
-    # List all entries (format=cortex gives raw entry strings we can
-    # parse, but we need structured info.  Use format=hcortex for dicts.)
     try:
-        result = crud_list(str(src_path), sigil=None, section=None)
+        doc = cortex_to_dict(src_path.read_text(encoding="utf-8"))
     except Exception as exc:
-        return CortexOUT.error(str(exc), code="LIST_ERROR")
+        return CortexOUT.error(str(exc), code="PARSE_ERROR")
 
-    entries = result.get("entries", [])
-
-    # Group by (section, sigil, name)
-    groups: dict[tuple[str, str, str], list[dict]] = defaultdict(list)
-    for e in entries:
-        sec = e.get("section", "")
-        sigil = e.get("sigil", "")
-        name = e.get("name", "")
-        if not sigil or not name:
-            continue
-        groups[(sec, sigil, name)].append(e)
+    try:
+        first_kept = max(1, int(first_kept))
+    except (TypeError, ValueError):
+        return CortexOUT.error(
+            f"invalid first_kept={first_kept!r} (must be an integer >= 1)",
+            code="INVALID_ARGS",
+        )
 
     duplicates: list[dict] = []
-    for (sec, sigil, name), group in groups.items():
-        if len(group) <= 1:
-            continue
-        # Keep the first, mark the rest as duplicates
-        for _dup in group[1:]:
-            duplicates.append({
-                "section": sec,
-                "sigil": sigil,
-                "name": name,
-                "count": len(group),
-                "first_kept": group[0].get("name", str(group[0])),
-            })
+    for sec in doc.get("sections", []):
+        sec_id = sec.get("id", "")
+        entries = sec.get("entries", [])
+        groups: dict[tuple[str, str], list[int]] = defaultdict(list)
+        for idx, entry in enumerate(entries):
+            sigil = entry.get("sigil", "")
+            name = entry.get("name", "")
+            if not sigil or not name:
+                continue
+            groups[(sigil, name)].append(idx)
+        drop: set[int] = set()
+        for (sigil, name), idxs in groups.items():
+            if len(idxs) <= first_kept:
+                continue
+            for idx in idxs[first_kept:]:
+                drop.add(idx)
+                duplicates.append({
+                    "section": sec_id,
+                    "sigil": sigil,
+                    "name": name,
+                    "count": len(idxs),
+                    "first_kept": first_kept,
+                    "kept_names": [entries[i].get("name", name) for i in idxs[:first_kept]],
+                })
+        if drop:
+            sec["entries"] = [
+                e for i, e in enumerate(entries) if i not in drop
+            ]
 
     if not duplicates:
         return CortexOUT.work(
@@ -98,22 +117,15 @@ def gc_handler(
             code="CONFIRM_REQUIRED",
         )
 
-    # Apply: remove duplicates (entries 2..N for each group)
-    removed = 0
-    failed = 0
-    for dup in duplicates:
-        sec = dup["section"]
-        sigil = dup["sigil"]
-        name = dup["name"]
-        selector = f"{sec}/{sigil}:{name}" if sec else f"{sigil}:{name}"
-        try:
-            del_result = crud_delete(str(src_path), selector, force=True)
-            if "error" in del_result:
-                failed += 1
-            else:
-                removed += 1
-        except Exception:
-            failed += 1
+    try:
+        result = atomic_write_json(doc, str(src_path))
+        removed = len(duplicates)
+        failed = 0
+    except Exception:
+        return CortexOUT.error(
+            f"cortex.gc failed — 0 of {len(duplicates)} duplicate(s) removed",
+            code="GC_ERROR",
+        )
 
     # PULSE.
     try:
@@ -136,4 +148,7 @@ def gc_handler(
         f"cortex.gc ok — {removed} duplicate(s) removed (failed={failed})",
         path=path, dry_run=False, force=True,
         duplicates=duplicates, removed=removed, failed=failed,
+        bytes_written=result.bytes_written,
+        file_bytes=result.bytes_written,
+        backup=result.backup,
     )

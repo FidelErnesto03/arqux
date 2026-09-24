@@ -1,7 +1,7 @@
 """cortex.checkpoint handler (BLP-014 / CYCLE-05).
 
 Persists the agent's working state (WRK:current) as a single CORTEX
-line in brain.cortex §5.  session.bootstrap reads it back so the agent
+line in brain.cortex $8.  session.bootstrap reads it back so the agent
 can resume exactly where it left off between turns.
 
 Format:  WRK:current{fcs:, obj:, tasks:, state:, last_turn:}
@@ -17,6 +17,8 @@ from ...permissions import PermissionContext
 from ...pulse import append_pulse_to_brain, next_pulse_event_id
 from ...state import crud_read, crud_update, find_project_root
 
+_KEY_COLON_RE = re.compile(r"[A-Za-z_][A-Za-z0-9_]*\s*:")
+
 
 def checkpoint_handler(
     content: str,
@@ -24,7 +26,7 @@ def checkpoint_handler(
     path: str | None = None,
     ctx: PermissionContext | None = None,
 ) -> CortexOUT:
-    """Persist WRK:current in brain.cortex §5.
+    """Persist WRK:current in brain.cortex $8.
 
     Accepts ``content`` as a CORTEX entry string:
         fcs:..., obj:..., tasks:..., state:..., last_turn:...
@@ -53,15 +55,20 @@ def checkpoint_handler(
             body = body[:-1]
     body = body.strip()
 
-    # Parse key:value pairs — ',' or newline separators only.
+    # Parse key:value pairs — ',' or newline separators only, ignoring
+    # separators inside [...] list values (a closing ']' also ends the
+    # value: the next key: starts a new entry).
     # ';' is NOT a separator: values may legitimately contain it;
     # glued keys are caught by the hint below instead.
     parts: dict[str, str] = {}
-    for pair in re.split(r"[,\n]", body):
+    for pair in _split_entries(body):
         pair = pair.strip()
         if ":" not in pair:
             continue
         k, _, v = pair.partition(":")
+        v = v.strip()
+        if len(v) >= 2 and v[0] == v[-1] and v[0] in ('"', "'"):
+            v = v[1:-1].replace('\\"', '"').replace("\\\\", "\\")
         parts[k.strip()] = v.strip()
 
     # Detect glued known keys left inside values (e.g. wrong separator)
@@ -119,10 +126,59 @@ def checkpoint_handler(
     return CortexOUT.work("cortex.checkpoint ok", **fields)
 
 
+def _split_entries(body: str) -> list[str]:
+    """Split checkpoint body on top-level ','/'\n', respecting [...] depth.
+
+    A comma inside an unclosed '[' does not split; a closing ']' returns
+    to depth 0 and the next ``key:`` starts a new entry even without a
+    separator.
+    """
+    parts: list[str] = []
+    buf: list[str] = []
+    depth = 0
+    i = 0
+    while i < len(body):
+        c = body[i]
+        if c == "[":
+            depth += 1
+            buf.append(c)
+            i += 1
+        elif c == "]" and depth:
+            depth -= 1
+            buf.append(c)
+            i += 1
+            if depth == 0:
+                j = i
+                while j < len(body) and body[j].isspace():
+                    j += 1
+                if _KEY_COLON_RE.match(body, j):
+                    parts.append("".join(buf))
+                    buf = []
+                    i = j
+        elif c in ",\n" and depth == 0:
+            parts.append("".join(buf))
+            buf = []
+            i += 1
+        else:
+            buf.append(c)
+            i += 1
+    if buf:
+        parts.append("".join(buf))
+    return parts
+
+
 def _write_wrk_entry(brain_path: Path, value: dict[str, str]) -> None:
     """Write WRK:current via cortex.patch (CODEC-CORTEX)."""
     from ...state import cortex_write
-    line = f"WRK:current{{fcs:{value['fcs']},obj:{value['obj']},tasks:{value['tasks']},state:{value['state']},last_turn:{value['last_turn']}}}\n"
+
+    def _q(v: str) -> str:
+        return '"' + v.replace("\\", "\\\\").replace('"', '\\"') + '"'
+
+    line = (
+        f"WRK:current{{fcs:{_q(value['fcs'])},obj:{_q(value['obj'])},"
+        f"tasks:{_q(value['tasks'])},state:{_q(value['state'])},"
+        f"last_turn:{_q(value['last_turn'])}}}\n"
+    )
     text = brain_path.read_text(encoding="utf-8")
 
     if "$8: ACTIVE_CONTEXT" in text:

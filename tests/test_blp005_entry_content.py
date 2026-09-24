@@ -106,6 +106,82 @@ def test_entry_add_invalid_content_does_not_crash(tmp_path: Path) -> None:
     assert result.fields.get("name", "").startswith("fallback")
 
 
+def test_entry_add_content_only_without_value(tmp_path: Path) -> None:
+    """content (canal I) alone is enough — value must not be required."""
+    f = tmp_path / "test.cortex"
+    f.write_text(_SAMPLE)
+    result = entry_add_handler(
+        str(f),
+        "$3",
+        "OBJ",
+        "dummy",
+        content='OBJ:content_only{goal:"Content only", status:"current", success:"verified"}',
+        force=True,
+        ctx=_CONTEXT,
+    )
+    assert result.profile == "OUT-WORK", str(result.fields)
+    assert result.fields.get("sigil") == "OBJ"
+    assert result.fields.get("name", "").startswith("content_only")
+
+    get = entry_get_handler(str(f), "OBJ:content_only*", ctx=_CONTEXT)
+    assert get.profile == "OUT-WORK"
+    assert get.fields.get("count", 0) == 1
+
+
+def test_entry_add_value_required_without_content(tmp_path: Path) -> None:
+    """Without (parseable) content, a missing value is a clear INVALID_ARGS error."""
+    f = tmp_path / "test.cortex"
+    f.write_text(_SAMPLE)
+    result = entry_add_handler(str(f), "$3", "OBJ", "novalue", ctx=_CONTEXT)
+    assert result.profile == "OUT-ERROR"
+    assert result.fields.get("code") == "INVALID_ARGS"
+    assert "value" in result.message
+
+
+def test_entry_add_validation_errors_enumerated(tmp_path: Path) -> None:
+    """Validation failures enumerate every violation with entry/field context."""
+    f = tmp_path / "test.cortex"
+    f.write_text(_SAMPLE + "\nLNG:bad0{type:123}\n")
+    result = entry_add_handler(
+        str(f),
+        "$7",
+        "LNG",
+        "bad1",
+        'type:456, bogus_field:"x"',
+        create_section=True,
+        ctx=_CONTEXT,
+    )
+    assert result.profile == "OUT-ERROR"
+    assert result.fields.get("error_count") == 2
+    diagnostics = result.fields.get("diagnostics") or []
+    assert len(diagnostics) == 2
+    for i, diag in enumerate(diagnostics, 1):
+        assert f"[{i}]" in result.message
+        assert diag in result.message
+    assert "LNG:bad0" in result.message
+    assert "LNG:bad1" in result.message
+    assert "missing required fields" in result.message
+
+
+def test_entry_add_force_returns_applied_diff(tmp_path: Path) -> None:
+    """force=True reports the entry that was actually written."""
+    f = tmp_path / "test.cortex"
+    f.write_text(_SAMPLE)
+    result = entry_add_handler(
+        str(f),
+        "$3",
+        "OBJ",
+        "forced",
+        'goal:"Forced write", status:"current", success:"verified"',
+        force=True,
+        ctx=_CONTEXT,
+    )
+    assert result.profile == "OUT-WORK", str(result.fields)
+    applied = result.fields.get("applied", "")
+    assert applied.startswith("OBJ:forced{")
+    assert 'goal:"Forced write"' in applied
+
+
 # ---------------------------------------------------------------------------
 # entry.get format=cortex (canal I)
 # ---------------------------------------------------------------------------

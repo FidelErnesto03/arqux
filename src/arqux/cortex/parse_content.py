@@ -181,6 +181,29 @@ def _split_top_level(text: str, sep: str) -> list[str]:
     return parts
 
 
+def unused_content_keys(
+    parsed: dict[str, Any],
+    used: set[str] | tuple[str, ...],
+    raw: str | None = None,
+) -> list[str]:
+    """Content keys parsed but NOT consumed by the caller.
+
+    Lists unknown keys (e.g. typos like ``objs:``) and, when *raw* is
+    given, known keys that fused into a value because the content used
+    a non-comma separator (checkpoint-style ``hint`` for canal-I loss).
+    Meta keys (``__sigil__`` etc.) are excluded. Empty when everything
+    parsed was consumed.
+    """
+    ignored = sorted(
+        k for k in parsed if not k.startswith("__") and k not in used
+    )
+    if raw:
+        for key in sorted(used):
+            if key not in parsed and re.search(rf"(?<![A-Za-z0-9]){key}\s*:", raw):
+                ignored.append(f"{key} (fused)")
+    return ignored
+
+
 def _coerce_value(raw: str) -> Any:
     """Coerce a raw value string into a Python value.
 

@@ -2,6 +2,52 @@
 
 All notable changes to ArqUX are documented here.
 
+## [0.7.4] - 2026-09-24
+
+CYCLE-12 support-cycle remediation: 17 governed tickets resolved covering
+handler defects observed in production use across ENVX_INFRA, Manhattan and
+Conquistadores. +112 regression tests (1395 → 1507 passing).
+
+### Fixed — CORTEX parser & checkpoint
+- `cortex.checkpoint` tokenizer is bracket-aware: list values like
+  `tasks:[a,b]` no longer absorb the following key or truncate at internal
+  commas; values are serialized quoted so CODEC-CORTEX round-trips
+  (previously corrupted `WRK:current` in live brains)
+- `task.create` honors the documented content-wins merge: scalar list
+  values (`pre`/`proc`/`ac`/`blk`) coerce to single-item lists instead of
+  being silently dropped; `obj` is now optional when content parses
+- `cortex.entry.add` accepts content-only calls (`value` optional);
+  validation failures enumerate every diagnostic (`error_count` +
+  structured `diagnostics`); `force=True` returns the `applied` entry
+
+### Fixed — sync & reconcile
+- `sync.run` and the cortex.write auto-sync hook no longer overwrite
+  operator-authored `FCS:current` (`focus_create_only` semantics: refresh
+  `updated`/`event`, create generic FCS only when absent)
+- `reconcile` preserves meta-brain `FCS:current` and project `OBJ` goals
+  (same preserve semantics); `sync.reconcile level=workspace|project` is
+  now honored instead of silently falling back to auto-detection
+- Metrics upsert: `KNW:<metric>` entries update in place instead of
+  duplicating every sync; `sync_brain` batches WRK+FCS+metrics into a
+  single atomic write (was 3–4 full-brain rewrites per event)
+
+### Fixed — discovery, pagination & observability
+- `cortex.entry.list`, `handler.list`, `task.list`, `blueprint.list` and
+  `evidence.list` paginate (`limit`/`offset` + `total`/`returned`/
+  `next_offset`); `entry.list` filters by `sigil`+`section` and supports
+  `format=compact` (one entry per line, multi-line bodies collapsed)
+- `cortex.entry.add` reports `entry_bytes`/`bytes_written` as the
+  serialized entry size (was whole-file size) + `file_bytes`; sibling
+  handlers gain `file_bytes` and documented semantics
+- `cortex.ref(sections=true)` exposes the standard brain section map
+  (`$1`…`$19`) without a dummy sigil
+- `next_pulse_event_id` scans the full PULSE trail (no duplicate
+  `E-XXXX` ids beyond 100 events)
+- `cortex.gc` honors `first_kept` (doc-model grouping, single atomic
+  rewrite, `INVALID_ARGS` on bad input) instead of deleting all matches
+- Canal-I consumers (`task.create`, `entry.add`, `skill.*`) report
+  `content_ignored` for unused/unknown/fused content keys
+
 ## [0.7.3] - 2026-09-21
 
 Consolidates the CYCLE-12 defect-remediation Blueprints (BLP-004 through

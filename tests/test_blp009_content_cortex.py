@@ -82,6 +82,65 @@ def test_task_create_with_content_lists(tmp_path: Path) -> None:
     assert "ac 1" in content_field
 
 
+def test_task_create_full_content_with_explicit_obj_persists_all_lists(tmp_path: Path) -> None:
+    """T-007: explicit obj + full content (pre/proc/ac/blk) — content wins,
+    every list persists in the task file."""
+    proj_root = _bootstrap_env(tmp_path)
+
+    result = create_task(
+        obj="Explicit objective text",
+        content=(
+            '$1:{obj:"Content objective wins", '
+            'pre:["pre 1","pre 2"], proc:["step 1","step 2"], '
+            'ac:["ac 1","ac 2"], blk:["blocker 1"]}'
+        ),
+        path=str(proj_root),
+        ctx=_CONTEXT,
+    )
+    assert result.profile == "OUT-WORK", str(result.fields)
+    task_id = result.fields["task_id"]
+
+    from arqux.handlers.task import read_task
+    read_result = read_task(task_id=task_id, path=str(proj_root), ctx=_CONTEXT)
+    content_field = read_result.fields.get("content", "")
+    # content wins over the explicit obj param
+    assert "Content objective wins" in content_field
+    # every list section persisted
+    assert "pre 1" in content_field and "pre 2" in content_field
+    assert "step 1" in content_field and "step 2" in content_field
+    assert "ac 1" in content_field and "ac 2" in content_field
+    assert "blocker 1" in content_field
+    assert "$3: PRECONDITIONS" in content_field
+    assert "$4: PROCEDURE" in content_field
+    assert "$5: ACCEPTANCE" in content_field
+    assert "$6: BLOCKERS" in content_field
+
+
+def test_task_create_scalar_list_values_coerce_to_single_item(tmp_path: Path) -> None:
+    """A scalar list value in content becomes a single-item list instead of
+    being silently dropped (T-007 silent-loss class)."""
+    proj_root = _bootstrap_env(tmp_path)
+
+    result = create_task(
+        obj="Test obj",
+        content='$1:{obj:"Scalar lists", pre:only precondition, ac:only criterion, blk:one blocker}',
+        path=str(proj_root),
+        ctx=_CONTEXT,
+    )
+    assert result.profile == "OUT-WORK", str(result.fields)
+    task_id = result.fields["task_id"]
+
+    from arqux.handlers.task import read_task
+    read_result = read_task(task_id=task_id, path=str(proj_root), ctx=_CONTEXT)
+    content_field = read_result.fields.get("content", "")
+    assert "CNST:" in content_field
+    assert "only precondition" in content_field
+    assert "CLAIM:" in content_field
+    assert "only criterion" in content_field
+    assert "BLK:" in content_field
+    assert "one blocker" in content_field
+
+
 def test_task_create_retrocompatible_without_content(tmp_path: Path) -> None:
     """Without content, individual params work as before."""
     proj_root = _bootstrap_env(tmp_path)

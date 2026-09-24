@@ -40,7 +40,7 @@ def next_pulse_event_id(project_root: Path) -> str:
     for backward compatibility. Implements sanity check: if the
     generated ID already exists, keep incrementing (P3.3).
     """
-    events = read_pulse_from_brain(project_root)
+    events = read_pulse_from_brain(project_root, limit=None)
     existing_ids = set()
     if not events:
         return "E-0001"
@@ -115,12 +115,16 @@ def read_pulse_from_brain(
     task_id: str | None = None,
     cycle: str | None = None,
     since: str | None = None,
-    limit: int = 100,
+    limit: int | None = 100,
+    offset: int = 0,
 ) -> list[dict[str, str]]:
     """Read pulse entries from the brain's PULSE section via crud_read.
 
     Each entry is returned as dict with fields:
         {ts, id, task, kind, cycle, agent, payload}
+
+    ``limit=None`` reads all matching entries; ``offset`` skips the
+    first N matching entries.
     """
     brain_path = _brain_cortex_path(project_root)
     if not brain_path.exists():
@@ -150,9 +154,9 @@ def read_pulse_from_brain(
         if since and ev["ts"] < since:
             continue
         entries.append(ev)
-        if len(entries) >= limit:
+        if limit is not None and len(entries) >= offset + limit:
             break
-    return entries
+    return entries[offset:]
 
 
 def _parse_pulse_line(line: str) -> dict[str, str] | None:

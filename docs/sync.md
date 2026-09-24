@@ -153,14 +153,17 @@ Campos escritos en `DOM:<proyecto>`:
 
 **Ubicación:** `src/arqux/sync.py`
 
-Sincronización profunda proyecto ↔ meta-brain. Actualiza el `OBJ` del brain
-del proyecto con el objetivo del ciclo activo y refleja métricas en
+Sincronización profunda proyecto ↔ meta-brain. Preserva el `OBJ` del brain
+del proyecto: un entry existente mantiene su `goal`/`status`/`survive` —
+solo se refrescan `success`, `updated` y `event` — y refleja métricas en
 `DOM:<proyecto>` del meta-brain.
 
 Comportamiento tolerante (BLP-008): si el brain no tiene ningún entry
 `OBJ:*` en `$3`, no aborta — registra `'brain has no OBJ entry in §3'` en
-`errors[]` del resultado y continúa con la sincronización del meta-brain
-(`meta_synced=True`).
+`errors[]` del resultado, crea un `OBJ:sync` genérico y continúa con la
+sincronización del meta-brain (`meta_synced=True`). En contexto workspace
+el `FCS:current` del meta-brain se preserva igualmente: solo se refrescan
+`updated`/`event`, y el `FCS` genérico se crea solo si no existe (T-010).
 
 ---
 

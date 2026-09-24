@@ -45,7 +45,7 @@ note right of RC
   manualmente via sync.reconcile()
   o cuando el contexto cambia al proyecto
 end note
-RC -> BRAIN: Actualiza OBJ con conteos reales
+RC -> BRAIN: Refresca OBJ (success/updated/event)\n— preserva goal del operador
 RC -> BRAIN: Actualiza KNW (métricas)
 RC -> BRAIN: Actualiza ARQX (metadata)
 RC --> HM: brain synced

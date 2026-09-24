@@ -198,3 +198,89 @@ def test_checkpoint_glued_keys_produce_hint(arqux_env):
     assert "hint" in out.fields
     assert "obj" in out.fields["hint"]
     assert "tasks" in out.fields["hint"]
+
+
+def test_checkpoint_list_value_round_trips(arqux_env):
+    """Commas inside [...] list values must not split entries or fuse keys."""
+    from arqux.core.state import crud_read
+
+    out = checkpoint_handler(
+        "fcs:X,obj:Y,tasks:[a,b],state:Z",
+        path=str(arqux_env.proj_root),
+    )
+    assert not _out_is_error(out), out
+    assert out.fields["tasks"] == "[a,b]"
+    assert out.fields["state"] == "Z"
+
+    read = crud_read(
+        arqux_env.proj_root / ".arqux" / "brain.cortex", "$8/WRK:current"
+    )
+    value = read["entries"][0]["value"]
+    assert value["fcs"] == "X"
+    assert value["obj"] == "Y"
+    assert value["tasks"] == "[a,b]"
+    assert value["state"] == "Z"
+
+
+def test_checkpoint_list_value_with_internal_colon_round_trips(arqux_env):
+    """List items containing ':' keep the full content after re-reading."""
+    from arqux.core.state import crud_read
+
+    out = checkpoint_handler(
+        "fcs:X,obj:Y,tasks:[T-1: draft, T-2: done],state:Z",
+        path=str(arqux_env.proj_root),
+    )
+    assert not _out_is_error(out), out
+    assert out.fields["tasks"] == "[T-1: draft, T-2: done]"
+    assert out.fields["state"] == "Z"
+
+    read = crud_read(
+        arqux_env.proj_root / ".arqux" / "brain.cortex", "$8/WRK:current"
+    )
+    value = read["entries"][0]["value"]
+    assert value["fcs"] == "X"
+    assert value["obj"] == "Y"
+    assert value["tasks"] == "[T-1: draft, T-2: done]"
+    assert value["state"] == "Z"
+
+
+def test_checkpoint_closing_bracket_ends_value_without_separator(arqux_env):
+    """A key:value right after ']' starts a new entry even without a comma."""
+    from arqux.core.state import crud_read
+
+    out = checkpoint_handler(
+        "fcs:X,obj:Y,tasks:[a,b] state:Z",
+        path=str(arqux_env.proj_root),
+    )
+    assert not _out_is_error(out), out
+    assert out.fields["tasks"] == "[a,b]"
+    assert out.fields["state"] == "Z"
+    assert "hint" not in out.fields
+
+    read = crud_read(
+        arqux_env.proj_root / ".arqux" / "brain.cortex", "$8/WRK:current"
+    )
+    value = read["entries"][0]["value"]
+    assert value["fcs"] == "X"
+    assert value["obj"] == "Y"
+    assert value["tasks"] == "[a,b]"
+    assert value["state"] == "Z"
+
+
+def test_checkpoint_escaped_quote_round_trips_without_double_escaping(arqux_env):
+    """Quoted values with escaped quotes unescape once — no double-escaping."""
+    from arqux.core.state import crud_read
+
+    out = checkpoint_handler(
+        'fcs:"say \\"hi\\"",obj:Y,tasks:[a,b],state:Z',
+        path=str(arqux_env.proj_root),
+    )
+    assert not _out_is_error(out), out
+    assert out.fields["fcs"] == 'say "hi"'
+
+    read = crud_read(
+        arqux_env.proj_root / ".arqux" / "brain.cortex", "$8/WRK:current"
+    )
+    value = read["entries"][0]["value"]
+    assert value["fcs"] == 'say "hi"'
+    assert '\\"' not in value["fcs"]
