@@ -2,6 +2,32 @@
 
 All notable changes to ArqUX are documented here.
 
+## [0.7.7] - 2026-09-24
+
+Permission-model reconciliation (T-020): full registry audit — all 88
+handlers classified and enforced; role checks now also apply to the
+`arqux call` CLI path.
+
+### Security — permissions
+- All mutating handlers now auditor-denied under `ARQUX_STRICT_ROLES=1`
+  (52 unconditional + 7 conditional; previously ~12 mutators — including
+  `session.handoff`, `sync.run`, `task.run`, `blueprint.execute` — were
+  auditor-callable)
+- New `CONDITIONAL_MUTATING` gate: auditors keep dry-run previews
+  (`learn.elevate`, `cortex.gc`, `file.validate`, `skill.evolve/edit`)
+  but are denied on mutating invocations (`apply`/`force`/`fix`/`content`
+  + `dry_run=false`), judged on signature-bound defaults at dispatch
+- `arqux call` CLI now enforces `ctx.check()` — previously bypassed
+  role checks entirely
+- `session.resume` removed from `MUTATING_HANDLERS` (pure read)
+- Dead `READ_ONLY_PREFIXES` and `_matches_prefix` removed
+
+### Fixed — docs
+- `blueprint.synthesize` no longer claims "does NOT write files" (it
+  persists the BLP file); `evidence.record` description corrected
+  (writes brain PULSE, not pulse.jsonl); PERMISSIONS.md/SECURITY.md
+  updated for the denylist+conditional model
+
 ## [0.7.6] - 2026-09-24
 
 Permission hardening (T-019): destructive cortex handlers now require a

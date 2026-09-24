@@ -18,10 +18,10 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 
 from arqux.handlers import REGISTRY
 from arqux.permissions import (
+    CONDITIONAL_MUTATING,
     GOVERNOR_ONLY,
     HMAC_REQUIRED,
     MUTATING_HANDLERS,
-    READ_ONLY_PREFIXES,
 )
 
 # 24-handler governance budget (P1-R)
@@ -53,6 +53,9 @@ def role_required(handler: str) -> str:
         return "GOVERNOR"
     if handler in MUTATING_HANDLERS:
         return "GOVERNOR, EXECUTOR"
+    if handler in CONDITIONAL_MUTATING:
+        flags = ", ".join(CONDITIONAL_MUTATING[handler]) or "dry_run"
+        return f"ALL (auditor denied when mutating: {flags})"
     return "ALL (read-only)"
 
 
@@ -108,7 +111,7 @@ def main() -> None:
     print(f"- **Governor-only**: {len(GOVERNOR_ONLY)} ({', '.join(GOVERNOR_ONLY)})")
     print(f"- **HMAC-required**: {len(HMAC_REQUIRED)} ({', '.join(HMAC_REQUIRED)})")
     print(f"- **Mutating (denied to auditor)**: {len(MUTATING_HANDLERS)}")
-    print(f"- **Read-only (allowed for auditor)**: {len(READ_ONLY_PREFIXES)}")
+    print(f"- **Conditional mutating (denied to auditor only when mutating)**: {len(CONDITIONAL_MUTATING)}")
 
 
 if __name__ == "__main__":

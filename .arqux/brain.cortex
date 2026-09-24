@@ -1350,7 +1350,7 @@ AUD:E_0903{date:"2026-09-24T18:05:03Z", event:"E-0903", task:"T-017", kind:"task
 
 AUD:E_0904{date:"2026-09-24T18:05:22Z", event:"E-0904", task:"T-008", kind:"task_complete", agent:"alfred", result:"All 6 handler incidents detected 2026-09-24 (documented in T-003..T-007 + T-001/T-002) were resolved, audited and closed: T-003 checkpoint tokenizer (bracket-aware _split_entries), T-004 entry_add content channel + enumerated diagnostics + force applied diff, T-005 unbounded outputs pagination/filters/compact, T-006 observability (entry_bytes/file_bytes + BRAIN_SECTION_MAP via cortex.ref sections=true), T-007 task_create content-wins list coercion, T-001 sync.run/auto-sync FCS preservation, T-002 five Manhattan defects (gc first_kept doc-model, metrics batch write, reconcile level honoring). Audit follow-ups also resolved: T-009 sibling diagnostics + non_bypassable, T-010 reconcile meta-brain FCS, T-011 metrics upsert + single-write batch, T-013 canal-I content_ignored, T-015 reconcile OBJ preserve, T-016 pulse event id unbounded scan, T-012 evidence.list offset, T-014 bytes semantics, T-017 doc alignment. Every ticket: Jarvis implemented, Heimdall audited (gates resolved by Alfred), regression tests added. Suite: 1395 -> 1507 passed (+112 tests), 0 failed, ruff clean. Open residue: none in CYCLE-12 besides this umbrella.", evidence:"All 6 handler incidents detected 2026-09-24 (documented in T-003..T-007 + T-001/T-002) were resolved, audited and closed: T-003 checkpoint tokenizer (bracket-aware _split_entries), T-004 entry_add content channel + enumerated diagnostics + force applied diff, T-005 unbounded outputs pagination/filters/compact, T-006 observability (entry_bytes/file_bytes + BRAIN_SECTION_MAP via cortex.ref sections=true), T-007 task_create content-wins list coercion, T-001 sync.run/auto-sync FCS preservation, T-002 five Manhattan defects (gc first_kept doc-model, metrics batch write, reconcile level honoring). Audit follow-ups also resolved: T-009 sibling diagnostics + non_bypassable, T-010 reconcile meta-brain FCS, T-011 metrics upsert + single-write batch, T-013 canal-I content_ignored, T-015 reconcile OBJ preserve, T-016 pulse event id unbounded scan, T-012 evidence.list offset, T-014 bytes semantics, T-017 doc alignment. Every ticket: Jarvis implemented, Heimdall audited (gates resolved by Alfred), regression tests added. Suite: 1395 -> 1507 passed (+112 tests), 0 failed, ruff clean. Open residue: none in CYCLE-12 besides this umbrella.", cycle:"CYCLE-12"}
 
-KNW:tasks_done{name:"tasks_done", value:"1", updated:"2026-09-24T19:25:37Z", topic:"metrics", content:"metric tasks_done=1", status:"done"}
+KNW:tasks_done{name:"tasks_done", value:"1", updated:"2026-09-24T20:12:42Z", topic:"metrics", content:"metric tasks_done=1", status:"done"}
 
 AUD:E_0905{date:"2026-09-24T18:05:46Z", event:"E-0905", task:"-", kind:"checkpoint", agent:"alfred", result:"cortex.checkpoint ok fcs=Soporte CYCLE-12 completo — 15 tickets c obj=", evidence:"cortex.checkpoint ok fcs=Soporte CYCLE-12 completo — 15 tickets c obj="}
 
@@ -1395,6 +1395,16 @@ AUD:E_0911{date:"2026-09-24T19:24:59Z", event:"E-0911", task:"-", kind:"handler_
 AUD:E_0912{date:"2026-09-24T19:25:00Z", event:"E-0912", task:"-", kind:"handler_call", agent:"anonymous", result:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", evidence:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md"}
 
 AUD:E_0913{date:"2026-09-24T19:25:36Z", event:"E-0913", task:"T-019", kind:"task_complete", agent:"alfred", result:"MUTATING_HANDLERS += cortex.gc,patch,migrate,checkpoint. Auditor denied/executor allowed tests (87 targeted + suite 1551). Heimdall APPROVED — checkpoint inclusion verified against auditor identity contract (never_mutate). Follow-up T-020: residual denylist reconciliation.", evidence:"MUTATING_HANDLERS += cortex.gc,patch,migrate,checkpoint. Auditor denied/executor allowed tests (87 targeted + suite 1551). Heimdall APPROVED — checkpoint inclusion verified against auditor identity contract (never_mutate). Follow-up T-020: residual denylist reconciliation.", cycle:"CYCLE-12"}
+
+AUD:E_0914{date:"2026-09-24T20:12:02Z", event:"E-0914", task:"-", kind:"handler_call", agent:"test", result:"[cortex.format] hcortex->cortex", evidence:"[cortex.format] hcortex->cortex"}
+
+AUD:E_0915{date:"2026-09-24T20:12:03Z", event:"E-0915", task:"-", kind:"handler_call", agent:"test", result:"[identity.get] agent_id=governor source=workspace", evidence:"[identity.get] agent_id=governor source=workspace"}
+
+AUD:E_0916{date:"2026-09-24T20:12:04Z", event:"E-0916", task:"-", kind:"handler_call", agent:"anonymous", result:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", evidence:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md"}
+
+AUD:E_0917{date:"2026-09-24T20:12:04Z", event:"E-0917", task:"-", kind:"handler_call", agent:"anonymous", result:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md", evidence:"[parse_blp_template] count=19 path=/home/vatrox/workspace/.arqux/templates/BLP_TEMPLATE.md"}
+
+AUD:E_0918{date:"2026-09-24T20:12:41Z", event:"E-0918", task:"T-020", kind:"task_complete", agent:"alfred", result:"Registry reconciled: 88 handlers classified (2 GOVERNOR_ONLY + 52 mutating + 7 conditional + 29 read). CONDITIONAL_MUTATING preserves auditor dry-run previews (learn.elevate apply, gc force+dry_run gate). READ_ONLY_PREFIXES dead code removed. Heimdall audit: C-1 session.resume misclassified→fixed (pure read), C-2 CLI arqux-call bypass→ctx.check wired. Suite 1646 passed, ruff clean.", evidence:"Registry reconciled: 88 handlers classified (2 GOVERNOR_ONLY + 52 mutating + 7 conditional + 29 read). CONDITIONAL_MUTATING preserves auditor dry-run previews (learn.elevate apply, gc force+dry_run gate). READ_ONLY_PREFIXES dead code removed. Heimdall audit: C-1 session.resume misclassified→fixed (pure read), C-2 CLI arqux-call bypass→ctx.check wired. Suite 1646 passed, ruff clean.", cycle:"CYCLE-12"}
 
 
 $7: LESSONS
@@ -1774,7 +1784,7 @@ LNG:session_E_0157{type:"session", entry_count:57, summary:"checkpoint:1,handler
 
 $8: ACTIVE_CONTEXT
 
-WRK:current{phase:"current", current:"task.complete: task T-019 completed", blocked:"no", survive:"work", updated:"2026-09-24T19:25:37Z", event:"task.complete", fcs:"Post-restart verification", obj:"verificar round-trip de listas", tasks:"[t1,t2,t3]", state:"checkpoint OK", last_turn:"2026-09-24T18:23:36Z"}
+WRK:current{phase:"current", current:"task.complete: task T-020 completed", blocked:"no", survive:"work", updated:"2026-09-24T20:12:42Z", event:"task.complete", fcs:"Post-restart verification", obj:"verificar round-trip de listas", tasks:"[t1,t2,t3]", state:"checkpoint OK", last_turn:"2026-09-24T18:23:36Z"}
 
 
 $9: RISKS

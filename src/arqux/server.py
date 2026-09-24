@@ -40,7 +40,10 @@ def _wrap_handler(name: str, handler: Any) -> Any:
     async def wrapped(**kwargs: Any) -> str:
         ctx = PermissionContext.from_env()
         try:
-            ctx.check(name)
+            # T-020: forward the call args — ctx.check resolves signature
+            # defaults for CONDITIONAL_MUTATING evaluation (e.g.
+            # cortex.gc(force=True) still previews: dry_run defaults True).
+            ctx.check(name, **kwargs)
         except PermissionDenied as exc:
             return CortexOUT.profile(
                 OUT_ERROR,

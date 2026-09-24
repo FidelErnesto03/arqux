@@ -6,7 +6,7 @@ v0.4.0 model:
     - AUDITOR: read-only + governance handlers (universal).
     - GOVERNOR_ONLY = {workspace.init, project.init}
     - HMAC_REQUIRED enforced for identity.record, evidence.record,
-      blueprint.approve, blueprint.re_delegate.
+      blueprint.re_delegate.
 """
 
 from __future__ import annotations
