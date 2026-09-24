@@ -2,6 +2,25 @@
 
 All notable changes to ArqUX are documented here.
 
+## [0.7.5] - 2026-09-24
+
+Scoped `cortex.gc` repair (T-018): the handler can now target duplicate
+groups precisely and fix ID collisions without deleting evidence. Applied
+to repair the ARQUX brain: 555 colliding pulse events renamed to unique
+IDs (all preserved), 32 metric and 8 lesson duplicates deduplicated.
+
+### Added — cortex.gc
+- Filters `section`/`sigil`/`name` (combinable): scope collection to
+  matching duplicate groups only; unfiltered calls keep prior behavior
+- `keep='first'|'last'`: `last` retains the most recent occurrences
+  (correct semantics for metric entries like `KNW:*`)
+- `mode='dedupe'|'rename'`: `rename` preserves every occurrence, renaming
+  extras to the next available sequential numeric suffix within the same
+  (section, sigil) namespace, in file order; matching `event`/`id` attrs
+  are updated consistently (underscore and hyphen forms); non-numeric
+  names get `_NNN` suffixes
+- `dry_run` previews both modes, including assigned `new_name`s
+
 ## [0.7.4] - 2026-09-24
 
 CYCLE-12 support-cycle remediation: 17 governed tickets resolved covering
