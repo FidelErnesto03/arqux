@@ -556,3 +556,74 @@ STP:tail{name:"tail", action:"unclosed entry at eof",
         entries = doc["sections"][0]["entries"]
         assert len(entries) == 1
         assert entries[0]["name"] == "tail"
+
+
+class TestHeimdallFollowups:
+    """Regression — Heimdall audit follow-ups on the multiline scanner."""
+
+    def test_escaped_quote_in_multiline_value(self):
+        # A `"` inside a quoted value must not desync in_str (audit F1):
+        # value a"b\nc serializes with \" — the scanner must stay inside
+        # the string so the closing `}` still fires.
+        text = '''\
+$1: STEPS
+
+STP:quoted{name:"quoted", cmd:"echo \\"hi\\" &&
+       echo done",
+  status:"current"}
+STP:after{name:"after", action:"x"}
+'''
+        doc = cortex_to_dict(text)
+        names = [e["name"] for e in doc["sections"][0]["entries"]]
+        assert names == ["quoted", "after"]
+        assert "echo done" in doc["sections"][0]["entries"][0]["attrs"]["cmd"]
+
+    def test_closing_brace_position_slice(self):
+        # Nested brace before the structural close must be preserved
+        # (audit F2): the slice cuts at the depth-0 index only — an
+        # rstrip-style cut would also eat the inner `}` of `x:{b}}`.
+        text = '''\
+$1: RULES
+
+AXM:r1{
+data:{b}}
+AXM:r2{plain}
+'''
+        doc = cortex_to_dict(text)
+        entries = doc["sections"][0]["entries"]
+        assert len(entries) == 2
+        assert entries[0]["body"] == "data:{b}"
+
+    def test_dotted_section_id(self):
+        # $N.N section headers are valid CORTEX (audit F3).
+        text = '''\
+$0
+
+$0.1: ARQUX METADATA
+
+ARQX:artifact{level:2, name:"x"}
+
+$1: TASK
+
+WRK:t{status:"draft"}
+'''
+        doc = cortex_to_dict(text)
+        ids = [s["id"] for s in doc["sections"]]
+        assert "$0.1" in ids
+        assert "$1" in ids
+
+    def test_unbalanced_first_line_routes_multiline(self):
+        # First fragment ending in `}` inside an open quote must NOT take
+        # the single-line path (audit ordering note).
+        text = '''\
+$1: STEPS
+
+STP:o{name:"o", cmd:"see } here",
+  x:"1"}
+STP:p{name:"p"}
+'''
+        doc = cortex_to_dict(text)
+        entries = doc["sections"][0]["entries"]
+        assert len(entries) == 2
+        assert entries[0]["name"] == "o"
+        assert entries[0]["attrs"]["x"] == "1"

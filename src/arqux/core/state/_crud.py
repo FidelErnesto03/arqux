@@ -466,6 +466,8 @@ def _resolve_legacy_selector(doc: dict, selector: str) -> str:
     selector uses '_'.
     """
     import re
+    if not isinstance(selector, str):
+        raise ValueError(f"Invalid selector: {selector!r}")
     # Already in $N/ format?
     if selector.strip().startswith("$"):
         return selector
@@ -503,6 +505,8 @@ def _select_all_sections(doc: dict, selector: str) -> list[dict]:
     Returns a list of entry dicts annotated with ``section`` info.
     """
     import re
+    if not isinstance(selector, str):
+        return []
     # Parse SIGIL:name or SIGIL:*
     m = re.match(r"^([A-Za-z][A-Za-z0-9]*):(.+)$", selector.strip())
     if not m:
