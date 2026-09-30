@@ -7,14 +7,12 @@ Covers:
   4. Parse glossary with comments
   5. Parse comments within sections
   6. Round-trip: cortex_to_dict → write_cortex_from_json → cortex_to_dict
-  7. Fallback parser (mock CODEC-CORTEX as unavailable)
+  7. Own parser only — CODEC-CORTEX preference removed (T-028)
   8. Empty document
   9. Real .cortex file (use a small fixture)
 """
 
 from __future__ import annotations
-
-from unittest.mock import patch
 
 import pytest
 
@@ -253,31 +251,27 @@ class TestRoundTrip:
 
 
 class TestFallbackParser:
-    """Test 7: Fallback parser (mock CODEC-CORTEX as unavailable)."""
+    """Test 7: Own parser — CODEC-CORTEX removed (T-028)."""
 
     def test_fallback_parses_section(self):
-        with patch("arqux.cortex.reader._PARSER", None):
-            doc = cortex_to_dict(SIMPLE_CORTEX)
+        doc = cortex_to_dict(SIMPLE_CORTEX)
         assert len(doc["sections"]) == 1
         assert doc["sections"][0]["id"] == "$1"
         assert doc["sections"][0]["title"] == "TEST"
 
     def test_fallback_parses_attrs_entry(self):
-        with patch("arqux.cortex.reader._PARSER", None):
-            doc = cortex_to_dict(SIMPLE_CORTEX)
+        doc = cortex_to_dict(SIMPLE_CORTEX)
         entry = doc["sections"][0]["entries"][0]
         assert entry["sigil"] == "LNG"
         assert entry["name"] == "test"
         assert entry["attrs"]["type"] == "process"
 
     def test_fallback_parses_multiple_sections(self):
-        with patch("arqux.cortex.reader._PARSER", None):
-            doc = cortex_to_dict(MULTI_SECTION_CORTEX)
+        doc = cortex_to_dict(MULTI_SECTION_CORTEX)
         assert len(doc["sections"]) == 2
 
     def test_fallback_parses_cuerpo(self):
-        with patch("arqux.cortex.reader._PARSER", None):
-            doc = cortex_to_dict(CUERPO_CORTEX)
+        doc = cortex_to_dict(CUERPO_CORTEX)
         entry = doc["sections"][0]["entries"][0]
         assert entry["sigil"] == "AXM"
         assert entry["name"] == "rule1"
@@ -285,23 +279,20 @@ class TestFallbackParser:
         assert "Step 1" in entry["body"]
 
     def test_fallback_parses_glossary_comments(self):
-        with patch("arqux.cortex.reader._PARSER", None):
-            doc = cortex_to_dict(GLOSSARY_COMMENTS_CORTEX)
+        doc = cortex_to_dict(GLOSSARY_COMMENTS_CORTEX)
         comments = doc["glossary"]["comments"]
         assert "# This is a glossary comment" in comments
 
     def test_fallback_parses_section_comments(self):
-        with patch("arqux.cortex.reader._PARSER", None):
-            doc = cortex_to_dict(SECTION_COMMENTS_CORTEX)
+        doc = cortex_to_dict(SECTION_COMMENTS_CORTEX)
         sec = doc["sections"][0]
         comments = sec.get("comments", [])
         assert "# Section comment 1" in comments
 
     def test_fallback_roundtrip(self):
-        with patch("arqux.cortex.reader._PARSER", None):
-            doc1 = cortex_to_dict(SIMPLE_CORTEX)
-            text = write_cortex_from_json(doc1)
-            doc2 = cortex_to_dict(text)
+        doc1 = cortex_to_dict(SIMPLE_CORTEX)
+        text = write_cortex_from_json(doc1)
+        doc2 = cortex_to_dict(text)
         assert len(doc1["sections"]) == len(doc2["sections"])
         e1 = doc1["sections"][0]["entries"][0]
         e2 = doc2["sections"][0]["entries"][0]
@@ -406,97 +397,85 @@ class TestFallbackEdgeCases:
     """Additional fallback parser edge cases for coverage."""
 
     def test_fallback_attrs_with_integer(self):
-        with patch("arqux.cortex.reader._PARSER", None):
-            text = "$0\n\n$1: T\n\nTIE:nano{window:8, load:AGENTS}\n"
-            doc = cortex_to_dict(text)
+        text = "$0\n\n$1: T\n\nTIE:nano{window:8, load:AGENTS}\n"
+        doc = cortex_to_dict(text)
         entry = doc["sections"][0]["entries"][0]
         assert entry["attrs"]["window"] == 8
         assert entry["attrs"]["load"] == "AGENTS"
 
     def test_fallback_attrs_with_boolean(self):
-        with patch("arqux.cortex.reader._PARSER", None):
-            text = "$0\n\n$1: T\n\nLNG:test{active:true, dead:false}\n"
-            doc = cortex_to_dict(text)
+        text = "$0\n\n$1: T\n\nLNG:test{active:true, dead:false}\n"
+        doc = cortex_to_dict(text)
         entry = doc["sections"][0]["entries"][0]
         assert entry["attrs"]["active"] is True
         assert entry["attrs"]["dead"] is False
 
     def test_fallback_attrs_with_float(self):
-        with patch("arqux.cortex.reader._PARSER", None):
-            text = "$0\n\n$1: T\n\nLNG:test{val:3.14}\n"
-            doc = cortex_to_dict(text)
+        text = "$0\n\n$1: T\n\nLNG:test{val:3.14}\n"
+        doc = cortex_to_dict(text)
         entry = doc["sections"][0]["entries"][0]
         assert entry["attrs"]["val"] == 3.14
 
     def test_fallback_empty_attrs(self):
-        with patch("arqux.cortex.reader._PARSER", None):
-            text = "$0\n\n$1: T\n\nLNG:test{}\n"
-            doc = cortex_to_dict(text)
+        text = "$0\n\n$1: T\n\nLNG:test{}\n"
+        doc = cortex_to_dict(text)
         entry = doc["sections"][0]["entries"][0]
         assert entry["attrs"] == {}
 
     def test_fallback_cuerpo_not_attrs(self):
         """Multi-line body that isn't valid attrs → cuerpo."""
-        with patch("arqux.cortex.reader._PARSER", None):
-            text = "$0\n\n$1: T\n\nAXM:rule{\njust some text\nnot attrs\n}\n"
-            doc = cortex_to_dict(text)
+        text = "$0\n\n$1: T\n\nAXM:rule{\njust some text\nnot attrs\n}\n"
+        doc = cortex_to_dict(text)
         entry = doc["sections"][0]["entries"][0]
         assert "body" in entry
         assert "just some text" in entry["body"]
 
     def test_fallback_multi_line_attrs(self):
         """Multi-line entry with valid attrs parsed as attrs."""
-        with patch("arqux.cortex.reader._PARSER", None):
-            text = "$0\n\n$1: T\n\nLNG:test{\ntype:\"process\",\nlevel:\"2\"\n}\n"
-            doc = cortex_to_dict(text)
+        text = "$0\n\n$1: T\n\nLNG:test{\ntype:\"process\",\nlevel:\"2\"\n}\n"
+        doc = cortex_to_dict(text)
         entry = doc["sections"][0]["entries"][0]
         assert "attrs" in entry
         assert entry["attrs"]["type"] == "process"
 
     def test_fallback_glossary_only_with_comments(self):
         """Just $0 with comments, no other sections."""
-        with patch("arqux.cortex.reader._PARSER", None):
-            text = "$0\n# only comment\n"
-            doc = cortex_to_dict(text)
+        text = "$0\n# only comment\n"
+        doc = cortex_to_dict(text)
         assert doc["glossary"]["comments"] == ["# only comment"]
         assert doc["sections"] == []
 
     def test_fallback_multiple_entries_in_section(self):
-        with patch("arqux.cortex.reader._PARSER", None):
-            text = "$0\n\n$1: T\n\nLNG:a{x:1}\nLNG:b{y:2}\n"
-            doc = cortex_to_dict(text)
+        text = "$0\n\n$1: T\n\nLNG:a{x:1}\nLNG:b{y:2}\n"
+        doc = cortex_to_dict(text)
         entries = doc["sections"][0]["entries"]
         assert len(entries) == 2
         assert entries[0]["name"] == "a"
         assert entries[1]["name"] == "b"
 
     def test_fallback_skips_gsig_declarations(self):
-        with patch("arqux.cortex.reader._PARSER", None):
-            text = "$0\nGSIG:AXM{name:axiom}\n\n$1: T\n\nLNG:test{x:1}\n"
-            doc = cortex_to_dict(text)
+        text = "$0\nGSIG:AXM{name:axiom}\n\n$1: T\n\nLNG:test{x:1}\n"
+        doc = cortex_to_dict(text)
         # GSIG line should not appear as an entry
         assert len(doc["sections"]) == 1
         assert len(doc["sections"][0]["entries"]) == 1
 
     def test_fallback_section_no_title(self):
-        with patch("arqux.cortex.reader._PARSER", None):
-            text = "$0\n\n$1\n\nLNG:test{x:1}\n"
-            doc = cortex_to_dict(text)
+        text = "$0\n\n$1\n\nLNG:test{x:1}\n"
+        doc = cortex_to_dict(text)
         sec = doc["sections"][0]
         assert sec["id"] == "$1"
         assert sec["title"] is None
 
     def test_fallback_unrecognized_lines_skipped(self):
-        with patch("arqux.cortex.reader._PARSER", None):
-            text = "$0\n\n$1: T\n\ngarbage line\nLNG:test{x:1}\n"
-            doc = cortex_to_dict(text)
+        text = "$0\n\n$1: T\n\ngarbage line\nLNG:test{x:1}\n"
+        doc = cortex_to_dict(text)
         # Should still parse the valid entry
         assert len(doc["sections"][0]["entries"]) == 1
 
     def test_fallback_string_escaping(self):
-        with patch("arqux.cortex.reader._PARSER", None):
-            text = '$0\n\n$1: T\n\nLNG:test{msg:"hello \\"world\\""}\n'
-            doc = cortex_to_dict(text)
+        text = '$0\n\n$1: T\n\nLNG:test{msg:"hello \\"world\\""}\n'
+        doc = cortex_to_dict(text)
         entry = doc["sections"][0]["entries"][0]
         assert entry["attrs"]["msg"] == 'hello "world"'
 
@@ -527,23 +506,53 @@ Then do more
         assert "Then do more" in entry["body"]
 
 
-class TestParserFailureFallback:
-    """Test that regex fallback is used when CODEC-CORTEX parser raises."""
 
-    def test_parser_exception_triggers_fallback(self):
-        """When the parser raises an exception, the reader falls back to regex."""
-        with patch("arqux.cortex.reader._PARSER") as mock_parser:
-            mock_parser.side_effect = RuntimeError("parser crashed")
-            mock_parser._PARSER_API = "cortex_core"
-            doc = cortex_to_dict(SIMPLE_CORTEX)
-        # Fallback should still parse correctly
-        assert len(doc["sections"]) == 1
-        assert doc["sections"][0]["id"] == "$1"
 
-    def test_parser_exception_fallback_attrs(self):
-        with patch("arqux.cortex.reader._PARSER") as mock_parser:
-            mock_parser.side_effect = RuntimeError("parser crashed")
-            doc = cortex_to_dict(SIMPLE_CORTEX)
-        entry = doc["sections"][0]["entries"][0]
-        assert entry["sigil"] == "LNG"
-        assert entry["name"] == "test"
+class TestInlineBraceMultiLine:
+    """Regression — T-028: entries opened as `SIGIL:name{<content...` where
+    the opening brace is NOT line-final must parse via the own parser.
+    Covers the writer's single-line-open serialization whose quoted values
+    re-wrap across physical lines (UPGRADE.cortex new_identities case)."""
+
+    def test_inline_open_multiline_attrs(self):
+        text = '''\
+$1: STEPS
+
+STP:new_identities{name:"new_identities", action:"Copy files",
+  cmd:"for f in $(find src -name '*.cortex'); do
+       name=$(basename $f);
+       cp $f dest/$name;
+     done",
+  status:"current"}
+'''
+        doc = cortex_to_dict(text)
+        entries = doc["sections"][0]["entries"]
+        assert len(entries) == 1
+        e = entries[0]
+        assert e["sigil"] == "STP"
+        assert e["name"] == "new_identities"
+        assert "attrs" in e
+        assert "done" in e["attrs"]["cmd"]
+        assert e["attrs"]["status"] == "current"
+
+    def test_inline_open_following_entry_not_swallowed(self):
+        text = '''\
+$1: STEPS
+
+STP:first{name:"first", action:"do a"}
+STP:second{name:"second", action:"do b"}
+'''
+        doc = cortex_to_dict(text)
+        names = [e["name"] for e in doc["sections"][0]["entries"]]
+        assert names == ["first", "second"]
+
+    def test_eof_open_entry_no_close(self):
+        text = '''\
+$1: STEPS
+
+STP:tail{name:"tail", action:"unclosed entry at eof",
+'''
+        doc = cortex_to_dict(text)
+        entries = doc["sections"][0]["entries"]
+        assert len(entries) == 1
+        assert entries[0]["name"] == "tail"
