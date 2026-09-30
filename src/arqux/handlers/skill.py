@@ -391,7 +391,7 @@ def _replace_skill_section(body: str, section_id: str, new_content: str) -> str 
     the header, it is stripped to avoid duplication.
     Returns the new body, or None if the section was not found.
     """
-    normalized = section_id.lstrip("$")
+    normalized = str(section_id).lstrip("$")
     target_header = re.compile(rf"^\${re.escape(normalized)}(?::.*)?$")
     section_header = re.compile(r"^\$(\d+(?:\.\d+)?)(?::.*)?$")
 

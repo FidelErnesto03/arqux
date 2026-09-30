@@ -1,6 +1,7 @@
 """BLP-004: CORTEX text → dict JSON model converter.
 
-Uses CODEC-CORTEX parser for parsing, with regex-based fallback.
+ARQUX's own parser is the single authority (CODEC-CORTEX is a
+format convention, not an implementation — T-028).
 
 The returned dict matches the input model expected by
 :mod:`arqux.cortex.writer` (BLP-001)::
@@ -43,7 +44,7 @@ __all__ = ["cortex_to_dict"]
 
 # Section header:  $0  or  $1: TITLE  or  $19: ARQUX METADATA
 _SECTION_RE = re.compile(
-    r"^(?P<id>\$\d+)(?:\s*:\s*(?P<title>.+))?$"
+    r"^(?P<id>\$\d+(?:\.\d+)?)(?:\s*:\s*(?P<title>.+))?$"
 )
 
 # Single-line attrs entry:  SIGIL:name{key:"value", ...}
@@ -67,6 +68,21 @@ _COMMENT_RE = re.compile(r"^#")
 # ---------------------------------------------------------------------------
 # Regex fallback path (no CODEC-CORTEX)
 # ---------------------------------------------------------------------------
+
+
+def _is_escaped(text: str, pos: int) -> bool:
+    """True when ``text[pos]`` is preceded by an odd run of backslashes."""
+    n = 0
+    j = pos - 1
+    while j >= 0 and text[j] == "\\":
+        n += 1
+        j -= 1
+    return n % 2 == 1
+
+
+def _balanced_quotes(text: str) -> bool:
+    """True when every unescaped ``"`` in *text* is paired."""
+    return sum(1 for p, ch in enumerate(text) if ch == '"' and not _is_escaped(text, p)) % 2 == 0
 
 
 def _parse_fallback(text: str) -> dict:
@@ -152,8 +168,11 @@ def _parse_fallback(text: str) -> dict:
             continue
 
         # Single-line attrs entry:  SIGIL:name{...}
+        # Quote-parity guard: a match whose quotes are unbalanced is really
+        # a multiline entry whose first fragment ends in `}` inside an open
+        # string — fall through to the depth scanner instead of truncating.
         m = _ATTRS_INLINE_RE.match(stripped)
-        if m and current_section is not None:
+        if m and current_section is not None and _balanced_quotes(stripped):
             sigil = m.group("sigil")
             name = m.group("name")
             body = m.group("body").strip()
@@ -184,18 +203,16 @@ def _parse_fallback(text: str) -> dict:
             in_str = False
             done = False
             while i <= len(lines) and not done:
-                for ch in body_lines[-1]:
-                    if in_str:
-                        if ch == '"':
-                            in_str = False
-                    elif ch == '"':
-                        in_str = True
-                    elif ch == "{":
+                line_txt = body_lines[-1]
+                for pos, ch in enumerate(line_txt):
+                    if ch == '"' and not _is_escaped(line_txt, pos):
+                        in_str = not in_str
+                    elif not in_str and ch == "{":
                         depth += 1
-                    elif ch == "}":
+                    elif not in_str and ch == "}":
                         depth -= 1
                         if depth == 0:
-                            body_lines[-1] = body_lines[-1].rstrip("}").rstrip()
+                            body_lines[-1] = line_txt[:pos].rstrip()
                             done = True
                             break
                 if not done:
@@ -302,9 +319,9 @@ def _coerce_attr_value(raw: str) -> Any:
 def cortex_to_dict(text: str) -> dict:
     """Parse CORTEX text and convert to ArqUX JSON dict model.
 
-    Uses CODEC-CORTEX parser (``cortex.core`` or ``codec_cortex``) if
-    available.  Falls back to regex-based parsing if CODEC-CORTEX is
-    unavailable or raises an error on the input.
+    ARQUX's own parser is the single authority — installed codec
+    packages are never preferred (CODEC-CORTEX is a convention,
+    not an implementation — T-028).
 
     Returns dict matching :mod:`arqux.cortex.writer` input model::
 
