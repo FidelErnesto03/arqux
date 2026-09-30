@@ -284,3 +284,52 @@ def test_checkpoint_escaped_quote_round_trips_without_double_escaping(arqux_env)
     value = read["entries"][0]["value"]
     assert value["fcs"] == 'say "hi"'
     assert '\\"' not in value["fcs"]
+
+
+# ---------------------------------------------------------------------------
+# T-023: checkpoint path resolution (issue 2026-09-29, defect B)
+# ---------------------------------------------------------------------------
+
+
+def test_checkpoint_without_path_uses_session_context(arqux_env, monkeypatch):
+    """No path → the checkpoint lands in the ACTIVE session project brain."""
+    from arqux.core.state import crud_read
+
+    monkeypatch.chdir(arqux_env.ws_root)
+    ws_arqux = arqux_env.ws_root / ".arqux"
+    (ws_arqux / "context.cortex").write_text(
+        f'project_root="{arqux_env.proj_root}"\n', encoding="utf-8"
+    )
+
+    out = checkpoint_handler("fcs:X,obj:Y,tasks:[a,b],state:Z")
+    assert not _out_is_error(out), out
+    assert out.fields["brain"] == str(arqux_env.proj_root / ".arqux" / "brain.cortex")
+
+    read = crud_read(
+        arqux_env.proj_root / ".arqux" / "brain.cortex", "$8/WRK:current"
+    )
+    assert read["entries"][0]["value"]["fcs"] == "X"
+
+
+def test_checkpoint_without_path_or_context_fails_loudly(arqux_env, monkeypatch):
+    """No path + no session context → explicit error, never a silent wrong-brain write."""
+    ctx = arqux_env.ws_root / ".arqux" / "context.cortex"
+    if ctx.exists():
+        ctx.unlink()
+    monkeypatch.chdir(arqux_env.ws_root)
+    assert not (arqux_env.ws_root / ".arqux" / "brain.cortex").exists()
+
+    out = checkpoint_handler("fcs:X,obj:Y,tasks:[a,b],state:Z")
+    assert _out_is_error(out), out
+    assert "T-023" in out.message or "path" in out.message.lower()
+
+
+def test_checkpoint_explicit_path_wins_over_session_context(arqux_env, monkeypatch):
+    """Explicit path always wins over the session context pointer."""
+    monkeypatch.chdir(arqux_env.ws_root)
+    ctx = arqux_env.ws_root / ".arqux" / "context.cortex"
+    ctx.write_text(f'project_root="{arqux_env.proj_root}"\n', encoding="utf-8")
+
+    out = checkpoint_handler("fcs:E,obj:F,tasks:g,state:H", path=str(arqux_env.proj_root))
+    assert not _out_is_error(out), out
+    assert out.fields["brain"] == str(arqux_env.proj_root / ".arqux" / "brain.cortex")

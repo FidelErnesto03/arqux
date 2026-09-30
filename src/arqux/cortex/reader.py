@@ -6,7 +6,7 @@ The returned dict matches the input model expected by
 :mod:`arqux.cortex.writer` (BLP-001)::
 
     {
-        "glossary": {"header": "$0", "comments": [...]},
+        "glossary": {"header": "$0", "comments": [...], "symbols": [...]},
         "sections": [
             {
                 "id": "$N",
@@ -96,6 +96,7 @@ def _convert_cortex_core(doc: Any) -> dict:
     """
     sections_out: list[dict[str, Any]] = []
     glossary_comments: list[str] = []
+    glossary_symbols: list[dict[str, Any]] = []
     glossary_header = "$0"
 
     for section in doc.sections:
@@ -107,8 +108,11 @@ def _convert_cortex_core(doc: Any) -> dict:
         if sid == "$0":
             glossary_header = sid
             glossary_comments = comments
-            # Glossary entries (GSIG/GCON declarations) are not carried
-            # into our model — only comments matter.
+            # T-024: glossary entries round-trip as symbols (were dropped).
+            for entry in section.entries:
+                converted = _convert_entry_cortex_core(entry)
+                if converted is not None:
+                    glossary_symbols.append(converted)
             continue
 
         entries_out: list[dict[str, Any]] = []
@@ -128,6 +132,7 @@ def _convert_cortex_core(doc: Any) -> dict:
         "glossary": {
             "header": glossary_header,
             "comments": glossary_comments,
+            "symbols": glossary_symbols,
         },
         "sections": sections_out,
     }
@@ -205,6 +210,7 @@ def _convert_codec_cortex(doc: Any) -> dict:
     """
     sections_out: list[dict[str, Any]] = []
     glossary_comments: list[str] = []
+    glossary_symbols: list[dict[str, Any]] = []
     glossary_header = "$0"
 
     # Glossary
@@ -213,6 +219,14 @@ def _convert_codec_cortex(doc: Any) -> dict:
         glossary_comments = list(getattr(glossary, "comments", []) or [])
         gid = getattr(glossary, "id", 0)
         glossary_header = f"${gid}"
+        # T-024: glossary entries round-trip as symbols (were dropped).
+        ideas = getattr(glossary, "ideas", None)
+        if ideas is None:
+            ideas = getattr(glossary, "entries", []) or []
+        for idea in ideas:
+            converted = _convert_idea_codec_cortex(idea)
+            if converted is not None:
+                glossary_symbols.append(converted)
 
     for section in doc.sections:
         sid_raw = section.id
@@ -246,6 +260,7 @@ def _convert_codec_cortex(doc: Any) -> dict:
         "glossary": {
             "header": glossary_header,
             "comments": glossary_comments,
+            "symbols": glossary_symbols,
         },
         "sections": sections_out,
     }
@@ -290,6 +305,7 @@ def _parse_fallback(text: str) -> dict:
     """
     lines = text.split("\n")
     glossary_comments: list[str] = []
+    glossary_symbols: list[dict[str, Any]] = []
     glossary_header = "$0"
     sections: list[dict[str, Any]] = []
     current_section: dict[str, Any] | None = None
@@ -340,6 +356,8 @@ def _parse_fallback(text: str) -> dict:
                 if current_section.get("id") == "$0":
                     # Comments accumulated after $0 header are glossary comments
                     glossary_comments.extend(current_comments)
+                    # T-024: glossary entries round-trip as symbols
+                    glossary_symbols.extend(current_section.get("entries", []))
                 else:
                     # Append any pending comments to the section
                     current_section["comments"].extend(current_comments)
@@ -419,10 +437,15 @@ def _parse_fallback(text: str) -> dict:
         elif sections:
             sections[-1]["comments"].extend(current_comments)
 
+    # T-024: glossary entries at end-of-input round-trip as symbols
+    if current_section is not None and current_section.get("id") == "$0":
+        glossary_symbols.extend(current_section.get("entries", []))
+
     return {
         "glossary": {
             "header": glossary_header,
             "comments": glossary_comments,
+            "symbols": glossary_symbols,
         },
         "sections": sections,
     }
@@ -497,7 +520,7 @@ def cortex_to_dict(text: str) -> dict:
     Returns dict matching :mod:`arqux.cortex.writer` input model::
 
         {
-            "glossary": {"header": "$0", "comments": [...]},
+            "glossary": {"header": "$0", "comments": [...], "symbols": [...]},
             "sections": [
                 {"id": "$N", "title": "...", "entries": [...], "comments": [...]}
             ]
@@ -524,7 +547,7 @@ def cortex_to_dict(text: str) -> dict:
     # Handle empty / whitespace-only text
     if not text.strip():
         return {
-            "glossary": {"header": "$0", "comments": []},
+            "glossary": {"header": "$0", "comments": [], "symbols": []},
             "sections": [],
         }
 

@@ -139,8 +139,12 @@ def test_entry_add_value_required_without_content(tmp_path: Path) -> None:
 
 
 def test_entry_add_validation_errors_enumerated(tmp_path: Path) -> None:
-    """Validation failures enumerate every violation with entry/field context."""
-    f = tmp_path / "test.cortex"
+    """Validation failures enumerate every violation with entry/field context.
+
+    T-027: brain-level validation is scoped to brains — the target here is
+    a brain.cortex so the E032 critical-sigil rules apply.
+    """
+    f = tmp_path / "brain.cortex"
     f.write_text(_SAMPLE + "\nLNG:bad0{type:123}\n")
     result = entry_add_handler(
         str(f),

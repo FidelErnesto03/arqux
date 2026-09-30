@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "arqux"
-version = "0.7.8"
+version = "0.7.9"
 description = "Architectural User Experience for governed AI agents. Identity contracts, MCP governance, Blueprint lifecycle, CORTEX memory, and verifiable evidence."
 readme = "README.md"
 license = "Apache-2.0"
@@ -27,7 +27,9 @@ classifiers = [
 ]
 dependencies = [
     # MCP runtime — Model Context Protocol server primitives.
-    "mcp>=1.0.0",
+    # Pinned <2: server.py uses the lowlevel Server decorators (list_tools/call_tool)
+    # removed in mcp 2.x. Port to the new API before unpinning.
+    "mcp>=1.0.0,<2",
     # Utilities.
     "pydantic>=2.0.0",
     "click>=8.1.0",

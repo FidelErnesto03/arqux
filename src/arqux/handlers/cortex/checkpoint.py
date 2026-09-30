@@ -12,12 +12,37 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
+from ...constants import ARQUX_DIR, BRAIN_CORTEX
+from ...core.state import CONTEXT_CORTEX, find_workspace_root
 from ...cortex_out import CortexOUT
 from ...permissions import PermissionContext
 from ...pulse import append_pulse_to_brain, next_pulse_event_id
 from ...state import crud_read, crud_update, find_project_root
 
 _KEY_COLON_RE = re.compile(r"[A-Za-z_][A-Za-z0-9_]*\s*:")
+
+
+def _resolve_active_root(path: str | None) -> Path | None:
+    """Resolution order (T-023): explicit path > session context > cwd walk.
+
+    Without this, omitting ``path`` resolves to the SERVER process cwd and
+    the checkpoint silently lands in an unrelated project brain (issue
+    2026-09-29, defect B).  The session context file (``context.cortex``,
+    written by ``session.context.set``) is the authoritative pointer for
+    "the project the current work belongs to".
+    """
+    if path:
+        return find_project_root(start=path)
+    ws_root = find_workspace_root()
+    if ws_root is not None:
+        ctx_path = ws_root / CONTEXT_CORTEX
+        if ctx_path.exists():
+            m = re.search(r'project_root="([^"]*)"', ctx_path.read_text(encoding="utf-8"))
+            if m:
+                cand = Path(m.group(1)) / ARQUX_DIR
+                if (cand / BRAIN_CORTEX).exists():
+                    return cand
+    return find_project_root(start=None)
 
 
 def checkpoint_handler(
@@ -37,9 +62,11 @@ def checkpoint_handler(
     (cortex.patch semantics — single-line replacement).  If it does
     not exist a new entry is created.
     """
-    root = find_project_root(start=path)
+    root = _resolve_active_root(path)
     if root is None:
-        return CortexOUT.error("no project initialized", code="NOT_FOUND")
+        return CortexOUT.error(
+            "no active project: pass path explicitly (T-023)", code="NOT_FOUND"
+        )
 
     brain_path = root / "brain.cortex"
     if not brain_path.exists():
@@ -117,6 +144,7 @@ def checkpoint_handler(
         "obj": value["obj"][:60],
         "tasks": value["tasks"][:60],
         "state": value["state"],
+        "brain": str(brain_path),
     }
     if glued:
         fields["hint"] = (

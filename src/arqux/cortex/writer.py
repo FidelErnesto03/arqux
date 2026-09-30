@@ -14,7 +14,7 @@ JSON model (input)::
         "glossary": {
             "header": "$0",          # optional, defaults to "$0"
             "comments": ["# ..."],   # comment lines
-            "symbols": [...]         # optional, ignored
+            "symbols": [...]         # optional glossary entries (serialized after comments)
         },
         "sections": [
             {
@@ -142,12 +142,21 @@ def write_cortex_from_json(doc: dict) -> str:
     glossary = doc.get("glossary", {})
     header = glossary.get("header", "$0")
     comments = glossary.get("comments", [])
-    # symbols are ignored — comments carry the glossary
+    symbols = glossary.get("symbols", [])
 
     lines.append(header)
     lines.append("")  # blank line after header
     for comment in comments:
         lines.append(comment)
+
+    # T-024: glossary entries serialize after the comments (were dropped).
+    for entry in symbols:
+        if not isinstance(entry, dict):
+            raise ValueError(
+                f"Glossary symbol must be a dict, got {type(entry).__name__}"
+            )
+        lines.append(_format_entry(entry))
+        lines.append("")  # blank line after each entry
 
     # --- Sections ---
     sections = doc.get("sections", [])

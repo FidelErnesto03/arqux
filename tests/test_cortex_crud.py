@@ -151,12 +151,10 @@ class TestParseSelector:
             "name": "artifact",
         }
 
-    def test_wildcard_underscore(self) -> None:
-        assert parse_selector("$7/LNG:_") == {
-            "section": "$7",
-            "sigil": "LNG",
-            "name": "_",
-        }
+    def test_wildcard_underscore_rejected(self) -> None:
+        """T-022: '_' is deprecated — parse_selector rejects it explicitly."""
+        with pytest.raises(ValueError, match="deprecated"):
+            parse_selector("$7/LNG:_")
 
     def test_section_only(self) -> None:
         assert parse_selector("$7") == {
@@ -197,8 +195,12 @@ class TestSelectEntries:
         results = select_entries(doc, "$7/LNG:*")
         assert len(results) == 2
 
-    def test_wildcard_underscore_first_match(self, doc: dict) -> None:
-        results = select_entries(doc, "$7/LNG:_")
+    def test_wildcard_underscore_rejected(self, doc: dict) -> None:
+        """T-022: '_' selector is rejected, never aliased to the first entry."""
+        with pytest.raises(ValueError, match="deprecated"):
+            select_entries(doc, "$7/LNG:_")
+        # exact-name selection is untouched
+        results = select_entries(doc, "$7/LNG:lesson1")
         assert len(results) == 1
         assert results[0]["name"] == "lesson1"
 
@@ -254,6 +256,22 @@ class TestAddEntry:
     def test_add_invalid_value_raises(self, doc: dict) -> None:
         with pytest.raises(ValueError):
             add_entry(doc, "$7", "LNG", "x", 123)  # type: ignore[arg-type]
+
+    def test_add_reserved_name_underscore_rejected(self, doc: dict) -> None:
+        """T-022: entries named '_' cannot be created (unreachable by exact selector)."""
+        with pytest.raises(ValueError, match="reserved"):
+            add_entry(doc, "$7", "LNG", "_", {"type": "process"})
+
+    def test_add_reserved_name_star_rejected(self, doc: dict) -> None:
+        """T-022: entries named '*' cannot be created (wildcard collision)."""
+        with pytest.raises(ValueError, match="reserved"):
+            add_entry(doc, "$7", "LNG", "*", {"type": "process"})
+
+    def test_add_name_with_underscore_inside_ok(self, doc: dict) -> None:
+        """T-022: underscores inside names stay valid; only the exact name '_' is reserved."""
+        add_entry(doc, "$7", "LNG", "lesson_4", {"type": "process"})
+        entry = select_entries(doc, "$7/LNG:lesson_4")[0]
+        assert entry["attrs"] == {"type": "process"}
 
     def test_add_entry_section_not_found_no_create_raises(self, doc: dict) -> None:
         """OBS-006: add_entry to non-existent section without create_section raises ValueError."""
@@ -313,15 +331,19 @@ class TestUpdateEntry:
         with pytest.raises(ValueError, match="at least one"):
             update_entry(doc, "$7/LNG:lesson1")
 
-    def test_update_wildcard_underscore_first_match(self, doc_multi_lng: dict) -> None:
-        """OBS-006: _ wildcard in update_entry updates first matching entry only."""
-        update_entry(doc_multi_lng, "$7/LNG:_", set_={"type": "rule"})
-        first = select_entries(doc_multi_lng, "$7/LNG:lesson1")[0]
-        second = select_entries(doc_multi_lng, "$7/LNG:lesson2")[0]
-        third = select_entries(doc_multi_lng, "$7/LNG:lesson3")[0]
-        assert first["attrs"]["type"] == "rule"
-        assert second["attrs"]["type"] == "technical"
-        assert third["attrs"]["type"] == "process"
+    def test_update_wildcard_underscore_rejected(self, doc_multi_lng: dict) -> None:
+        """T-022: '_' selector in update_entry raises; no entry is modified."""
+        with pytest.raises(ValueError, match="deprecated"):
+            update_entry(doc_multi_lng, "$7/LNG:_", set_={"type": "rule"})
+        types = {
+            e["name"]: e["attrs"]["type"]
+            for e in select_entries(doc_multi_lng, "$7/LNG:*")
+        }
+        assert types == {
+            "lesson1": "behavioral",
+            "lesson2": "technical",
+            "lesson3": "process",
+        }
 
     def test_update_entry_section_not_found_raises(self, doc: dict) -> None:
         """OBS-006: update_entry on non-existent section raises ValueError."""
@@ -351,11 +373,11 @@ class TestDeleteEntry:
         # AXM entry untouched
         assert len(select_entries(doc, "$7/AXM:*")) == 1
 
-    def test_delete_wildcard_underscore_first(self, doc: dict) -> None:
-        delete_entry(doc, "$7/LNG:_")
-        remaining = select_entries(doc, "$7/LNG:*")
-        assert len(remaining) == 1
-        assert remaining[0]["name"] == "lesson2"
+    def test_delete_wildcard_underscore_rejected(self, doc: dict) -> None:
+        """T-022: '_' selector in delete_entry raises; nothing is deleted."""
+        with pytest.raises(ValueError, match="deprecated"):
+            delete_entry(doc, "$7/LNG:_")
+        assert len(select_entries(doc, "$7/LNG:*")) == 2
 
     def test_delete_entry_section_not_found_raises(self, doc: dict) -> None:
         """OBS-006: delete_entry on non-existent section raises ValueError."""
@@ -392,16 +414,12 @@ class TestMoveEntry:
         assert select_entries(doc, "$7/LNG:*") == []
         assert len(select_entries(doc, "$19/LNG:*")) == 2
 
-    def test_move_wildcard_underscore_first_match(self, doc_multi_lng: dict) -> None:
-        """OBS-006: _ wildcard in move_entry moves first matching entry only."""
-        move_entry(doc_multi_lng, "$7/LNG:_", "$8")
-        # first LNG (lesson1) moved to $8
-        assert select_entries(doc_multi_lng, "$7/LNG:lesson1") == []
-        assert len(select_entries(doc_multi_lng, "$8/LNG:lesson1")) == 1
-        # remaining LNG entries still in $7
-        remaining = select_entries(doc_multi_lng, "$7/LNG:*")
-        assert len(remaining) == 2
-        assert {e["name"] for e in remaining} == {"lesson2", "lesson3"}
+    def test_move_wildcard_underscore_rejected(self, doc_multi_lng: dict) -> None:
+        """T-022: '_' selector in move_entry raises; nothing is moved."""
+        with pytest.raises(ValueError, match="deprecated"):
+            move_entry(doc_multi_lng, "$7/LNG:_", "$8")
+        assert len(select_entries(doc_multi_lng, "$7/LNG:*")) == 3
+        assert select_entries(doc_multi_lng, "$8/LNG:*") == []
 
     def test_move_entry_section_not_found_raises(self, doc: dict) -> None:
         """OBS-006: move_entry from non-existent section raises ValueError."""

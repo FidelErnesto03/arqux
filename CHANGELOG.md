@@ -2,6 +2,50 @@
 
 All notable changes to ArqUX are documented here.
 
+## [0.7.9] - 2026-09-30
+
+Support remediation (CYCLE-12 T-022..T-030 — support tickets
+2026-09-29 and 2026-09-21): destructive `_` selector deprecated,
+checkpoint path resolution hardened, `$0` glossary round-trip
+preserved, and governed `issue.*` handlers added.
+
+### Breaking — selector semantics
+- `_` is no longer a wildcard for "first matching entry". Selectors
+  containing `:_` raise an explicit `ValueError` in both CRUD
+  implementations (`cortex/crud.py`, `core/state/_crud.py`); `*`
+  remains the only wildcard. `add_entry` now rejects entries named
+  `_` or `*`. Workaround for literal `_` entries: `*` + re-add
+  verbatim with backup
+- `cortex.learn` sanitizes generated entry names so they can no
+  longer produce the reserved names `_` or `*`
+
+### Added — issue registry handlers
+- New governed handlers `issue.create`, `issue.read`,
+  `issue.update`, `issue.list` (registry: 88 → 92). Mutations are
+  PULSE-traced, `status=verified` requires an `audit_ref` resolving
+  to a real PULSE event, and auditor remains read-only —
+  executor/auditor separation codified in the registry
+
+### Fixed — cortex handlers
+- `cortex.checkpoint` without `path` now resolves explicit path >
+  session context > cwd walk, reports the resolved `brain` path in
+  every output, and fails loudly (`NOT_FOUND`) when no project is
+  resolvable — previously wrote to the server cwd and reported ok
+- `cortex.write`/`cortex.read` round-trip: `$0` glossary `symbols`
+  entries are serialized and parsed back across all reader paths
+  (cortex.core, codec_cortex, regex fallback) — previously glossary
+  entries were silently discarded on write
+- Brain semantics validator (E024/E032) now applies only to
+  `brain.cortex`/`meta-brain.cortex` — issue artifacts and other
+  `.cortex` files no longer hit false brain-validation rejections
+- Legacy issue-status annotations canonicalized on parse (first
+  token), so records like `triaged (corrección programada: ...)`
+  transition correctly
+
+### Dependencies
+- `mcp` pinned `>=1.0.0,<2`: `server.py` uses the low-level Server
+  decorators removed in mcp 2.x (port tracked as debt)
+
 ## [0.7.8] - 2026-09-24
 
 Telemetry reduction (T-021 — Architect decision): read-classified

@@ -757,19 +757,21 @@ def test_entry_neither_attrs_nor_body() -> None:
         write_cortex_from_json(doc)
 
 
-def test_glossary_symbols_ignored() -> None:
-    """The 'symbols' key in glossary is ignored — comments carry the glossary."""
+def test_glossary_symbols_serialized_after_comments() -> None:
+    """T-024: 'symbols' entries serialize after the glossary comments."""
     doc = {
         "glossary": {
             "comments": ["# my comment"],
-            "symbols": [{"sigil": "X", "name": "y"}],
+            "symbols": [
+                {"sigil": "X", "name": "y", "attrs": {"k": "v"}},
+            ],
         },
         "sections": [],
     }
     text = write_cortex_from_json(doc)
     assert "# my comment" in text
-    # Symbol data should not appear as entry lines
-    assert "X:y{" not in text
+    assert 'X:y{x:"1"}' not in text  # sanity: unrelated entries absent
+    assert 'X:y{' in text  # symbol now serialized as an entry line
 
 
 def test_custom_glossary_header() -> None:
@@ -1320,3 +1322,83 @@ def test_validation_error_for_second_entry() -> None:
     }
     with pytest.raises(ValueError, match=r"Entry 1 in section \$1 missing required 'name' key"):
         write_cortex_from_json(doc)
+
+
+# ---------------------------------------------------------------------------
+# T-024: glossary ($0) entries round-trip (were silently dropped)
+# ---------------------------------------------------------------------------
+
+
+def test_glossary_symbols_serialized() -> None:
+    """T-024: entries in the $0 glossary serialize after the comments."""
+    doc = {
+        "glossary": {
+            "header": "$0",
+            "comments": ["# -- $0: GLOSSARY --"],
+            "symbols": [
+                {
+                    "sigil": "IDN",
+                    "name": "issue",
+                    "attrs": {"severity": "high", "status": "open"},
+                },
+            ],
+        },
+        "sections": [],
+    }
+    text = write_cortex_from_json(doc)
+    assert 'IDN:issue{severity:"high", status:"open"}' in text
+    # comments still come first, entry after them
+    assert text.index("# -- $0: GLOSSARY --") < text.index("IDN:issue{")
+
+
+def test_glossary_symbols_rejected_non_dict() -> None:
+    """T-024: a non-dict glossary symbol raises ValueError."""
+    doc = {
+        "glossary": {"comments": [], "symbols": ["not-a-dict"]},
+        "sections": [],
+    }
+    with pytest.raises(ValueError, match="Glossary symbol must be a dict"):
+        write_cortex_from_json(doc)
+
+
+@requires_parser
+def test_roundtrip_glossary_entries() -> None:
+    """T-024: write → parse keeps $0 glossary entries (attrs and cuerpo)."""
+    from arqux.cortex.reader import cortex_to_dict
+
+    doc = {
+        "glossary": {
+            "header": "$0",
+            "comments": ["# -- $0: GLOSSARY --"],
+            "symbols": [
+                {
+                    "sigil": "IDN",
+                    "name": "issue",
+                    "attrs": {"severity": "high", "status": "open"},
+                },
+                {"sigil": "WRK", "name": "note", "body": "multi\nline"},
+            ],
+        },
+        "sections": [
+            {
+                "id": "$1",
+                "title": "TASK",
+                "entries": [
+                    {"sigil": "OBJ", "name": "objective", "attrs": {"goal": "x"}},
+                ],
+                "comments": [],
+            }
+        ],
+    }
+    text = write_cortex_from_json(doc)
+    back = cortex_to_dict(text)
+
+    symbols = back["glossary"]["symbols"]
+    assert symbols[0]["sigil"] == "IDN"
+    assert symbols[0]["name"] == "issue"
+    assert symbols[0]["attrs"] == {"severity": "high", "status": "open"}
+    assert symbols[1]["body"] == "multi\nline"
+    # comments survive alongside the entries
+    assert back["glossary"]["comments"] == ["# -- $0: GLOSSARY --"]
+    # regular sections unaffected
+    assert back["sections"][0]["entries"][0]["attrs"] == {"goal": "x"}
