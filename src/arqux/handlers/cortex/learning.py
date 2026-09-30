@@ -85,6 +85,8 @@ def record_lesson_handler_legacy(
     try:
         first_word = lesson.lstrip(" -\"").lower().split()[0] if lesson.split() else "lesson"
         name = re.sub(r"[^a-z0-9]", "_", first_word)[:30] or "lesson"
+        if name in ("_", "*"):  # T-022: '_'/'*' are reserved selector names
+            name = "lesson"
         value = {"type": kind, "cause": cause, "lesson": lesson, "prevention": prevention}
 
         result = crud_add(

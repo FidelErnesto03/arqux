@@ -170,6 +170,9 @@ MUTATING_HANDLERS: frozenset[str] = frozenset({
     "cycle.synthesize",
     # evidence mutations
     "evidence.record",
+    # issue registry mutations (T-027) — the auditor endorses via
+    # audit_ref; the auditor role itself never calls these.
+    "issue.create", "issue.update",
     # cortex mutations
     "cortex.entry.add", "cortex.entry.delete", "cortex.entry.update",
     "cortex.entry.move", "cortex.write",

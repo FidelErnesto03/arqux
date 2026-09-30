@@ -116,8 +116,15 @@ def cortex_write(
     doc = cortex_to_dict(content)
 
     # Optional validation via CODEC-CORTEX (if available).
+    # T-027: brain-level validation applies to BRAINS only (see
+    # _read_and_mutate below for rationale).
+    from ...constants import BRAIN_CORTEX, META_BRAIN_CORTEX
     from ...state import _HAS_CODEC_CORTEX as _cc_available
-    if _cc_available and _cc_validator is not None:
+    if (
+        Path(path).name in (BRAIN_CORTEX, META_BRAIN_CORTEX)
+        and _cc_available
+        and _cc_validator is not None
+    ):
         try:
             ast_doc = _cc_parser.parse_cortex(content, path=path)
             diags = _cc_validator.validate(ast_doc)
@@ -201,8 +208,19 @@ def _read_and_mutate(
     doc = mutate_fn(doc)
 
     # Optional validation via CODEC-CORTEX (if available).
+    # T-027: brain-level validation applies to BRAINS only. Issue/task/
+    # artifact .cortex files are governed by their own handlers (issue.*,
+    # task.*, ...) with artifact-specific rules; running the brain
+    # validator on them produced false positives (E024/E032 on issue
+    # files) that trained operators to reach for force=True — eroding
+    # the safety net (issue 2026-09-29 / 2026-09-21).
+    from ...constants import BRAIN_CORTEX, META_BRAIN_CORTEX
     from ...state import _HAS_CODEC_CORTEX as _cc_available
-    if _cc_available and _cc_validator is not None:
+    if (
+        path.name in (BRAIN_CORTEX, META_BRAIN_CORTEX)
+        and _cc_available
+        and _cc_validator is not None
+    ):
         try:
             # Re-serialize to text for CODEC validation.
             cortex_text = write_cortex_from_json(doc)
@@ -249,6 +267,16 @@ def crud_read(path: str | Path, selector: str) -> dict:
         raise FileNotFoundError(str(path))
     text = path.read_text(encoding="utf-8")
     doc = cortex_to_dict(text)
+
+    # T-022: reject the deprecated '_' name before the legacy-selector
+    # fallback can swallow the deprecation error.
+    import re as _re
+
+    if _re.search(r"(?:^|/)[A-Za-z][A-Za-z0-9]*:_$", selector.strip()):
+        raise ValueError(
+            f"Selector name '_' is deprecated and rejected (T-022): {selector!r}. "
+            f"Use the exact entry name or '*'."
+        )
 
     # Try ArqUX selector format first ($N/SIGIL:name).
     try:
@@ -432,26 +460,33 @@ def _resolve_legacy_selector(doc: dict, selector: str) -> str:
     For wildcard selectors (``SIGIL:*``), returns the first section
     that contains entries with that sigil.
 
-    Raises ``ValueError`` if no matching section is found.
+    The legacy ``SIGIL:_`` form is rejected with ValueError (T-022).
+
+    Raises ``ValueError`` if no matching section is found or the
+    selector uses '_'.
     """
     import re
     # Already in $N/ format?
     if selector.strip().startswith("$"):
         return selector
-    # Parse SIGIL:name or SIGIL:* or SIGIL:_
+    # Parse SIGIL:name or SIGIL:*
     m = re.match(r"^([A-Za-z][A-Za-z0-9]*):(.+)$", selector.strip())
     if not m:
         raise ValueError(f"Invalid selector: {selector!r}")
     sigil = m.group(1)
     name = m.group(2)
 
+    if name == "_":
+        raise ValueError(
+            f"Selector name '_' is deprecated and rejected (T-022): {selector!r}. "
+            f"Use the exact entry name or 'SIGIL:*'."
+        )
+
     for sec in doc.get("sections", []):
         for entry in sec.get("entries", []):
             if entry.get("sigil") != sigil:
                 continue
-            if name in ("*", "_"):
-                return f"{sec['id']}/{sigil}:{name}"
-            if entry.get("name") == name:
+            if name == "*" or entry.get("name") == name:
                 return f"{sec['id']}/{sigil}:{name}"
     raise ValueError(f"No entries match selector {selector!r}")
 
@@ -462,17 +497,24 @@ def _select_all_sections(doc: dict, selector: str) -> list[dict]:
     Handles selectors without a section prefix:
     - ``SIGIL:name`` → match entries with this sigil and name in any section.
     - ``SIGIL:*`` → match all entries with this sigil in any section.
-    - ``SIGIL:_`` → match the first entry with this sigil in any section.
+
+    The legacy ``SIGIL:_`` form is rejected with ValueError (T-022).
 
     Returns a list of entry dicts annotated with ``section`` info.
     """
     import re
-    # Parse SIGIL:name or SIGIL:* or SIGIL:_
+    # Parse SIGIL:name or SIGIL:*
     m = re.match(r"^([A-Za-z][A-Za-z0-9]*):(.+)$", selector.strip())
     if not m:
         return []
     sigil = m.group(1)
     name = m.group(2)
+
+    if name == "_":
+        raise ValueError(
+            f"Selector name '_' is deprecated and rejected (T-022): {selector!r}. "
+            f"Use the exact entry name or 'SIGIL:*'."
+        )
 
     results: list[dict] = []
     for sec in doc.get("sections", []):
@@ -480,25 +522,7 @@ def _select_all_sections(doc: dict, selector: str) -> list[dict]:
         for entry in sec.get("entries", []):
             if entry.get("sigil") != sigil:
                 continue
-            if name in ("*", "_"):
-                results.append({
-                    "sigil": entry.get("sigil"),
-                    "name": entry.get("name"),
-                    "section": sec_id,
-                    "attrs": entry.get("attrs"),
-                    "body": entry.get("body"),
-                })
-                if name == "_":
-                    return results
-            elif name.endswith("*") and str(entry.get("name", "")).startswith(name[:-1]):  # noqa: SIM114 — kept explicit for readability
-                results.append({
-                    "sigil": entry.get("sigil"),
-                    "name": entry.get("name"),
-                    "section": sec_id,
-                    "attrs": entry.get("attrs"),
-                    "body": entry.get("body"),
-                })
-            elif entry.get("name") == name:
+            if name == "*" or name.endswith("*") and str(entry.get("name", "")).startswith(name[:-1]) or entry.get("name") == name:
                 results.append({
                     "sigil": entry.get("sigil"),
                     "name": entry.get("name"),

@@ -27,8 +27,12 @@ Selector syntax::
 
     '$7/LNG:*'            → all LNG entries in section $7
     '$19/ARQX:artifact'   → the ARQX:artifact entry in section $19
-    '$7/LNG:_'            → first LNG entry in section $7 (wildcard)
     '$7'                  → all entries in section $7
+
+The name '_' is NOT a wildcard and is NOT a valid selector name: it is
+rejected with ValueError (T-022 deprecation — it previously aliased to
+the first entry of the sigil, silently mis-targeting destructive ops;
+see issue 2026-09-29).
 """
 
 from __future__ import annotations
@@ -50,7 +54,7 @@ __all__ = [
 # Selector parsing
 # ---------------------------------------------------------------------------
 
-# Matches:  $7/LNG:*   $19/ARQX:artifact   $7/LNG:_   $7
+# Matches:  $7/LNG:*   $19/ARQX:artifact   $7   ('_' rejected — see parse_selector)
 _SELECTOR_RE = re.compile(
     r"""
     ^
@@ -74,16 +78,23 @@ def parse_selector(selector: str) -> dict:
 
         '$7/LNG:*'          → {"section": "$7", "sigil": "LNG", "name": "*"}
         '$19/ARQX:artifact' → {"section": "$19", "sigil": "ARQX", "name": "artifact"}
-        '$7/LNG:_'          → {"section": "$7", "sigil": "LNG", "name": "_"}
         '$7'                → {"section": "$7", "sigil": None, "name": None}
 
-    Raises ``ValueError`` if *selector* is malformed.
+    The name '_' is rejected with ValueError (T-022): it is not a
+    wildcard; address entries by exact name or with '*'.
+
+    Raises ``ValueError`` if *selector* is malformed or uses '_'.
     """
     if not isinstance(selector, str):
         raise ValueError(f"Selector must be a str, got {type(selector).__name__}")
     m = _SELECTOR_RE.match(selector.strip())
     if not m:
         raise ValueError(f"Invalid selector: {selector!r}")
+    if m.group("name") == "_":
+        raise ValueError(
+            f"Selector name '_' is deprecated and rejected (T-022): {selector!r}. "
+            f"Use the exact entry name or '*'."
+        )
     return {
         "section": m.group("section"),
         "sigil": m.group("sigil"),
@@ -107,12 +118,13 @@ def _find_section(doc: dict, section_id: str) -> dict | None:
 def _entry_matches(entry: dict, sigil: str | None, name: str | None) -> bool:
     """True if *entry* matches the parsed selector's sigil/name constraints.
 
-    Name patterns: ``*``/``_`` match any name; a trailing ``*`` (e.g.
+    Name patterns: ``*`` matches any name; a trailing ``*`` (e.g.
     ``mi_app*``) matches by prefix; anything else is an exact match.
+    The name '_' is rejected upstream by parse_selector (T-022).
     """
     if sigil is not None and entry.get("sigil") != sigil:
         return False
-    if name is None or name in ("*", "_"):
+    if name is None or name == "*":
         return True
     if name.endswith("*"):
         return str(entry.get("name", "")).startswith(name[:-1])
@@ -147,9 +159,9 @@ def select_entries(doc: dict, selector: str) -> list[dict]:
         # or
         [{"sigil":..., "name":..., "section":..., "body":...}]
 
-    Wildcard ``*`` matches all names.  Wildcard ``_`` matches the first
-    entry with the matching sigil.  A trailing ``*`` in the name (e.g.
-    ``$1/DOM:mi_app*``) matches by prefix.
+    Wildcard ``*`` matches all names.  A trailing ``*`` in the name (e.g.
+    ``$1/DOM:mi_app*``) matches by prefix.  The name '_' is rejected by
+    parse_selector (T-022).
     """
     parts = parse_selector(selector)
     section = _find_section(doc, parts["section"])
@@ -166,8 +178,6 @@ def select_entries(doc: dict, selector: str) -> list[dict]:
         if not _entry_matches(entry, sigil, name):
             continue
         results.append(_project_entry(entry, section["id"]))
-        if name == "_":  # wildcard: first match only
-            break
     return results
 
 
@@ -199,6 +209,11 @@ def add_entry(
     if not isinstance(value, (dict, str)):
         raise ValueError(
             f"value must be dict (attrs) or str (cuerpo), got {type(value).__name__}"
+        )
+    if name in ("*", "_"):
+        raise ValueError(
+            f"Entry name {name!r} is reserved (wildcard/deprecated) and "
+            f"cannot be created (T-022)"
         )
 
     section = _find_section(doc, section_id)
@@ -273,9 +288,6 @@ def update_entry(
             else:
                 entry["body"] = replace_body
 
-        if name == "_":  # wildcard: first match only
-            break
-
     if not matched:
         raise ValueError(f"No entries match selector {selector!r}")
     return doc
@@ -299,15 +311,7 @@ def delete_entry(doc: dict, selector: str) -> dict:
     sigil, name = parts["sigil"], parts["name"]
     entries = section.get("entries", [])
 
-    if name == "_":
-        # Delete first match only.
-        for idx, entry in enumerate(entries):
-            if _entry_matches(entry, sigil, name):
-                del entries[idx]
-                return doc
-        raise ValueError(f"No entries match selector {selector!r}")
-
-    # All other cases: delete every match (``*`` or specific name).
+    # Delete every match (``*`` or specific name).
     kept = [e for e in entries if not _entry_matches(e, sigil, name)]
     if len(kept) == len(entries):
         raise ValueError(f"No entries match selector {selector!r}")
@@ -341,23 +345,14 @@ def move_entry(doc: dict, selector: str, to_section: str) -> dict:
     moved: list[dict] = []
     kept: list[dict] = []
 
-    if name == "_":
-        for idx, entry in enumerate(entries):
-            if _entry_matches(entry, sigil, name):
-                moved.append(entries.pop(idx))
-                break
-        if not moved:
-            raise ValueError(f"No entries match selector {selector!r}")
-        src["entries"] = entries
-    else:
-        for entry in entries:
-            if _entry_matches(entry, sigil, name):
-                moved.append(entry)
-            else:
-                kept.append(entry)
-        if not moved:
-            raise ValueError(f"No entries match selector {selector!r}")
-        src["entries"] = kept
+    for entry in entries:
+        if _entry_matches(entry, sigil, name):
+            moved.append(entry)
+        else:
+            kept.append(entry)
+    if not moved:
+        raise ValueError(f"No entries match selector {selector!r}")
+    src["entries"] = kept
 
     dest.setdefault("entries", []).extend(moved)
     return doc

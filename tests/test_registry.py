@@ -14,9 +14,9 @@ from __future__ import annotations
 from arqux.handlers import REGISTRY, handler_count, list_handlers
 
 
-def test_handler_count_is_88() -> None:
-    """Total handler count is 88 (BLP-002 added cortex.gc)."""
-    assert handler_count() == 88
+def test_handler_count_is_92() -> None:
+    """Total handler count is 92 (T-027 added issue.create/update/list/read)."""
+    assert handler_count() == 92
 
 
 def test_handler_list_accepts_mcp_context() -> None:
@@ -52,7 +52,7 @@ def test_mutating_handler_count() -> None:
 def test_handler_names_follow_module_convention() -> None:
     names = list_handlers()
     modules: set[str] = {
-        "workspace", "project", "cycle", "task", "evidence", "protocol",
+        "workspace", "project", "cycle", "task", "evidence", "issue", "protocol",
         "session", "cortex", "identity", "skill", "blueprint", "setup",
         "context", "handler", "sync",
     }
@@ -78,6 +78,7 @@ def test_module_handler_counts() -> None:
         "cycle": 5,  # simplified lifecycle (BLP-003)
         "evidence": 3,
         "identity": 2,  # +1: identity.get
+        "issue": 4,  # T-027: issue.create/update/list/read
         "project": 5,
         "protocol": 5,
         "session": 8,  # +3: bootstrap, handoff, pulse.compact
