@@ -1,6 +1,6 @@
 # ArqUX Handlers
 
-Total: **88** handlers
+Total: **96** handlers
 
 ## blueprint
 
@@ -14,6 +14,7 @@ Total: **88** handlers
 | `blueprint.create` | Create a new Blueprint from BLP_TEMPLATE.md in draft state. |
 | `blueprint.execute` | Execute a Blueprint: verify §3 preconditions, run §14 tasks sequentially, verify §12 ACs, mark complete (BLP-010 meta-handler). Supports dry_run mode. |
 | `blueprint.fail` | Blueprint hit an obstacle. State → blocked. |
+| `blueprint.frontmatter.update` | Set/repair Blueprint frontmatter scalars (title, cycle) — the sanctioned write path for fields no other handler can set. Derives title from the body marker/heading when omitted. |
 | `blueprint.list` | List Blueprints with optional filters. Paginated: limit + offset; fields total, returned, offset, next_offset report the pagination state. |
 | `blueprint.re_delegate` | Re-delegate after verification failure. Re-opens a done/blocked blueprint. |
 | `blueprint.read` | Read a full Blueprint (HCORTEX or CORTEX format). |
@@ -80,6 +81,7 @@ Pass apply=true with confirm_hash from a reviewed dry-run to write the elevation
 
 | Handler | Description |
 |---------|-------------|
+| `handler.how_to` | Usage guide by intent (BLP-012): curated how-to from the packaged guides.cortex corpus — exact handler sequence with example. No-match returns available topics + hints to handler.list / skill.get. Read-only; accepts content CORTEX with key intent (BLP-010). |
 | `handler.list` | Discover available handlers classified by module, filtered by tier (NANO|LITE|FULL). Paginated: limit (default 50) + offset; fields _total, _returned, _offset, _next_offset report the pagination state. compact=true returns names only. Replaces hardcoded handler tables in AGENTS.md (BLP-010 meta-handler). |
 
 ## identity
@@ -88,6 +90,16 @@ Pass apply=true with confirm_hash from a reviewed dry-run to write the elevation
 |---------|-------------|
 | `identity.get` | Return agent identity data from .arqux/identities/<agent>.cortex or the packaged identities. Default agent_id is 'alfred'. |
 | `identity.record` | Record a behavioral lesson into the authenticated agent's identity file; explicit agent_id must match the caller (BLP-002). |
+| `identity.switch` | Hot identity switch in one atomic call (BLP-011): validate the identity exists, hydrate the full contract, register handoff + PULSE audit, update the active context and return the header. Accepts content CORTEX and dry_run (meta-handler BLP-010). |
+
+## issue
+
+| Handler | Description |
+|---------|-------------|
+| `issue.create` | Report a new issue (status: open) in <project>/.arqux/issues/ with a PULSE event. Severity: low|medium|high|blocking. |
+| `issue.list` | List issues in <project>/.arqux/issues/, optionally filtered by status. |
+| `issue.read` | Read one issue file verbatim by id (file stem). |
+| `issue.update` | Update an issue's status/severity with a PULSE-traced transition. status=verified REQUIRES audit_ref (the PULSE event id of the auditor's verdict — the validator profile is the auditor). |
 
 ## project
 
@@ -136,6 +148,7 @@ workspace. |
 | `skill.convert` | Convert a skill from original format to CORTEX ultra-dense. |
 | `skill.edit` | Edit (read, write, or section-edit) a skill file in .arqux/skills/. Without content: returns the skill content. With content but no section: atomically replaces the entire skill file. With content and section: replaces only that CORTEX section (e.g. $0, $1, $2.1). Accepts content as CORTEX with keys name, body, section (BLP-009). |
 | `skill.evolve` | Apply an approved adaptation to a skill. Default is dry-run. |
+| `skill.get` | Read a skill file via the universal resolver (BLP-012) — read-only counterpart of skill.edit. Accepts root names, relative subpaths ('workflows/w10-x') or unique nested names. NOT_FOUND/AMBIGUOUS return actionable guidance. Accepts content CORTEX with key name. |
 | `skill.import` | Acquire a skill from external source, store original in originals/. Accepts content as CORTEX with keys source, name, body (BLP-009). |
 | `skill.install` | Install a skill: import + validate + register in brain.cortex $6/SKL (BLP-010 meta-handler). Supports dry_run mode. |
 | `skill.list` | List all available skills in .arqux/skills/. |

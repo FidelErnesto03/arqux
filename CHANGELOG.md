@@ -2,6 +2,68 @@
 
 All notable changes to ArqUX are documented here.
 
+## [0.8.0] - 2026-10-01
+
+### Added — frontmatter consistency across the blueprint/cycle lifecycle (BLP-003)
+- `blueprint.synthesize` now populates `title`/`cycle` on creation, preserving
+  the canonical `quality_gates@` frontmatter block (never flattened).
+- `blueprint.ready` rejects an orphan frontmatter: empty / null / boolean
+  `title` or `cycle` now return `VALIDATION`.
+- `blueprint.list` falls back to the body title (`BLP:TITLE` marker or
+  `# BLP-NNN:` heading) when `fm.title` is empty, and tolerates files without
+  frontmatter.
+- `sync.reconcile_cycle` normalizes the root (`.arqux/` vs project root) and
+  synchronizes the MANIFEST frontmatter (`status`, `governor`, `project_ref`,
+  `updated_at`, `quality_gates@`) plus §6/§7 with tolerant headers.
+- `blueprint.complete`/`update` synchronize `governor`/`executor` and
+  `quality_gates@`; `_write_blueprint` emits the canonical gate block so the
+  frontmatter survives the whole lifecycle.
+- New `blueprint.frontmatter.update(bp_id, title?, cycle?)` — the sanctioned
+  write path for the frontmatter scalars no other handler can set (derives the
+  title from the body marker/heading when omitted).
+
+### Fixed
+- `cycle.synthesize` no longer corrupts `MANIFEST.md` when section content
+  contains a backslash (runtime text used as a `re.sub` replacement is now
+  escaped through a lambda).
+- `PermissionContext.check`/`can` renamed their first parameter to
+  `handler_name`, fixing a collision when a handler has a call kwarg named
+  `handler` (e.g. `issue.create`).
+- Registry: 95 → 96 (added `blueprint.frontmatter.update`).
+
+### Added — usage guidance and skill reading (BLP-012)
+- `handler.how_to(intent)` — usage guide by intent, served from the curated
+  `guides.cortex` corpus packaged with the wheel (single source, never
+  duplicated in the workspace). Exact-alias > longest-substring matching;
+  no-match returns the 8 available topics plus hints to `handler.list` and
+  `skill.get`. Read-only; accepts `content` CORTEX with key `intent`.
+- `skill.get(name)` — read-only counterpart of `skill.edit` (closes the
+  broken "edit to read" semantics). NOT_FOUND/AMBIGUOUS return actionable
+  guidance (`available_skills` / `candidates`). Accepts `content` CORTEX
+  with key `name`.
+- Universal skill resolver (BLP-012) wired into `skill.edit` and `skill.get`:
+  resolution order is root exact → explicit relative path → unique recursive
+  match. Enables governed editing of nested skills such as
+  `workflows/w10-identity-handoff` (previously unreachable via MCP).
+  Backward-compatible: every existing root name resolves to the same path.
+  `originals/` is never resolvable; traversal and absolute paths raise
+  `INVALID_ARGS`; ambiguity lists candidates. Registry: 93 → 95.
+- `identity.switch` added to `MUTATING_HANDLERS` (BLP-011 retrospective):
+  it writes handoff + PULSE + context unconditionally, so the auditor role
+  is now correctly denied.
+
+### Added — identity handlers
+- `identity.switch` (BLP-011): hot identity switch in one atomic MCP call —
+  validates the identity across the 3-level resolution chain (project →
+  workspace → packaged), hydrates the full behavioral contract, registers the
+  handoff record + `identity_switch` PULSE audit, updates the active context
+  (`context.cortex`) and returns the ready HCORTEX header. On
+  `IDENTITY_NOT_FOUND` it returns the live `available_identities` list as
+  actionable guidance. Accepts `content` CORTEX keys (BLP-010 pattern) and
+  `dry_run`. Registry: 92 → 93.
+- Kernel docs and w10-identity-handoff workflow now route identity switches
+  through `identity.switch` instead of direct file reads.
+
 ## [0.7.9] - 2026-09-30
 
 Support remediation (CYCLE-12 T-022..T-030 — support tickets

@@ -42,6 +42,7 @@ from .lifecycle import (
 from .manage import (
     task_blueprint,
     update_blueprint,
+    update_frontmatter,
 )
 from .review import (
     ac_blueprint,
@@ -81,6 +82,7 @@ __all__ = [
     # Manage
     "task_blueprint",
     "update_blueprint",
+    "update_frontmatter",
     # Review
     "ac_blueprint",
     "block_for_architect",
@@ -108,4 +110,5 @@ handler_schemas = [
     {"name": "blueprint.list", "fn": list_blueprints, "description": "List Blueprints with optional filters. Paginated: limit + offset; fields total, returned, offset, next_offset report the pagination state.", "input_schema": {"type": "object", "properties": {"cycle": {"type": "string"}, "status": {"type": "string"}, "path": {"type": "string"}, "limit": {"type": "integer", "description": "Max blueprints per page (default: all)."}, "offset": {"type": "integer", "default": 0, "description": "Blueprints to skip before the page."}}}},
     {"name": "blueprint.synthesize", "fn": synthesize_blueprint, "description": "GUIDE MODE: creates or finds the BLP and returns the next pending section. Agent writes sections via blueprint.update(). Creates and persists the BLP file when it does not exist.", "input_schema": {"type": "object", "properties": {"bp_id": {"type": "string", "description": "Blueprint ID e.g. 'BLP-007'. Created with status=draft if not exists."}, "path": {"type": "string"}}, "required": ["bp_id"]}},
     {"name": "blueprint.execute", "fn": execute_blueprint, "description": "Execute a Blueprint: verify §3 preconditions, run §14 tasks sequentially, verify §12 ACs, mark complete (BLP-010 meta-handler). Supports dry_run mode.", "input_schema": {"type": "object", "properties": {"bp_id": {"type": "string", "description": "Blueprint ID."}, "content": {"type": "string", "description": "CORTEX content with keys bp_id, evidence, fail_reason."}, "dry_run": {"type": "boolean", "default": False, "description": "If true, report what would happen without modifying state."}, "path": {"type": "string"}}, "required": ["bp_id"]}},
+    {"name": "blueprint.frontmatter.update", "fn": update_frontmatter, "description": "Set/repair Blueprint frontmatter scalars (title, cycle) — the sanctioned write path for fields no other handler can set. Derives title from the body marker/heading when omitted.", "input_schema": {"type": "object", "properties": {"bp_id": {"type": "string"}, "title": {"type": "string", "description": "New title (optional; derived from body if omitted)."}, "cycle": {"type": "string", "description": "New cycle id (optional)."}, "path": {"type": "string"}}, "required": ["bp_id"]}},
 ]

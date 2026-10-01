@@ -137,13 +137,13 @@ def test_entry_list_invalid_limit_offset(tmp_path: Path) -> None:
 
 def test_handler_list_full_default_cap_paginates() -> None:
     page1 = list_handlers("FULL")
-    assert page1["_total"] == 92
+    assert page1["_total"] == 96
     assert page1["_returned"] == 50
     assert page1["_offset"] == 0
     assert page1["_next_offset"] == 50
 
     page2 = list_handlers("FULL", offset=50)
-    assert page2["_returned"] == 42
+    assert page2["_returned"] == 46
     assert page2["_next_offset"] is None
 
     names = [
@@ -155,7 +155,7 @@ def test_handler_list_full_default_cap_paginates() -> None:
         for m in page2.values() if isinstance(m, dict)
         for h in m["handlers"]
     ]
-    assert len(names) == 92
+    assert len(names) == 96
 
 
 def test_handler_list_compact_returns_names_only() -> None:
