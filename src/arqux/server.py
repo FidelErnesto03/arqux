@@ -111,16 +111,25 @@ def build_server() -> Any:
 
     @server.call_tool()
     async def call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent]:
-        if name not in handlers:
+        resolved = name
+        if resolved not in handlers:
+            # Some MCP clients forward the namespaced tool name
+            # ("arqux_blueprint_update"). Normalize before lookup.
+            stripped = name.removeprefix(f"{PRODUCT_NAME}_").removeprefix(
+                f"{PRODUCT_NAME}."
+            )
+            if stripped in handlers:
+                resolved = stripped
+        if resolved not in handlers:
             return [
                 TextContent(
                     type="text",
                     text=CortexOUT.profile(
                         OUT_ERROR, f"ERROR code=NOT_FOUND handler={name}"
-                    ),
+                    ).to_text(),
                 )
             ]
-        text = await handlers[name](**arguments)
+        text = await handlers[resolved](**arguments)
         return [TextContent(type="text", text=text)]
 
     return server
