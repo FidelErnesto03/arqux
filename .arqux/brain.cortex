@@ -51,7 +51,7 @@ IDN:governor{level:"2", project:"ARQUX", path:"/home/vatrox/workspace/ARQUX", go
 
 $2: FOCUS
 
-FCS:current{what:"Próximo BLP o cierre de ciclo", priority:"medium", status:"current", survive:"work", updated:"2026-10-01T14:44:07Z", event:"blueprint.complete"}
+FCS:current{what:"Próximo BLP o cierre de ciclo", priority:"medium", status:"current", survive:"work", updated:"2026-10-01T23:33:42Z", event:"blueprint.complete"}
 
 
 $3: OBJECTIVES
@@ -817,7 +817,7 @@ AUD:E_0677{date:"2026-09-18T21:13:54Z", event:"E-0677", task:"-", kind:"session"
 
 KNW:sync_run{name:"sync_run", value:"1", updated:"2026-09-21T19:56:01Z", topic:"metrics", content:"metric sync_run=1", status:"current"}
 
-KNW:blueprints_done{name:"blueprints_done", value:"1", updated:"2026-10-01T14:44:07Z", topic:"metrics", content:"metric blueprints_done=1", status:"current"}
+KNW:blueprints_done{name:"blueprints_done", value:"1", updated:"2026-10-01T23:33:42Z", topic:"metrics", content:"metric blueprints_done=1", status:"current"}
 
 KNW:tasks_active{name:"tasks_active", value:"1", updated:"2026-09-30T15:59:08Z", topic:"metrics", content:"metric tasks_active=1", status:"current"}
 
@@ -848,6 +848,42 @@ AUD:E_1028{date:"2026-10-01T16:44:09Z", event:"E-1028", task:"T-031", kind:"note
 AUD:E_1029{date:"2026-10-01T16:44:18Z", event:"E-1029", task:"2026-10-01-issue-create-falla-con-permissioncontext-check-g", kind:"issue", agent:"alfred", result:"issue.update 2026-10-01-issue-create-falla-con-permissioncontext-check-g.issue.md status=open->verified audit_ref=E-1028 note=Corregido: PermissionContext.check/can renombran su primer parametro a handler_n", evidence:"issue.update 2026-10-01-issue-create-falla-con-permissioncontext-check-g.issue.md status=open->verified audit_ref=E-1028 note=Corregido: PermissionContext.check/can renombran su primer parametro a handler_n"}
 
 AUD:E_1030{date:"2026-10-01T16:44:18Z", event:"E-1030", task:"-", kind:"checkpoint", agent:"alfred", result:"cortex.checkpoint ok fcs= obj=", evidence:"cortex.checkpoint ok fcs= obj="}
+
+AUD:E_1031{date:"2026-10-01T17:03:51Z", event:"E-1031", task:"-", kind:"checkpoint", agent:"alfred", result:"cortex.checkpoint ok fcs= obj=", evidence:"cortex.checkpoint ok fcs= obj="}
+
+AUD:E_1032{date:"2026-10-01T23:00:10Z", event:"E-1032", task:"2026-10-01-corrupcion-silenciosa-de-artefactos-de-gobierno-", kind:"issue", agent:"alfred", result:"issue.create 2026-10-01-corrupcion-silenciosa-de-artefactos-de-gobierno-.issue.md severity=high status=open by=alfred", evidence:"issue.create 2026-10-01-corrupcion-silenciosa-de-artefactos-de-gobierno-.issue.md severity=high status=open by=alfred"}
+
+AUD:E_1033{date:"2026-10-01T23:18:13Z", event:"E-1033", task:"2026-10-01-problem-arqux-serve-server-py-call-tool-rechaza-", kind:"issue", agent:"alfred", result:"issue.create 2026-10-01-problem-arqux-serve-server-py-call-tool-rechaza-.issue.md severity=high status=open by=alfred", evidence:"issue.create 2026-10-01-problem-arqux-serve-server-py-call-tool-rechaza-.issue.md severity=high status=open by=alfred"}
+
+AUD:E_1034{date:"2026-10-01T23:33:24Z", event:"E-1034", task:"T-1.1", kind:"blueprint_lifecycle", agent:"alfred", result:"[blueprint.task] task T-1.1 marked as completed — manage.py: guard _BLP_MARKER_RE/_MD_SECTION_RE + note guard + header canonico estricto (INVALID_ARGS)", evidence:"[blueprint.task] task T-1.1 marked as completed — manage.py: guard _BLP_MARKER_RE/_MD_SECTION_RE + note guard + header canonico estricto (INVALID_ARGS)"}
+
+AUD:E_1035{date:"2026-10-01T23:33:24Z", event:"E-1035", task:"T-1.2", kind:"blueprint_lifecycle", agent:"alfred", result:"[blueprint.task] task T-1.2 marked as completed — manage.py: par de markers obligatorio (NOT_FOUND sin fallback) + set-check markers_after==markers_before (VALIDATION)", evidence:"[blueprint.task] task T-1.2 marked as completed — manage.py: par de markers obligatorio (NOT_FOUND sin fallback) + set-check markers_after==markers_before (VALIDATION)"}
+
+AUD:E_1036{date:"2026-10-01T23:33:24Z", event:"E-1036", task:"T-1.3", kind:"blueprint_lifecycle", agent:"alfred", result:"[blueprint.task] task T-1.3 marked as completed — entries.py: _split_top_level/_parse_set/_quotes_balanced + post-write attrs check + rollback byte-fiel", evidence:"[blueprint.task] task T-1.3 marked as completed — entries.py: _split_top_level/_parse_set/_quotes_balanced + post-write attrs check + rollback byte-fiel"}
+
+AUD:E_1037{date:"2026-10-01T23:33:24Z", event:"E-1037", task:"T-1.4", kind:"blueprint_lifecycle", agent:"alfred", result:"[blueprint.task] task T-1.4 marked as completed — cortex/__init__.py: cortex.entry.add required=[path]; defaults sigil/name/section en entries.py", evidence:"[blueprint.task] task T-1.4 marked as completed — cortex/__init__.py: cortex.entry.add required=[path]; defaults sigil/name/section en entries.py"}
+
+AUD:E_1038{date:"2026-10-01T23:33:24Z", event:"E-1038", task:"T-1.5", kind:"blueprint_lifecycle", agent:"alfred", result:"[blueprint.task] task T-1.5 marked as completed — learning.py: learn_scan_handler acepta content (parsea scope/path) + schema cortex.learn", evidence:"[blueprint.task] task T-1.5 marked as completed — learning.py: learn_scan_handler acepta content (parsea scope/path) + schema cortex.learn"}
+
+AUD:E_1039{date:"2026-10-01T23:33:24Z", event:"E-1039", task:"T-1.6", kind:"blueprint_lifecycle", agent:"alfred", result:"[blueprint.task] task T-1.6 marked as completed — tests/test_corruption_guards.py: 23 tests (CA-01..CA-06 + evasiones N1..N13)", evidence:"[blueprint.task] task T-1.6 marked as completed — tests/test_corruption_guards.py: 23 tests (CA-01..CA-06 + evasiones N1..N13)"}
+
+AUD:E_1040{date:"2026-10-01T23:33:34Z", event:"E-1040", task:"BLP-014", kind:"blueprint_lifecycle", agent:"alfred", result:"[blueprint.ac] AC CA-01 verified — content destructivo (markers/## § no canónico) -> INVALID_ARGS, sin escribir (heimdall ronda 4 e2e)", evidence:"[blueprint.ac] AC CA-01 verified — content destructivo (markers/## § no canónico) -> INVALID_ARGS, sin escribir (heimdall ronda 4 e2e)"}
+
+AUD:E_1041{date:"2026-10-01T23:33:34Z", event:"E-1041", task:"BLP-014", kind:"blueprint_lifecycle", agent:"alfred", result:"[blueprint.ac] AC CA-02 verified — markers_after==markers_before (igualdad de conjunto) + paridad; idempotent re-send seguro", evidence:"[blueprint.ac] AC CA-02 verified — markers_after==markers_before (igualdad de conjunto) + paridad; idempotent re-send seguro"}
+
+AUD:E_1042{date:"2026-10-01T23:33:34Z", event:"E-1042", task:"BLP-014", kind:"blueprint_lifecycle", agent:"alfred", result:"[blueprint.ac] AC CA-03 verified — _parse_set con comas entre comillas -> claves exactas, sin attrs fantasma", evidence:"[blueprint.ac] AC CA-03 verified — _parse_set con comas entre comillas -> claves exactas, sin attrs fantasma"}
+
+AUD:E_1043{date:"2026-10-01T23:33:34Z", event:"E-1043", task:"BLP-014", kind:"blueprint_lifecycle", agent:"alfred", result:"[blueprint.ac] AC CA-04 verified — _parse_set respeta {} [] () anidados y comillas", evidence:"[blueprint.ac] AC CA-04 verified — _parse_set respeta {} [] () anidados y comillas"}
+
+AUD:E_1044{date:"2026-10-01T23:33:34Z", event:"E-1044", task:"BLP-014", kind:"blueprint_lifecycle", agent:"alfred", result:"[blueprint.ac] AC CA-05 verified — cortex.entry.add required=['path']; sigil/name derivados de content", evidence:"[blueprint.ac] AC CA-05 verified — cortex.entry.add required=['path']; sigil/name derivados de content"}
+
+AUD:E_1045{date:"2026-10-01T23:33:34Z", event:"E-1045", task:"BLP-014", kind:"blueprint_lifecycle", agent:"alfred", result:"[blueprint.ac] AC CA-06 verified — suite 1841 passed / 14 skipped; ruff limpio; test_corruption_guards 23/23", evidence:"[blueprint.ac] AC CA-06 verified — suite 1841 passed / 14 skipped; ruff limpio; test_corruption_guards 23/23"}
+
+AUD:E_1046{date:"2026-10-01T23:33:42Z", event:"E-1046", task:"BLP-014", kind:"blueprint_lifecycle", agent:"alfred", result:"[blueprint.complete] BLP BLP-014 completed — BLP-014 ejecutado + auditado (Heimdall 4 rondas -> CUMPLE). DEFECTO 1 (blueprint.update): guard de content destructivo (markers/headers), localizacion estricta por par de markers (sin fallback por header), post-write set-check de markers. DEFECTO 2 (cortex.entry.update): parser real _parse_set (comillas/corchetes) + post-write attrs check con rollback byte-fiel. DEFECTO 3 (entry.add required=[path]) y DEFECTO 4 (learn content) alineados. tests/test_corruption_guards.py 23; suite 1841 passed / 14 skipped; ruff limpio.", evidence:"[blueprint.complete] BLP BLP-014 completed — BLP-014 ejecutado + auditado (Heimdall 4 rondas -> CUMPLE). DEFECTO 1 (blueprint.update): guard de content destructivo (markers/headers), localizacion estricta por par de markers (sin fallback por header), post-write set-check de markers. DEFECTO 2 (cortex.entry.update): parser real _parse_set (comillas/corchetes) + post-write attrs check con rollback byte-fiel. DEFECTO 3 (entry.add required=[path]) y DEFECTO 4 (learn content) alineados. tests/test_corruption_guards.py 23; suite 1841 passed / 14 skipped; ruff limpio."}
+
+AUD:E_1047{date:"2026-10-01T23:33:42Z", event:"E-1047", task:"T-031", kind:"note", agent:"alfred", result:"Auditoria Heimdall BLP-014 (guards anti-corrupcion silenciosa) rondas 1-4: VEREDICTO FINAL ronda 4 CUMPLE. Defectos del issue 2026-10-01 resueltos: D1 blueprint.update (guard content + marker-pair obligatorio + set-check), D2 cortex.entry.update (parser _parse_set + rollback byte-fiel), D3 entry.add schema, D4 learn content. Suite 1841 passed/14 skipped; ruff limpio; test_corruption_guards.py 23. Sin hallazgos pendientes.", evidence:"Auditoria Heimdall BLP-014 (guards anti-corrupcion silenciosa) rondas 1-4: VEREDICTO FINAL ronda 4 CUMPLE. Defectos del issue 2026-10-01 resueltos: D1 blueprint.update (guard content + marker-pair obligatorio + set-check), D2 cortex.entry.update (parser _parse_set + rollback byte-fiel), D3 entry.add schema, D4 learn content. Suite 1841 passed/14 skipped; ruff limpio; test_corruption_guards.py 23. Sin hallazgos pendientes.", cycle:"CYCLE-12"}
+
+AUD:E_1048{date:"2026-10-01T23:33:52Z", event:"E-1048", task:"2026-10-01-corrupcion-silenciosa-de-artefactos-de-gobierno-", kind:"issue", agent:"alfred", result:"issue.update 2026-10-01-corrupcion-silenciosa-de-artefactos-de-gobierno-.issue.md status=open->verified audit_ref=E-1047 note=Cierre verificado por endoso de Heimdall (rondas 1-4 -> VEREDICTO FINAL ronda 4:", evidence:"issue.update 2026-10-01-corrupcion-silenciosa-de-artefactos-de-gobierno-.issue.md status=open->verified audit_ref=E-1047 note=Cierre verificado por endoso de Heimdall (rondas 1-4 -> VEREDICTO FINAL ronda 4:"}
 
 
 $7: LESSONS
@@ -1233,7 +1269,7 @@ LNG:session_E_1020{type:"session", entry_count:24, summary:"blueprint_lifecycle:
 
 $8: ACTIVE_CONTEXT
 
-WRK:current{phase:"current", current:"blueprint.complete: BLP BLP-003 completed and approved", blocked:"no", survive:"work", updated:"2026-10-01T14:44:07Z", event:"blueprint.complete", fcs:"", obj:"", tasks:"", state:"active", last_turn:"2026-10-01T16:44:18Z"}
+WRK:current{phase:"current", current:"blueprint.complete: BLP BLP-014 completed and approved", blocked:"no", survive:"work", updated:"2026-10-01T23:33:42Z", event:"blueprint.complete", fcs:"", obj:"", tasks:"", state:"active", last_turn:"2026-10-01T17:03:51Z"}
 
 
 $9: RISKS

@@ -264,6 +264,7 @@ handler_schemas = [
             "properties": {
                 "scope": {"type": "string", "enum": ["project", "workspace"], "default": "project"},
                 "path": {"type": "string", "description": "Path to project root. Defaults to cwd."},
+                "content": {"type": "string", "description": "CORTEX content with keys scope, path (optional; overrides individual params)."},
             },
         },
     },
@@ -330,7 +331,7 @@ handler_schemas = [
                 "create_section": {"type": "boolean", "default": False},
                 "force": {"type": "boolean", "default": False},
             },
-            "required": ["path", "section", "sigil", "name"],
+            "required": ["path"],
         },
     },
     {

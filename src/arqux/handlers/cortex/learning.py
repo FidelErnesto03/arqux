@@ -137,12 +137,22 @@ def record_lesson_handler_legacy(
 def learn_scan_handler(
     scope: str = "project",
     path: str | None = None,
+    content: str | None = None,
     ctx: PermissionContext | None = None,
 ) -> CortexOUT:
     """Scan a project brain through the CODEC-CORTEX Learning Engine.
 
-    Returns scored entries and elevation candidates.
+    Returns scored entries and elevation candidates. Accepts ``content`` as
+    CORTEX with keys ``scope``/``path`` (BLP-014 alignment).
     """
+    if content:
+        from ...cortex.parse_content import parse_content_entry
+
+        parsed = parse_content_entry(content)
+        if parsed:
+            scope = parsed.get("scope", scope)
+            path = parsed.get("path", path)
+
     from ...learning import (  # lazy: allow monkeypatch
         _resolve_project_root,
         list_candidates,

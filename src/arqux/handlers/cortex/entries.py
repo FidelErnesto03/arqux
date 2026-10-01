@@ -112,6 +112,105 @@ def _quote_attr(val: Any) -> str:
     return s
 
 
+def _split_top_level(s: str, delim: str, maxsplit: int = -1) -> list[str]:
+    """Split *s* on *delim* at top level, ignoring separators inside quotes
+    and ``{}``/``[]``/``()`` nesting (BLP-014)."""
+    parts: list[str] = []
+    buf: list[str] = []
+    depth = 0
+    quote: str | None = None
+    splits = 0
+    i = 0
+    while i < len(s):
+        c = s[i]
+        if quote:
+            buf.append(c)
+            if c == "\\" and i + 1 < len(s):
+                buf.append(s[i + 1])
+                i += 2
+                continue
+            if c == quote:
+                quote = None
+            i += 1
+            continue
+        if c in "\"'":
+            quote = c
+            buf.append(c)
+            i += 1
+            continue
+        if c in "[{(":
+            depth += 1
+        elif c in "]})":
+            depth = max(0, depth - 1)
+        if c == delim and depth == 0 and (maxsplit < 0 or splits < maxsplit):
+            parts.append("".join(buf))
+            buf = []
+            splits += 1
+            i += 1
+            continue
+        buf.append(c)
+        i += 1
+    parts.append("".join(buf))
+    return parts
+
+
+def _quotes_balanced(s: str) -> bool:
+    """True when quotes in *s* are balanced (ignoring escaped quotes) — BLP-014."""
+    quote: str | None = None
+    i = 0
+    while i < len(s):
+        c = s[i]
+        if quote:
+            if c == "\\":
+                i += 2
+                continue
+            if c == quote:
+                quote = None
+        elif c in "\"'":
+            quote = c
+        i += 1
+    return quote is None
+
+
+def _parse_set(set_: str) -> dict[str, str]:
+    """Parse ``key:value,key2:value2`` respecting quotes and bracket nesting.
+
+    Unlike a naive ``str.split(',')``, a comma inside a quoted string or a
+    bracketed list does not split the pair (fixes phantom attrs — BLP-014).
+    """
+    if not _quotes_balanced(set_):
+        raise ValueError("unbalanced quotes in set_")
+    out: dict[str, str] = {}
+    for pair in _split_top_level(set_, ","):
+        if not pair.strip():
+            continue
+        kv = _split_top_level(pair, ":", maxsplit=1)
+        if len(kv) != 2:
+            raise ValueError(f"invalid pair (expected key:value): {pair.strip()!r}")
+        key = kv[0].strip().strip('"').strip("'")
+        val = kv[1].strip()
+        if len(val) >= 2 and val[0] == val[-1] and val[0] in ('"', "'"):
+            val = val[1:-1]
+        if not key:
+            raise ValueError(f"empty key in pair: {pair.strip()!r}")
+        out[key] = val
+    return out
+
+
+def _read_attr_keys(path: str, selector: str) -> set[str]:
+    """Attr keys of the entries matching *selector* (best-effort)."""
+    keys: set[str] = set()
+    try:
+        res = crud_read(path, selector)
+    except Exception:
+        return keys
+    for e in res.get("entries", []):
+        v = e.get("value")
+        if isinstance(v, dict):
+            keys |= set(v.keys())
+    return keys
+
+
 def _crud_error(result: dict[str, Any], code: str) -> CortexOUT:
     """Enumerate crud diagnostics (index + message) and surface non_bypassable."""
     diagnostics = result.get("diagnostics") or []
@@ -131,9 +230,9 @@ def _crud_error(result: dict[str, Any], code: str) -> CortexOUT:
 
 def entry_add_handler(
     path: str,
-    section: str,
-    sigil: str,
-    name: str,
+    section: str = "",
+    sigil: str = "",
+    name: str = "",
     value: str | None = None,
     *,
     content: str | None = None,
@@ -185,6 +284,12 @@ def entry_add_handler(
                 )
         else:
             content_ignored = ["<content did not parse>"]
+    # BLP-014: align schema with behaviour — sigil/name may come from content.
+    if not sigil or not name:
+        return CortexOUT.error(
+            "sigil and name are required (pass explicitly or via 'content')",
+            code="INVALID_ARGS",
+        )
     if value is None:
         return CortexOUT.error(
             "value is required when content is absent or does not parse as CORTEX",
@@ -271,17 +376,25 @@ def entry_update_handler(
             set_dict = _json.loads(f"{{{set_}}}")
         except _json.JSONDecodeError:
             try:
-                set_dict = {}
-                for pair in set_.split(","):
-                    pair = pair.strip()
-                    if ":" not in pair:
-                        continue
-                    k, v = pair.split(":", 1)
-                    k = k.strip().strip('"').strip("'")
-                    v = v.strip().strip('"').strip("'")
-                    set_dict[k] = v
-            except Exception:
-                return CortexOUT.error(f"invalid set_ format: {set_}", code="INVALID_ARGS")
+                set_dict = _parse_set(set_)
+            except ValueError as exc:
+                return CortexOUT.error(f"invalid set_ format: {exc}", code="INVALID_ARGS")
+        if not set_dict:
+            return CortexOUT.error(
+                f"invalid set_ format (no key:value pairs): {set_}", code="INVALID_ARGS"
+            )
+
+    # BLP-014: capture the pre-write state for the post-write check/rollback.
+    before_keys: set[str] = set()
+    prev_bytes: bytes | None = None
+    if set_dict is not None:
+        before_keys = _read_attr_keys(path, selector)
+        try:
+            p = Path(path)
+            if p.exists():
+                prev_bytes = p.read_bytes()
+        except Exception:
+            prev_bytes = None
 
     try:
         result = crud_update(path, selector, set_=set_dict, replace_body=replace_body, append=append, force=force)
@@ -292,6 +405,34 @@ def entry_update_handler(
 
     if "error" in result:
         return _crud_error(result, "CRUD_ERROR")
+
+    # BLP-014: a valid set_ must not produce attrs beyond the declared keys
+    # (or pre-existing attrs). Roll back atomically if it did — never leave a
+    # silently corrupted governance file.
+    if set_dict is not None:
+        unexpected = sorted(
+            _read_attr_keys(path, selector) - before_keys - set(set_dict.keys())
+        )
+        if unexpected:
+            rolled_back = False
+            if prev_bytes is not None:
+                try:
+                    Path(path).write_bytes(prev_bytes)  # byte-faithful (CRLF-safe)
+                    rolled_back = True
+                except Exception:
+                    rolled_back = False
+            status = (
+                "rolled back"
+                if rolled_back
+                else "ROLLBACK FAILED — file may be inconsistent"
+            )
+            return CortexOUT.error(
+                f"set_ produced unexpected attrs {unexpected} — {status}",
+                code="VALIDATION",
+                unexpected=unexpected,
+                rolled_back=rolled_back,
+            )
+
     return CortexOUT.work(
         f"entry.update ok path={path} selector={selector}",
         path=path, selector=selector,

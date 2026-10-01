@@ -24,38 +24,25 @@ from ._helpers import (
 )
 from ._read import _body_title
 
+
+def _markers_balanced(body: str) -> bool:
+    """True when every ``<!-- BLP:N -->`` opener has a matching closer (BLP-014)."""
+    opens = len(re.findall(r"<!--\s*BLP:[\w.]+\s*-->", body))
+    closes = len(re.findall(r"<!--\s*/BLP:[\w.]+\s*-->", body))
+    return opens == closes
+
+
+# Any BLP marker (opener or closer), tolerant to whitespace, extra dashes and a
+# space before the colon (BLP-014, N13).
+_BLP_MARKER_RE = re.compile(r"<!-+\s*/?\s*BLP\s*:", re.IGNORECASE)
+# Opener markers only, for the marker-set invariant.
+_BLP_OPEN_RE = re.compile(r"<!--\s*BLP:[\w.]+\s*-->")
+# Any markdown header carrying a § section marker (`##§`, `#  §`, ZWSP, ...).
+_MD_SECTION_RE = re.compile(r"#{1,6}[^\S\n]*[\u200b-\u200f\u2060\ufeff]*[^\S\n]*§")
+
 # ---------------------------------------------------------------------------
 # blueprint.update
 # ---------------------------------------------------------------------------
-
-
-def _resolve_section_titles(body: str) -> dict[str, str]:
-    """Extract section titles from BLP template markers in the body.
-
-    Reads section titles from ``<!-- BLP:N -->`` markers in the template body
-    by looking for ``## §N: Title`` patterns inside each marker block.
-    Falls back to reading ``## §N:`` headers from the body directly.
-    """
-    titles: dict[str, str] = {}
-
-    # Scan for section markers in the body
-    marker_re = re.compile(r"<!-- BLP:(\d+) -->\s*\n\s*## §\d+:\s*(.+?)\s*\n", re.DOTALL)
-    for m in marker_re.finditer(body):
-        sec_num = m.group(1)
-        sec_title = m.group(2).strip()
-        titles[sec_num] = sec_title
-
-    if titles:
-        return titles
-
-    # Fallback: try to find section headers directly
-    header_re = re.compile(r"## §(\d+):\s*(.+?)$", re.MULTILINE)
-    for m in header_re.finditer(body):
-        sec_num = m.group(1)
-        sec_title = m.group(2).strip()
-        titles[sec_num] = sec_title
-
-    return titles
 
 
 def update_blueprint(
@@ -79,6 +66,7 @@ def update_blueprint(
     assert body is not None  # _find_blueprint guarantees body on success
 
     fm["updated_at"] = _now_iso()
+    markers_before = frozenset(re.findall(_BLP_OPEN_RE, body))
 
     # Section refinement takes priority over note
     if section:
@@ -103,6 +91,27 @@ def update_blueprint(
             sec_num = sec_input
             marker_id = f"BLP:{sec_num}"
 
+        # BLP-014: the handler owns the markers and section headers. Reject any
+        # BLP marker (opener/closer) and any '## §' header except a single
+        # leading one whose number matches the target section.
+        if _BLP_MARKER_RE.search(section_content):
+            return CortexOUT.error(
+                "section content must not contain '<!-- BLP' markers "
+                "(blueprint.update manages them)",
+                code="INVALID_ARGS",
+            )
+        md_headers = _MD_SECTION_RE.findall(section_content)
+        if md_headers:
+            # Only the exact canonical leading ``## §N:`` (the form the Updater
+            # recognises) whose N matches the target section is allowed.
+            expected = f"## §{sec_num}:"
+            if not (len(md_headers) == 1 and section_content.startswith(expected)):
+                return CortexOUT.error(
+                    "section content may contain at most one leading '## §N:' header "
+                    "whose N matches the target section",
+                    code="INVALID_ARGS",
+                )
+
         # Validate marker against frontmatter map if available
         blp_markers_raw = fm.get("blp_markers@", "")
         if blp_markers_raw and isinstance(blp_markers_raw, str):
@@ -113,48 +122,29 @@ def update_blueprint(
                     code="NOT_FOUND",
                 )
 
-        # Marker-based replacement via Universal Updater
+        # BLP-014: locate the section strictly by the marker pair — never by the
+        # header text. The old header fallback swept to the next '## §M:' and
+        # ate markers (silent corruption, N12), and also triggered on an
+        # idempotent re-send (Updater no-op).
+        open_tag = f"<!-- BLP:{sec_num} -->"
+        close_tag = f"<!-- /BLP:{sec_num} -->"
+        if open_tag not in body or close_tag not in body:
+            return CortexOUT.error(
+                f"section {section} not found via marker pair "
+                f"({open_tag} ... {close_tag})",
+                code="NOT_FOUND",
+            )
         from ...core.updater import Updater
-        new_body = Updater("BLP").replace(body, sec_num, section_content)
-        if new_body != body:
-            body = new_body
-        else:
-            # Marker not found — fallback to header-based dynamic resolution
-            section_titles = _resolve_section_titles(body)
-            section_title = section_titles.get(sec_num, "")
-            section_header = f"## §{sec_num}:"
-            replacement_header = f"{section_header} {section_title}".rstrip()
-
-            def _replace_section(body: str, header: str, new_content: str) -> str:
-                pattern = (
-                    re.escape(header)
-                    + fr".*?(?=\n## §(?!{sec_num}\b)\d+:|\$)"
-                )
-                match = re.search(pattern, body, flags=re.DOTALL)
-                if not match:
-                    return None
-                full = match.group(0)
-                hdr_end = full.index("\n") if "\n" in full else len(full)
-                hdr = full[:hdr_end]
-                clean = new_content.strip()
-                clean_lines = clean.split("\n")
-                if clean_lines[0].strip().startswith("## §"):
-                    clean = "\n".join(clean_lines[1:]).strip()
-                result = body.replace(full, hdr + "\n" + clean + "\n", 1)
-                if result == body:
-                    return None
-                return result
-
-            section_content_full = f"{replacement_header}\n\n{section_content}\n"
-            new_body = _replace_section(body, section_header, section_content_full)
-            if new_body is None:
-                return CortexOUT.error(
-                    f"section {section} not found in blueprint",
-                    code="NOT_FOUND",
-                )
-            body = new_body
+        body = Updater("BLP").replace(body, sec_num, section_content)
 
     if note:
+        # BLP-014: the note path is a second write surface — same guards.
+        if _BLP_MARKER_RE.search(note) or _MD_SECTION_RE.search(note):
+            return CortexOUT.error(
+                "note must not contain '<!-- BLP' markers or '## §' headers "
+                "(blueprint.update manages them)",
+                code="INVALID_ARGS",
+            )
         body += f"\n\n> [{_now_iso()}] {note}"
 
     if not section and not note:
@@ -165,6 +155,18 @@ def update_blueprint(
         fm[gate_key] = gate_val
     fm.pop("quality_gates", None)
     fm.pop("quality_gates@", None)
+
+    # BLP-014: never persist a mutated marker structure. Parity alone is not
+    # enough — a corruption can drop an opener AND a closer (N12).
+    markers_after = frozenset(re.findall(_BLP_OPEN_RE, body))
+    if markers_after != markers_before or not _markers_balanced(body):
+        return CortexOUT.error(
+            "refusing to write: the set of <!-- BLP:N --> markers changed or is "
+            "unbalanced after the update",
+            code="VALIDATION",
+            markers_expected=sorted(markers_before),
+            markers_after=sorted(markers_after),
+        )
 
     _write_blueprint(bp_path, fm, body)
 
