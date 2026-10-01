@@ -28,7 +28,23 @@ from ...cortex_out import CortexOUT
 from ...permissions import PermissionContext
 from ...pulse import append_pulse_to_brain, next_pulse_event_id
 from ...state import find_project_root
-from ._helpers import _write_blueprint
+
+
+def _set_frontmatter_line(text: str, key: str, value: str) -> str:
+    """Set a frontmatter scalar by string replace, inserting it if absent.
+
+    Uses a lambda replacement so backslashes in *value* stay literal
+    (BLP-003 H-F8) and inserts the key when the template lacks it (H-F9).
+    """
+    pattern = rf"(?m)^{re.escape(key)}:.*$"
+    line = f'{key}: "{value}"'
+    if re.search(pattern, text):
+        return re.sub(pattern, lambda _m: line, text, count=1)
+    newline = text.find("\n")
+    if text.startswith("---") and newline != -1:
+        return text[: newline + 1] + line + "\n" + text[newline + 1 :]
+    return text
+
 
 # ---------------------------------------------------------------------------
 # synthesize
@@ -96,12 +112,9 @@ def synthesize_blueprint(
                 code="TEMPLATE_MISMATCH",
             )
 
-    # Find or create the BLP file.
+    # Find or create the BLP file. When freshly created, the helper persists
+    # the canonical template itself (preserving the ``quality_gates@`` block).
     bp_path, fm, body, created = _find_or_create_blueprint(root, bp_id, ctx, path_hint=path)
-
-    # Persist the template body to disk immediately if freshly created.
-    if created:
-        _write_blueprint(bp_path, fm, body)
 
     # GUIDE MODE: scan BLP with Sequencer and return next pending section.
     from ...core.sequencer import Sequencer
@@ -227,23 +240,32 @@ def _find_or_create_blueprint(
     template_path = _resolve_template(path=str(root.parent))
     if template_path and template_path.exists():
         body = template_path.read_text(encoding="utf-8")
-        body = body.replace('blueprint_id: ""', f'blueprint_id: "{bp_id}"')
         body = body.replace("# BLP-NNN: Título", f"# {bp_id}: Synthesized")
     else:
         body = (
             "---\n"
             f'blueprint_id: "{bp_id}"\n'
+            'title: "Synthesized"\n'
+            f'cycle: "{cycle_id}"\n'
             'status: "draft"\n'
             "---\n\n"
             f"# {bp_id}: Synthesized\n"
         )
 
-    fm, body = _parse_md(body)
-    fm["blueprint_id"] = bp_id
-    fm["status"] = "draft"
-    fm["governor"] = (ctx or PermissionContext.from_env(project_root=root)).agent_id
+    # BLP-003: fill the frontmatter scalars by string replacement so the
+    # canonical ``quality_gates@`` block is preserved. Re-serializing through
+    # ``_parse_md`` + ``_write_blueprint`` would flatten it into the legacy
+    # ``quality_gates: "{"`` form (F-1).
+    governor = (ctx or PermissionContext.from_env(project_root=root)).agent_id
+    body = _set_frontmatter_line(body, "blueprint_id", bp_id)
+    body = _set_frontmatter_line(body, "title", "Synthesized")
+    body = _set_frontmatter_line(body, "cycle", cycle_id)
+    body = _set_frontmatter_line(body, "status", "draft")
+    body = _set_frontmatter_line(body, "governor", governor)
+    bp_path.write_text(body, encoding="utf-8")
 
-    return bp_path, fm, body, True
+    fm, parsed_body = _parse_md(body)
+    return bp_path, fm, parsed_body, True
 
 
 # ---------------------------------------------------------------------------

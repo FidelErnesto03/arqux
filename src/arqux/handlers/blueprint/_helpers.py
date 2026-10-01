@@ -78,6 +78,16 @@ def _effective_status(fm: dict[str, Any]) -> str:
     return LEGACY_STATUS_MAP.get(raw, raw)
 
 
+def _is_blank(value: Any) -> bool:
+    """True when a frontmatter scalar is empty/null-like (BLP-003 F-4).
+
+    Booleans count as blank so ``title: false`` cannot evade the ready gate.
+    """
+    if value is None or isinstance(value, bool):
+        return True
+    return not str(value).strip()
+
+
 # ---------------------------------------------------------------------------
 # Generic helpers
 # ---------------------------------------------------------------------------
@@ -125,15 +135,38 @@ def _transition(bp_id: str, from_state: str, to_state: str) -> str | None:
     return None
 
 
+def _truthy(value: Any) -> bool:
+    """Coerce a frontmatter gate value (bool | 'true,' string) to bool."""
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, str):
+        return value.strip().rstrip(",").lower() == "true"
+    return bool(value)
+
+
 def _write_blueprint(path: Path, fm: dict[str, Any], body: str) -> None:
-    """Write blueprint HCORTEX .md file."""
+    """Write blueprint HCORTEX .md file.
+
+    Gate keys are emitted as a canonical ``quality_gates@: { ... }`` block
+    (never flattened into loose ``has_*`` keys), so the frontmatter survives
+    the whole lifecycle — create/ready/claim/update/complete (BLP-003 H-F7).
+    """
+    gate_keys = [k for k in QUALITY_GATES if k in fm]
     content = "---\n"
     for k, v in fm.items():
+        if k in gate_keys or k in ("quality_gates", "quality_gates@"):
+            continue
         if isinstance(v, bool):
             v = str(v).lower()
         elif isinstance(v, str):
             v = f'"{v}"'
         content += f"{k}: {v}\n"
+    if gate_keys:
+        content += "quality_gates@: {\n"
+        for gk in QUALITY_GATES:
+            if gk in fm:
+                content += f"  {gk}: {'true' if _truthy(fm[gk]) else 'false'},\n"
+        content += "}\n"
     content += "---\n\n" + body
     path.write_text(content, encoding="utf-8")
 
@@ -156,8 +189,14 @@ def _read_blueprint(path: Path) -> tuple[dict[str, Any], str] | None:
             continue
         key, val = line.split(":", 1)
         key = key.strip()
-        val = val.strip().strip('"')
-        if val == "true":
+        val = val.strip()
+        # BLP-003: treat quoted/None-like scalars as empty so the ready gate
+        # and the list fallback cannot be evaded with `''`, `~` or `null`.
+        if len(val) >= 2 and val[0] == val[-1] and val[0] in ("'", '"'):
+            val = val[1:-1]
+        if val.strip().lower() in ("", "~", "null", "none"):
+            val = ""
+        elif val == "true":
             val = True
         elif val == "false":
             val = False

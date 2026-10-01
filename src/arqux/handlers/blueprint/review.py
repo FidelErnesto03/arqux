@@ -7,13 +7,14 @@ from __future__ import annotations
 
 from ...cortex_out import CortexOUT
 from ...permissions import PermissionContext
-from ...sync import reconcile_cycle, sync_brain
+from ...sync import _read_gate_table, reconcile_cycle, sync_brain
 from ._helpers import (
     BP_BLOCKED,
     BP_CANCELLED,
     BP_DONE,
     BP_DRAFT,
     BP_IN_PROGRESS,
+    QUALITY_GATES,
     TERMINAL_STATES,
     _effective_status,
     _find_ac,
@@ -23,6 +24,7 @@ from ._helpers import (
     _record_bp_evidence,
     _record_to_brain,
     _resolve_root,
+    _section,
     _transition,
     _validate_execution_complete,
     _write_blueprint,
@@ -75,6 +77,19 @@ def complete_blueprint(
     fm["closed_at"] = _now_iso()
     fm["updated_at"] = _now_iso()
     fm["evidence"] = evidence or ""
+
+    # BLP-003: never persist `anonymous` governor/executor on completion, and
+    # keep quality_gates@ in sync with §18.
+    caller = (ctx or PermissionContext.from_env(project_root=root)).agent_id
+    for role in ("governor", "executor"):
+        current = str(fm.get(role, "")).strip()
+        if not current or current.lower() == "anonymous":
+            fm[role] = caller
+    for gate_key, gate_val in _read_gate_table(_section(body, 18), QUALITY_GATES).items():
+        fm[gate_key] = gate_val
+    fm.pop("quality_gates", None)
+    fm.pop("quality_gates@", None)
+
     _write_blueprint(bp_path, fm, body)
 
     # Record completion in brain
