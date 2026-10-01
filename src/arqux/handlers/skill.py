@@ -44,6 +44,106 @@ def _skill_path(arqux: Path, name: str) -> Path:
     return arqux / SKILL_DIR / f"{name}.skill.md"
 
 
+# BLP-012 — universal skill resolver (D).
+_SUFFIXES = (".skill.md", ".md", "")
+
+
+def _available_skill_names(arqux: Path, limit: int = 20) -> list[str]:
+    """List skill files (relative paths, originals/ excluded) for guidance."""
+    skills_dir = arqux / SKILL_DIR
+    if not skills_dir.is_dir():
+        return []
+    names: list[str] = []
+    for f in sorted(skills_dir.rglob("*")):
+        if f.is_file() and ORIGINALS_DIR.split("/")[0] + "/originals" not in str(
+            f.relative_to(arqux)
+        ):
+            names.append(str(f.relative_to(skills_dir)))
+        if len(names) >= limit:
+            break
+    return names
+
+
+def resolve_skill(arqux: Path, name: str) -> dict[str, Any]:
+    """Resolve a skill name to a file under ``.arqux/skills/`` (BLP-012).
+
+    Resolution order (root exact match always wins — backward compatible):
+
+    1. Root exact: ``<name>.skill.md``, ``<name>.md``, ``<name>``.
+    2. Explicit relative path: ``workflows/w10-x`` (with/without suffix).
+    3. Recursive unique match anywhere under ``skills/``.
+
+    Ambiguity → ``AMBIGUOUS`` with candidates; nothing found →
+    ``NOT_FOUND`` with available skills. Traversal (``..``, absolute)
+    → ``INVALID_ARGS``. Returns a dict with keys:
+    ``ok`` (bool), ``path`` (Path|None), ``code``, ``candidates``,
+    ``available_skills``.
+    """
+    base: dict[str, Any] = {
+        "ok": False, "path": None, "code": None,
+        "candidates": [], "available_skills": [],
+    }
+    if not name or ".." in name or Path(name).is_absolute() or "\\" in name:
+        base["code"] = "INVALID_ARGS"
+        return base
+
+    skills_dir = arqux / SKILL_DIR
+
+    # originals/ holds raw canon — never a resolvable skill.
+    if name.split("/", 1)[0] == ORIGINALS_DIR.split("/")[-1]:
+        base.update(code="NOT_FOUND", available_skills=_available_skill_names(arqux))
+        return base
+
+    # 1. Root exact (previous behavior has absolute priority).
+    for suffix in _SUFFIXES:
+        candidate = skills_dir / f"{name}{suffix}"
+        if candidate.is_file() and candidate.parent == skills_dir:
+            base.update(ok=True, path=candidate)
+            return base
+
+    # 2. Explicit relative path.
+    if "/" in name:
+        for suffix in _SUFFIXES:
+            candidate = skills_dir / f"{name}{suffix}"
+            if candidate.is_file():
+                base.update(ok=True, path=candidate)
+                return base
+        base.update(
+            code="NOT_FOUND",
+            available_skills=_available_skill_names(arqux),
+        )
+        return base
+
+    # 3. Recursive unique match.
+    if skills_dir.is_dir():
+        originals = (arqux / ORIGINALS_DIR).resolve()
+        found: list[Path] = []
+        for suffix in (".skill.md", ".md"):
+            found.extend(
+                p for p in skills_dir.rglob(f"**/{name}{suffix}")
+                if p.is_file() and originals not in p.resolve().parents
+            )
+        found.extend(
+            p for p in skills_dir.rglob(f"**/{name}")
+            if p.is_file() and originals not in p.resolve().parents
+        )
+        # Deduplicate while preserving order.
+        seen: set[str] = set()
+        unique = [p for p in found if not (str(p) in seen or seen.add(str(p)))]
+        if len(unique) == 1:
+            base.update(ok=True, path=unique[0])
+            return base
+        if len(unique) > 1:
+            base.update(
+                code="AMBIGUOUS",
+                candidates=[str(p.relative_to(skills_dir)) for p in unique],
+            )
+            return base
+
+    base.update(code="NOT_FOUND", available_skills=_available_skill_names(arqux))
+    return base
+
+
 def _append_ada_to_skill(skill_path: Path, name: str, line: str) -> None:
     """Append an ADA entry to the skill file's $0: ADAPTATIONS section.
 
@@ -478,27 +578,35 @@ def edit_skill(
 
     skill_path = _skill_path(arqux, name)
 
-    if not raw_body:
-        if not skill_path.exists():
+    if not skill_path.exists():
+        resolved = resolve_skill(arqux, name)
+        if resolved["ok"]:
+            skill_path = resolved["path"]
+        elif resolved["code"] == "INVALID_ARGS":
+            return CortexOUT.error(
+                f"invalid skill name {name!r} (no traversal/absolute paths)",
+                code="INVALID_ARGS",
+            )
+        elif raw_body is None or section:
             return CortexOUT.error(
                 f"skill {name!r} not found in .arqux/skills/",
-                code="NOT_FOUND",
+                code=resolved["code"],
+                candidates=resolved["candidates"] or None,
+                available_skills=resolved["available_skills"] or None,
                 hint="Use skill.list to see available skills.",
             )
+
+    if not raw_body:
         raw = skill_path.read_text(encoding="utf-8")
         return CortexOUT.work(
             f"skill.edit read name={name} size={len(raw)}",
             name=name,
+            path=str(skill_path),
             size=len(raw),
             content=raw,
         )
 
     if section:
-        if not skill_path.exists():
-            return CortexOUT.error(
-                f"skill {name!r} not found in .arqux/skills/",
-                code="NOT_FOUND",
-            )
         current = skill_path.read_text(encoding="utf-8")
         updated = _replace_skill_section(current, section, raw_body)
         if updated is None:
@@ -535,6 +643,63 @@ def edit_skill(
     return CortexOUT.work(
         f"skill.edit write name={name} size={len(raw_body)}",
         **fields,
+    )
+
+
+# ---------------------------------------------------------------------------
+# skill.get (BLP-012)
+# ---------------------------------------------------------------------------
+
+
+def get_skill(
+    name: str | None = None,
+    content: str | None = None,
+    path: str | None = None,
+    ctx: PermissionContext | None = None,
+) -> CortexOUT:
+    """Read a skill file via the universal resolver (BLP-012, read-only).
+
+    Explicit read counterpart to the read branch of ``skill.edit`` —
+    no mutations, ever. Accepts root names (``protocol``), relative
+    subpaths (``workflows/w10-identity-handoff``) or unique nested names;
+    ambiguity and not-found return actionable guidance.
+
+    ``content`` accepts a CORTEX entry string with key ``name``
+    (BLP-010 meta-handler pattern — parsed value overrides the param).
+    """
+    if content:
+        from ..cortex.parse_content import parse_content_entry
+        parsed = parse_content_entry(content)
+        if parsed:
+            name = parsed.get("name", name)
+
+    if not name:
+        return CortexOUT.error("name is required", code="INVALID_ARGS")
+
+    arqux = _resolve_arqux_root(path)
+    if arqux is None:
+        return CortexOUT.error("no arqux root found", code="NOT_FOUND")
+
+    resolved = resolve_skill(arqux, name)
+    if not resolved["ok"]:
+        return CortexOUT.error(
+            f"skill {name!r} not found in .arqux/skills/",
+            code=resolved["code"] or "NOT_FOUND",
+            candidates=resolved["candidates"] or None,
+            available_skills=resolved["available_skills"] or None,
+            hint="Use skill.list (root skills) or a relative path like 'workflows/w10-x'.",
+        )
+
+    skill_path = resolved["path"]
+    raw = skill_path.read_text(encoding="utf-8")
+    skills_dir = arqux / SKILL_DIR
+    return CortexOUT.work(
+        f"skill.get ok name={name} size={len(raw)}",
+        name=name,
+        path=str(skill_path),
+        relative_path=str(skill_path.relative_to(skills_dir)),
+        size=len(raw),
+        content=raw,
     )
 
 
@@ -755,5 +920,6 @@ handler_schemas = [
     {"name": "skill.evolve", "fn": evolve_skill, "description": "Apply an approved adaptation to a skill. Default is dry-run.", "input_schema": {"type": "object", "properties": {"name": {"type": "string", "description": "Skill name"}, "adaptation_id": {"type": "string", "description": "Adaptation entry selector"}, "apply": {"type": "boolean", "default": False, "description": "If true, apply the evolution"}, "path": {"type": "string"}}, "required": ["name", "adaptation_id"]}},
     {"name": "skill.edit", "fn": edit_skill, "description": "Edit (read, write, or section-edit) a skill file in .arqux/skills/. Without content: returns the skill content. With content but no section: atomically replaces the entire skill file. With content and section: replaces only that CORTEX section (e.g. $0, $1, $2.1). Accepts content as CORTEX with keys name, body, section (BLP-009).", "input_schema": {"type": "object", "properties": {"name": {"type": "string", "description": "Skill name (e.g. handlers)"}, "content": {"type": "string", "description": "New content, or CORTEX entry 'name:...,body:...,section:...' (BLP-009). Omit to read current content."}, "section": {"type": "string", "description": "Section ID to replace (e.g. $0, $1, $2.1). Only valid with content."}, "path": {"type": "string", "description": "Path to workspace/project root"}}, "required": ["name"]}},
     {"name": "skill.list", "fn": list_skills, "description": "List all available skills in .arqux/skills/.", "input_schema": {"type": "object", "properties": {"path": {"type": "string"}}}},
+    {"name": "skill.get", "fn": get_skill, "description": "Read a skill file via the universal resolver (BLP-012) — read-only counterpart of skill.edit. Accepts root names, relative subpaths ('workflows/w10-x') or unique nested names. NOT_FOUND/AMBIGUOUS return actionable guidance. Accepts content CORTEX with key name.", "input_schema": {"type": "object", "properties": {"name": {"type": "string", "description": "Skill name or relative subpath (e.g. protocol, workflows/w10-identity-handoff)"}, "content": {"type": "string", "description": "CORTEX content with key name (BLP-010)."}, "path": {"type": "string", "description": "Path to workspace/project root"}}, "required": ["name"]}},
     {"name": "skill.install", "fn": install_skill, "description": "Install a skill: import + validate + register in brain.cortex $6/SKL (BLP-010 meta-handler). Supports dry_run mode.", "input_schema": {"type": "object", "properties": {"source": {"type": "string", "description": "Skill source."}, "name": {"type": "string", "description": "Skill name."}, "content": {"type": "string", "description": "CORTEX content with keys source, name, body."}, "dry_run": {"type": "boolean", "default": False, "description": "If true, report what would happen without modifying state."}, "path": {"type": "string"}}, "required": ["source", "name"]}},
 ]

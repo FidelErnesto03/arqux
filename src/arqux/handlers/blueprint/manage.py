@@ -22,6 +22,7 @@ from ._helpers import (
     _section,
     _write_blueprint,
 )
+from ._read import _body_title
 
 # ---------------------------------------------------------------------------
 # blueprint.update
@@ -246,4 +247,64 @@ def task_blueprint(
     return CortexOUT.work(
         f"blueprint.task ok id={bp_id} task={task_id} status={status}",
         **fields,
+    )
+
+
+# ---------------------------------------------------------------------------
+# blueprint.frontmatter.update (BLP-003 measure #2)
+# ---------------------------------------------------------------------------
+
+
+def update_frontmatter(
+    bp_id: str,
+    *,
+    title: str | None = None,
+    cycle: str | None = None,
+    path: str | None = None,
+    ctx: PermissionContext | None = None,
+) -> CortexOUT:
+    """Set/repair frontmatter scalars (``title``, ``cycle``).
+
+    Provides the sanctioned write path for the two fields no other handler
+    can set on an existing Blueprint. When ``title`` is omitted and the
+    frontmatter title is empty, it is derived from the body (``BLP:TITLE``
+    marker or ``# BLP-NNN:`` heading).
+    """
+    root = _resolve_root(path)
+    if root is None:
+        return CortexOUT.error("no project initialized", code="NOT_FOUND")
+
+    bp_path, fm, body = _find_blueprint(root, bp_id)
+    if bp_path is None:
+        return CortexOUT.error(f"blueprint {bp_id} not found", code="NOT_FOUND")
+
+    changed: list[str] = []
+    if title is not None:
+        fm["title"] = title.strip()
+        changed.append("title")
+    if cycle is not None:
+        fm["cycle"] = cycle.strip()
+        changed.append("cycle")
+
+    if not str(fm.get("title", "")).strip():
+        derived = _body_title(body or "")
+        if derived:
+            fm["title"] = derived
+            changed.append("title<-body")
+
+    if not changed:
+        return CortexOUT.error(
+            "provide 'title' and/or 'cycle' (or a body title to derive)",
+            code="INVALID_ARGS",
+        )
+
+    fm["updated_at"] = _now_iso()
+    _write_blueprint(bp_path, fm, body)
+
+    return CortexOUT.work(
+        f"blueprint.frontmatter.update ok id={bp_id}",
+        blueprint_id=bp_id,
+        title=fm.get("title", ""),
+        cycle=fm.get("cycle", ""),
+        updated=sorted(changed),
     )

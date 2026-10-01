@@ -197,6 +197,10 @@ MUTATING_HANDLERS: frozenset[str] = frozenset({
     "protocol.onboard",
     # identity mutations
     "identity.record",
+    # BLP-011 retrospective: identity.switch validates the target, writes
+    # the handoff file + a PULSE event and updates the session context —
+    # unconditional writes, so the auditor must be denied.
+    "identity.switch",
     # skill mutations (T-020: install writes originals/ + brain SKL entry
     # + PULSE by default; evolve/edit moved to CONDITIONAL_MUTATING for
     # their dry-run/read gates)
@@ -399,7 +403,7 @@ class PermissionContext:
             verified=False,
         )
 
-    def check(self, handler: str, **call_kwargs: Any) -> None:
+    def check(self, handler_name: str, **call_kwargs: Any) -> None:
         """Enforce role-based access control on the given handler call.
 
         v0.4.3+T-020 behavior:
@@ -411,7 +415,7 @@ class PermissionContext:
               non-GOVERNOR_ONLY handlers — that was a security bug.)
 
         Args:
-            handler: Dotted handler name (e.g. ``"cortex.gc"``).
+            handler_name: Dotted handler name (e.g. ``"cortex.gc"``).
             call_kwargs: Call arguments for conditional-mutator evaluation
                 (T-020). For handlers in CONDITIONAL_MUTATING the args are
                 bound against the registered signature first, so omitted
@@ -441,33 +445,33 @@ class PermissionContext:
 
         # Executor: universal governance handlers, except init handlers.
         if self.role == ROLE_EXECUTOR:
-            if handler in GOVERNOR_ONLY:
+            if handler_name in GOVERNOR_ONLY:
                 raise PermissionDenied(
-                    self.agent_id, self.role, handler,
+                    self.agent_id, self.role, handler_name,
                     "governor-only handler; executor cannot call",
                 )
             return
 
         # P0-B FIX: Auditor is STRICTLY read-only.
         if self.role == ROLE_AUDITOR:
-            if handler in GOVERNOR_ONLY:
+            if handler_name in GOVERNOR_ONLY:
                 raise PermissionDenied(
-                    self.agent_id, self.role, handler,
+                    self.agent_id, self.role, handler_name,
                     "governor-only handler; auditor cannot call",
                 )
-            if handler in MUTATING_HANDLERS:
+            if handler_name in MUTATING_HANDLERS:
                 raise PermissionDenied(
-                    self.agent_id, self.role, handler,
+                    self.agent_id, self.role, handler_name,
                     "mutating handler; auditor is read-only",
                 )
             # T-020: param-conditional mutators — deny only when this
             # invocation actually mutates (all gate flags truthy AND
             # dry_run falsy); previews/read modes stay allowed.
-            if handler in CONDITIONAL_MUTATING and _is_mutating_invocation(
-                handler, _resolve_call_kwargs(handler, call_kwargs)
+            if handler_name in CONDITIONAL_MUTATING and _is_mutating_invocation(
+                handler_name, _resolve_call_kwargs(handler_name, call_kwargs)
             ):
                 raise PermissionDenied(
-                    self.agent_id, self.role, handler,
+                    self.agent_id, self.role, handler_name,
                     "mutating invocation; auditor is read-only",
                 )
             # All other handlers (read + governance read-only) are allowed.
@@ -475,14 +479,14 @@ class PermissionContext:
 
         # Unknown role.
         raise PermissionDenied(
-            self.agent_id, self.role, handler,
+            self.agent_id, self.role, handler_name,
             f"unknown role {self.role!r}",
         )
 
-    def can(self, handler: str, **call_kwargs: Any) -> bool:
+    def can(self, handler_name: str, **call_kwargs: Any) -> bool:
         """Non-raising variant of `check`."""
         try:
-            self.check(handler, **call_kwargs)
+            self.check(handler_name, **call_kwargs)
             return True
         except PermissionDenied:
             return False

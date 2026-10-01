@@ -14,9 +14,9 @@ from __future__ import annotations
 from arqux.handlers import REGISTRY, handler_count, list_handlers
 
 
-def test_handler_count_is_92() -> None:
-    """Total handler count is 92 (T-027 added issue.create/update/list/read)."""
-    assert handler_count() == 92
+def test_handler_count_is_96() -> None:
+    """Total handler count is 96 (BLP-003 added blueprint.frontmatter.update)."""
+    assert handler_count() == 96
 
 
 def test_handler_list_accepts_mcp_context() -> None:
@@ -72,21 +72,21 @@ def test_each_handler_has_spec() -> None:
 
 def test_module_handler_counts() -> None:
     expected = {
-        "blueprint": 15,  # simplified lifecycle (BLP-004/005)
+        "blueprint": 16,  # +1: blueprint.frontmatter.update (BLP-003)
         "context": 2,
         "cortex": 21,  # +1: cortex.gc (BLP-002)
         "cycle": 5,  # simplified lifecycle (BLP-003)
         "evidence": 3,
-        "identity": 2,  # +1: identity.get
+        "identity": 3,  # +2: identity.get, identity.switch (BLP-011)
+        "handler": 2,  # +1: handler.how_to (BLP-012)
         "issue": 4,  # T-027: issue.create/update/list/read
         "project": 5,
         "protocol": 5,
         "session": 8,  # +3: bootstrap, handoff, pulse.compact
         "setup": 1,
-        "skill": 7,  # +1: skill.install
+        "skill": 8,  # +2: skill.install, skill.get (BLP-012)
         "task": 8,  # +1: task.run
         "workspace": 3,
-        "handler": 1,
     }
     counts: dict[str, int] = {}
     for name in list_handlers():

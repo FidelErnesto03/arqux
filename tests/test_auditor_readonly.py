@@ -51,7 +51,7 @@ class TestMutatingHandlersSet:
             "evidence.record",
             "session.context.set", "session.close",
             "project.bind", "project.unbind",
-            "identity.record",
+            "identity.record", "identity.switch",
             "cycle.create", "cycle.close",
             # T-020: residual auditor-callable mutators reconciled
             "session.bootstrap", "session.handoff", "session.pulse.compact",

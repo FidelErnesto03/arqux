@@ -467,3 +467,44 @@ def test_reconcile_handles_backslash_governor(arqux_env) -> None:
 
     assert result["reconciled"] is True, result.get("errors")
     assert "a\\1b" in manifest.read_text(encoding="utf-8")
+
+
+# ---------------------------------------------------------------------------
+# blueprint.frontmatter.update (BLP-003 measure #2)
+# ---------------------------------------------------------------------------
+
+
+def test_frontmatter_update_repairs_orphan(arqux_env) -> None:
+    from arqux.handlers.blueprint.manage import update_frontmatter
+
+    proj = arqux_env.proj_root
+    bp_dir = _bp_dir(proj, arqux_env.cycle_id)
+    bp_dir.mkdir(parents=True, exist_ok=True)
+    (bp_dir / "BLP-030.md").write_text(
+        '---\nblueprint_id: "BLP-030"\ntitle: ""\ncycle: ""\nstatus: "draft"\n---\n\n'
+        "<!-- BLP:TITLE -->\nTitulo Orfano\n<!-- /BLP:TITLE -->\n\n## §14: Tareas\n\n",
+        encoding="utf-8",
+    )
+
+    result = update_frontmatter(
+        "BLP-030", cycle=arqux_env.cycle_id, path=str(proj), ctx=arqux_env.gov_ctx
+    )
+
+    assert "blueprint.frontmatter.update ok" in result.to_text(), result.to_text()
+    fm = _read_fm(_bp_path(proj, "BLP-030"))
+    assert fm["title"] == "Titulo Orfano"  # derived from the body marker
+    assert fm["cycle"] == arqux_env.cycle_id
+
+
+def test_frontmatter_update_requires_input(arqux_env) -> None:
+    from arqux.handlers.blueprint.manage import update_frontmatter
+
+    proj = arqux_env.proj_root
+    bp_dir = _bp_dir(proj, arqux_env.cycle_id)
+    bp_dir.mkdir(parents=True, exist_ok=True)
+    (bp_dir / "BLP-031.md").write_text(
+        '---\nblueprint_id: "BLP-031"\ntitle: "Has title"\ncycle: "X"\nstatus: "draft"\n---\n\n',
+        encoding="utf-8",
+    )
+    result = update_frontmatter("BLP-031", path=str(proj), ctx=arqux_env.gov_ctx)
+    assert result.profile == OUT_ERROR, result.to_text()

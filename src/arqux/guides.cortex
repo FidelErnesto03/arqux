@@ -1,0 +1,31 @@
+$0
+
+# -- $0: GUIDES GLOSSARY --
+# Sigil | Name  | Type  | Risk | Cognitive Layer | Description
+# GDE   | guide | attrs | B    | Semantic        | Curated how-to guide for an intent
+# ARQX  | artifact | attrs | B | Semantic        | ArqUX artifact metadata
+#
+# Corpus unico versionado con el paquete (fuente unica — nunca duplicar
+# en .arqux/ del workspace). Espanol para guias, ingles para nombres
+# tecnicos. Consumido por el handler handler.how_to (BLP-012).
+
+
+$1: GUIDES
+
+ARQX:artifact{level:1, name:"guides", usage:"howto-corpus", kind:"native", agent:"any"}
+
+GDE:sesion_boot{name:"sesion_boot", aliases:"iniciar sesion, arrancar, bootstrap, dashboard, empezar, boot", steps:"1) session.bootstrap carga identidad y contexto; 2) handler.list(tier=NANO|LITE|FULL) descubre handlers disponibles; 3) session.context.set(project, scope, blp?) fija el puntero activo; 4) presenta dashboard HCORTEX y pregunta al Arquitecto", example:"session.bootstrap() -> handler.list tier=FULL -> session.context.set project=ARQUX scope=CYCLE-12", handlers:"session.bootstrap, handler.list, session.context.set"}
+
+GDE:cambiar_identidad{name:"cambiar_identidad", aliases:"identidad, switch, handoff, cambiar agente, pasame con, hola jarvis", steps:"1) identity.switch(agent_id) valida existencia, hidrata contrato, registra handoff + PULSE audit, actualiza context.cortex y devuelve el header listo; 2) adopta el contrato devuelto y presenta el header nuevo; 3) si IDENTITY_NOT_FOUND, muestra available_identities; NUNCA leas .arqux/identities/*.cortex directo", example:"identity.switch agent_id=jarvis", handlers:"identity.switch, identity.get"}
+
+GDE:ciclo_blueprint{name:"ciclo_blueprint", aliases:"blueprint, crear blueprint, madurar, ejecutar blueprint, ciclo blp", steps:"1) blueprint.synthesize(bp_id) PRIMERO siempre (crea y guia secciones); 2) blueprint.update(section=N) por cada seccion siguiendo la guia; 3) blueprint.ready tras compuertas; 4) blueprint.claim para ejecutar; 5) por tarea: blueprint.task(in_progress) -> trabajo -> blueprint.task(completed, evidence); 6) blueprint.ac por cada criterio; 7) blueprint.complete", example:"blueprint.synthesize bp_id=BLP-013 path=/ruta/del/proyecto", handlers:"blueprint.synthesize, blueprint.update, blueprint.ready, blueprint.claim, blueprint.task, blueprint.ac, blueprint.complete"}
+
+GDE:tarea_blueprint_checkbox{name:"tarea_blueprint_checkbox", aliases:"marcar tarea, checkbox, seccion 14, tareas blueprint", steps:"1) la seccion 14 del BLP DEBE ser checklist markdown '- [ ] **T-x.y:** Titulo — Descripcion' (no tabla); 2) blueprint.task(task_id, in_progress) al iniciar y (completed, evidence) al cerrar — inmediato, nunca en lote; 3) si blueprint.task devuelve NOT_FOUND, el formato de §14 es incorrecto", example:"blueprint.task bp_id=BLP-012 task_id=T-1.1 status=in_progress", handlers:"blueprint.task"}
+
+GDE:evidencia_pulse{name:"evidencia_pulse", aliases:"evidencia, pulse, registrar evidencia, auditar", steps:"1) evidence.record(task_id, kind, payload) tras cada tarea — task_id debe ser una tarea gobernada de ciclo existente (task.list para verla); 2) kinds: note, artifact, decision, metric, blocker; 3) si no esta en PULSE, no paso", example:"evidence.record task_id=T-001 kind=artifact payload=logro verificable", handlers:"evidence.record, evidence.list"}
+
+GDE:editar_skill_local{name:"editar_skill_local", aliases:"editar skill, skill local, modificar skill, workflows anidados, skill.edit", steps:"1) leer: skill.get(name); 2) escribir completo: skill.edit(name, content); 3) por seccion: skill.edit(name, content, section='$2'); 4) el resolver universal acepta nombre raiz, ruta relativa 'workflows/w10-x' o nombre unico anidado; ambiguedad -> candidatos; NUNCA edites el archivo directo", example:"skill.edit name=workflows/w10-identity-handoff section=$3 content=...", handlers:"skill.get, skill.edit, skill.list"}
+
+GDE:checkpoint_wrk{name:"checkpoint_wrk", aliases:"checkpoint, memoria de trabajo, wrk, guardar estado", steps:"1) cortex.checkpoint(content='fcs:...,obj:...,tasks:...,state:...') al final de cada turno — persistencia inmediata, diferida prohibida; 2) WRK:current en brain seccion 5 es la fuente unica de verdad del estado del agente; 3) al reanudar, session.resume restaura desde el ultimo SES", example:"cortex.checkpoint content=fcs:soporte,obj:...,tasks:...,state:...", handlers:"cortex.checkpoint, session.resume"}
+
+GDE:cerrar_sesion{name:"cerrar_sesion", aliases:"cerrar sesion, ses, fin de sesion, despedida, close", steps:"1) session.close(summary, blps, tasks, decisions, gaps) escribe el SES portable en brain PULSE; 2) no cerrar sin checkpoint previo; 3) la proxima sesion restaura contexto con session.resume", example:"session.close summary=... blps=BLP-012 tasks= decisions= gaps=", handlers:"session.close, session.resume, session.status"}
