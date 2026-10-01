@@ -219,7 +219,7 @@ def _replace_markers_in_section(
             len(unmatched), section_num, unmatched,
         )
 
-    return pattern.sub(section_content, manifest_text, count=1)
+    return pattern.sub(lambda _m: section_content, manifest_text, count=1)
 
 
 def _has_known_markers(content_body: str, tmpl_markers: dict[int, list[str]]) -> bool:
@@ -828,13 +828,14 @@ def _replace_manifest_section(manifest_text: str, section_num: int, new_content:
         open_tag = cycle_match.group(1)
         close_tag = cycle_match.group(2)
         replacement = f"{open_tag}\n{new_content}\n{close_tag}"
-        return cycle_pat.sub(replacement, manifest_text, count=1)
+        return cycle_pat.sub(lambda _m: replacement, manifest_text, count=1)
 
     # Fallback: split by ## §N: headers (backward compat)
     marker = f"## §{section_num}:"
     pattern = re.compile(rf"^{re.escape(marker)}.*?(?=^## §\d+:|\Z)", re.MULTILINE | re.DOTALL)
     if pattern.search(manifest_text):
-        return pattern.sub(f"{marker}\n\n{new_content.strip()}\n", manifest_text, count=1)
+        section_repl = f"{marker}\n\n{new_content.strip()}\n"
+        return pattern.sub(lambda _m: section_repl, manifest_text, count=1)
     return manifest_text
 
 

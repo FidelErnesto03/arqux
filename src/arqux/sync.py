@@ -573,9 +573,158 @@ def _meta_self_dom(meta_brain: Path) -> str | None:
 
 
 def _fm_val(fm_text: str, key: str) -> str:
-    """Extract a value from YAML frontmatter text by key."""
-    m = re.search(rf'^{key}:\s*"([^"]*)"', fm_text, re.MULTILINE)
-    return m.group(1) if m else ""
+    """Extract a frontmatter scalar by key (quote-tolerant — BLP-003 F-5)."""
+    m = re.search(rf"^{re.escape(key)}:\s*(.*)$", fm_text, re.MULTILINE)
+    if not m:
+        return ""
+    val = m.group(1).strip()
+    if len(val) >= 2 and val[0] == val[-1] and val[0] in ("'", '"'):
+        val = val[1:-1]
+    return val
+
+
+def _body_title(body: str | None) -> str:
+    """Extract a Blueprint title from the body (BLP:TITLE marker or heading).
+
+    Mirrors ``blueprint._read._body_title`` (kept local to avoid a circular
+    import between ``sync`` and the blueprint package — BLP-003 F-2).
+    """
+    text = body or ""
+    marker = re.search(
+        r"<!--\s*BLP:TITLE\s*-->(.*?)<!--\s*/BLP:TITLE\s*-->",
+        text,
+        re.DOTALL | re.IGNORECASE,
+    )
+    if marker:
+        for line in marker.group(1).splitlines():
+            line = line.strip()
+            if not line:
+                continue
+            m = re.match(r"^#?\s*BLP-\d+:\s*(.*)$", line)
+            if m and m.group(1).strip():
+                return m.group(1).strip()
+            return line.lstrip("#").strip()
+    heading = re.search(r"^#\s+BLP-\d+:\s*(.+?)\s*$", text, re.MULTILINE)
+    if heading and heading.group(1).strip():
+        return heading.group(1).strip()
+    return ""
+
+
+# Cycle MANIFEST quality-gate keys (mirror CYCLE_MANIFEST_TEMPLATE.md).
+MANIFEST_GATE_KEYS = [
+    "has_clear_purpose",
+    "has_explicit_scope",
+    "has_measurable_objectives",
+    "has_operational_guidelines",
+    "has_control_points",
+    "aligns_with_project",
+]
+
+
+def _split_frontmatter(text: str) -> tuple[str | None, str]:
+    """Split a markdown file into (frontmatter_text, body) (BLP-003)."""
+    if not text.startswith("---"):
+        return None, text
+    parts = text.split("---", 2)
+    if len(parts) < 3:
+        return None, text
+    return parts[1].strip("\n"), parts[2]
+
+
+def _set_fm_scalar(fm_text: str, key: str, value: str) -> str:
+    """Set/replace a scalar frontmatter field as a quoted value (BLP-003)."""
+    pattern = rf"(?m)^{re.escape(key)}:\s*.*$"
+    repl = f'{key}: "{value}"'
+    if re.search(pattern, fm_text):
+        # lambda replacement keeps backslashes in *value* literal (H-F8).
+        return re.sub(pattern, lambda _m: repl, fm_text, count=1)
+    return fm_text.rstrip("\n") + f"\n{repl}\n"
+
+
+def _read_gate_table(text: str, keys: list[str]) -> dict[str, bool]:
+    """Read boolean quality gates from a markdown table by key (BLP-003)."""
+    gates: dict[str, bool] = {}
+    for key in keys:
+        m = re.search(rf"\|\s*{re.escape(key)}\s*\|\s*([^|]*)\|", text or "")
+        gates[key] = bool(m and "\u2705" in m.group(1))
+    return gates
+
+
+def _write_gate_block(
+    fm_text: str, gates: dict[str, bool], key: str = "quality_gates@"
+) -> str:
+    """Replace/insert the ``quality_gates@`` block, cleaning legacy forms.
+
+    Handles both the canonical multi-line block (``key: { ... }``) and the
+    legacy flattened form written by older writers (``key: "{"`` followed by
+    orphan ``has_*: "false,"`` lines), without leaving duplicate keys (BLP-003).
+    """
+    gate_names = set(gates)
+    new_block = [f"{key}: {{"]
+    for gate_key, gate_val in gates.items():
+        new_block.append(f"  {gate_key}: {'true' if gate_val else 'false'},")
+    new_block.append("}")
+
+    lines = fm_text.split("\n")
+    out: list[str] = []
+    i = 0
+    replaced = False
+    while i < len(lines):
+        line = lines[i]
+        if not replaced and line.strip().startswith(f"{key}:"):
+            opens_block = line.rstrip().endswith("{")
+            i += 1
+            # Consume only the declared block: indented lines + closing brace
+            # when it opens a block, or orphan flat gate lines in the legacy
+            # (quoted `"{"`) form. Never eat unrelated indented keys (F-3).
+            while i < len(lines):
+                stripped = lines[i].strip()
+                if not stripped:
+                    if opens_block:
+                        i += 1
+                        continue
+                    break
+                head = stripped.split(":", 1)[0].strip() if ":" in stripped else ""
+                if opens_block:
+                    if stripped == "}" or lines[i][:1] in (" ", "\t"):
+                        i += 1
+                        if stripped == "}":
+                            break
+                        continue
+                    break
+                if head in gate_names:
+                    i += 1
+                    continue
+                if stripped == "}":
+                    i += 1
+                    break
+                break
+            out.extend(new_block)
+            replaced = True
+            continue
+        out.append(line)
+        i += 1
+
+    if not replaced:
+        out.extend(new_block)
+    return "\n".join(out)
+
+
+def _resolve_governor(project_root: Path) -> str:
+    """Resolve the project governor from brain.cortex ``$1/IDN`` (best-effort)."""
+    try:
+        from arqux.state import crud_read
+
+        brain_path = project_root / ".arqux" / "brain.cortex"
+        if brain_path.exists():
+            read = crud_read(brain_path, "$1/IDN:governor")
+            for entry in read.get("entries", []):
+                gov = (entry.get("value") or {}).get("governor")
+                if gov:
+                    return str(gov)
+    except Exception:
+        pass
+    return ""
 
 
 def reconcile_cycle(project_root: Path, cycle_id: str) -> dict[str, Any]:
@@ -596,6 +745,11 @@ def reconcile_cycle(project_root: Path, cycle_id: str) -> dict[str, Any]:
         "metrics": {},
         "errors": [],
     }
+
+    # Callers pass either the project root or the .arqux/ directory
+    # (find_project_root returns .arqux/). Normalize to the project root
+    # so the cycles lookup below is correct (BLP-003).
+    project_root = project_root.parent if project_root.name == ".arqux" else project_root
 
     cycles_dir = project_root / ".arqux" / "cycles"
     cdir = cycles_dir / cycle_id
@@ -623,7 +777,7 @@ def reconcile_cycle(project_root: Path, cycle_id: str) -> dict[str, Any]:
                 fm_text = fm_match.group(1)
 
                 bp_id = _fm_val(fm_text, "blueprint_id") or bp_file.stem
-                title = _fm_val(fm_text, "title") or ""
+                title = _fm_val(fm_text, "title") or _body_title(text)
                 status = _fm_val(fm_text, "status") or "draft"
                 priority = _fm_val(fm_text, "priority") or "medium"
                 governor = _fm_val(fm_text, "governor") or ""
@@ -675,10 +829,14 @@ def reconcile_cycle(project_root: Path, cycle_id: str) -> dict[str, Any]:
         table_rows.append(
             f"| {row['id']} | {te} | {row['status']} | {row['priority']} | {row['governor']} |"
         )
-    section_6 = "\n".join(table_rows) if table_rows else (
+    table_header = (
         "| BLP ID | Título | Estado | Prioridad | Gobernador |\n"
-        "|---|---|---|---|---|\n"
-        "| _— | _Sin BLPs en este ciclo_ | _ | _ | _ |"
+        "|---|---|---|---|---|"
+    )
+    section_6 = (
+        table_header + "\n" + "\n".join(table_rows)
+        if table_rows
+        else table_header + "\n| _— | _Sin BLPs en este ciclo_ | _ | _ | _ |"
     )
 
     # 4. Build §7 metrics
@@ -721,7 +879,7 @@ def reconcile_cycle(project_root: Path, cycle_id: str) -> dict[str, Any]:
 
         # Replace §6 table: from header to next ## § or end
         manifest_text = re.sub(
-            r"(## §6: Blueprints \(Índice\).*?\n)(?:.*?)(?=\n## §7:|\Z)",
+            r"(## §6:[^\n]*\n)(?:.*?)(?=\n## §7:|\Z)",
             lambda m: m.group(1) + "\n" + section_6 + "\n",
             manifest_text,
             count=1,
@@ -730,12 +888,46 @@ def reconcile_cycle(project_root: Path, cycle_id: str) -> dict[str, Any]:
 
         # Replace §7 section: from header to next ## § or end
         manifest_text = re.sub(
-            r"(## §7: Estado y Métricas.*?\n)(?:.*?)(?=\n## §8:|\Z)",
+            r"(## §7:[^\n]*\n)(?:.*?)(?=\n## §8:|\Z)",
             lambda m: m.group(1) + "\n" + section_7 + "\n",
             manifest_text,
             count=1,
             flags=re.DOTALL,
         )
+
+        # BLP-003: synchronize the MANIFEST frontmatter with reality.
+        fm_text, m_body = _split_frontmatter(manifest_text)
+        if fm_text is not None:
+            # Preserve terminal/operator states (closed, active).
+            if _fm_val(fm_text, "status") not in ("closed", "active"):
+                active = any(
+                    bp_counts.get(s, 0)
+                    for s in ("ready", "in_progress", "review", "done")
+                )
+                fm_text = _set_fm_scalar(
+                    fm_text, "status", "active" if active else "draft"
+                )
+            governor = _fm_val(fm_text, "governor")
+            if not governor or governor.lower() == "anonymous":
+                governor = _resolve_governor(project_root)
+            if governor:
+                fm_text = _set_fm_scalar(fm_text, "governor", governor)
+            if not _fm_val(fm_text, "project_ref"):
+                fm_text = _set_fm_scalar(fm_text, "project_ref", project_root.name)
+            fm_text = _set_fm_scalar(fm_text, "updated_at", ts)
+
+            # Only touch quality_gates@ when §9 actually declares gate rows.
+            m9 = re.search(r"## §9:.*?(?=\n## §10:|\Z)", m_body, re.DOTALL)
+            m9_text = m9.group(0) if m9 else ""
+            if any(
+                re.search(rf"\|\s*{re.escape(k)}\s*\|", m9_text)
+                for k in MANIFEST_GATE_KEYS
+            ):
+                fm_text = _write_gate_block(
+                    fm_text, _read_gate_table(m9_text, MANIFEST_GATE_KEYS)
+                )
+
+            manifest_text = f"---\n{fm_text}\n---{m_body}"
 
         manifest_path.write_text(manifest_text, encoding="utf-8")
         result["reconciled"] = True

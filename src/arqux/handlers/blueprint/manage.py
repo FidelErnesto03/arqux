@@ -9,14 +9,17 @@ import re
 
 from ...cortex_out import CortexOUT
 from ...permissions import PermissionContext
+from ...sync import _read_gate_table
 from ._helpers import (
     BP_DONE,
     BP_IN_PROGRESS,
+    QUALITY_GATES,
     _effective_status,
     _find_blueprint,
     _now_iso,
     _record_bp_evidence,
     _resolve_root,
+    _section,
     _write_blueprint,
 )
 
@@ -155,6 +158,12 @@ def update_blueprint(
 
     if not section and not note:
         return CortexOUT.error("provide 'note', 'section', or both", code="INVALID_ARGS")
+
+    # BLP-003: keep quality_gates@ in sync with §18 on every update.
+    for gate_key, gate_val in _read_gate_table(_section(body, 18), QUALITY_GATES).items():
+        fm[gate_key] = gate_val
+    fm.pop("quality_gates", None)
+    fm.pop("quality_gates@", None)
 
     _write_blueprint(bp_path, fm, body)
 

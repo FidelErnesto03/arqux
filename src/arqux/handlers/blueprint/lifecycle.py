@@ -19,6 +19,7 @@ from ._helpers import (
     _blueprints_dir,
     _find_blueprint,
     _find_workspace_template,
+    _is_blank,
     _now_iso,
     _prefill_from_context,
     _read_blueprint,
@@ -209,6 +210,16 @@ def ready_blueprint(
             + "; ".join(p[:60] for p in pending[:5]),
             code="VALIDATION",
             pending=pending,
+        )
+
+    # BLP-003: refuse `ready` with an orphan frontmatter (empty title/cycle).
+    missing = [key for key in ("title", "cycle") if _is_blank(fm.get(key))]
+    if missing:
+        return CortexOUT.error(
+            f"blueprint {bp_id} has empty frontmatter field(s): {', '.join(missing)}. "
+            "Populate title/cycle before declaring ready.",
+            code="VALIDATION",
+            missing=missing,
         )
 
     err = _transition(bp_id, fm.get("status", BP_DRAFT), BP_READY)

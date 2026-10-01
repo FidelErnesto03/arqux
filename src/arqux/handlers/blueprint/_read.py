@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import re
+
 from ...constants import (
     BLUEPRINTS_DIR,
     CYCLES_DIR,
@@ -14,6 +16,41 @@ from ._helpers import (
     _read_blueprint,
     _resolve_root,
 )
+
+
+def _resolve_title(fm: dict, body: str | None, fallback: str) -> str:
+    """Resolve a Blueprint title, tolerating an orphan frontmatter (BLP-003).
+
+    Falls back to the body title — the ``<!-- BLP:TITLE -->`` marker first,
+    then a ``# BLP-NNN:`` heading — and finally to *fallback* (the file stem).
+    """
+    title = fm.get("title")
+    if title is not None and not isinstance(title, bool) and str(title).strip():
+        return str(title).strip()
+    return _body_title(body) or fallback
+
+
+def _body_title(body: str | None) -> str:
+    """Extract the title from a Blueprint body (BLP:TITLE marker or heading)."""
+    text = body or ""
+    marker = re.search(
+        r"<!--\s*BLP:TITLE\s*-->(.*?)<!--\s*/BLP:TITLE\s*-->",
+        text,
+        re.DOTALL | re.IGNORECASE,
+    )
+    if marker:
+        for line in marker.group(1).splitlines():
+            line = line.strip()
+            if not line:
+                continue
+            m = re.match(r"^#?\s*BLP-\d+:\s*(.*)$", line)
+            if m and m.group(1).strip():
+                return m.group(1).strip()
+            return line.lstrip("#").strip()
+    heading = re.search(r"^#\s+BLP-\d+:\s*(.+?)\s*$", text, re.MULTILINE)
+    if heading and heading.group(1).strip():
+        return heading.group(1).strip()
+    return ""
 
 # ---------------------------------------------------------------------------
 # blueprint.read
@@ -81,16 +118,17 @@ def list_blueprints(
         for bp_file in sorted(bp_dir.glob("*.md")):
             if bp_file.name == "BLP_TEMPLATE.md":
                 continue
-            fm, _ = _read_blueprint(bp_file)
-            if fm is None:
+            read = _read_blueprint(bp_file)
+            if read is None:
                 continue
+            fm, body = read
             bp_status = _effective_status(fm)
             if status and bp_status != status:
                 continue
             entry = {
                 "id": fm.get("blueprint_id", bp_file.stem),
-                "title": fm.get("title", bp_file.stem),
-                "cycle": fm.get("cycle", cdir.name),
+                "title": _resolve_title(fm, body, bp_file.stem),
+                "cycle": str(fm.get("cycle", "")).strip() or cdir.name,
                 "status": bp_status,
                 "governor": fm.get("governor", ""),
                 "executor": fm.get("executor", ""),
