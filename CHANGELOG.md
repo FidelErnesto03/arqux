@@ -2,6 +2,22 @@
 
 All notable changes to ArqUX are documented here.
 
+## [0.8.1] - 2026-10-01
+
+### Fixed — silent corruption of governance artifacts (BLP-014)
+- `blueprint.update` now rejects destructive section content (`<!-- BLP`
+  markers and non-canonical/embedded `## §` headers), locates the target
+  section strictly by the `<!-- BLP:N -->`…`<!-- /BLP:N -->` pair (the
+  header-text fallback that swallowed markers was removed), and verifies the
+  marker SET is unchanged after the update. Fixes an idempotent re-send that
+  silently corrupted the blueprint.
+- `cortex.entry.update` parses `set_` with a real lexer (quotes, `{}`, `[]`,
+  `()`), so values with internal commas no longer produce phantom attrs; a
+  post-write attrs check rolls the file back byte-faithfully on violation.
+- `cortex.entry.add` schema: `sigil`/`name` no longer required when a
+  `content` CORTEX entry is provided (derived from it).
+- `cortex.learn` accepts a `content` kwarg.
+
 ## [0.8.0] - 2026-10-01
 
 ### Added — frontmatter consistency across the blueprint/cycle lifecycle (BLP-003)
