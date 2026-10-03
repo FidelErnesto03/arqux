@@ -2,6 +2,28 @@
 
 All notable changes to ArqUX are documented here.
 
+## [0.8.2] - 2026-10-02
+
+### Fixed — support-triage session (3 open issues closed)
+
+- **`blueprint.claim` executor resolution** (issue 2026-10-02): claim now
+  resolves the executor with precedence `agent_id` param (governor-only) >
+  declared frontmatter executor + governor caller > **active identity from
+  the session context pointer** (`.arqux/context.cortex`, written by
+  `identity.switch`) > authenticated env agent. Previously it recorded the
+  statically authenticated server agent after every identity handoff.
+  Regression tests: `tests/test_claim_executor_resolution.py`.
+- **`cortex.verify` schema mismatch shim** (issue 2026-10-02): codec-cortex
+  <=0.6.2 required a `name` attribute on every entry while the format carries
+  the name in the KEY (`SIGIL:name`) — one W001 per entry on every healthy
+  brain (576/584 entries), `valid=false` systemic, real E-codes buried in
+  noise. arqux now clears `SchemaResolver.ALWAYS_REQUIRED` at load time.
+  codec-cortex itself is intentionally NOT modified (keeps 0.6.2 upstream).
+  Regression tests: `tests/test_cortex_verify_shim.py`.
+- **`call_tool` namespace normalization lock** (issue 2026-10-01): the
+  already-applied fix (prefixed tool names + serialized NOT_FOUND) is locked
+  with regression tests: `tests/test_server_call_tool.py`.
+
 ## [0.8.1] - 2026-10-01
 
 ### Fixed — silent corruption of governance artifacts (BLP-014)

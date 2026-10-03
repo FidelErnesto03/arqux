@@ -76,6 +76,19 @@ except ImportError:
     _cc_ast = _cc_lexer = _cc_parser = _cc_validator = None
     _cc_selectors = _cc_renderer = None
 
+# Runtime shim (issue 2026-10-02, schema mismatch verifier<->format):
+# codec-cortex <=0.6.2 requires a `name` ATTRIBUTE on every entry, but in
+# CODEC-CORTEX the name lives in the KEY (SIGIL:name). Published versions
+# still carry the bug, so arqux neutralizes it at load time — the fix
+# travels with arqux, NOT with codec-cortex (which stays untouched).
+if _HAS_CODEC_CORTEX:
+    try:
+        from cortex.core.schema import SchemaResolver as _SchemaResolver
+
+        _SchemaResolver.ALWAYS_REQUIRED = frozenset()
+    except Exception:  # noqa: BLE001  # best-effort shim, never blocks startup
+        pass
+
 # BLP-005: These CODEC modules have been removed from ArqUX.
 # They are kept as None for backward-compatibility with any code
 # that still references them (e.g. state.py re-exports).
