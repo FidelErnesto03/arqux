@@ -7,7 +7,13 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from ...constants import CYCLE_CLOSED, CYCLES_DIR
+from ...constants import (
+    CYCLE_CLOSED,
+    CYCLES_DIR,
+    OUT_ERROR,
+    PERMISSION_DENIED,
+    ROLE_GOVERNOR,
+)
 from ...cortex_out import CortexOUT
 from ...permissions import PermissionContext
 from ...sync import reconcile_cycle, sync_brain
@@ -255,13 +261,41 @@ def ready_blueprint(
 # ---------------------------------------------------------------------------
 
 
+def _active_context_agent(root: Path) -> str:
+    """Return the active identity from the session context pointer (or "").
+
+    ``identity.switch``/``session.context.set`` write the active agent to the
+    workspace ``context.cortex``. Claim composition reads that pointer so the
+    recorded executor reflects the identity actually operating — not the
+    statically authenticated server agent (issue 2026-10-02).
+    """
+    from ..session import context_get
+
+    try:
+        out = context_get(path=str(root))
+    except Exception:  # noqa: BLE001
+        return ""
+    if out.profile == OUT_ERROR:
+        return ""
+    return out.fields.get("agent", "")
+
+
 def claim_blueprint(
     bp_id: str,
     path: str | None = None,
     cycle: str | None = None,
+    agent_id: str | None = None,
     ctx: PermissionContext | None = None,
 ) -> CortexOUT:
-    """Executor claims the Blueprint. State → in_progress. Assigns executor implicitly."""
+    """Executor claims the Blueprint. State → in_progress. Assigns executor implicitly.
+
+    Executor resolution precedence (issue 2026-10-02):
+    1. ``agent_id`` param — explicit assignment, governor-only.
+    2. Declared executor in the blueprint frontmatter, when the caller is
+       the governor recorded there.
+    3. Active identity from the session context pointer (identity.switch).
+    4. Authenticated agent from the environment (fallback).
+    """
     root = _resolve_root(path)
     if root is None:
         return CortexOUT.error("no project initialized", code="NOT_FOUND")
@@ -274,13 +308,27 @@ def claim_blueprint(
     if err:
         return CortexOUT.error(err, code="INVALID_STATE")
 
-    caller = (ctx or PermissionContext.from_env(project_root=root)).agent_id
+    env_ctx = ctx or PermissionContext.from_env(project_root=root)
+    caller = env_ctx.agent_id
     declared = fm.get("executor", "").strip()
     # If blueprint declares an executor and caller is the governor, respect the declaration
     if declared and declared != caller:
         gov = fm.get("governor", "").strip().lower()
         if gov == caller.lower():
             caller = declared
+    # Explicit agent_id assignment is a governor decision
+    if agent_id and agent_id.strip() and agent_id.strip() != caller:
+        if env_ctx.role != ROLE_GOVERNOR:
+            return CortexOUT.error(
+                f"agent_id assignment requires role={ROLE_GOVERNOR}",
+                code=PERMISSION_DENIED,
+            )
+        caller = agent_id.strip()
+    # Active session identity wins over the static env agent
+    if caller == env_ctx.agent_id:
+        active = _active_context_agent(root)
+        if active:
+            caller = active
     fm["status"] = BP_IN_PROGRESS
     fm["executor"] = caller
     fm["updated_at"] = _now_iso()
