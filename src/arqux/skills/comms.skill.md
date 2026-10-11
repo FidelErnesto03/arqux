@@ -13,7 +13,7 @@ IDN:comms{ name:"ArqUX Comms — comunicación Telegram (extensión MCP)", purpo
 
 `arqux-comms` es un servidor MCP stdio (proceso aparte, patrón `arqux-voice`)
 con 5 tools sobre la Bot API de Telegram. NO modifica el core ni su
-presupuesto de 96 handlers. Recepción por long-polling (`getUpdates`), sin
+presupuesto de 97 handlers. Recepción por long-polling (`getUpdates`), sin
 endpoint público.
 
 ## §2: MOUNT
@@ -63,6 +63,6 @@ WK:inbox{procedure:(a)comms.listen(timeout)->{from,text,ts} o {timeout:true} (b)
 
 ## §7: GOBERNANZA
 
-Construida en BLP-017 (CYCLE-12). No toca el core (96 handlers). Criterios de
+Construida en BLP-017 (CYCLE-12). No toca el core (97 handlers). Criterios de
 Heimdall incorporados (token, egress, allowlist, entrada como dato). El bridge
 a gobernanza (evidence/identity) es local y **OFF por defecto**.

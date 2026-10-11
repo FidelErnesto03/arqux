@@ -1,6 +1,6 @@
 # ArqUX Handlers
 
-Total: **96** handlers
+Total: **97** handlers
 
 ## blueprint
 
@@ -9,7 +9,7 @@ Total: **96** handlers
 | `blueprint.ac` | Verify one AC in §12. |
 | `blueprint.block_for_architect` | Block for Architect manual review. |
 | `blueprint.cancel` | Cancel a Blueprint. Governor-only. State → cancelled. |
-| `blueprint.claim` | Executor claims the Blueprint. ready → in_progress + implicit executor assignment. |
+| `blueprint.claim` | Executor claims the Blueprint. ready → in_progress + implicit executor assignment. Executor resolved from: agent_id param (governor) > declared executor > active session context > authenticated agent. |
 | `blueprint.complete` | Declare execution complete. in_progress → done (completado + aprobado en 1 paso). |
 | `blueprint.create` | Create a new Blueprint from BLP_TEMPLATE.md in draft state. |
 | `blueprint.execute` | Execute a Blueprint: verify §3 preconditions, run §14 tasks sequentially, verify §12 ACs, mark complete (BLP-010 meta-handler). Supports dry_run mode. |
@@ -67,6 +67,7 @@ Pass apply=true with confirm_hash from a reviewed dry-run to write the elevation
 | `cycle.create` | Open a new cycle in the active project. |
 | `cycle.current` | Get the currently active cycle. |
 | `cycle.list` | List cycles in the active project. |
+| `cycle.reopen` | Reopen a closed cycle so its manifest can be amended. |
 | `cycle.synthesize` | Populate a cycle's MANIFEST.md sections in a single call. |
 
 ## evidence

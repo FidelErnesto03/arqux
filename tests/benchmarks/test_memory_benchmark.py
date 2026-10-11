@@ -68,7 +68,7 @@ def test_benchmark_publishes_reproducible_evidence(tmp_path: Path) -> None:
     recall_ms = (time.perf_counter() - t0) * 1000
 
     report = {
-        "version": "0.9.0",
+        "version": "0.9.0rc1",
         "corpus": {
             "file": "synthetic.cortex",
             "records": n_records,
