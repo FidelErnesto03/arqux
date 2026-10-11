@@ -14,15 +14,15 @@
     "python -m pytest tests/benchmarks -q"
   ],
   "results": {
-    "cold_start_ms": 15.019,
-    "rebuild_ms": 23.171,
-    "rebuild_again_ms": 18.887,
-    "recall_total_ms": 21.31,
+    "cold_start_ms": 7.137,
+    "rebuild_ms": 11.377,
+    "rebuild_again_ms": 11.49,
+    "recall_total_ms": 14.146,
     "recall_queries": 3,
     "records_projected": 200,
     "source_bytes": 19679,
-    "index_bytes": 186660,
-    "content_hash": "8dd87f0a55a1a229c8983b744e81684aca4f4478321837f0aaf3315973d4f331"
+    "index_bytes": 186659,
+    "content_hash": "b92d10b9cda5dc75e48776f675b744d8582b737e2a97a69d032de65efde5aa3c"
   },
   "limitations": [
     "Timings are indicative on this host; they are not a claim about other hardware.",
