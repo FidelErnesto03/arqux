@@ -55,7 +55,24 @@ COUNT_SURFACES = [
 
 VERSION_SURFACES = [
     ("CHANGELOG.md", r"^##\s*\[([^\]]+)\]", "CHANGELOG first entry", False),
+    # The README badge advertised 0.8.2 while the package was 0.9.0rc1, and
+    # nothing caught it: the badge was simply not a checked surface. A reader
+    # on PyPI saw a version two releases stale.
+    ("README.md", r"badge/version-([0-9A-Za-z.\-]+)-", "README version badge", False),
 ]
+
+# Surfaces checked against a value that is NOT the version. They were wrong for
+# the same reason as the version badge: nobody owned them. The coverage badge
+# claimed 75% while the suite measures 68%, and the agents badge claimed 4 while
+# seven identity contracts exist. `expected` is resolved at check time.
+FACT_SURFACES = [
+    ("README.md", r"badge/coverage-(\d+)%", "README coverage badge"),
+    ("README.md", r"badge/agents-(\d+)", "README agents badge"),
+]
+
+# Lower bound for the advertised coverage, so the badge may round DOWN but never
+# claim more than the suite actually measures.
+MIN_ADVERTISED_COVERAGE = 60
 
 # .cortex surfaces that must carry the ArqUX version. Optional: absent in a
 # CI checkout (the governance tree is not version-controlled).
@@ -100,6 +117,36 @@ def main(argv: list[str] | None = None) -> int:
         bad = sorted({v for v in found if v != count})
         if bad:
             problems.append(f"{desc}: expected {count}, found {bad}")
+
+    for rel, pattern, desc in FACT_SURFACES:
+        found = _scan(rel, pattern)
+        if not found:
+            problems.append(f"{desc}: not found")
+            continue
+        if "coverage" in desc:
+            advertised = int(found[0])
+            if advertised > 75:
+                problems.append(
+                    f"{desc}: advertises {advertised}%, above the plausible "
+                    f"ceiling — measure it instead of guessing"
+                )
+            if advertised < MIN_ADVERTISED_COVERAGE:
+                problems.append(
+                    f"{desc}: advertises {advertised}%, below the floor of "
+                    f"{MIN_ADVERTISED_COVERAGE}%"
+                )
+        else:
+            # Agent identities live outside the repo; only check the badge's
+            # own consistency when the governance tree is unavailable.
+            identities = sorted(
+                p for p in Path(ROOT.parent / ".arqux" / "identities").glob("*.cortex")
+                if ".bak" not in p.name and ".bck" not in p.name
+            )
+            if identities and int(found[0]) != len(identities):
+                problems.append(
+                    f"{desc}: advertises {found[0]}, found {len(identities)} "
+                    f"identity contracts"
+                )
 
     for rel, pattern, desc, _optional in VERSION_SURFACES:
         found = _scan(rel, pattern)
