@@ -93,7 +93,7 @@ $0: format{cortex:"0.1", encoding:"UTF-8"}
 
 $19: ARQUX METADATA
 
-ARQX:artifact{level:"2", name:"brain", usage:"state", kind:"native", version:"0.9.0rc2"}
+ARQX:artifact{level:"2", name:"brain", usage:"state", kind:"native", version:"0.9.0rc3"}
 
 
 $1: IDENTITY
@@ -968,6 +968,8 @@ AUD:E_1526{date:"2026-10-11T19:20:34Z", event:"E-1526", task:"2026-10-11-el-camp
 AUD:E_1527{date:"2026-10-11T19:24:37Z", event:"E-1527", task:"2026-10-11-el-reporte-de-benchmark-se-regenera-en-cada-corr", kind:"issue", agent:"alfred", result:"issue.update 2026-10-11-el-reporte-de-benchmark-se-regenera-en-cada-corr.issue.md status=open->fixed note=Corregido. Medir y publicar estan separados. El benchmark siempre mide, pero esc", evidence:"issue.update 2026-10-11-el-reporte-de-benchmark-se-regenera-en-cada-corr.issue.md status=open->fixed note=Corregido. Medir y publicar estan separados. El benchmark siempre mide, pero esc"}
 
 AUD:E_1528{date:"2026-10-11T19:24:42Z", event:"E-1528", task:"2026-10-11-el-campo-platform-del-reporte-de-benchmark-puede", kind:"issue", agent:"alfred", result:"issue.update 2026-10-11-el-campo-platform-del-reporte-de-benchmark-puede.issue.md status=open->fixed note=Mitigado. Se confirmo la causa antes de actuar: no era un defecto de ArqUX ni de", evidence:"issue.update 2026-10-11-el-campo-platform-del-reporte-de-benchmark-puede.issue.md status=open->fixed note=Mitigado. Se confirmo la causa antes de actuar: no era un defecto de ArqUX ni de"}
+
+AUD:E_1529{date:"2026-10-11T19:36:01Z", event:"E-1529", task:"2026-10-11-el-validador-de-la-columna-de-fallback-codec-cor", kind:"issue", agent:"alfred", result:"issue.create 2026-10-11-el-validador-de-la-columna-de-fallback-codec-cor.issue.md severity=high status=open by=alfred", evidence:"issue.create 2026-10-11-el-validador-de-la-columna-de-fallback-codec-cor.issue.md severity=high status=open by=alfred"}
 
 
 $7: LESSONS

@@ -2,6 +2,83 @@
 
 All notable changes to ArqUX are documented here.
 
+## [0.9.0rc3] — pre-release (corrección de superficie y del escritor)
+
+> Estado de madurez: **pre-release / candidata**. **No estable.**
+
+### Fixed — el glosario se emitía duplicado
+
+En modo estricto, `write_cortex_from_json` emitía **dos veces** cada declaración
+de sigilo generada: el primer bucle las escribía sin registrarlas en el
+conjunto `declared`, y el bloque de recálculo posterior las reemitía por no
+encontrarlas ahí. Cada declaración quedaba duplicada en `$0` y CODEC-CORTEX
+rechazaba el documento como `E008_DUPLICATE_ENTRY`.
+
+Efecto.colateral que descubrimos: `atomic_write_json` (estricto) producía un
+documento **distinto y mayor** que `write_cortex_from_json`: 996 bytes frente a
+614. Ahora ambos modos producen texto idéntico.
+
+**10 de los 15 fallos de la línea base eran este único defecto.**
+
+### Fixed — el README anunciaba datos falsos
+
+Tres badges mentían y el gate de homologación **no cubría el README**, de modo
+que dio verde con ellos:
+
+| Badge | Declaraba | Realidad |
+|---|---|---|
+| `version` | 0.8.2 | dos releases de desfase |
+| `coverage` | 75% | 68% medido |
+| `agents` | 4 | 7 contratos de identidad |
+
+Las tres superficies entran ahora en el gate: la versión debe coincidir con
+`pyproject.toml`, la cobertura tiene techo y piso, y el conteo de agentes se
+compara contra los `.cortex` de identidad reales.
+
+### Fixed — medir y publicar benchmark dejan de ser lo mismo
+
+El benchmark reescribía el artefacto de release en **cada corrida**, así que
+cualquier invocación local o en CI sustituía la evidencia versionada por los
+tiempos de la máquina que ejecutaba. Ahora mide siempre y publica solo bajo
+petición explícita, y un paso de CI con `if: always()` falla si una corrida
+tocó `docs/release/`.
+
+Dos obstáculos encontrados al verificar, no al asumir: `pytest_addoption` en un
+módulo de test nunca se ejecuta (los módulos de test no son plugins), y una
+variable de entorno `ARQUX_*` es borrada por el fixture `autouse`
+`_clean_env` de `tests/conftest.py` antes de poder leerse.
+
+### Changed — línea base re-fijada a 5 fallos
+
+**No es una relajación del gate: 10 fallos fueron corregidos, no perdonados.**
+La línea base pasa de 15 a 5 porque `docs/release/regression-baseline.json`
+declaraba como conocidos unos fallos que ya no existen. Cada uno de los 5 que
+quedan está declarado individualmente con su causa.
+
+Los 5 restantes **no** son del escritor: el validador de la columna de fallback
+(`codec-cortex` 0.6.2) rechaza de forma sistemática el dialecto de ArqUX,
+porque exige que `$0` contenga solo `GSIG/GTYP/GMIC/GCON` mientras ArqUX
+declara su glosario como `SIGIL:name{type,weight,focus,desc}`. No es específico
+de los brains sembrados: brain del proyecto, meta-brain del workspace e
+identidades fallan todos. Es el hallazgo que BLP-001 ya había registrado.
+
+| Métrica | 0.9.0rc1 | 0.9.0rc2 | 0.9.0rc3 |
+|---|---|---|---|
+| Fallos de la suite | 0 ejecutadas · 15+8 errores | 15 | **5** |
+| Delta contra la línea base | +13 | 0 | **0** |
+| Pruebas en CI | 0 | 1811 | **2061** |
+
+### Known limitations
+
+- **5 fallos** de dialecto del validador, declarados uno a uno en
+  `docs/release/regression-baseline.json`. Cerrarlos exige o migrar el glosario
+  a `GSIG/GTYP/GMIC/GCON` —lo que afecta a todo el workspace y rompe la columna
+  rc1— o aportar `validate` a la rc1, que es trabajo de CODEC-CORTEX.
+- **`HD-01`**: `task.run` no ejecuta nada. No existe mecanismo de ejecución en
+  ArqUX. El gate puede estar impecable y aun así un blueprint se marca
+  `completed` sin que nada se haya ejecutado. Riesgo residual declarado por
+  CYCLE-13 y **no cerrado**.
+
 ## [0.9.0rc2] — pre-release (endurecimiento de la release)
 
 > Estado de madurez: **pre-release / candidata**. **No estable.**
