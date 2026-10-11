@@ -935,6 +935,8 @@ AUD:E_1510{date:"2026-10-11T18:29:44Z", event:"E-1510", task:"2026-10-11-la-depe
 
 AUD:E_1511{date:"2026-10-11T18:31:43Z", event:"E-1511", task:"2026-10-11-la-ci-ejecuta-cero-pruebas-por-error-de-coleccio", kind:"issue", agent:"alfred", result:"issue.update 2026-10-11-la-ci-ejecuta-cero-pruebas-por-error-de-coleccio.issue.md status=open->fixed note=Corregido en 869bcab. tests/test_voice.py importaba `numpy` en la linea 11, ante", evidence:"issue.update 2026-10-11-la-ci-ejecuta-cero-pruebas-por-error-de-coleccio.issue.md status=open->fixed note=Corregido en 869bcab. tests/test_voice.py importaba `numpy` en la linea 11, ante"}
 
+AUD:E_1512{date:"2026-10-11T18:35:47Z", event:"E-1512", task:"2026-10-11-el-gate-de-release-exige-delta-0-contra-la-linea", kind:"issue", agent:"alfred", result:"issue.update 2026-10-11-el-gate-de-release-exige-delta-0-contra-la-linea.issue.md status=open->fixed note=Corregido en 6778e64. La causa no era la carrera entre el hilo de submit y el po", evidence:"issue.update 2026-10-11-el-gate-de-release-exige-delta-0-contra-la-linea.issue.md status=open->fixed note=Corregido en 6778e64. La causa no era la carrera entre el hilo de submit y el po"}
+
 
 $7: LESSONS
 
