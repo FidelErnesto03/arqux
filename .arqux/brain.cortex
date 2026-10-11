@@ -963,6 +963,12 @@ AUD:E_1524{date:"2026-10-11T19:14:57Z", event:"E-1524", task:"2026-10-11-los-bad
 
 AUD:E_1525{date:"2026-10-11T19:16:18Z", event:"E-1525", task:"2026-10-11-los-badges-del-readme-declaraban-valores-falsos-", kind:"issue", agent:"alfred", result:"issue.update 2026-10-11-los-badges-del-readme-declaraban-valores-falsos-.issue.md status=fixed->fixed note=NOTA: el texto de la descripcion de este issue quedo con una corrupcion de carac", evidence:"issue.update 2026-10-11-los-badges-del-readme-declaraban-valores-falsos-.issue.md status=fixed->fixed note=NOTA: el texto de la descripcion de este issue quedo con una corrupcion de carac"}
 
+AUD:E_1526{date:"2026-10-11T19:20:34Z", event:"E-1526", task:"2026-10-11-el-campo-platform-del-reporte-de-benchmark-puede", kind:"issue", agent:"alfred", result:"issue.create 2026-10-11-el-campo-platform-del-reporte-de-benchmark-puede.issue.md severity=low status=open by=alfred", evidence:"issue.create 2026-10-11-el-campo-platform-del-reporte-de-benchmark-puede.issue.md severity=low status=open by=alfred"}
+
+AUD:E_1527{date:"2026-10-11T19:24:37Z", event:"E-1527", task:"2026-10-11-el-reporte-de-benchmark-se-regenera-en-cada-corr", kind:"issue", agent:"alfred", result:"issue.update 2026-10-11-el-reporte-de-benchmark-se-regenera-en-cada-corr.issue.md status=open->fixed note=Corregido. Medir y publicar estan separados. El benchmark siempre mide, pero esc", evidence:"issue.update 2026-10-11-el-reporte-de-benchmark-se-regenera-en-cada-corr.issue.md status=open->fixed note=Corregido. Medir y publicar estan separados. El benchmark siempre mide, pero esc"}
+
+AUD:E_1528{date:"2026-10-11T19:24:42Z", event:"E-1528", task:"2026-10-11-el-campo-platform-del-reporte-de-benchmark-puede", kind:"issue", agent:"alfred", result:"issue.update 2026-10-11-el-campo-platform-del-reporte-de-benchmark-puede.issue.md status=open->fixed note=Mitigado. Se confirmo la causa antes de actuar: no era un defecto de ArqUX ni de", evidence:"issue.update 2026-10-11-el-campo-platform-del-reporte-de-benchmark-puede.issue.md status=open->fixed note=Mitigado. Se confirmo la causa antes de actuar: no era un defecto de ArqUX ni de"}
+
 
 $7: LESSONS
 

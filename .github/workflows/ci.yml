@@ -60,6 +60,23 @@ jobs:
         run: |
           uv run pytest --cov=arqux --cov-fail-under=65 -v
 
+      - name: Release evidence must not be rewritten by a test run
+        if: always()
+        run: |
+          # The benchmark used to rewrite docs/release/benchmark-*.json on
+          # every run, so any local or CI invocation silently replaced a
+          # versioned release artifact with timings from that machine. It now
+          # measures always and publishes only under --publish-benchmark, and
+          # this step enforces the separation: a plain test run must leave the
+          # evidence untouched.
+          if ! git diff --quiet -- docs/release/; then
+            echo "A test run modified release evidence. Publishing must be explicit:"
+            echo "  pytest tests/benchmarks --publish-benchmark"
+            git diff --stat -- docs/release/
+            exit 1
+          fi
+          echo "release evidence untouched"
+
       # The four gates below are governance validations, not test results.
       # They must run even when pytest exits non-zero: a failing step skips
       # every later step in the job, so without `if: always()` a known
