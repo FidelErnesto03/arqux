@@ -37,6 +37,7 @@ from ..state import (
     parse_cortex_file as _parse_cortex_file,
 )
 from ..sync import reconcile_cycle, sync_brain
+from .execution import ExecutionError, execute_action
 
 
 def create_task(
@@ -611,6 +612,27 @@ def _now_iso() -> str:
 # ---------------------------------------------------------------------------
 
 
+def _step_execution_spec(step: str) -> tuple[str, dict[str, Any]] | None:
+    """Extract ``(action, params)`` from a procedure step.
+
+    Same marker as blueprint.execute::
+
+        - [ ] hacer algo [exec:write_file path=out.txt content=hola]
+
+    Returns ``None`` when the step declares no action, so the caller can
+    report it as unavailable instead of pretending it ran (BLP-005).
+    """
+    import re as _re
+
+    match = _re.search(r"\[exec:(\w+)((?:\s+[^\s\]]+=[^\]]*)?)\s*\]\s*$", step)
+    if not match:
+        return None
+    params: dict[str, Any] = {}
+    for key, value in _re.findall(r"(\w+)=([^\s\]]*)", match.group(2) or ""):
+        params[key] = value
+    return match.group(1), params
+
+
 def run_task(
     task_id: str,
     *,
@@ -649,9 +671,16 @@ def run_task(
     if not task_id:
         return CortexOUT.error("task_id is required", code="INVALID_ARGS")
 
-    root = find_project_root(start=path)
-    if root is None:
+    arqux_root = find_project_root(start=path)
+    if arqux_root is None:
         return CortexOUT.error("no project initialized", code="NOT_FOUND")
+
+    # find_project_root returns the ``.arqux/`` directory, which the rest of
+    # this handler expects (it searches cycles/ beneath it). Execution is
+    # separately confined to the project directory above it, so that a task
+    # step cannot write outside the project (BLP-005 CA-18).
+    root = arqux_root
+    exec_root = arqux_root.parent
 
     # Find the task file (BLP-006: same deterministic resolution as
     # _load_task/read_task — no arbitrary first-match across cycles).
@@ -680,28 +709,104 @@ def run_task(
     preconditions = parsed_task.get("pre", [])
     procedure_steps = parsed_task.get("proc", [])
 
-    preconditions_report: list[dict[str, Any]] = [
-        {"precondition": pre, "status": "assumed_met" if dry_run else "verified"}
-        for pre in preconditions
-    ]
-    execution_report: list[dict[str, Any]] = [
-        {"step": i + 1, "description": step, "status": "simulated" if dry_run else "executed"}
-        for i, step in enumerate(procedure_steps)
+    if dry_run:
+        # A dry run reports the plan and touches nothing.
+        preconditions_report: list[dict[str, Any]] = [
+            {"precondition": p, "status": "parsed"} for p in preconditions
+        ]
+        execution_report: list[dict[str, Any]] = [
+            {"step": i + 1, "description": step, "status": "parsed"}
+            for i, step in enumerate(procedure_steps)
+        ]
+        return CortexOUT.work(
+            f"task.run dry_run task_id={task_id} steps={len(procedure_steps)}",
+            task_id=task_id,
+            dry_run=True,
+            outcome="dry_run",
+            preconditions=preconditions_report,
+            execution=execution_report,
+            evidence="dry run: no state was modified",
+        )
+
+    # BLP-005: preconditions are reported as unchecked. They are not
+    # machine-verifiable, so claiming them "verified" was a lie.
+    preconditions_report = [
+        {"precondition": p, "status": "unchecked"} for p in preconditions
     ]
 
+    # Run each procedure step through the real execution mechanism. A step
+    # is executable only when it declares an action, using the same
+    # ``[exec:action k=v ...]`` marker as blueprint.execute.
+    execution_report: list[dict[str, Any]] = []
+    failure_reason = ""
+    for i, step in enumerate(procedure_steps, start=1):
+        spec = _step_execution_spec(step)
+        if spec is None:
+            execution_report.append(
+                {"step": i, "description": step, "status": "unavailable",
+                 "reason": "no_execution_spec"}
+            )
+            failure_reason = failure_reason or f"paso {i}: sin especificación de ejecución"
+            break
+        action, params = spec
+        try:
+            result = execute_action(action, params, ctx=ctx, root=exec_root)
+        except ExecutionError as exc:
+            execution_report.append(
+                {"step": i, "description": step, "status": "failed",
+                 "reason": exc.message, "code": exc.code}
+            )
+            failure_reason = failure_reason or f"paso {i}: {exc.message}"
+            break
+        if not result.ok:
+            execution_report.append(
+                {"step": i, "description": step, "status": "failed",
+                 "reason": result.reason}
+            )
+            failure_reason = failure_reason or f"paso {i}: {result.reason}"
+            break
+        execution_report.append(
+            {
+                "step": i,
+                "description": step,
+                "status": "executed",
+                "action": action,
+                "evidence_ref": result.evidence_ref,
+                "actor": result.actor,
+                "role": result.role,
+            }
+        )
+
+    steps_ok = bool(execution_report) and all(
+        s["status"] == "executed" for s in execution_report
+    )
+
+    # BLP-005 CA-11: the outcome follows the execution. It is no longer
+    # "complete" by default, and a run with no executable steps cannot
+    # claim success.
     if fail_reason_override:
         outcome = "fail"
         evidence = fail_reason_override
-    else:
+    elif failure_reason:
+        outcome = "fail"
+        evidence = failure_reason
+    elif steps_ok:
         outcome = "complete"
-        evidence = evidence_override or f"Task {task_id} executed {len(procedure_steps)} steps."
+        refs = [s.get("evidence_ref") for s in execution_report if s.get("evidence_ref")]
+        evidence = evidence_override or (
+            f"Task {task_id} executed {len(execution_report)} steps; "
+            f"evidence={refs[0] if refs else 'none'}"
+        )
+    else:
+        outcome = "fail"
+        evidence = f"Task {task_id}: no executable steps produced evidence."
 
-    if not dry_run:
-        _record_run_pulse(root, ctx, task_id=task_id, outcome=outcome)
-        # Extract cycle_id from task path and reconcile
-        cycle_id = task_path.parent.parent.name
-        if cycle_id:
-            reconcile_cycle(root, cycle_id)
+    _record_run_pulse(root, ctx, task_id=task_id, outcome=outcome)
+
+    # Extract cycle_id from task path and reconcile
+    cycle_id = task_path.parent.parent.name
+    if cycle_id:
+        reconcile_cycle(root, cycle_id)
 
     return CortexOUT.work(
         f"task.run ok task_id={task_id} steps={len(procedure_steps)} "
@@ -717,7 +822,15 @@ def run_task(
 
 
 def _parse_task_body(text: str) -> dict[str, Any]:
-    """Parse a task .cortex/.md body into sections."""
+    """Parse a task file into sections.
+
+    Two formats are in the wild. ``create_task`` writes canonical
+    CODEC-CORTEX (``$3: PROCEDURE`` holding ``STP:stepN`` entries), while
+    older files use legacy markdown (``# PROC`` with a numbered list).
+    Only the legacy form was understood, so a freshly created task parsed
+    as having no procedure at all — and BLP-005's executor then had nothing
+    to run. Both are read here.
+    """
     import re
     out: dict[str, Any] = {
         "obj": "",
@@ -726,6 +839,28 @@ def _parse_task_body(text: str) -> dict[str, Any]:
         "ac": [],
         "blk": [],
     }
+
+    # -- Canonical CORTEX -------------------------------------------------
+    cortex_obj = re.search(r'^OBJ:objective\{text:"(.*)"\}\s*$', text, re.MULTILINE)
+    if cortex_obj:
+        out["obj"] = cortex_obj.group(1)
+    for step in re.finditer(r'^STP:step\w*\{action:"(.*)"\}\s*$', text, re.MULTILINE):
+        out["proc"].append(step.group(1))
+    for sigil, key in (("PRE", "pre"), ("AC", "ac"), ("BLK", "blk")):
+        section = re.search(
+            rf'^\$\d+:\s*{sigil}\b(.*?)(?=^\$\d+:|\Z)', text, re.MULTILINE | re.DOTALL
+        )
+        if not section:
+            continue
+        for entry in re.finditer(r'^(\w+):\w+\{(.*)\}\s*$', section.group(1), re.MULTILINE):
+            attrs = entry.group(2)
+            match = re.search(r'(?:text|desc|value):"(.*?)"', attrs)
+            out[key].append(match.group(1) if match else attrs)
+
+    if out["obj"] or out["proc"]:
+        return out
+
+    # -- Legacy markdown --------------------------------------------------
     current: str | None = None
     for line in text.splitlines():
         m = re.match(r"^#\s+(OBJ|PRE|PROC|AC|BLK)\s*$", line.strip())

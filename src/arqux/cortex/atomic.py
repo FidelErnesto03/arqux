@@ -47,6 +47,7 @@ def atomic_write_json(
     force: bool = False,
     dry_run: bool = False,
     keep_backup: bool = True,
+    strict: bool = True,
 ) -> WriteResult:
     """Atomically write a JSON doc as CORTEX to path.
 
@@ -83,7 +84,7 @@ def atomic_write_json(
         If *doc* is malformed (propagated from :func:`write_cortex_from_json`).
     """
     # Serialize
-    text = write_cortex_from_json(doc)
+    text = write_cortex_from_json(doc, strict=strict)
     return atomic_write_text(text, path, dry_run=dry_run, keep_backup=keep_backup)
 
 

@@ -20,6 +20,7 @@ import sys
 from pathlib import Path
 
 import pytest
+from _governance_paths import governance_artifact
 
 from arqux.cortex.reader import cortex_to_dict
 from arqux.cortex.writer import write_cortex_from_json
@@ -28,13 +29,13 @@ ARQUX_ROOT = Path(__file__).resolve().parent.parent
 CODEC_ROOT = Path("/home/vatrox/workspace/CODEC-CORTEX")
 
 # Files required for workspace-dependent tests
-_BRAIN_CORTEX = ARQUX_ROOT / ".arqux" / "brain.cortex"
-_JARVIS_CORTEX = ARQUX_ROOT / ".arqux" / "identities" / "jarvis.cortex"
+_BRAIN_CORTEX = governance_artifact("brain.cortex")
+_JARVIS_CORTEX = governance_artifact("identities", "jarvis.cortex")
 
 _HAS_WORKSPACE_FILES = _BRAIN_CORTEX.exists() and _JARVIS_CORTEX.exists()
 _skip_no_workspace = pytest.mark.skipif(
     not _HAS_WORKSPACE_FILES,
-    reason="workspace .cortex files not available in CI checkout",
+    reason="workspace .cortex files absent at project and workspace level",
 )
 
 
@@ -156,12 +157,11 @@ class TestConformanceCodec100rc1:
             pytest.skip("CODEC-CORTEX 1.0.0-rc.1 not available")
         assert codec_cortex is not None
 
-    def test_arqux_output_needs_format_declaration(self):
-        """Document that ArqUX output needs $0:format for 1.0.0-rc.1."""
+    def test_arqux_output_has_format_declaration(self):
+        """ArqUX output declares and parses as CORTEX 0.1."""
         _ensure_codec_v1_importable()
         try:
             from codec_cortex.dispatcher import parse_cortex as parse_v1
-            from codec_cortex.scalars import ParseError
         except ImportError:
             pytest.skip("CODEC-CORTEX 1.0.0-rc.1 not available")
 
@@ -183,24 +183,15 @@ class TestConformanceCodec100rc1:
         }
         output = write_cortex_from_json(doc)
 
-        # Should fail without $0:format — 1.0.0-rc.1 requires it
-        with pytest.raises(ParseError) as exc_info:
-            parse_v1(output)
-        assert exc_info.value.code == "G010_FORMAT_REQUIRED"
+        assert '$0:format{cortex:"0.1", encoding:"UTF-8"}' in output
+        parsed = parse_v1(output)
+        assert [(section.id, len(section.ideas)) for section in parsed.sections] == [(1, 1)]
 
-    def test_real_arqux_output_fails_on_1_0_0_rc1(self):
-        """Document that real ArqUX output fails on 1.0.0-rc.1 due to undeclared sigils.
-
-        Even with ``$0:format`` prepended, real ArqUX writer output fails with
-        ``I001_UNDECLARED_SYMBOL`` because sigils (e.g. ``LNG``) are not declared
-        with contracts in the glossary.  This is the core adaptation gap between
-        the 0.6.2 format (undeclared sigils allowed) and 1.0.0-rc.1 (sigils must
-        be declared).
-        """
+    def test_real_arqux_output_is_parseable_by_current_codec(self):
+        """Generated ArqUX output declares every used sigil for the codec."""
         _ensure_codec_v1_importable()
         try:
             from codec_cortex.dispatcher import parse_cortex as parse_v1
-            from codec_cortex.scalars import ParseError
         except ImportError:
             pytest.skip("CODEC-CORTEX 1.0.0-rc.1 not available")
 
@@ -223,12 +214,8 @@ class TestConformanceCodec100rc1:
         }
         output = write_cortex_from_json(doc)
 
-        # Even with $0:format prepended, fails due to undeclared sigils
-        adapted = output.replace(
-            "$0", "$0:KERNEL\n$0:format{cortex:0.1,encoding:UTF-8}", 1
-        )
-        with pytest.raises(ParseError, match="I001_UNDECLARED_SYMBOL|G010_FORMAT"):
-            parse_v1(adapted)
+        parsed = parse_v1(output)
+        assert any(symbol.sigil == "LNG" for symbol in parsed.glossary.symbols)
 
     def test_full_adaptation_for_1_0_0_rc1(self):
         """Document what full adaptation for 1.0.0-rc.1 requires.

@@ -3,6 +3,7 @@ cortex.migrate, session.handoff, blueprint.execute."""
 
 from __future__ import annotations
 
+import re
 from pathlib import Path
 
 from arqux.handlers.blueprint import execute_blueprint
@@ -15,6 +16,22 @@ from arqux.handlers.skill import install_skill
 from arqux.handlers.task import create_task, run_task
 from arqux.handlers.workspace import init_workspace
 from arqux.permissions import PermissionContext
+
+
+def _inject(bp_file: Path, section: str, block: str) -> None:
+    """Insert ``block`` into an existing ``## §N`` section.
+
+    Appending at end of file would land after the last section and never be
+    parsed by the section extractors. BLP-005.
+    """
+    text = bp_file.read_text(encoding="utf-8")
+    m = re.search(rf"^## §{section}:.*$", text, re.MULTILINE)
+    assert m, f"section §{section} not found"
+    start = m.end()
+    nxt = re.search(r"^## §\d+:", text[start:], re.MULTILINE)
+    end = start + nxt.start() if nxt else len(text)
+    bp_file.write_text(text[:start] + "\n" + block + text[end:], encoding="utf-8")
+
 
 _CONTEXT = PermissionContext(agent_id="test-governor", role="governor")
 
@@ -113,16 +130,25 @@ def test_task_run_dry_run(tmp_path: Path) -> None:
     )
     assert result.profile == "OUT-WORK"
     assert result.fields.get("dry_run") is True
-    assert result.fields.get("outcome") == "complete"
+    # BLP-005: a dry run reports the plan; it never claims an outcome of
+    # success. Previously this returned "complete" while running nothing.
+    assert result.fields.get("outcome") == "dry_run"
+    assert result.fields.get("evidence") == "dry run: no state was modified"
 
 
 def test_task_run_executes(tmp_path: Path) -> None:
-    """task.run without dry_run executes and reports."""
+    """task.run without dry_run executes and reports.
+
+    BLP-005: the procedure step must declare a real action, and the run
+    only reports ``complete`` when that action produced evidence. A step
+    with no declared action is ``unavailable`` and the run fails.
+    """
     proj_root = _bootstrap_env(tmp_path)
+    artifact = proj_root / "task-out.txt"
 
     create_result = create_task(
         obj="Test task",
-        proc=["step 1"],
+        proc=[f"produce the artifact [exec:write_file path={artifact} content=done]"],
         path=str(proj_root),
         ctx=_CONTEXT,
     )
@@ -134,7 +160,36 @@ def test_task_run_executes(tmp_path: Path) -> None:
         ctx=_CONTEXT,
     )
     assert result.profile == "OUT-WORK"
-    assert result.fields.get("outcome") == "complete"
+    assert result.fields.get("outcome") == "complete", str(result.fields)
+    # The evidence is real, not a claim.
+    assert artifact.exists()
+    assert artifact.read_text(encoding="utf-8") == "done"
+    steps = result.fields.get("procedure") or []
+    assert steps and steps[0].get("status") == "executed"
+    assert steps[0].get("evidence_ref")
+
+
+def test_task_run_fails_without_execution_spec(tmp_path: Path) -> None:
+    """BLP-005 CA-11: no declared action means no completion.
+
+    Previously this returned ``complete`` while doing nothing at all.
+    """
+    proj_root = _bootstrap_env(tmp_path)
+
+    create_result = create_task(
+        obj="Task with no action",
+        proc=["just think about it"],
+        path=str(proj_root),
+        ctx=_CONTEXT,
+    )
+    task_id = create_result.fields["task_id"]
+
+    result = run_task(task_id=task_id, path=str(proj_root), ctx=_CONTEXT)
+
+    assert result.profile == "OUT-WORK"
+    assert result.fields.get("outcome") != "complete", (
+        "task.run claimed complete without executing anything"
+    )
 
 
 def test_task_run_not_found(tmp_path: Path) -> None:
@@ -326,30 +381,41 @@ def test_blueprint_execute_dry_run(tmp_path: Path) -> None:
 
 
 def test_blueprint_execute_executes(tmp_path: Path) -> None:
-    """blueprint.execute without dry_run runs the BLP (in_progress → done)."""
+    """blueprint.execute runs the BLP for real.
+
+    BLP-005: ``done`` is only reachable when every task declared an action,
+    that action produced a real artifact, and every criterion was certified
+    by a role allowed to certify. This test exercises that full path.
+    """
     proj_root = _bootstrap_env(tmp_path)
     create_result = create_blueprint(obj="Test BLP", path=str(proj_root), ctx=_CONTEXT)
     bp_id = create_result.fields["blueprint_id"]
 
-    # BLP-004 D-04: real execute validates the state transition — a draft
-    # blueprint cannot jump to done; it must be claimed first.
     from arqux.handlers.blueprint.lifecycle import (
         _pending_placeholders,
         claim_blueprint,
         ready_blueprint,
     )
 
-    # BLP-009: ready refuses unfilled template placeholders — fill them so
-    # this test exercises the transition, not the gate.
     bp_file = Path(create_result.fields["path"])
     text = bp_file.read_text(encoding="utf-8")
     for marker in _pending_placeholders(bp_file, proj_root):
         text = text.replace(marker, "filled")
+
+    # Real tasks and criteria, so completion is reachable honestly.
+    artifact = proj_root / "blp-artifact.txt"
     bp_file.write_text(text, encoding="utf-8")
+    _inject(bp_file, 12, "\n- [ ] **CA-01:** criterio verificable\n")
+    _inject(
+        bp_file, 14,
+        f"\n- [ ] **T-1.1:** producir artefacto "
+        f"[exec:write_file path={artifact} content=ok]\n",
+    )
 
     ready_blueprint(bp_id, path=str(proj_root), ctx=_CONTEXT)
     claim_blueprint(bp_id, path=str(proj_root), ctx=_CONTEXT)
 
+    # A governor may certify; an executor may not.
     result = execute_blueprint(
         bp_id=bp_id,
         dry_run=False,
@@ -357,7 +423,59 @@ def test_blueprint_execute_executes(tmp_path: Path) -> None:
         ctx=_CONTEXT,
     )
     assert result.profile == "OUT-WORK", str(result.fields)
-    assert result.fields.get("outcome") == "complete"
+    assert result.fields.get("outcome") == "complete", str(result.fields)
+    assert artifact.exists(), "the task produced no real artifact"
+    assert result.fields.get("state") == "done"
+    acs = result.fields.get("acs") or []
+    assert acs and acs[0].get("status") == "verified"
+    assert acs[0].get("evidence_ref")
+    assert acs[0].get("certifier_role") == "governor"
+
+
+def test_blueprint_execute_executor_cannot_certify(tmp_path: Path) -> None:
+    """BLP-005 CA-08: an executor runs the task but certifies nothing."""
+    proj_root = _bootstrap_env(tmp_path)
+    create_result = create_blueprint(obj="Test BLP", path=str(proj_root), ctx=_CONTEXT)
+    bp_id = create_result.fields["blueprint_id"]
+
+    from arqux.handlers.blueprint.lifecycle import (
+        _pending_placeholders,
+        claim_blueprint,
+        ready_blueprint,
+    )
+
+    bp_file = Path(create_result.fields["path"])
+    text = bp_file.read_text(encoding="utf-8")
+    for marker in _pending_placeholders(bp_file, proj_root):
+        text = text.replace(marker, "filled")
+    artifact = proj_root / "executor-artifact.txt"
+    bp_file.write_text(text, encoding="utf-8")
+    _inject(bp_file, 12, "\n- [ ] **CA-01:** criterio verificable\n")
+    _inject(
+        bp_file, 14,
+        f"\n- [ ] **T-1.1:** producir artefacto "
+        f"[exec:write_file path={artifact} content=ok]\n",
+    )
+
+    ready_blueprint(bp_id, path=str(proj_root), ctx=_CONTEXT)
+    claim_blueprint(bp_id, path=str(proj_root), ctx=_CONTEXT)
+
+    executor_ctx = PermissionContext(agent_id="test-exec", role="executor")
+    result = execute_blueprint(
+        bp_id=bp_id,
+        dry_run=False,
+        path=str(proj_root),
+        ctx=executor_ctx,
+    )
+
+    # The work ran for real...
+    assert artifact.exists()
+    # ...but the criterion could not be certified by the executor.
+    assert result.fields.get("outcome") == "partial"
+    assert result.fields.get("state") == "blocked"
+    acs = result.fields.get("acs") or []
+    assert acs[0].get("status") == "pending"
+    assert "no puede certificar" in str(acs[0].get("reason"))
 
 
 def test_blueprint_execute_not_found(tmp_path: Path) -> None:

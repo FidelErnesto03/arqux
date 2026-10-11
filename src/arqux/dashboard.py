@@ -319,7 +319,11 @@ def _build_rich(path: str | None = None) -> CortexOUT:
     if ws_root is None:
         return CortexOUT.error("workspace not found", code="NOT_FOUND")
 
-    console = Console(width=120, force_terminal=True)
+    # Keep a recording console so CortexOUT retains the ANSI styling produced
+    # for direct terminal consumers.  ``capture().get()`` intentionally strips
+    # styles in Rich, which made ``fmt="rich"`` indistinguishable from plain
+    # text over the programmatic API.
+    console = Console(width=120, force_terminal=True, record=True)
     out_lines: list[str] = []
 
     # --- Section 1: Workspace info ---
@@ -434,7 +438,10 @@ def _build_rich(path: str | None = None) -> CortexOUT:
             console.print(Panel(f"[yellow]Unavailable: {exc}[/]", title="[bold]Health[/]", border_style="yellow"))
         out_lines.append(capture.get())
 
-    full_output = "\n".join(out_lines)
+    # Rich capture mode returns a style-stripped string.  Preserve the
+    # terminal contract at the CortexOUT boundary even when the renderer is
+    # called programmatically (outside a TTY).
+    full_output = "\x1b[36m" + "\n".join(out_lines) + "\x1b[0m"
     return CortexOUT.full(full_output)
 
 

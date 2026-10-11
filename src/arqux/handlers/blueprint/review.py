@@ -30,6 +30,10 @@ from ._helpers import (
     _write_blueprint,
 )
 
+#: Roles permitted to certify an acceptance criterion. An executor is
+#: excluded by construction (BLP-005 CA-08, R-15).
+CERTIFIER_ROLES: frozenset[str] = frozenset({"auditor", "governor"})
+
 
 def _guard_terminal(fm: dict, action: str) -> CortexOUT | None:
     """Reject state overrides from terminal states (BLP-004 D-06)."""
@@ -304,6 +308,60 @@ def block_for_architect(
 # ---------------------------------------------------------------------------
 # blueprint.ac
 # ---------------------------------------------------------------------------
+
+
+def certify_criterion(
+    bp_id: str,
+    ac_id: str,
+    evidence: str,
+    path: str | None = None,
+    ctx: PermissionContext | None = None,
+) -> CortexOUT:
+    """Certify one acceptance criterion, enforcing role separation.
+
+    BLP-005 CA-08. This wraps :func:`ac_blueprint` with two rules that the
+    original handler lacked:
+
+    1. **Role gate.** Only ``auditor`` and ``governor`` may certify. An
+       ``executor`` is refused, even when its ``agent_id`` differs from the
+       one that produced the evidence — the role is assigned by the
+       permission model and cannot be self-declared at call time.
+    2. **Evidence required.** A criterion cannot be verified without a
+       non-empty evidence reference. Absence of evidence is not a pass.
+
+    Args:
+        bp_id: Blueprint ID.
+        ac_id: Acceptance criterion ID, e.g. ``"CA-01"``.
+        evidence: Verifiable reference to what proves the criterion.
+        path: Project root. Defaults to cwd.
+        ctx: Permission context. Its role decides whether certification
+            is allowed.
+
+    Returns:
+        ``CortexOUT``. ``OUT-ERROR`` when the role may not certify or no
+        evidence was supplied.
+    """
+    context = ctx or PermissionContext.from_env()
+    role = getattr(context, "role", "")
+    if role not in CERTIFIER_ROLES:
+        return CortexOUT.error(
+            f"role {role!r} may not certify acceptance criteria; "
+            f"allowed: {sorted(CERTIFIER_ROLES)}",
+            code="PERMISSION_DENIED",
+        )
+    if not evidence or not evidence.strip():
+        return CortexOUT.error(
+            "evidence is required: absence of evidence is not certification",
+            code="INVALID_ARGS",
+        )
+    return ac_blueprint(
+        bp_id=bp_id,
+        ac_id=ac_id,
+        status="verified",
+        evidence=evidence,
+        path=path,
+        ctx=context,
+    )
 
 
 def ac_blueprint(

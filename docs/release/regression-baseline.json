@@ -1,0 +1,34 @@
+{
+  "baseline_id": "cycle13-0.9.0",
+  "captured": "2026-10-10",
+  "policy": "BLP-004 §7.6 / §13 — regression is measured against this fixed, dated baseline. Changing the baseline invalidates the comparison and forces a re-baseline. The 0.9.0 gate requires delta = 0 (no NEW failures), and every known failure is declared as a limitation.",
+  "scope": "The whole pytest suite at CYCLE-13 open. These failures are pre-existing and belong to an in-progress refactor OUTSIDE CYCLE-13's blueprints (writer/atomic strict default, brain seeding duplicates, blueprint.execute outcome, entry validation count, LNG prevention policy).",
+  "known_failures_count": 15,
+  "known_failures": [
+    "tests/test_cortex_atomic.py::TestAtomicWriteJson::test_writes_valid_cortex",
+    "tests/test_cortex_atomic.py::TestAtomicWriteJson::test_bytes_written_correct",
+    "tests/test_cortex_atomic.py::TestBackupCreation::test_overwrite_creates_backup",
+    "tests/test_cortex_atomic.py::TestNoBackup::test_no_backup_when_keep_backup_false",
+    "tests/test_cortex_atomic.py::TestNoBackup::test_no_backup_for_new_file",
+    "tests/test_cortex_atomic.py::TestDryRun::test_dry_run_bytes_correct",
+    "tests/test_cortex_atomic.py::TestParentDirCreation::test_parent_dir_created",
+    "tests/test_cortex_atomic.py::TestWriteResult::test_result_fields_overwrite",
+    "tests/test_cortex_atomic.py::TestRoundTrip::test_json_to_file_matches_writer",
+    "tests/test_cortex_atomic.py::TestLargeDocument::test_large_doc_written",
+    "tests/test_sync_brain.py::test_sync_run_verify_passes",
+    "tests/test_blp004_legacy_compat.py::test_execute_real_marks_table_acs",
+    "tests/test_blp005_entry_content.py::test_entry_add_validation_errors_enumerated",
+    "tests/test_blp042_policy.py::TestRecordLessonPrevention::test_no_direct_write_bypass",
+    "tests/test_project_init_onboarding.py::test_init_produces_valid_brain"
+  ],
+  "cycle13_own_suites": [
+    "tests/test_cortex_two_column_conformance.py",
+    "tests/test_cortex_invalid_column_conformance.py",
+    "tests/test_memory_model.py",
+    "tests/test_memory_store.py",
+    "tests/test_memory_rebuild.py",
+    "tests/test_memory_recall.py",
+    "tests/test_memory_feedback.py",
+    "tests/test_memory_authority.py"
+  ]
+}

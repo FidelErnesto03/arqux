@@ -7,6 +7,7 @@ reader, writer, CRUD, and atomic modules. No files are modified.
 from pathlib import Path
 
 import pytest
+from _governance_paths import governance_artifact
 
 from arqux.core.state._migrate import migrate_cortex_file
 from arqux.cortex.atomic import atomic_write_json
@@ -16,19 +17,21 @@ from arqux.cortex.writer import write_cortex_from_json
 
 # Find all .cortex files — relative to repo root for CI portability
 ARQUX_ROOT = Path(__file__).resolve().parent.parent
-IDENTITIES = ARQUX_ROOT / ".arqux" / "identities"
-
 # Workspace files required by some tests; skip in CI if absent
-_BRAIN_CORTEX = ARQUX_ROOT / ".arqux" / "brain.cortex"
-_JARVIS_CORTEX = IDENTITIES / "jarvis.cortex"
-_CYCLE11_CORTEX = ARQUX_ROOT / ".arqux" / "cycles" / "CYCLE-11" / "cycle.cortex"
+_BRAIN_CORTEX = governance_artifact("brain.cortex")
+_JARVIS_CORTEX = governance_artifact("identities", "jarvis.cortex")
+# The directory the identities actually live in, wherever that turned out to be.
+IDENTITIES = _JARVIS_CORTEX.parent if _JARVIS_CORTEX.exists() else (
+    ARQUX_ROOT / ".arqux" / "identities"
+)
+_CYCLE11_CORTEX = governance_artifact("cycles", "CYCLE-11", "cycle.cortex")
 
 _HAS_WORKSPACE_FILES = (
     _BRAIN_CORTEX.exists() and _JARVIS_CORTEX.exists() and _CYCLE11_CORTEX.exists()
 )
 _skip_no_workspace = pytest.mark.skipif(
     not _HAS_WORKSPACE_FILES,
-    reason="workspace .cortex files not available in CI checkout",
+    reason="workspace .cortex files absent at project and workspace level",
 )
 
 def _find_cortex_files():

@@ -37,12 +37,29 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-# CODEC-CORTEX v0.5.2+ — information codec for AI agents (CORTEX/HCORTEX, learning engine).
+# CODEC-CORTEX 1.0.0rc1 — latest published CORTEX/HCORTEX codec (pre-release).
 # Optional since 0.7.0 (CYCLE-11 decoupling). ArqUX has its own reader/writer/crud/atomic
 # modules and degrades gracefully without codec-cortex. Install for full CODEC conformance
 # validation and the learning engine:  pip install "arqux[codec]"
 codec = [
-    "codec-cortex>=0.5.2",
+    "codec-cortex==1.0.0rc1",
+]
+# ARQUX Voice (BLP-015) — harness-agnostic local voice participation.
+# Fully local audio pipeline: faster-whisper STT + Piper/Kokoro TTS +
+# Silero VAD (onnxruntime, no torch) + PipeWire capture/playback. Install:
+#   pip install "arqux[voice]"
+voice = [
+    "faster-whisper>=1.0.0",
+    "kokoro-onnx>=0.6.1",
+    "onnx-asr>=0.12.0",
+    "onnxruntime>=1.17.0",
+    "piper-tts>=1.2.0",
+]
+# ARQUX Comms (BLP-017) — Telegram-only comunicación desde ArqUX y sus agentes.
+# Extensión MCP stdio aparte (no toca el core). Install:
+#   pip install "arqux[comms]"
+comms = [
+    "httpx>=0.24",
 ]
 dev = [
     "pytest>=7.0.0",
@@ -79,6 +96,9 @@ where = ["src"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+# BLP-005: sin esto pytest importa la copia instalada en site-packages y no
+# el código del repositorio, con lo que los tests no ven las correcciones.
+pythonpath = ["src", "tests"]
 asyncio_mode = "auto"
 addopts = "-ra --strict-markers"
 markers = [

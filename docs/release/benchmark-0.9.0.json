@@ -1,0 +1,31 @@
+{
+  "version": "0.9.0",
+  "corpus": {
+    "file": "synthetic.cortex",
+    "records": 200,
+    "synthetic": true,
+    "contains_secrets": false
+  },
+  "environment": {
+    "python": "3.11.8",
+    "platform": "Linux-7.0.0-38-generic-x86_64-with-glibc2.39"
+  },
+  "commands": [
+    "python -m pytest tests/benchmarks -q"
+  ],
+  "results": {
+    "cold_start_ms": 7.67,
+    "rebuild_ms": 12.013,
+    "rebuild_again_ms": 11.518,
+    "recall_total_ms": 14.845,
+    "recall_queries": 3,
+    "records_projected": 200,
+    "source_bytes": 19679,
+    "index_bytes": 186658,
+    "content_hash": "b92d10b9cda5dc75e48776f675b744d8582b737e2a97a69d032de65efde5aa3c"
+  },
+  "limitations": [
+    "Timings are indicative on this host; they are not a claim about other hardware.",
+    "Recall uses lexical + temporal ranking; no semantic model is involved (CA-06)."
+  ]
+}

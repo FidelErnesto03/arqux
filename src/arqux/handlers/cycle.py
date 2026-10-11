@@ -830,12 +830,19 @@ def _replace_manifest_section(manifest_text: str, section_num: int, new_content:
         replacement = f"{open_tag}\n{new_content}\n{close_tag}"
         return cycle_pat.sub(lambda _m: replacement, manifest_text, count=1)
 
-    # Fallback: split by ## §N: headers (backward compat)
-    marker = f"## §{section_num}:"
-    pattern = re.compile(rf"^{re.escape(marker)}.*?(?=^## §\d+:|\Z)", re.MULTILINE | re.DOTALL)
-    if pattern.search(manifest_text):
-        section_repl = f"{marker}\n\n{new_content.strip()}\n"
-        return pattern.sub(lambda _m: section_repl, manifest_text, count=1)
+    # Fallback: split by ## §N: headers (backward compat). Preserve the
+    # existing header line — including its title — instead of rewriting it:
+    # hardcoding "## §N:" stripped titles such as "## §6: Blueprints (Índice)".
+    pattern = re.compile(
+        rf"^(## §{section_num}:[^\n]*\n)(?:.*?)(?=^## §\d+:|\Z)",
+        re.MULTILINE | re.DOTALL,
+    )
+    match = pattern.search(manifest_text)
+    if match:
+        header = match.group(1)
+        return pattern.sub(
+            lambda _m: f"{header}\n{new_content.strip()}\n", manifest_text, count=1
+        )
     return manifest_text
 
 
@@ -858,11 +865,51 @@ def _read_quality_gates_from_manifest(manifest_text: str) -> dict[str, bool]:
     return gates
 
 
+def reopen_cycle(
+    cycle_id: str,
+    *,
+    path: str | None = None,
+    ctx: PermissionContext | None = None,
+) -> CortexOUT:
+    """Reopen a closed cycle so its manifest can be amended (BLP-006).
+
+    ``cycle.close`` was terminal and there was no way back: a premature close
+    could only be undone out-of-band. This is the sanctioned reversal — it
+    reopens only a cycle that is actually ``closed`` and clears ``closed_at``.
+    """
+    ctx = enforce_ctx(ctx, "cycle.reopen")
+    root = _resolve_cycle_root(cycle_id, path)
+    if root[0] is None:
+        return CortexOUT.error(root[1], code="NOT_FOUND")
+    root = root[0]
+    cdir = cycle_dir(root, cycle_id)
+    if not cdir.exists():
+        return CortexOUT.error(f"cycle {cycle_id} not found", code="NOT_FOUND")
+
+    fm = _read_cycle_manifest(cdir)
+    if fm is None:
+        return CortexOUT.error("MANIFEST.md not found", code="NOT_FOUND")
+    if fm.get("status") != CYCLE_CLOSED:
+        return CortexOUT.error(
+            f"cycle {cycle_id} is not closed (status={fm.get('status')!r})",
+            code="INVALID_STATE",
+        )
+
+    fm["status"] = CYCLE_OPEN
+    fm.pop("closed_at", None)
+    _write_cycle_manifest(cdir, fm)
+    reconcile_cycle(root, cycle_id)
+    return CortexOUT.work(
+        f"cycle.reopen ok id={cycle_id}", cycle_id=cycle_id, status=CYCLE_OPEN
+    )
+
+
 handler_schemas = [
     {"name": "cycle.create", "fn": create_cycle, "description": "Open a new cycle in the active project.", "input_schema": {"type": "object", "properties": {"name": {"type": "string"}, "description": {"type": "string"}, "path": {"type": "string", "description": "Path to project root. Defaults to cwd."}}}},
     {"name": "cycle.list", "fn": list_cycles, "description": "List cycles in the active project.", "input_schema": {"type": "object", "properties": {"status": {"type": "string", "enum": ["open", "closed"]}, "path": {"type": "string", "description": "Path to project root. Defaults to cwd."}}}},
     {"name": "cycle.current", "fn": current_cycle, "description": "Get the currently active cycle.", "input_schema": {"type": "object", "properties": {"path": {"type": "string", "description": "Path to project root. Defaults to cwd."}}}},
     {"name": "cycle.close", "fn": close_cycle, "description": "Close a cycle (no new tasks can be added).", "input_schema": {"type": "object", "properties": {"cycle_id": {"type": "string"}, "summary": {"type": "string"}, "path": {"type": "string", "description": "Path to project root. Defaults to cwd."}}, "required": ["cycle_id"]}},
+    {"name": "cycle.reopen", "fn": reopen_cycle, "description": "Reopen a closed cycle so its manifest can be amended.", "input_schema": {"type": "object", "properties": {"cycle_id": {"type": "string"}, "path": {"type": "string", "description": "Path to project root. Defaults to cwd."}}, "required": ["cycle_id"]}},
     {"name": "cycle.synthesize", "fn": synthesize_cycle, "description": "Populate a cycle's MANIFEST.md sections in a single call.", "input_schema": {"type": "object", "properties": {"cycle_id": {"type": "string"}, "content": {"type": "string"}, "path": {"type": "string"}}, "required": ["cycle_id", "content"]}},
 ]
 
