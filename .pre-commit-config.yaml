@@ -7,3 +7,9 @@ repos:
         language: system
         types: [python]
         pass_filenames: false
+      - id: surface-homologation
+        name: surface homologation (handler count + version)
+        entry: python scripts/check_surfaces.py
+        language: system
+        pass_filenames: false
+        always_run: true
