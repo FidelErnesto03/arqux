@@ -282,6 +282,7 @@ def write_cortex_from_json(doc: dict, *, strict: bool = False) -> str:
             continue
         lines.append(_format_entry(entry))
         lines.append("")
+        declared.add(entry["sigil"])
 
     if strict and legacy_glossary_data:
         sections = list(sections)
@@ -322,6 +323,15 @@ def write_cortex_from_json(doc: dict, *, strict: bool = False) -> str:
 
         # Recompute declarations after legacy glossary data has been moved
         # into a numeric section.
+        #
+        # The first pass above emitted each undeclared sigil but did NOT record
+        # it in `declared`, so this second pass emitted every generated symbol
+        # a second time. The result was a glossary with each declaration
+        # duplicated — CODEC-CORTEX rejects that as E008_DUPLICATE_ENTRY, and
+        # it is why `atomic_write_json` (strict=True) produced a different,
+        # invalid document than `write_cortex_from_json` (strict=False).
+        # `declared` is updated here as well, which makes the recomputation
+        # idempotent for sigils that were genuinely added by the migration.
         for entry in _generated_symbols(sections):
             if entry["sigil"] in declared:
                 continue
