@@ -947,6 +947,10 @@ AUD:E_1516{date:"2026-10-11T18:56:01Z", event:"E-1516", task:"2026-10-11-pyproje
 
 AUD:E_1517{date:"2026-10-11T18:57:14Z", event:"E-1517", task:"2026-10-11-la-compactacion-de-evidencia-de-pulso-no-esta-ve", kind:"issue", agent:"alfred", result:"issue.update 2026-10-11-la-compactacion-de-evidencia-de-pulso-no-esta-ve.issue.md status=open->fixed note=Resuelto en dos partes. (a) La compactacion ya esta versionada: el working tree ", evidence:"issue.update 2026-10-11-la-compactacion-de-evidencia-de-pulso-no-esta-ve.issue.md status=open->fixed note=Resuelto en dos partes. (a) La compactacion ya esta versionada: el working tree "}
 
+AUD:E_1518{date:"2026-10-11T19:00:26Z", event:"E-1518", task:"2026-10-11-dos-desvios-de-baja-severidad-entre-la-ci-y-el-i", kind:"issue", agent:"alfred", result:"issue.update 2026-10-11-dos-desvios-de-baja-severidad-entre-la-ci-y-el-i.issue.md status=open->fixed note=Corregido en 8c4acf5. (a) Umbral laxo: el paso 'Validate handlers count' comprob", evidence:"issue.update 2026-10-11-dos-desvios-de-baja-severidad-entre-la-ci-y-el-i.issue.md status=open->fixed note=Corregido en 8c4acf5. (a) Umbral laxo: el paso 'Validate handlers count' comprob"}
+
+AUD:E_1519{date:"2026-10-11T19:00:35Z", event:"E-1519", task:"2026-10-11-el-artefacto-publicado-no-contiene-el-estado-act", kind:"issue", agent:"alfred", result:"issue.update 2026-10-11-el-artefacto-publicado-no-contiene-el-estado-act.issue.md status=open->triaged note=Triado, no cerrado: la causa ya no es la misma y la resolucion es una decision d", evidence:"issue.update 2026-10-11-el-artefacto-publicado-no-contiene-el-estado-act.issue.md status=open->triaged note=Triado, no cerrado: la causa ya no es la misma y la resolucion es una decision d"}
+
 
 $7: LESSONS
 
