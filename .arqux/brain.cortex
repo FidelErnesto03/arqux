@@ -933,6 +933,8 @@ AUD:E_1509{date:"2026-10-11T17:59:11Z", event:"E-1509", task:"2026-10-11-dos-des
 
 AUD:E_1510{date:"2026-10-11T18:29:44Z", event:"E-1510", task:"2026-10-11-la-dependencia-pineada-codec-cortex-1-0-0rc1-es-", kind:"issue", agent:"alfred", result:"issue.update 2026-10-11-la-dependencia-pineada-codec-cortex-1-0-0rc1-es-.issue.md status=open->fixed note=Mitigado y corregido en a0acc93. Diagnostico confirmado: 1.0.0rc1 renombro el na", evidence:"issue.update 2026-10-11-la-dependencia-pineada-codec-cortex-1-0-0rc1-es-.issue.md status=open->fixed note=Mitigado y corregido en a0acc93. Diagnostico confirmado: 1.0.0rc1 renombro el na"}
 
+AUD:E_1511{date:"2026-10-11T18:31:43Z", event:"E-1511", task:"2026-10-11-la-ci-ejecuta-cero-pruebas-por-error-de-coleccio", kind:"issue", agent:"alfred", result:"issue.update 2026-10-11-la-ci-ejecuta-cero-pruebas-por-error-de-coleccio.issue.md status=open->fixed note=Corregido en 869bcab. tests/test_voice.py importaba `numpy` en la linea 11, ante", evidence:"issue.update 2026-10-11-la-ci-ejecuta-cero-pruebas-por-error-de-coleccio.issue.md status=open->fixed note=Corregido en 869bcab. tests/test_voice.py importaba `numpy` en la linea 11, ante"}
+
 
 $7: LESSONS
 
