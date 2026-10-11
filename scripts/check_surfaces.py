@@ -57,6 +57,14 @@ VERSION_SURFACES = [
     ("CHANGELOG.md", r"^##\s*\[([^\]]+)\]", "CHANGELOG first entry", False),
 ]
 
+# .cortex surfaces that must carry the ArqUX version. Optional: absent in a
+# CI checkout (the governance tree is not version-controlled).
+CORTEX_VERSION_SURFACES = [
+    ("../.arqux/meta-brain.cortex", r'DOM:arqux\{[^}]*?version:"([^"]+)"', "meta-brain DOM:arqux version"),
+    ("../.arqux/projects.cortex", r'DOM:arqux\{[^}]*?version:"([^"]+)"', "projects DOM:arqux version"),
+    (".arqux/brain.cortex", r'ARQX:artifact\{[^}]*?version:"([^"]+)"', "brain ARQX:artifact version"),
+]
+
 
 def _scan(rel: str, pattern: str) -> list[str] | None:
     path = (ROOT / rel).resolve()
@@ -90,6 +98,13 @@ def main() -> int:
             continue
         if found[0] != version:
             problems.append(f"{desc}: expected {version}, found {found[0]}")
+
+    for rel, pattern, desc in CORTEX_VERSION_SURFACES:
+        found = _scan(rel, pattern)
+        if found is None:
+            continue  # optional: no workspace cortex present
+        if not found or found[0] != version:
+            problems.append(f"{desc}: expected {version}, found {found[0] if found else 'none'}")
 
     for path in sorted((ROOT / "docs" / "release").glob("*-report.md")):
         m = re.search(r"^#\s*ArqUX\s+(\S+)", path.read_text(encoding="utf-8"), re.MULTILINE)
