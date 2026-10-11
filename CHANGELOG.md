@@ -2,6 +2,117 @@
 
 All notable changes to ArqUX are documented here.
 
+## [0.9.0rc2] — pre-release (endurecimiento de la release)
+
+> Estado de madurez: **pre-release / candidata**. **No estable.**
+> Informe completo: `docs/release/0.9.0-report.md`.
+
+**`0.9.0rc1` se conserva publicada pero NO debe usarse.** Una revisión de
+integridad del gate de release encontró que era un artefacto que **no
+funcionaba**: ejecutaba cero pruebas, tenía desactivada la verificación CORTEX
+y citaba como evidencia artefactos que solo podían reproducirse en una máquina. Este
+release corrige todo eso. No se reescribe `rc1` — un artefacto ya distribuido no
+se reescribe, se publica el siguiente.
+
+### Fixed — CODEC-CORTEX era incompatible con el código que lo consume
+
+- La versión pineada `codec-cortex==1.0.0rc1` renombró su namespace de
+  importación a `codec_cortex` y aplanó la jerarquía: `cortex.core.validator` y
+  `cortex.hcortex.read_renderer` **dejan de existir**. ArqUX necesita ambos
+  (`validate` sostiene `cortex_verify`, `render_hcortex_read` el render
+  HCORTEX), así que instalar el pin desactivaba toda la capa CORTEX en silencio:
+  el `except ImportError` lo convertía en un `False` global que parecía
+  "falta la dependencia".
+- **Pin bajado a `codec-cortex>=0.6.2,<0.7`**, la liberación más nueva que
+  provee la superficie completa. Medido en entorno limpio replicando la CI:
+  el pin anterior daba **89–90 fallos** contra una línea base de 15.
+- Resolución **por capacidad**: `core/state/__init__.py` intenta el layout
+  legacy y luego el rc1, y registra qué capacidades faltan en lugar de tragarse
+  el `ImportError`. Nuevo `requires_capability(nombre)` hace que el fallo nombre
+  la capacidad ausente y el layout detectado, en vez de reventar como
+  `AttributeError` sobre un handle `None`.
+- `0.9.0rc1` queda declarada **no cableada**: expone solo `parse_cortex`.
+
+### Fixed — la CI llevaba seis commits ejecutando cero pruebas
+
+- `tests/test_voice.py` importaba `numpy` **antes** de sus
+  `pytest.importorskip()`. `numpy` llega con los extras de voz, que CI no
+  instala, y pytest trata un error de colección como fatal para **toda** la
+  corrida. La CI recolectaba 1826 tests, abortaba en ese archivo y ejecutaba
+  cero. El defecto lo introdujo el propio commit de CYCLE-13.
+- **`if: always()`** en las cuatro validaciones de gobernanza (`arqux init`,
+  `handlers count`, `AGENTS.md hash`, permisos P0-B). En GitHub Actions un paso
+  que falla salta todos los siguientes, así que los 15 fallos conocidos de la
+  línea base las dejaban permanentemente dormidas. Nunca se ejecutaron.
+- **Umbral de handlers derivado** de la superficie declarada, con igualdad
+  exacta. Comprobaba `>= 73` con 97 handlers reales: hasta 24 podían desaparecer
+  sin que nadie lo notara.
+- **`test_host_bridge`** era no determinista: usaba la existencia del archivo de
+  socket como señal de disponibilidad, y ese archivo se crea en `bind()`, antes
+  de `listen()`. Reproducía `ECONNREFUSED` ~1 vez cada 7 con carga. El gate
+  dependía de una moneda al aire.
+
+### Fixed — la evidencia de conformance no era reproducible
+
+- Las dos suites de conformance leían el corpus y ambos motores desde rutas
+  absolutas bajo `/home/vatrox/workspace`: **5 fallos y 8 errores** en CI,
+  mientras el informe de release las citaba como evidencia reproducible.
+- `scripts/fetch_conformance_columns.py` obtiene ambas columnas del upstream
+  `codec-cortex` en **refs pineados por sha** (A=`e68966b`, B=`d850a88`) y
+  verifica el **sha256 del manifest del corpus**: si el corpus gobernado cambia
+  upstream, el gate falla en vez de que los números del informe queden obsoletos
+  en silencio. El corpus **no** se vendoriza: es artefacto gobernado de
+  CODEC-CORTEX y duplicarlo crearía dos fuentes de verdad.
+- Un test que afirmaba que la ruta resuelta contuviera el literal
+  `codec-cortex-legacy` —es decir, que afirmaba el **nombre de un directorio
+  local** en vez del contrato— ahora afirma que el motor expone el layout
+  legacy.
+
+### Fixed — el control de secretos era más estrecho que su condición
+
+- `L-SEC-02` es condición **bloqueante** del gate. Escaneaba 3 archivos de
+  `docs/release/**` mientras la condición declara "artefactos, logs, corpora e
+  informe"; ahora recorre el árbol versionado completo.
+- `test_benchmark_corpus_is_synthetic` afirmaba que el JSON de benchmark decía
+  `synthetic: true`: **el artefacto certificando su propia virtud**. Ahora
+  regenera el corpus con la misma función del benchmark y escanea el texto
+  generado.
+- Al ampliar el alcance aparecieron 6 falsos positivos: los patrones detectaban
+  *referencias* a credenciales (`api_key: str = ""`,
+  `secret = os.environ.get(...)`), no credenciales. Un control que grita sobre
+  código correcto es un control que se apaga — que es como un scan de tres
+  archivos acabó siendo todo `L-SEC-02`. Se afinaron y se añadieron
+  exenciones **con motivo obligatorio** para los 2 fixtures que sí contienen
+  literales, más un control positivo que prueba que el escáner dispara.
+
+### Added — guards que impiden la reincidencia
+
+- `tests/test_codec_resolution.py`: falla si el pin declarado deja el parseo
+  CORTEX desactivado.
+- `tests/test_release_report_citations.py`: extrae las rutas citadas en el
+  informe de release, las expande y falla si alguna no existe (R-14: sin
+  artefacto, la condición no está cumplida), y exige que el informe mencione
+  todos los blueprints del ciclo.
+- Rotación del backup atómico a `.bak.1`: `.bak` se sobreescribía en cada
+  escritura y tras una segunda compactación el estado previo solo existía en git.
+
+### Verification
+
+| Métrica | Antes (0.9.0rc1) | Ahora (0.9.0rc2) |
+|---|---|---|
+| Pruebas ejecutadas por la CI | **0** | **1810** |
+| Errores de colección | 8 | **0** |
+| Delta contra la línea base | **+13** | **0** |
+| Gates de gobernanza ejecutándose | 0 de 4 | **4 de 4** |
+| Verificación CORTEX | desactivada por el pin | operativa |
+
+### Known limitations
+
+- **15 fallos preexistentes** del refactor de escritura atómica, ajenos a esta
+  revisión y declarados como línea base. Delta del release = **0**: se
+  reproducen exactamente, sin ninguno nuevo. La CI seguirá reportando rojo
+  por ellos hasta que ese refactor cierre.
+
 ## [0.9.0rc1] — pre-release (CYCLE-13)
 
 > Estado de madurez: **pre-release / candidata**. **No estable.**

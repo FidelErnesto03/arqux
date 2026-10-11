@@ -1,5 +1,5 @@
 {
-  "version": "0.9.0rc1",
+  "version": "0.9.0rc2",
   "corpus": {
     "file": "synthetic.cortex",
     "records": 200,

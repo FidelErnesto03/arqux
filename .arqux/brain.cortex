@@ -93,7 +93,7 @@ $0: format{cortex:"0.1", encoding:"UTF-8"}
 
 $19: ARQUX METADATA
 
-ARQX:artifact{level:"2", name:"brain", usage:"state", kind:"native", version:"0.9.0rc1"}
+ARQX:artifact{level:"2", name:"brain", usage:"state", kind:"native", version:"0.9.0rc2"}
 
 
 $1: IDENTITY
@@ -103,7 +103,7 @@ IDN:governor{level:"2", project:"ARQUX", path:"/home/vatrox/workspace/ARQUX", go
 
 $2: FOCUS
 
-FCS:current{what:"Ciclo cerrado", priority:"medium", status:"current", survive:"work", updated:"2026-10-11T01:12:29Z", event:"cycle.close"}
+FCS:current{what:"Ciclo cerrado", priority:"medium", status:"current", survive:"work", updated:"2026-10-11T19:06:58Z", event:"sync.run"}
 
 DEC:cp01_aprobado{date:"2026-10-10", by:"architect", scope:"CYCLE-13", cp01:"aprobado — matriz rc1/fallback, diseño de migración reversible, contratos Memory Core y recall, inicio de implementación autorizado", cp01a:"aprobado — orden BLP-005, BLP-001, BLP-002, BLP-003, BLP-004", basis:"mejor aprovechamiento y facilidad de acción; corregir el ejecutor antes de construir sobre él", qg09:"cerrado", next:"redactar BLP-005", next_cp:"CP-05 revisión de autenticidad"}
 
@@ -885,7 +885,7 @@ AUD:E_0676{date:"2026-09-18T20:19:32Z", event:"E-0676", task:"-", kind:"checkpoi
 
 AUD:E_0677{date:"2026-09-18T21:13:54Z", event:"E-0677", task:"-", kind:"session", agent:"alfred", result:"SES:2026-09-18T21:13:54Z agent= summary=\"Sesión Alfred en ARQUX: CI destrabado tras push v0.7.2 — fix de 4 errores F401 (imports sin usar) en commit 9be19c1; pre-commit hook con ruff implementado en eeb5718 (hook local vía 'uv run ruff check --fix src/ tests/', pre-commit agregado a dev deps, CONTRIBUTING.md actualizado). Ambos pushes verificados: runs CI 35390292407 y 35390676842 verdes (4/4 jobs). Lección registrada en identidad: correr ruff+pytest local antes de cada push.\" blps=[-] tasks=[-] decisions=[Hook pre-commit usa 'uv run ruff' como entry (requiere uv en PATH del contribuidor); pendiente decisión del Arquitecto si se prefiere 'ruff' plano para compatibilidad pip-only] gaps=[Warnings de CI: Node 20 deprecated en actions (checkout@v4,setup-python@v5,setup-uv@v5 forzados a Node 24); label ubuntu-latest migra a Ubuntu 26 el 2026-10-19 — evaluar actualización de actions antes de esa fecha] lng_count=4", evidence:"SES:2026-09-18T21:13:54Z agent= summary=\"Sesión Alfred en ARQUX: CI destrabado tras push v0.7.2 — fix de 4 errores F401 (imports sin usar) en commit 9be19c1; pre-commit hook con ruff implementado en eeb5718 (hook local vía 'uv run ruff check --fix src/ tests/', pre-commit agregado a dev deps, CONTRIBUTING.md actualizado). Ambos pushes verificados: runs CI 35390292407 y 35390676842 verdes (4/4 jobs). Lección registrada en identidad: correr ruff+pytest local antes de cada push.\" blps=[-] tasks=[-] decisions=[Hook pre-commit usa 'uv run ruff' como entry (requiere uv en PATH del contribuidor); pendiente decisión del Arquitecto si se prefiere 'ruff' plano para compatibilidad pip-only] gaps=[Warnings de CI: Node 20 deprecated en actions (checkout@v4,setup-python@v5,setup-uv@v5 forzados a Node 24); label ubuntu-latest migra a Ubuntu 26 el 2026-10-19 — evaluar actualización de actions antes de esa fecha] lng_count=4"}
 
-KNW:sync_run{name:"sync_run", value:"1", updated:"2026-09-21T19:56:01Z", topic:"metrics", content:"metric sync_run=1", status:"current"}
+KNW:sync_run{name:"sync_run", value:"1", updated:"2026-10-11T19:06:58Z", topic:"metrics", content:"metric sync_run=1", status:"current"}
 
 KNW:blueprints_done{name:"blueprints_done", value:"129", updated:"2026-10-11T01:12:29Z", topic:"metrics", content:"metric blueprints_done=129", status:"current"}
 
@@ -950,6 +950,12 @@ AUD:E_1517{date:"2026-10-11T18:57:14Z", event:"E-1517", task:"2026-10-11-la-comp
 AUD:E_1518{date:"2026-10-11T19:00:26Z", event:"E-1518", task:"2026-10-11-dos-desvios-de-baja-severidad-entre-la-ci-y-el-i", kind:"issue", agent:"alfred", result:"issue.update 2026-10-11-dos-desvios-de-baja-severidad-entre-la-ci-y-el-i.issue.md status=open->fixed note=Corregido en 8c4acf5. (a) Umbral laxo: el paso 'Validate handlers count' comprob", evidence:"issue.update 2026-10-11-dos-desvios-de-baja-severidad-entre-la-ci-y-el-i.issue.md status=open->fixed note=Corregido en 8c4acf5. (a) Umbral laxo: el paso 'Validate handlers count' comprob"}
 
 AUD:E_1519{date:"2026-10-11T19:00:35Z", event:"E-1519", task:"2026-10-11-el-artefacto-publicado-no-contiene-el-estado-act", kind:"issue", agent:"alfred", result:"issue.update 2026-10-11-el-artefacto-publicado-no-contiene-el-estado-act.issue.md status=open->triaged note=Triado, no cerrado: la causa ya no es la misma y la resolucion es una decision d", evidence:"issue.update 2026-10-11-el-artefacto-publicado-no-contiene-el-estado-act.issue.md status=open->triaged note=Triado, no cerrado: la causa ya no es la misma y la resolucion es una decision d"}
+
+AUD:E_1520{date:"2026-10-11T19:05:53Z", event:"E-1520", task:"2026-10-11-el-artefacto-publicado-no-contiene-el-estado-act", kind:"issue", agent:"alfred", result:"issue.update 2026-10-11-el-artefacto-publicado-no-contiene-el-estado-act.issue.md status=triaged->fixed note=Cerrado por retagging a 0.9.0rc2, con la decision ya ejecutada y verificada. Dat", evidence:"issue.update 2026-10-11-el-artefacto-publicado-no-contiene-el-estado-act.issue.md status=triaged->fixed note=Cerrado por retagging a 0.9.0rc2, con la decision ya ejecutada y verificada. Dat"}
+
+AUD:E_1521{date:"2026-10-11T19:08:56Z", event:"E-1521", task:"-", kind:"checkpoint", agent:"alfred", result:"cortex.checkpoint ok fcs=0.9.0rc2 — cierre de release obj=", evidence:"cortex.checkpoint ok fcs=0.9.0rc2 — cierre de release obj="}
+
+AUD:E_1522{date:"2026-10-11T19:09:11Z", event:"E-1522", task:"2026-10-11-el-reporte-de-benchmark-se-regenera-en-cada-corr", kind:"issue", agent:"alfred", result:"issue.create 2026-10-11-el-reporte-de-benchmark-se-regenera-en-cada-corr.issue.md severity=medium status=open by=alfred", evidence:"issue.create 2026-10-11-el-reporte-de-benchmark-se-regenera-en-cada-corr.issue.md severity=medium status=open by=alfred"}
 
 
 $7: LESSONS
@@ -1351,7 +1357,7 @@ LNG:session_E_1500{type:"session", entry_count:94, summary:"artifact:5,blocker:1
 
 $8: ACTIVE_CONTEXT
 
-WRK:current{phase:"current", current:"cycle.close: cycle CYCLE-13 closed", blocked:"no", survive:"work", updated:"2026-10-11T01:12:29Z", event:"cycle.close", fcs:"BLP-001 T-3.1 T-3.3 T-3.4 T-3.5 cerradas", obj:"", tasks:"", state:"solo queda T-3.2 columna de invalidos", last_turn:"2026-10-10T23:26:57Z"}
+WRK:current{phase:"current", current:"sync.run: sync.run manual trigger — full sync to meta-brain", blocked:"no", survive:"work", updated:"2026-10-11T19:06:58Z", event:"sync.run", fcs:"0.9.0rc2 — cierre de release", obj:"", tasks:"", state:"active", last_turn:"2026-10-11T19:08:56Z"}
 
 
 $9: RISKS
