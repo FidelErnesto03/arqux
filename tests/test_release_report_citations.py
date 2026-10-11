@@ -1,0 +1,93 @@
+"""Every artifact the release report cites must exist.
+
+`docs/release/0.9.0-report.md` exists to make each claim traceable to an
+artifact (§7.1 / R-14: "Cada condición del gate cita su artefacto; sin
+artefacto, la condición no está cumplida"). That property only holds if the
+citations are checked.
+
+On 2026-10-11 a citation was added to the report naming
+`src/arqux/core/state/_cycle.py`, a path that never existed — written to fill
+a table cell without checking it. This suite is the check that was missing.
+"""
+
+from __future__ import annotations
+
+import re
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parent.parent
+REPORT = ROOT / "docs" / "release" / "0.9.0-report.md"
+
+# src/..., tests/..., docs/..., scripts/... — including brace groups and globs.
+_CITATION = re.compile(
+    r"(?<![\w/])((?:src|tests|docs|scripts)/[A-Za-z0-9_.*{},/-]+)"
+)
+
+
+def _expand(pattern: str) -> list[str]:
+    """Expand ``a/{x,y}.py`` into its concrete paths."""
+    match = re.search(r"\{([^{}]+)\}", pattern)
+    if not match:
+        return [pattern]
+    expanded: list[str] = []
+    for alternative in match.group(1).split(","):
+        alternative = alternative.strip()
+        head, tail = pattern[: match.start()], pattern[match.end() :]
+        expanded.extend(_expand(head + alternative + tail))
+    return expanded
+
+
+def _citations() -> list[str]:
+    text = REPORT.read_text(encoding="utf-8")
+    paths: set[str] = set()
+    for raw in _CITATION.findall(text):
+        paths.update(_expand(raw))
+    return sorted(paths)
+
+
+def test_report_exists() -> None:
+    assert REPORT.is_file(), f"release report missing at {REPORT}"
+
+
+def test_report_cites_at_least_twenty_artifacts() -> None:
+    """A guard on the guard: an empty scan proves nothing."""
+    citations = _citations()
+    assert len(citations) >= 20, (
+        f"only {len(citations)} artifact paths found in the report — the "
+        f"citation extractor is probably broken"
+    )
+
+
+def test_every_cited_artifact_exists() -> None:
+    missing = []
+    for citation in _citations():
+        if "*" in citation:
+            if not list(ROOT.glob(citation)):
+                missing.append(citation)
+        elif not (ROOT / citation).exists():
+            missing.append(citation)
+    assert not missing, (
+        "the release report cites artifacts that do not exist. R-14 says a "
+        f"condition without an artifact is not a satisfied condition: {missing}"
+    )
+
+
+def test_report_cites_every_blueprint_of_the_closed_cycle() -> None:
+    """CYCLE-13 closed 6/6; the report table must not silently show fewer.
+
+    BLP-005 and BLP-006 finished after the report was first issued, and the
+    table listed only four. Listing the cycle's real state is the point of
+    the table; leaving it at four understated what shipped.
+    """
+    text = REPORT.read_text(encoding="utf-8")
+    cycle_dir = ROOT / ".arqux" / "cycles" / "CYCLE-13" / "blueprints"
+    if not cycle_dir.is_dir():
+        # Governance tree absent in a CI checkout — nothing to compare against.
+        return
+    blueprints = sorted(p.stem for p in cycle_dir.glob("BLP-*.md"))
+    assert blueprints, "no blueprints found under CYCLE-13"
+    uncited = [b for b in blueprints if b not in text]
+    assert not uncited, (
+        f"the release report does not mention {uncited}, but CYCLE-13 closed "
+        f"with {len(blueprints)} blueprints. State the cycle's real content."
+    )

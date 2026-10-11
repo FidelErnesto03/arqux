@@ -73,7 +73,17 @@ def _scan(rel: str, pattern: str) -> list[str] | None:
     return re.findall(pattern, path.read_text(encoding="utf-8"), re.MULTILINE)
 
 
-def main() -> int:
+def main(argv: list[str] | None = None) -> int:
+    argv = sys.argv[1:] if argv is None else argv
+    # Machine-readable output for CI, so the workflow compares against the
+    # declared surface instead of a hand-kept constant that drifts.
+    if "--print-expected-handlers" in argv:
+        print(canonical_handler_count())
+        return 0
+    if "--print-expected-version" in argv:
+        print(canonical_version())
+        return 0
+
     count = str(canonical_handler_count())
     version = canonical_version()
     problems: list[str] = []
@@ -130,4 +140,4 @@ def main() -> int:
 
 
 if __name__ == "__main__":
-    raise SystemExit(main())
+    raise SystemExit(main(sys.argv[1:]))

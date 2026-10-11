@@ -1,0 +1,49 @@
+$0
+
+# -- ISSUE GLOBAL GLOSSARY --
+# Sigil | Name     | Type   | Risk | Layer        | Description
+# IDN   | identity | attrs  | B    | Semantic     | Issue identity
+# WRK   | work     | attrs  | B    | Working      | Issue record
+# LNG   | lesson   | attrs  | M    | Episodic     | Lesson learned
+# FCS   | focus    | attrs  | H    | Working      | What was the goal
+#
+# STATUS VALUES (IDN:issue.status):
+# open     | Reportado, pendiente de evaluar
+# triaged  | Evaluado, esperando corrección
+# fixed    | Corregido, sin verificar
+# verified | Corregido y verificado — no retomar
+# wontfix  | No se corregirá (decisión explícita)
+# duplicate| Ya cubierto por otro issue
+
+IDN:issue{
+  severity:"medium",
+  status:"verified — remediado por BLP-009 (CYCLE-12, done): _find_workspace_root normaliza start=.arqux → parent y excluye candidatos .arqux en el walk-up (identity_resolver.py:84-98); regresión test_blp009_guards.py (3 tests, incl. fixture con .arqux/AGENTS.md); suite 1377 passed",
+  handler:"alfred",
+  date:"2026-07-16",
+  time:"17:40 UTC",
+  model:"qwen/qwen3.6-27b",
+  provider:"lmstudio"
+}
+
+WRK:problem{
+  desc:"find_workspace_root() devuelve el directorio .arqux/ en lugar del workspace root, provocando que la resolución de identidades anide una ruta .arqux/.arqux/ inválida.",
+  what_was_happening:"Verificación de acceso al ArqUX MCP por stdio. Se ejecutó 'arqux call context.detect' y 'arqux call' con ARQUX_AGENT_ID=alfred para confirmar acceso gobernado con identidad de Alfred.",
+  expected:"El resolver de identidad debe buscar /home/vatrox/workspace/.arqux/identities/alfred.cortex (workspace root).",
+  actual:"El resolver busca /home/vatrox/workspace/.arqux/.arqux/identities/alfred.cortex (path anidado inválido) y falla con: 'Identity file not found: /home/vatrox/workspace/.arqux/.arqux/identities/alfred.cortex. Known agents: alfred, jarvis, seshat, heimdall, executor, governor, auditor.' El handler context.detect sí resuelve el workspace correctamente (OUT-WORK found=true path=/home/vatrox/workspace/.arqux), pero la identidad no se resuelve por env.",
+  evidence:"$ arqux call context.detect\nfrom_env: P2 fallback identity resolve failed for agent_id=alfred: Identity file not found: /home/vatrox/workspace/.arqux/.arqux/identities/alfred.cortex. Known agents: alfred, jarvis, seshat, heimdall, executor, governor, auditor.\nOUT-WORK found=true kind=project path=/home/vatrox/workspace/.arqux start=/home/vatrox/workspace context.detect ok found=project path=/home/vatrox/workspace/.arqux\n\nReproducible incluso ejecutando desde /home/vatrox/workspace (workspace root) con ARQUX_AGENT_ID=alfred ARQUX_AGENT_ROLE=governor. El server stdio 'arqux serve' arranca y responde initialize correctamente (serverInfo arqux 1.28.1), así que NO bloquea el acceso al MCP; solo afecta la resolución de identidad por env en el fallback CLI."
+}
+
+FCS:context{
+  cycle:"CYCLE-03 (cerrado)",
+  blp:"-",
+  handler:"context.detect / identity_resolver.resolve_agent_identity",
+  task:"verificacion-acceso-arqux-mcp-stdio",
+  files:"ARQUX/src/arqux/identity_resolver.py (L43-L55, _find_workspace_root), ARQUX/src/arqux/core/ (find_workspace_root), opencode.json (mcp.arqux command=['arqux','serve'])",
+  previous_attempts:"Ejecutado 'arqux call context.detect' desde /home/vatrox/workspace/CODEC-CORTEX y desde /home/vatrox/workspace/. Ambos muestran el path anidado .arqux/.arqux/. La identidad real existe en /home/vatrox/workspace/.arqux/identities/alfred.cortex (verificado con ls)."
+}
+
+LNG:lesson{
+  cause:"find_workspace_root() retorna el directorio .arqux/ en vez del workspace root. El resolver hace ws = _find_workspace_root(project_root) y luego ws / '.arqux' / 'identities', produciendo .arqux/.arqux/. Es el bug documentado en LNG:blp_011 (find_workspace_root devuelve .arqux/, debe usarse .parent para obtener el workspace root real).",
+  fix:"En identity_resolver.py y cualquier caller de _find_workspace_root(): si el resultado termina en .arqux/, aplicar .parent para obtener el workspace root antes de concatenar .arqux/identities. O corregir find_workspace_root() para que devuelva el workspace root (no el dir .arqux/).",
+  prevention:"Agregar test de regresión en identity_resolver que verifique que la ruta resultante NO contenga '.arqux/.arqux'. Reutilizar el fix de BLP-011 (usar .parent tras find_workspace_root) en todos los callers."
+}

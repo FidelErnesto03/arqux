@@ -177,6 +177,17 @@ def atomic_write_text(
     backup_created = None
     if keep_backup and os.path.exists(path):
         try:
+            # Rotate: keep the PREVIOUS backup before overwriting the current
+            # one. A single `path.bak` is overwritten on every write, so it
+            # only ever holds the immediately preceding state — after a
+            # second compaction the pre-compaction brain existed nowhere but
+            # in git. `.bak.1` is a cheap second generation and costs one
+            # rename. Best-effort: a failure to rotate must not block the
+            # write itself.
+            previous = bak_path + ".1"
+            if os.path.exists(bak_path):
+                with contextlib.suppress(OSError):
+                    os.replace(bak_path, previous)
             shutil.copy2(path, bak_path)
             backup_created = bak_path
         except OSError as e:

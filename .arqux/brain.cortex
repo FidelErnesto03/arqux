@@ -941,6 +941,12 @@ AUD:E_1513{date:"2026-10-11T18:50:44Z", event:"E-1513", task:"2026-10-11-la-evid
 
 AUD:E_1514{date:"2026-10-11T18:50:57Z", event:"E-1514", task:"2026-10-11-la-evidencia-de-conformance-de-blp-001-citada-po", kind:"issue", agent:"alfred", result:"issue.update 2026-10-11-la-evidencia-de-conformance-de-blp-001-citada-po.issue.md status=open->fixed note=Corregido en b55844c y verificado en la CI real (run 38165363194, Python 3.10/3.", evidence:"issue.update 2026-10-11-la-evidencia-de-conformance-de-blp-001-citada-po.issue.md status=open->fixed note=Corregido en b55844c y verificado en la CI real (run 38165363194, Python 3.10/3."}
 
+AUD:E_1515{date:"2026-10-11T18:54:22Z", event:"E-1515", task:"2026-10-11-el-control-de-seguridad-declarado-como-bloqueant", kind:"issue", agent:"alfred", result:"issue.update 2026-10-11-el-control-de-seguridad-declarado-como-bloqueant.issue.md status=open->fixed note=Corregido en 50e0b11. Alcance: el scan ahora recorre el arbol versionado complet", evidence:"issue.update 2026-10-11-el-control-de-seguridad-declarado-como-bloqueant.issue.md status=open->fixed note=Corregido en 50e0b11. Alcance: el scan ahora recorre el arbol versionado complet"}
+
+AUD:E_1516{date:"2026-10-11T18:56:01Z", event:"E-1516", task:"2026-10-11-pyproject-toml-tiene-la-clave-project-optional-d", kind:"issue", agent:"alfred", result:"issue.update 2026-10-11-pyproject-toml-tiene-la-clave-project-optional-d.issue.md status=open->wontfix note=RETRACTADO: este issue reportaba un defecto que no existe. El diagnostico origin", evidence:"issue.update 2026-10-11-pyproject-toml-tiene-la-clave-project-optional-d.issue.md status=open->wontfix note=RETRACTADO: este issue reportaba un defecto que no existe. El diagnostico origin"}
+
+AUD:E_1517{date:"2026-10-11T18:57:14Z", event:"E-1517", task:"2026-10-11-la-compactacion-de-evidencia-de-pulso-no-esta-ve", kind:"issue", agent:"alfred", result:"issue.update 2026-10-11-la-compactacion-de-evidencia-de-pulso-no-esta-ve.issue.md status=open->fixed note=Resuelto en dos partes. (a) La compactacion ya esta versionada: el working tree ", evidence:"issue.update 2026-10-11-la-compactacion-de-evidencia-de-pulso-no-esta-ve.issue.md status=open->fixed note=Resuelto en dos partes. (a) La compactacion ya esta versionada: el working tree "}
+
 
 $7: LESSONS
 
