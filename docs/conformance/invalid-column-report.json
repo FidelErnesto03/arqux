@@ -1,0 +1,2103 @@
+{
+  "generated_by": "tests/test_cortex_invalid_column_conformance.py",
+  "corpus": "/home/vatrox/workspace/CODEC-CORTEX/conformance/corpus",
+  "required_codes_are": "specification (what each invalid fixture should emit)",
+  "columns": {
+    "REF": {
+      "label": "reference validator",
+      "summary": {
+        "total": 57,
+        "required_codes_fully_matched": 35,
+        "invalid_fixtures_accepted": 0
+      },
+      "per_case": [
+        {
+          "id": "I001_empty",
+          "required": [
+            "S001_EMPTY_DOCUMENT"
+          ],
+          "outcome": "REJECTED",
+          "codes": [
+            "S001_EMPTY_DOCUMENT"
+          ],
+          "matched": [
+            "S001_EMPTY_DOCUMENT"
+          ]
+        },
+        {
+          "id": "I002_missing_glossary",
+          "required": [
+            "G001_GLOSSARY_MISSING_OR_NOT_FIRST"
+          ],
+          "outcome": "REJECTED",
+          "codes": [
+            "G001_GLOSSARY_MISSING_OR_NOT_FIRST"
+          ],
+          "matched": [
+            "G001_GLOSSARY_MISSING_OR_NOT_FIRST"
+          ]
+        },
+        {
+          "id": "I003_content_before_glossary",
+          "required": [
+            "G001_GLOSSARY_MISSING_OR_NOT_FIRST"
+          ],
+          "outcome": "REJECTED",
+          "codes": [
+            "G001_GLOSSARY_MISSING_OR_NOT_FIRST"
+          ],
+          "matched": [
+            "G001_GLOSSARY_MISSING_OR_NOT_FIRST"
+          ]
+        },
+        {
+          "id": "I004_missing_format",
+          "required": [
+            "G010_FORMAT_REQUIRED"
+          ],
+          "outcome": "REJECTED",
+          "codes": [
+            "S004_MISSING_PAYLOAD"
+          ],
+          "matched": []
+        },
+        {
+          "id": "I005_bad_version",
+          "required": [
+            "G007_UNSUPPORTED_VERSION"
+          ],
+          "outcome": "REJECTED",
+          "codes": [
+            "G007_UNSUPPORTED_VERSION"
+          ],
+          "matched": [
+            "G007_UNSUPPORTED_VERSION"
+          ]
+        },
+        {
+          "id": "I006_bad_encoding",
+          "required": [
+            "G011_ENCODING_REQUIRED"
+          ],
+          "outcome": "REJECTED",
+          "codes": [
+            "G011_ENCODING_REQUIRED"
+          ],
+          "matched": [
+            "G011_ENCODING_REQUIRED"
+          ]
+        },
+        {
+          "id": "I007_duplicate_format",
+          "required": [
+            "G006_DUPLICATE_FORMAT"
+          ],
+          "outcome": "REJECTED",
+          "codes": [
+            "G006_DUPLICATE_FORMAT"
+          ],
+          "matched": [
+            "G006_DUPLICATE_FORMAT"
+          ]
+        },
+        {
+          "id": "I008_duplicate_section",
+          "required": [
+            "S002_DUPLICATE_SECTION"
+          ],
+          "outcome": "REJECTED",
+          "codes": [
+            "S004_MISSING_PAYLOAD"
+          ],
+          "matched": []
+        },
+        {
+          "id": "I009_glossary_reopened",
+          "required": [
+            "G002_GLOSSARY_REOPENED"
+          ],
+          "outcome": "REJECTED",
+          "codes": [
+            "G002_GLOSSARY_REOPENED"
+          ],
+          "matched": [
+            "G002_GLOSSARY_REOPENED"
+          ]
+        },
+        {
+          "id": "I010_multiline_glossary",
+          "required": [
+            "G003_MULTILINE_GLOSSARY_DECLARATION"
+          ],
+          "outcome": "REJECTED",
+          "codes": [
+            "G003_MULTILINE_GLOSSARY_DECLARATION"
+          ],
+          "matched": [
+            "G003_MULTILINE_GLOSSARY_DECLARATION"
+          ]
+        },
+        {
+          "id": "I011_symbol_missing_type",
+          "required": [
+            "G016_SYMBOL_TYPE_REQUIRED"
+          ],
+          "outcome": "REJECTED",
+          "codes": [
+            "G016_SYMBOL_TYPE_REQUIRED"
+          ],
+          "matched": [
+            "G016_SYMBOL_TYPE_REQUIRED"
+          ]
+        },
+        {
+          "id": "I012_unknown_shape",
+          "required": [
+            "G017_UNKNOWN_SHAPE"
+          ],
+          "outcome": "REJECTED",
+          "codes": [
+            "G017_UNKNOWN_SHAPE"
+          ],
+          "matched": [
+            "G017_UNKNOWN_SHAPE"
+          ]
+        },
+        {
+          "id": "I013_missing_weight",
+          "required": [
+            "G018_SYMBOL_WEIGHT_REQUIRED"
+          ],
+          "outcome": "REJECTED",
+          "codes": [
+            "G018_SYMBOL_WEIGHT_REQUIRED"
+          ],
+          "matched": [
+            "G018_SYMBOL_WEIGHT_REQUIRED"
+          ]
+        },
+        {
+          "id": "I014_bad_weight",
+          "required": [
+            "G019_INVALID_WEIGHT"
+          ],
+          "outcome": "REJECTED",
+          "codes": [
+            "G019_INVALID_WEIGHT"
+          ],
+          "matched": [
+            "G019_INVALID_WEIGHT"
+          ]
+        },
+        {
+          "id": "I015_missing_desc",
+          "required": [
+            "G020_SYMBOL_DESCRIPTION_REQUIRED"
+          ],
+          "outcome": "REJECTED",
+          "codes": [
+            "G020_SYMBOL_DESCRIPTION_REQUIRED"
+          ],
+          "matched": [
+            "G020_SYMBOL_DESCRIPTION_REQUIRED"
+          ]
+        },
+        {
+          "id": "I016_attrs_missing_contract",
+          "required": [
+            "G021_ATTRS_CONTRACT_REQUIRED"
+          ],
+          "outcome": "REJECTED",
+          "codes": [
+            "G021_ATTRS_CONTRACT_REQUIRED"
+          ],
+          "matched": [
+            "G021_ATTRS_CONTRACT_REQUIRED"
+          ]
+        },
+        {
+          "id": "I017_pos_missing_contract",
+          "required": [
+            "G022_POSITIONAL_CONTRACT_REQUIRED"
+          ],
+          "outcome": "REJECTED",
+          "codes": [
+            "G022_POSITIONAL_CONTRACT_REQUIRED"
+          ],
+          "matched": [
+            "G022_POSITIONAL_CONTRACT_REQUIRED"
+          ]
+        },
+        {
+          "id": "I018_relation_short_contract",
+          "required": [
+            "G023_RELATION_CONTRACT_TOO_SHORT"
+          ],
+          "outcome": "REJECTED",
+          "codes": [
+            "G023_RELATION_CONTRACT_TOO_SHORT"
+          ],
+          "matched": [
+            "G023_RELATION_CONTRACT_TOO_SHORT"
+          ]
+        },
+        {
+          "id": "I019_focus_missing",
+          "required": [
+            "G024_FOCUS_REQUIRED"
+          ],
+          "outcome": "REJECTED",
+          "codes": [
+            "G024_FOCUS_REQUIRED"
+          ],
+          "matched": [
+            "G024_FOCUS_REQUIRED"
+          ]
+        },
+        {
+          "id": "I020_focus_unknown",
+          "required": [
+            "G025_UNKNOWN_FOCUS_FIELD"
+          ],
+          "outcome": "REJECTED",
+          "codes": [
+            "G025_UNKNOWN_FOCUS_FIELD"
+          ],
+          "matched": [
+            "G025_UNKNOWN_FOCUS_FIELD"
+          ]
+        },
+        {
+          "id": "I021_bad_contract",
+          "required": [
+            "G008_INVALID_CONTRACT"
+          ],
+          "outcome": "REJECTED",
+          "codes": [
+            "G008_INVALID_CONTRACT"
+          ],
+          "matched": [
+            "G008_INVALID_CONTRACT"
+          ]
+        },
+        {
+          "id": "I022_duplicate_contract_field",
+          "required": [
+            "G009_DUPLICATE_CONTRACT_FIELD"
+          ],
+          "outcome": "REJECTED",
+          "codes": [
+            "G009_DUPLICATE_CONTRACT_FIELD"
+          ],
+          "matched": [
+            "G009_DUPLICATE_CONTRACT_FIELD"
+          ]
+        },
+        {
+          "id": "I023_unknown_field_type",
+          "required": [
+            "G027_UNKNOWN_FIELD_TYPE"
+          ],
+          "outcome": "REJECTED",
+          "codes": [
+            "G027_UNKNOWN_FIELD_TYPE"
+          ],
+          "matched": [
+            "G027_UNKNOWN_FIELD_TYPE"
+          ]
+        },
+        {
+          "id": "I024_unknown_enum",
+          "required": [
+            "G026_UNKNOWN_ENUM_REFERENCE"
+          ],
+          "outcome": "REJECTED",
+          "codes": [
+            "G026_UNKNOWN_ENUM_REFERENCE"
+          ],
+          "matched": [
+            "G026_UNKNOWN_ENUM_REFERENCE"
+          ]
+        },
+        {
+          "id": "I025_bad_enum",
+          "required": [
+            "G014_INVALID_ENUM"
+          ],
+          "outcome": "REJECTED",
+          "codes": [
+            "G014_INVALID_ENUM"
+          ],
+          "matched": [
+            "G014_INVALID_ENUM"
+          ]
+        },
+        {
+          "id": "I026_duplicate_enum",
+          "required": [
+            "G015_DUPLICATE_ENUM"
+          ],
+          "outcome": "REJECTED",
+          "codes": [
+            "G015_DUPLICATE_ENUM"
+          ],
+          "matched": [
+            "G015_DUPLICATE_ENUM"
+          ]
+        },
+        {
+          "id": "I027_bad_micro",
+          "required": [
+            "L002_INVALID_NAME"
+          ],
+          "outcome": "REJECTED",
+          "codes": [
+            "L002_INVALID_NAME"
+          ],
+          "matched": [
+            "L002_INVALID_NAME"
+          ]
+        },
+        {
+          "id": "I028_duplicate_micro",
+          "required": [
+            "G013_DUPLICATE_MICRO"
+          ],
+          "outcome": "REJECTED",
+          "codes": [
+            "G013_DUPLICATE_MICRO"
+          ],
+          "matched": [
+            "G013_DUPLICATE_MICRO"
+          ]
+        },
+        {
+          "id": "I029_duplicate_symbol",
+          "required": [
+            "G005_DUPLICATE_SYMBOL"
+          ],
+          "outcome": "REJECTED",
+          "codes": [
+            "G005_DUPLICATE_SYMBOL"
+          ],
+          "matched": [
+            "G005_DUPLICATE_SYMBOL"
+          ]
+        },
+        {
+          "id": "I030_undeclared_symbol",
+          "required": [
+            "I001_UNDECLARED_SYMBOL"
+          ],
+          "outcome": "REJECTED",
+          "codes": [
+            "S004_MISSING_PAYLOAD"
+          ],
+          "matched": []
+        },
+        {
+          "id": "I031_duplicate_address",
+          "required": [
+            "I002_DUPLICATE_IDEA_ADDRESS"
+          ],
+          "outcome": "REJECTED",
+          "codes": [
+            "S004_MISSING_PAYLOAD"
+          ],
+          "matched": []
+        },
+        {
+          "id": "I032_unknown_field",
+          "required": [
+            "I005_UNKNOWN_FIELD"
+          ],
+          "outcome": "REJECTED",
+          "codes": [
+            "S004_MISSING_PAYLOAD"
+          ],
+          "matched": []
+        },
+        {
+          "id": "I033_duplicate_field",
+          "required": [
+            "I006_DUPLICATE_FIELD"
+          ],
+          "outcome": "REJECTED",
+          "codes": [
+            "S004_MISSING_PAYLOAD"
+          ],
+          "matched": []
+        },
+        {
+          "id": "I034_field_order",
+          "required": [
+            "I007_FIELD_ORDER"
+          ],
+          "outcome": "REJECTED",
+          "codes": [
+            "S004_MISSING_PAYLOAD"
+          ],
+          "matched": []
+        },
+        {
+          "id": "I035_required_missing",
+          "required": [
+            "I008_REQUIRED_FIELD_MISSING"
+          ],
+          "outcome": "REJECTED",
+          "codes": [
+            "S004_MISSING_PAYLOAD"
+          ],
+          "matched": []
+        },
+        {
+          "id": "I036_type_mismatch",
+          "required": [
+            "I009_FIELD_TYPE_MISMATCH"
+          ],
+          "outcome": "REJECTED",
+          "codes": [
+            "S004_MISSING_PAYLOAD"
+          ],
+          "matched": []
+        },
+        {
+          "id": "I037_enum_violation",
+          "required": [
+            "I010_ENUM_VIOLATION"
+          ],
+          "outcome": "REJECTED",
+          "codes": [
+            "S004_MISSING_PAYLOAD"
+          ],
+          "matched": []
+        },
+        {
+          "id": "I038_attrs_pipe_mismatch",
+          "required": [
+            "I004_SHAPE_DELIMITER_MISMATCH"
+          ],
+          "outcome": "REJECTED",
+          "codes": [
+            "S004_MISSING_PAYLOAD"
+          ],
+          "matched": []
+        },
+        {
+          "id": "I039_pos_brace_mismatch",
+          "required": [
+            "I004_SHAPE_DELIMITER_MISMATCH"
+          ],
+          "outcome": "REJECTED",
+          "codes": [
+            "S004_MISSING_PAYLOAD"
+          ],
+          "matched": []
+        },
+        {
+          "id": "I040_pos_short",
+          "required": [
+            "I012_POSITIONAL_ARITY"
+          ],
+          "outcome": "REJECTED",
+          "codes": [
+            "S004_MISSING_PAYLOAD"
+          ],
+          "matched": []
+        },
+        {
+          "id": "I041_pos_long",
+          "required": [
+            "I012_POSITIONAL_ARITY"
+          ],
+          "outcome": "REJECTED",
+          "codes": [
+            "S004_MISSING_PAYLOAD"
+          ],
+          "matched": []
+        },
+        {
+          "id": "I042_relation_arity",
+          "required": [
+            "I013_RELATION_ARITY"
+          ],
+          "outcome": "REJECTED",
+          "codes": [
+            "S004_MISSING_PAYLOAD"
+          ],
+          "matched": []
+        },
+        {
+          "id": "I043_attrs_multiline",
+          "required": [
+            "I003_ATTRS_MUST_BE_ONE_LINE"
+          ],
+          "outcome": "REJECTED",
+          "codes": [
+            "S004_MISSING_PAYLOAD"
+          ],
+          "matched": []
+        },
+        {
+          "id": "I044_body_unclosed",
+          "required": [
+            "I014_UNCLOSED_BODY"
+          ],
+          "outcome": "REJECTED",
+          "codes": [
+            "S004_MISSING_PAYLOAD"
+          ],
+          "matched": []
+        },
+        {
+          "id": "I045_invalid_string",
+          "required": [
+            "S006_INVALID_ATTRS"
+          ],
+          "outcome": "REJECTED",
+          "codes": [
+            "S004_MISSING_PAYLOAD"
+          ],
+          "matched": []
+        },
+        {
+          "id": "I046_unquoted_attrs_text",
+          "required": [
+            "L010_INVALID_ATOM"
+          ],
+          "outcome": "REJECTED",
+          "codes": [
+            "S004_MISSING_PAYLOAD"
+          ],
+          "matched": []
+        },
+        {
+          "id": "I047_nested_list",
+          "required": [
+            "L008_NESTED_LIST"
+          ],
+          "outcome": "REJECTED",
+          "codes": [
+            "S004_MISSING_PAYLOAD"
+          ],
+          "matched": []
+        },
+        {
+          "id": "I048_empty_focus",
+          "required": [
+            "I016_EMPTY_FOCUS"
+          ],
+          "outcome": "REJECTED",
+          "codes": [
+            "S004_MISSING_PAYLOAD"
+          ],
+          "matched": []
+        },
+        {
+          "id": "I049_required_extension_unknown",
+          "required": [
+            "X002_REQUIRED_EXTENSION_UNSUPPORTED"
+          ],
+          "outcome": "REJECTED",
+          "codes": [
+            "X002_REQUIRED_EXTENSION_UNSUPPORTED",
+            "S004_MISSING_PAYLOAD"
+          ],
+          "matched": [
+            "X002_REQUIRED_EXTENSION_UNSUPPORTED"
+          ]
+        },
+        {
+          "id": "I050_invalid_extension",
+          "required": [
+            "X001_INVALID_EXTENSION_DECLARATION"
+          ],
+          "outcome": "REJECTED",
+          "codes": [
+            "X001_INVALID_EXTENSION_DECLARATION"
+          ],
+          "matched": [
+            "X001_INVALID_EXTENSION_DECLARATION"
+          ]
+        },
+        {
+          "id": "I051_invalid_symbol",
+          "required": [
+            "L001_INVALID_SYMBOL"
+          ],
+          "outcome": "REJECTED",
+          "codes": [
+            "L001_INVALID_SYMBOL"
+          ],
+          "matched": [
+            "L001_INVALID_SYMBOL"
+          ]
+        },
+        {
+          "id": "I052_invalid_name",
+          "required": [
+            "L002_INVALID_NAME"
+          ],
+          "outcome": "REJECTED",
+          "codes": [
+            "L002_INVALID_NAME"
+          ],
+          "matched": [
+            "L002_INVALID_NAME"
+          ]
+        },
+        {
+          "id": "I053_invalid_key",
+          "required": [
+            "L003_INVALID_KEY"
+          ],
+          "outcome": "REJECTED",
+          "codes": [
+            "L003_INVALID_KEY"
+          ],
+          "matched": [
+            "L003_INVALID_KEY"
+          ]
+        },
+        {
+          "id": "I054_invalid_list",
+          "required": [
+            "S006_INVALID_ATTRS"
+          ],
+          "outcome": "REJECTED",
+          "codes": [
+            "S004_MISSING_PAYLOAD"
+          ],
+          "matched": []
+        },
+        {
+          "id": "I055_duplicate_qualified_symbol",
+          "required": [
+            "G028_DUPLICATE_QUALIFIED_SYMBOL"
+          ],
+          "outcome": "REJECTED",
+          "codes": [
+            "G028_DUPLICATE_QUALIFIED_SYMBOL"
+          ],
+          "matched": [
+            "G028_DUPLICATE_QUALIFIED_SYMBOL"
+          ]
+        },
+        {
+          "id": "I056_bom_forbidden",
+          "required": [
+            "U001_BOM_FORBIDDEN"
+          ],
+          "outcome": "REJECTED",
+          "codes": [
+            "U001_BOM_FORBIDDEN"
+          ],
+          "matched": [
+            "U001_BOM_FORBIDDEN"
+          ]
+        },
+        {
+          "id": "I057_control_character",
+          "required": [
+            "U002_CONTROL_CHARACTER"
+          ],
+          "outcome": "REJECTED",
+          "codes": [
+            "U002_CONTROL_CHARACTER"
+          ],
+          "matched": [
+            "U002_CONTROL_CHARACTER"
+          ]
+        }
+      ]
+    },
+    "A": {
+      "label": "fallback 0.6.2",
+      "summary": {
+        "total": 57,
+        "required_codes_fully_matched": 0,
+        "invalid_fixtures_accepted": 55
+      },
+      "per_case": [
+        {
+          "id": "I001_empty",
+          "required": [
+            "S001_EMPTY_DOCUMENT"
+          ],
+          "outcome": "REJECTED",
+          "codes": [
+            "E001_MISSING_GLOSSARY"
+          ],
+          "matched": []
+        },
+        {
+          "id": "I002_missing_glossary",
+          "required": [
+            "G001_GLOSSARY_MISSING_OR_NOT_FIRST"
+          ],
+          "outcome": "REJECTED",
+          "codes": [
+            "E002_GLOSSARY_NOT_FIRST"
+          ],
+          "matched": []
+        },
+        {
+          "id": "I003_content_before_glossary",
+          "required": [
+            "G001_GLOSSARY_MISSING_OR_NOT_FIRST"
+          ],
+          "outcome": "ACCEPTED",
+          "codes": [],
+          "matched": []
+        },
+        {
+          "id": "I004_missing_format",
+          "required": [
+            "G010_FORMAT_REQUIRED"
+          ],
+          "outcome": "ACCEPTED",
+          "codes": [],
+          "matched": []
+        },
+        {
+          "id": "I005_bad_version",
+          "required": [
+            "G007_UNSUPPORTED_VERSION"
+          ],
+          "outcome": "ACCEPTED",
+          "codes": [],
+          "matched": []
+        },
+        {
+          "id": "I006_bad_encoding",
+          "required": [
+            "G011_ENCODING_REQUIRED"
+          ],
+          "outcome": "ACCEPTED",
+          "codes": [],
+          "matched": []
+        },
+        {
+          "id": "I007_duplicate_format",
+          "required": [
+            "G006_DUPLICATE_FORMAT"
+          ],
+          "outcome": "ACCEPTED",
+          "codes": [],
+          "matched": []
+        },
+        {
+          "id": "I008_duplicate_section",
+          "required": [
+            "S002_DUPLICATE_SECTION"
+          ],
+          "outcome": "ACCEPTED",
+          "codes": [],
+          "matched": []
+        },
+        {
+          "id": "I009_glossary_reopened",
+          "required": [
+            "G002_GLOSSARY_REOPENED"
+          ],
+          "outcome": "ACCEPTED",
+          "codes": [],
+          "matched": []
+        },
+        {
+          "id": "I010_multiline_glossary",
+          "required": [
+            "G003_MULTILINE_GLOSSARY_DECLARATION"
+          ],
+          "outcome": "ACCEPTED",
+          "codes": [],
+          "matched": []
+        },
+        {
+          "id": "I011_symbol_missing_type",
+          "required": [
+            "G016_SYMBOL_TYPE_REQUIRED"
+          ],
+          "outcome": "ACCEPTED",
+          "codes": [],
+          "matched": []
+        },
+        {
+          "id": "I012_unknown_shape",
+          "required": [
+            "G017_UNKNOWN_SHAPE"
+          ],
+          "outcome": "ACCEPTED",
+          "codes": [],
+          "matched": []
+        },
+        {
+          "id": "I013_missing_weight",
+          "required": [
+            "G018_SYMBOL_WEIGHT_REQUIRED"
+          ],
+          "outcome": "ACCEPTED",
+          "codes": [],
+          "matched": []
+        },
+        {
+          "id": "I014_bad_weight",
+          "required": [
+            "G019_INVALID_WEIGHT"
+          ],
+          "outcome": "ACCEPTED",
+          "codes": [],
+          "matched": []
+        },
+        {
+          "id": "I015_missing_desc",
+          "required": [
+            "G020_SYMBOL_DESCRIPTION_REQUIRED"
+          ],
+          "outcome": "ACCEPTED",
+          "codes": [],
+          "matched": []
+        },
+        {
+          "id": "I016_attrs_missing_contract",
+          "required": [
+            "G021_ATTRS_CONTRACT_REQUIRED"
+          ],
+          "outcome": "ACCEPTED",
+          "codes": [],
+          "matched": []
+        },
+        {
+          "id": "I017_pos_missing_contract",
+          "required": [
+            "G022_POSITIONAL_CONTRACT_REQUIRED"
+          ],
+          "outcome": "ACCEPTED",
+          "codes": [],
+          "matched": []
+        },
+        {
+          "id": "I018_relation_short_contract",
+          "required": [
+            "G023_RELATION_CONTRACT_TOO_SHORT"
+          ],
+          "outcome": "ACCEPTED",
+          "codes": [],
+          "matched": []
+        },
+        {
+          "id": "I019_focus_missing",
+          "required": [
+            "G024_FOCUS_REQUIRED"
+          ],
+          "outcome": "ACCEPTED",
+          "codes": [],
+          "matched": []
+        },
+        {
+          "id": "I020_focus_unknown",
+          "required": [
+            "G025_UNKNOWN_FOCUS_FIELD"
+          ],
+          "outcome": "ACCEPTED",
+          "codes": [],
+          "matched": []
+        },
+        {
+          "id": "I021_bad_contract",
+          "required": [
+            "G008_INVALID_CONTRACT"
+          ],
+          "outcome": "ACCEPTED",
+          "codes": [],
+          "matched": []
+        },
+        {
+          "id": "I022_duplicate_contract_field",
+          "required": [
+            "G009_DUPLICATE_CONTRACT_FIELD"
+          ],
+          "outcome": "ACCEPTED",
+          "codes": [],
+          "matched": []
+        },
+        {
+          "id": "I023_unknown_field_type",
+          "required": [
+            "G027_UNKNOWN_FIELD_TYPE"
+          ],
+          "outcome": "ACCEPTED",
+          "codes": [],
+          "matched": []
+        },
+        {
+          "id": "I024_unknown_enum",
+          "required": [
+            "G026_UNKNOWN_ENUM_REFERENCE"
+          ],
+          "outcome": "ACCEPTED",
+          "codes": [],
+          "matched": []
+        },
+        {
+          "id": "I025_bad_enum",
+          "required": [
+            "G014_INVALID_ENUM"
+          ],
+          "outcome": "ACCEPTED",
+          "codes": [],
+          "matched": []
+        },
+        {
+          "id": "I026_duplicate_enum",
+          "required": [
+            "G015_DUPLICATE_ENUM"
+          ],
+          "outcome": "ACCEPTED",
+          "codes": [],
+          "matched": []
+        },
+        {
+          "id": "I027_bad_micro",
+          "required": [
+            "L002_INVALID_NAME"
+          ],
+          "outcome": "ACCEPTED",
+          "codes": [],
+          "matched": []
+        },
+        {
+          "id": "I028_duplicate_micro",
+          "required": [
+            "G013_DUPLICATE_MICRO"
+          ],
+          "outcome": "ACCEPTED",
+          "codes": [],
+          "matched": []
+        },
+        {
+          "id": "I029_duplicate_symbol",
+          "required": [
+            "G005_DUPLICATE_SYMBOL"
+          ],
+          "outcome": "ACCEPTED",
+          "codes": [],
+          "matched": []
+        },
+        {
+          "id": "I030_undeclared_symbol",
+          "required": [
+            "I001_UNDECLARED_SYMBOL"
+          ],
+          "outcome": "ACCEPTED",
+          "codes": [],
+          "matched": []
+        },
+        {
+          "id": "I031_duplicate_address",
+          "required": [
+            "I002_DUPLICATE_IDEA_ADDRESS"
+          ],
+          "outcome": "ACCEPTED",
+          "codes": [],
+          "matched": []
+        },
+        {
+          "id": "I032_unknown_field",
+          "required": [
+            "I005_UNKNOWN_FIELD"
+          ],
+          "outcome": "ACCEPTED",
+          "codes": [],
+          "matched": []
+        },
+        {
+          "id": "I033_duplicate_field",
+          "required": [
+            "I006_DUPLICATE_FIELD"
+          ],
+          "outcome": "ACCEPTED",
+          "codes": [],
+          "matched": []
+        },
+        {
+          "id": "I034_field_order",
+          "required": [
+            "I007_FIELD_ORDER"
+          ],
+          "outcome": "ACCEPTED",
+          "codes": [],
+          "matched": []
+        },
+        {
+          "id": "I035_required_missing",
+          "required": [
+            "I008_REQUIRED_FIELD_MISSING"
+          ],
+          "outcome": "ACCEPTED",
+          "codes": [],
+          "matched": []
+        },
+        {
+          "id": "I036_type_mismatch",
+          "required": [
+            "I009_FIELD_TYPE_MISMATCH"
+          ],
+          "outcome": "ACCEPTED",
+          "codes": [],
+          "matched": []
+        },
+        {
+          "id": "I037_enum_violation",
+          "required": [
+            "I010_ENUM_VIOLATION"
+          ],
+          "outcome": "ACCEPTED",
+          "codes": [],
+          "matched": []
+        },
+        {
+          "id": "I038_attrs_pipe_mismatch",
+          "required": [
+            "I004_SHAPE_DELIMITER_MISMATCH"
+          ],
+          "outcome": "ACCEPTED",
+          "codes": [],
+          "matched": []
+        },
+        {
+          "id": "I039_pos_brace_mismatch",
+          "required": [
+            "I004_SHAPE_DELIMITER_MISMATCH"
+          ],
+          "outcome": "ACCEPTED",
+          "codes": [],
+          "matched": []
+        },
+        {
+          "id": "I040_pos_short",
+          "required": [
+            "I012_POSITIONAL_ARITY"
+          ],
+          "outcome": "ACCEPTED",
+          "codes": [],
+          "matched": []
+        },
+        {
+          "id": "I041_pos_long",
+          "required": [
+            "I012_POSITIONAL_ARITY"
+          ],
+          "outcome": "ACCEPTED",
+          "codes": [],
+          "matched": []
+        },
+        {
+          "id": "I042_relation_arity",
+          "required": [
+            "I013_RELATION_ARITY"
+          ],
+          "outcome": "ACCEPTED",
+          "codes": [],
+          "matched": []
+        },
+        {
+          "id": "I043_attrs_multiline",
+          "required": [
+            "I003_ATTRS_MUST_BE_ONE_LINE"
+          ],
+          "outcome": "ACCEPTED",
+          "codes": [],
+          "matched": []
+        },
+        {
+          "id": "I044_body_unclosed",
+          "required": [
+            "I014_UNCLOSED_BODY"
+          ],
+          "outcome": "ACCEPTED",
+          "codes": [],
+          "matched": []
+        },
+        {
+          "id": "I045_invalid_string",
+          "required": [
+            "S006_INVALID_ATTRS"
+          ],
+          "outcome": "ACCEPTED",
+          "codes": [],
+          "matched": []
+        },
+        {
+          "id": "I046_unquoted_attrs_text",
+          "required": [
+            "L010_INVALID_ATOM"
+          ],
+          "outcome": "ACCEPTED",
+          "codes": [],
+          "matched": []
+        },
+        {
+          "id": "I047_nested_list",
+          "required": [
+            "L008_NESTED_LIST"
+          ],
+          "outcome": "ACCEPTED",
+          "codes": [],
+          "matched": []
+        },
+        {
+          "id": "I048_empty_focus",
+          "required": [
+            "I016_EMPTY_FOCUS"
+          ],
+          "outcome": "ACCEPTED",
+          "codes": [],
+          "matched": []
+        },
+        {
+          "id": "I049_required_extension_unknown",
+          "required": [
+            "X002_REQUIRED_EXTENSION_UNSUPPORTED"
+          ],
+          "outcome": "ACCEPTED",
+          "codes": [],
+          "matched": []
+        },
+        {
+          "id": "I050_invalid_extension",
+          "required": [
+            "X001_INVALID_EXTENSION_DECLARATION"
+          ],
+          "outcome": "ACCEPTED",
+          "codes": [],
+          "matched": []
+        },
+        {
+          "id": "I051_invalid_symbol",
+          "required": [
+            "L001_INVALID_SYMBOL"
+          ],
+          "outcome": "ACCEPTED",
+          "codes": [],
+          "matched": []
+        },
+        {
+          "id": "I052_invalid_name",
+          "required": [
+            "L002_INVALID_NAME"
+          ],
+          "outcome": "ACCEPTED",
+          "codes": [],
+          "matched": []
+        },
+        {
+          "id": "I053_invalid_key",
+          "required": [
+            "L003_INVALID_KEY"
+          ],
+          "outcome": "ACCEPTED",
+          "codes": [],
+          "matched": []
+        },
+        {
+          "id": "I054_invalid_list",
+          "required": [
+            "S006_INVALID_ATTRS"
+          ],
+          "outcome": "ACCEPTED",
+          "codes": [],
+          "matched": []
+        },
+        {
+          "id": "I055_duplicate_qualified_symbol",
+          "required": [
+            "G028_DUPLICATE_QUALIFIED_SYMBOL"
+          ],
+          "outcome": "ACCEPTED",
+          "codes": [],
+          "matched": []
+        },
+        {
+          "id": "I056_bom_forbidden",
+          "required": [
+            "U001_BOM_FORBIDDEN"
+          ],
+          "outcome": "ACCEPTED",
+          "codes": [],
+          "matched": []
+        },
+        {
+          "id": "I057_control_character",
+          "required": [
+            "U002_CONTROL_CHARACTER"
+          ],
+          "outcome": "ACCEPTED",
+          "codes": [],
+          "matched": []
+        }
+      ]
+    },
+    "B": {
+      "label": "candidate 1.0.0-rc.1",
+      "summary": {
+        "total": 57,
+        "required_codes_fully_matched": 19,
+        "invalid_fixtures_accepted": 30
+      },
+      "per_case": [
+        {
+          "id": "I001_empty",
+          "required": [
+            "S001_EMPTY_DOCUMENT"
+          ],
+          "outcome": "REJECTED",
+          "codes": [
+            "G010_FORMAT_REQUIRED"
+          ],
+          "matched": []
+        },
+        {
+          "id": "I002_missing_glossary",
+          "required": [
+            "G001_GLOSSARY_MISSING_OR_NOT_FIRST"
+          ],
+          "outcome": "REJECTED",
+          "codes": [
+            "G010_FORMAT_REQUIRED"
+          ],
+          "matched": []
+        },
+        {
+          "id": "I003_content_before_glossary",
+          "required": [
+            "G001_GLOSSARY_MISSING_OR_NOT_FIRST"
+          ],
+          "outcome": "REJECTED",
+          "codes": [
+            "G010_FORMAT_REQUIRED"
+          ],
+          "matched": []
+        },
+        {
+          "id": "I004_missing_format",
+          "required": [
+            "G010_FORMAT_REQUIRED"
+          ],
+          "outcome": "REJECTED",
+          "codes": [
+            "G010_FORMAT_REQUIRED"
+          ],
+          "matched": [
+            "G010_FORMAT_REQUIRED"
+          ]
+        },
+        {
+          "id": "I005_bad_version",
+          "required": [
+            "G007_UNSUPPORTED_VERSION"
+          ],
+          "outcome": "ACCEPTED",
+          "codes": [],
+          "matched": []
+        },
+        {
+          "id": "I006_bad_encoding",
+          "required": [
+            "G011_ENCODING_REQUIRED"
+          ],
+          "outcome": "REJECTED",
+          "codes": [
+            "G011_ENCODING_REQUIRED"
+          ],
+          "matched": [
+            "G011_ENCODING_REQUIRED"
+          ]
+        },
+        {
+          "id": "I007_duplicate_format",
+          "required": [
+            "G006_DUPLICATE_FORMAT"
+          ],
+          "outcome": "REJECTED",
+          "codes": [
+            "G006_DUPLICATE_FORMAT"
+          ],
+          "matched": [
+            "G006_DUPLICATE_FORMAT"
+          ]
+        },
+        {
+          "id": "I008_duplicate_section",
+          "required": [
+            "S002_DUPLICATE_SECTION"
+          ],
+          "outcome": "ACCEPTED",
+          "codes": [],
+          "matched": []
+        },
+        {
+          "id": "I009_glossary_reopened",
+          "required": [
+            "G002_GLOSSARY_REOPENED"
+          ],
+          "outcome": "ACCEPTED",
+          "codes": [],
+          "matched": []
+        },
+        {
+          "id": "I010_multiline_glossary",
+          "required": [
+            "G003_MULTILINE_GLOSSARY_DECLARATION"
+          ],
+          "outcome": "REJECTED",
+          "codes": [
+            "S006_INVALID_ATTRS"
+          ],
+          "matched": []
+        },
+        {
+          "id": "I011_symbol_missing_type",
+          "required": [
+            "G016_SYMBOL_TYPE_REQUIRED"
+          ],
+          "outcome": "REJECTED",
+          "codes": [
+            "G016_SYMBOL_TYPE_REQUIRED"
+          ],
+          "matched": [
+            "G016_SYMBOL_TYPE_REQUIRED"
+          ]
+        },
+        {
+          "id": "I012_unknown_shape",
+          "required": [
+            "G017_UNKNOWN_SHAPE"
+          ],
+          "outcome": "REJECTED",
+          "codes": [
+            "G017_UNKNOWN_SHAPE"
+          ],
+          "matched": [
+            "G017_UNKNOWN_SHAPE"
+          ]
+        },
+        {
+          "id": "I013_missing_weight",
+          "required": [
+            "G018_SYMBOL_WEIGHT_REQUIRED"
+          ],
+          "outcome": "REJECTED",
+          "codes": [
+            "G018_SYMBOL_WEIGHT_REQUIRED"
+          ],
+          "matched": [
+            "G018_SYMBOL_WEIGHT_REQUIRED"
+          ]
+        },
+        {
+          "id": "I014_bad_weight",
+          "required": [
+            "G019_INVALID_WEIGHT"
+          ],
+          "outcome": "REJECTED",
+          "codes": [
+            "G019_INVALID_WEIGHT"
+          ],
+          "matched": [
+            "G019_INVALID_WEIGHT"
+          ]
+        },
+        {
+          "id": "I015_missing_desc",
+          "required": [
+            "G020_SYMBOL_DESCRIPTION_REQUIRED"
+          ],
+          "outcome": "REJECTED",
+          "codes": [
+            "G020_SYMBOL_DESCRIPTION_REQUIRED"
+          ],
+          "matched": [
+            "G020_SYMBOL_DESCRIPTION_REQUIRED"
+          ]
+        },
+        {
+          "id": "I016_attrs_missing_contract",
+          "required": [
+            "G021_ATTRS_CONTRACT_REQUIRED"
+          ],
+          "outcome": "REJECTED",
+          "codes": [
+            "G021_ATTRS_CONTRACT_REQUIRED"
+          ],
+          "matched": [
+            "G021_ATTRS_CONTRACT_REQUIRED"
+          ]
+        },
+        {
+          "id": "I017_pos_missing_contract",
+          "required": [
+            "G022_POSITIONAL_CONTRACT_REQUIRED"
+          ],
+          "outcome": "REJECTED",
+          "codes": [
+            "G022_POSITIONAL_CONTRACT_REQUIRED"
+          ],
+          "matched": [
+            "G022_POSITIONAL_CONTRACT_REQUIRED"
+          ]
+        },
+        {
+          "id": "I018_relation_short_contract",
+          "required": [
+            "G023_RELATION_CONTRACT_TOO_SHORT"
+          ],
+          "outcome": "REJECTED",
+          "codes": [
+            "G023_RELATION_CONTRACT_TOO_SHORT"
+          ],
+          "matched": [
+            "G023_RELATION_CONTRACT_TOO_SHORT"
+          ]
+        },
+        {
+          "id": "I019_focus_missing",
+          "required": [
+            "G024_FOCUS_REQUIRED"
+          ],
+          "outcome": "REJECTED",
+          "codes": [
+            "G024_FOCUS_REQUIRED"
+          ],
+          "matched": [
+            "G024_FOCUS_REQUIRED"
+          ]
+        },
+        {
+          "id": "I020_focus_unknown",
+          "required": [
+            "G025_UNKNOWN_FOCUS_FIELD"
+          ],
+          "outcome": "REJECTED",
+          "codes": [
+            "G025_UNKNOWN_FOCUS_FIELD"
+          ],
+          "matched": [
+            "G025_UNKNOWN_FOCUS_FIELD"
+          ]
+        },
+        {
+          "id": "I021_bad_contract",
+          "required": [
+            "G008_INVALID_CONTRACT"
+          ],
+          "outcome": "REJECTED",
+          "codes": [
+            "G008_INVALID_CONTRACT"
+          ],
+          "matched": [
+            "G008_INVALID_CONTRACT"
+          ]
+        },
+        {
+          "id": "I022_duplicate_contract_field",
+          "required": [
+            "G009_DUPLICATE_CONTRACT_FIELD"
+          ],
+          "outcome": "ACCEPTED",
+          "codes": [],
+          "matched": []
+        },
+        {
+          "id": "I023_unknown_field_type",
+          "required": [
+            "G027_UNKNOWN_FIELD_TYPE"
+          ],
+          "outcome": "ACCEPTED",
+          "codes": [],
+          "matched": []
+        },
+        {
+          "id": "I024_unknown_enum",
+          "required": [
+            "G026_UNKNOWN_ENUM_REFERENCE"
+          ],
+          "outcome": "ACCEPTED",
+          "codes": [],
+          "matched": []
+        },
+        {
+          "id": "I025_bad_enum",
+          "required": [
+            "G014_INVALID_ENUM"
+          ],
+          "outcome": "ACCEPTED",
+          "codes": [],
+          "matched": []
+        },
+        {
+          "id": "I026_duplicate_enum",
+          "required": [
+            "G015_DUPLICATE_ENUM"
+          ],
+          "outcome": "ACCEPTED",
+          "codes": [],
+          "matched": []
+        },
+        {
+          "id": "I027_bad_micro",
+          "required": [
+            "L002_INVALID_NAME"
+          ],
+          "outcome": "ACCEPTED",
+          "codes": [],
+          "matched": []
+        },
+        {
+          "id": "I028_duplicate_micro",
+          "required": [
+            "G013_DUPLICATE_MICRO"
+          ],
+          "outcome": "ACCEPTED",
+          "codes": [],
+          "matched": []
+        },
+        {
+          "id": "I029_duplicate_symbol",
+          "required": [
+            "G005_DUPLICATE_SYMBOL"
+          ],
+          "outcome": "ACCEPTED",
+          "codes": [],
+          "matched": []
+        },
+        {
+          "id": "I030_undeclared_symbol",
+          "required": [
+            "I001_UNDECLARED_SYMBOL"
+          ],
+          "outcome": "REJECTED",
+          "codes": [
+            "I001_UNDECLARED_SYMBOL"
+          ],
+          "matched": [
+            "I001_UNDECLARED_SYMBOL"
+          ]
+        },
+        {
+          "id": "I031_duplicate_address",
+          "required": [
+            "I002_DUPLICATE_IDEA_ADDRESS"
+          ],
+          "outcome": "ACCEPTED",
+          "codes": [],
+          "matched": []
+        },
+        {
+          "id": "I032_unknown_field",
+          "required": [
+            "I005_UNKNOWN_FIELD"
+          ],
+          "outcome": "ACCEPTED",
+          "codes": [],
+          "matched": []
+        },
+        {
+          "id": "I033_duplicate_field",
+          "required": [
+            "I006_DUPLICATE_FIELD"
+          ],
+          "outcome": "ACCEPTED",
+          "codes": [],
+          "matched": []
+        },
+        {
+          "id": "I034_field_order",
+          "required": [
+            "I007_FIELD_ORDER"
+          ],
+          "outcome": "ACCEPTED",
+          "codes": [],
+          "matched": []
+        },
+        {
+          "id": "I035_required_missing",
+          "required": [
+            "I008_REQUIRED_FIELD_MISSING"
+          ],
+          "outcome": "ACCEPTED",
+          "codes": [],
+          "matched": []
+        },
+        {
+          "id": "I036_type_mismatch",
+          "required": [
+            "I009_FIELD_TYPE_MISMATCH"
+          ],
+          "outcome": "ACCEPTED",
+          "codes": [],
+          "matched": []
+        },
+        {
+          "id": "I037_enum_violation",
+          "required": [
+            "I010_ENUM_VIOLATION"
+          ],
+          "outcome": "ACCEPTED",
+          "codes": [],
+          "matched": []
+        },
+        {
+          "id": "I038_attrs_pipe_mismatch",
+          "required": [
+            "I004_SHAPE_DELIMITER_MISMATCH"
+          ],
+          "outcome": "REJECTED",
+          "codes": [
+            "I004_SHAPE_DELIMITER_MISMATCH"
+          ],
+          "matched": [
+            "I004_SHAPE_DELIMITER_MISMATCH"
+          ]
+        },
+        {
+          "id": "I039_pos_brace_mismatch",
+          "required": [
+            "I004_SHAPE_DELIMITER_MISMATCH"
+          ],
+          "outcome": "REJECTED",
+          "codes": [
+            "I004_SHAPE_DELIMITER_MISMATCH"
+          ],
+          "matched": [
+            "I004_SHAPE_DELIMITER_MISMATCH"
+          ]
+        },
+        {
+          "id": "I040_pos_short",
+          "required": [
+            "I012_POSITIONAL_ARITY"
+          ],
+          "outcome": "ACCEPTED",
+          "codes": [],
+          "matched": []
+        },
+        {
+          "id": "I041_pos_long",
+          "required": [
+            "I012_POSITIONAL_ARITY"
+          ],
+          "outcome": "ACCEPTED",
+          "codes": [],
+          "matched": []
+        },
+        {
+          "id": "I042_relation_arity",
+          "required": [
+            "I013_RELATION_ARITY"
+          ],
+          "outcome": "ACCEPTED",
+          "codes": [],
+          "matched": []
+        },
+        {
+          "id": "I043_attrs_multiline",
+          "required": [
+            "I003_ATTRS_MUST_BE_ONE_LINE"
+          ],
+          "outcome": "REJECTED",
+          "codes": [
+            "S003_INVALID_IDEA_HEAD"
+          ],
+          "matched": []
+        },
+        {
+          "id": "I044_body_unclosed",
+          "required": [
+            "I014_UNCLOSED_BODY"
+          ],
+          "outcome": "ACCEPTED",
+          "codes": [],
+          "matched": []
+        },
+        {
+          "id": "I045_invalid_string",
+          "required": [
+            "S006_INVALID_ATTRS"
+          ],
+          "outcome": "REJECTED",
+          "codes": [
+            "L005_INVALID_STRING"
+          ],
+          "matched": []
+        },
+        {
+          "id": "I046_unquoted_attrs_text",
+          "required": [
+            "L010_INVALID_ATOM"
+          ],
+          "outcome": "REJECTED",
+          "codes": [
+            "S006_INVALID_ATTRS"
+          ],
+          "matched": []
+        },
+        {
+          "id": "I047_nested_list",
+          "required": [
+            "L008_NESTED_LIST"
+          ],
+          "outcome": "ACCEPTED",
+          "codes": [],
+          "matched": []
+        },
+        {
+          "id": "I048_empty_focus",
+          "required": [
+            "I016_EMPTY_FOCUS"
+          ],
+          "outcome": "ACCEPTED",
+          "codes": [],
+          "matched": []
+        },
+        {
+          "id": "I049_required_extension_unknown",
+          "required": [
+            "X002_REQUIRED_EXTENSION_UNSUPPORTED"
+          ],
+          "outcome": "ACCEPTED",
+          "codes": [],
+          "matched": []
+        },
+        {
+          "id": "I050_invalid_extension",
+          "required": [
+            "X001_INVALID_EXTENSION_DECLARATION"
+          ],
+          "outcome": "ACCEPTED",
+          "codes": [],
+          "matched": []
+        },
+        {
+          "id": "I051_invalid_symbol",
+          "required": [
+            "L001_INVALID_SYMBOL"
+          ],
+          "outcome": "REJECTED",
+          "codes": [
+            "L001_INVALID_SYMBOL"
+          ],
+          "matched": [
+            "L001_INVALID_SYMBOL"
+          ]
+        },
+        {
+          "id": "I052_invalid_name",
+          "required": [
+            "L002_INVALID_NAME"
+          ],
+          "outcome": "ACCEPTED",
+          "codes": [],
+          "matched": []
+        },
+        {
+          "id": "I053_invalid_key",
+          "required": [
+            "L003_INVALID_KEY"
+          ],
+          "outcome": "ACCEPTED",
+          "codes": [],
+          "matched": []
+        },
+        {
+          "id": "I054_invalid_list",
+          "required": [
+            "S006_INVALID_ATTRS"
+          ],
+          "outcome": "REJECTED",
+          "codes": [
+            "L007_INVALID_LIST"
+          ],
+          "matched": []
+        },
+        {
+          "id": "I055_duplicate_qualified_symbol",
+          "required": [
+            "G028_DUPLICATE_QUALIFIED_SYMBOL"
+          ],
+          "outcome": "ACCEPTED",
+          "codes": [],
+          "matched": []
+        },
+        {
+          "id": "I056_bom_forbidden",
+          "required": [
+            "U001_BOM_FORBIDDEN"
+          ],
+          "outcome": "REJECTED",
+          "codes": [
+            "U001_BOM_FORBIDDEN"
+          ],
+          "matched": [
+            "U001_BOM_FORBIDDEN"
+          ]
+        },
+        {
+          "id": "I057_control_character",
+          "required": [
+            "U002_CONTROL_CHARACTER"
+          ],
+          "outcome": "ACCEPTED",
+          "codes": [],
+          "matched": []
+        }
+      ]
+    }
+  },
+  "reference_validator_self_conformance": {
+    "valid_total": 40,
+    "valid_accepted": 0,
+    "valid_rejected": [
+      {
+        "id": "V001_minimal_attrs",
+        "codes": [
+          "G001_GLOSSARY_MISSING_OR_NOT_FIRST"
+        ]
+      },
+      {
+        "id": "V002_attrs_optional",
+        "codes": [
+          "G001_GLOSSARY_MISSING_OR_NOT_FIRST"
+        ]
+      },
+      {
+        "id": "V003_attrs_complete",
+        "codes": [
+          "G001_GLOSSARY_MISSING_OR_NOT_FIRST"
+        ]
+      },
+      {
+        "id": "V004_multiple_sigils",
+        "codes": [
+          "G001_GLOSSARY_MISSING_OR_NOT_FIRST"
+        ]
+      },
+      {
+        "id": "V005_microtoken_attrs",
+        "codes": [
+          "G001_GLOSSARY_MISSING_OR_NOT_FIRST"
+        ]
+      },
+      {
+        "id": "V006_microtoken_positional",
+        "codes": [
+          "G001_GLOSSARY_MISSING_OR_NOT_FIRST"
+        ]
+      },
+      {
+        "id": "V007_attrs_pos_text_cells",
+        "codes": [
+          "G001_GLOSSARY_MISSING_OR_NOT_FIRST"
+        ]
+      },
+      {
+        "id": "V008_relation",
+        "codes": [
+          "G001_GLOSSARY_MISSING_OR_NOT_FIRST"
+        ]
+      },
+      {
+        "id": "V009_relation_selectors",
+        "codes": [
+          "G001_GLOSSARY_MISSING_OR_NOT_FIRST"
+        ]
+      },
+      {
+        "id": "V010_cuerpo_one_line",
+        "codes": [
+          "G001_GLOSSARY_MISSING_OR_NOT_FIRST"
+        ]
+      },
+      {
+        "id": "V011_cuerpo_multiline",
+        "codes": [
+          "G001_GLOSSARY_MISSING_OR_NOT_FIRST"
+        ]
+      },
+      {
+        "id": "V012_bloque",
+        "codes": [
+          "G001_GLOSSARY_MISSING_OR_NOT_FIRST"
+        ]
+      },
+      {
+        "id": "V013_block_internal_braces",
+        "codes": [
+          "G001_GLOSSARY_MISSING_OR_NOT_FIRST"
+        ]
+      },
+      {
+        "id": "V014_lists",
+        "codes": [
+          "G001_GLOSSARY_MISSING_OR_NOT_FIRST"
+        ]
+      },
+      {
+        "id": "V015_scalar_types",
+        "codes": [
+          "G001_GLOSSARY_MISSING_OR_NOT_FIRST"
+        ]
+      },
+      {
+        "id": "V016_escaped_string",
+        "codes": [
+          "G001_GLOSSARY_MISSING_OR_NOT_FIRST"
+        ]
+      },
+      {
+        "id": "V017_unicode",
+        "codes": [
+          "G001_GLOSSARY_MISSING_OR_NOT_FIRST"
+        ]
+      },
+      {
+        "id": "V018_comments",
+        "codes": [
+          "G001_GLOSSARY_MISSING_OR_NOT_FIRST"
+        ]
+      },
+      {
+        "id": "V019_section_titles",
+        "codes": [
+          "G001_GLOSSARY_MISSING_OR_NOT_FIRST"
+        ]
+      },
+      {
+        "id": "V020_namespace_metadata",
+        "codes": [
+          "G001_GLOSSARY_MISSING_OR_NOT_FIRST"
+        ]
+      },
+      {
+        "id": "V021_qualified_sigil",
+        "codes": [
+          "G001_GLOSSARY_MISSING_OR_NOT_FIRST"
+        ]
+      },
+      {
+        "id": "V022_optional_extension",
+        "codes": [
+          "G001_GLOSSARY_MISSING_OR_NOT_FIRST"
+        ]
+      },
+      {
+        "id": "V023_open_contract",
+        "codes": [
+          "G001_GLOSSARY_MISSING_OR_NOT_FIRST"
+        ]
+      },
+      {
+        "id": "V024_bang_sigil",
+        "codes": [
+          "G001_GLOSSARY_MISSING_OR_NOT_FIRST"
+        ]
+      },
+      {
+        "id": "V025_url_quoted",
+        "codes": [
+          "G001_GLOSSARY_MISSING_OR_NOT_FIRST"
+        ]
+      },
+      {
+        "id": "V026_selector_atom",
+        "codes": [
+          "G001_GLOSSARY_MISSING_OR_NOT_FIRST"
+        ]
+      },
+      {
+        "id": "V027_original_skill_style",
+        "codes": [
+          "G001_GLOSSARY_MISSING_OR_NOT_FIRST"
+        ]
+      },
+      {
+        "id": "V028_full_portable_glossary",
+        "codes": [
+          "G001_GLOSSARY_MISSING_OR_NOT_FIRST"
+        ]
+      },
+      {
+        "id": "V029_body_empty_lines",
+        "codes": [
+          "G001_GLOSSARY_MISSING_OR_NOT_FIRST"
+        ]
+      },
+      {
+        "id": "V030_empty_list",
+        "codes": [
+          "G001_GLOSSARY_MISSING_OR_NOT_FIRST"
+        ]
+      },
+      {
+        "id": "V031_negative_numbers",
+        "codes": [
+          "G001_GLOSSARY_MISSING_OR_NOT_FIRST"
+        ]
+      },
+      {
+        "id": "V032_optional_positional_omitted",
+        "codes": [
+          "G001_GLOSSARY_MISSING_OR_NOT_FIRST"
+        ]
+      },
+      {
+        "id": "V033_relation_optional_evidence_omitted",
+        "codes": [
+          "G001_GLOSSARY_MISSING_OR_NOT_FIRST"
+        ]
+      },
+      {
+        "id": "V034_multiple_sections_same_name",
+        "codes": [
+          "G001_GLOSSARY_MISSING_OR_NOT_FIRST"
+        ]
+      },
+      {
+        "id": "V035_atom_paths",
+        "codes": [
+          "G001_GLOSSARY_MISSING_OR_NOT_FIRST"
+        ]
+      },
+      {
+        "id": "V036_all_shapes",
+        "codes": [
+          "G001_GLOSSARY_MISSING_OR_NOT_FIRST"
+        ]
+      },
+      {
+        "id": "V037_namespace_qualified_and_local",
+        "codes": [
+          "G001_GLOSSARY_MISSING_OR_NOT_FIRST"
+        ]
+      },
+      {
+        "id": "V038_format_extra_metadata",
+        "codes": [
+          "G001_GLOSSARY_MISSING_OR_NOT_FIRST"
+        ]
+      },
+      {
+        "id": "V039_meta_type_decls_legacy_evolution",
+        "codes": [
+          "G001_GLOSSARY_MISSING_OR_NOT_FIRST"
+        ]
+      },
+      {
+        "id": "V040_dense_skill_excerpt",
+        "codes": [
+          "G001_GLOSSARY_MISSING_OR_NOT_FIRST"
+        ]
+      }
+    ]
+  }
+}

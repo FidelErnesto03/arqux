@@ -168,6 +168,54 @@ def test_reconcile_workspace_creates_fcs_when_absent(workspace_root: Path, gover
     assert "Reconciliacion completada" in fcs["entries"][0]["value"].get("what", "")
 
 
+def test_reconcile_workspace_merges_semantic_duplicate_dom_entries(
+    workspace_root: Path, governor_ctx
+) -> None:
+    """Historical suffixed DOM rows merge into the canonical project row."""
+    from arqux.core.state import crud_add
+
+    _ws_and_project(workspace_root, governor_ctx)
+    meta = _meta_brain(workspace_root)
+    crud_add(
+        meta,
+        "$2",
+        "DOM",
+        "manhattan_0001_0005",
+        {
+            "name": "Manhattan",
+            "path": "/home/vatrox/workspace/Manhattan",
+            "domain": "legacy domain",
+            "governor": "alfred",
+            "updated": "2026-09-17T14:10:00Z",
+        },
+        force=True,
+    )
+    crud_add(
+        meta,
+        "$2",
+        "DOM",
+        "manhattan",
+        {
+            "name": "Manhattan",
+            "path": "/home/vatrox/workspace/Manhattan",
+            "blueprints_done": "21",
+            "updated": "2026-10-02T22:31:38Z",
+        },
+        force=True,
+    )
+
+    result = reconcile_brain(workspace_root)
+
+    assert result["meta_deduplication"]["duplicate_groups"] == 1
+    assert result["meta_deduplication"]["removed"] == 1
+    doms = crud_read(meta, "$2/DOM:*")["entries"]
+    manhattan = [entry for entry in doms if entry["name"] == "manhattan"]
+    assert len(manhattan) == 1
+    attrs = manhattan[0]["value"]
+    assert attrs["blueprints_done"] == "21"
+    assert attrs["domain"] == "legacy domain"
+
+
 # ---------------------------------------------------------------------------
 # T-015: reconcile_brain must not overwrite the project brain OBJ goal
 # ---------------------------------------------------------------------------

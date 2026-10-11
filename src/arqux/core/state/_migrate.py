@@ -220,7 +220,7 @@ def migrate_cortex_file(path: Path, *, dry_run: bool = False) -> bool:
             })
 
     # 4. Write clean file via ArqUX writer + atomic write.
-    cortex_text = write_cortex_from_json(new_doc)
+    cortex_text = write_cortex_from_json(new_doc, strict=True)
     atomic_write_text(cortex_text, str(path))
 
     # 5. Verify.

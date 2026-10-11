@@ -14,9 +14,9 @@ from __future__ import annotations
 from arqux.handlers import REGISTRY, handler_count, list_handlers
 
 
-def test_handler_count_is_96() -> None:
-    """Total handler count is 96 (BLP-003 added blueprint.frontmatter.update)."""
-    assert handler_count() == 96
+def test_handler_count_is_97() -> None:
+    """Total handler count is 97 (BLP-006 added cycle.reopen)."""
+    assert handler_count() == 97
 
 
 def test_handler_list_accepts_mcp_context() -> None:
@@ -75,7 +75,7 @@ def test_module_handler_counts() -> None:
         "blueprint": 16,  # +1: blueprint.frontmatter.update (BLP-003)
         "context": 2,
         "cortex": 21,  # +1: cortex.gc (BLP-002)
-        "cycle": 5,  # simplified lifecycle (BLP-003)
+        "cycle": 6,  # +1: cycle.reopen (BLP-006)
         "evidence": 3,
         "identity": 3,  # +2: identity.get, identity.switch (BLP-011)
         "handler": 2,  # +1: handler.how_to (BLP-012)

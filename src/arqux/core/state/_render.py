@@ -34,11 +34,13 @@ def write_cortex_pair(
 
     cortex_path = directory / f"{stem}.cortex"
 
-    # BLP-042: ALL .cortex files use CODEC-CORTEX writer.
-    if _HAS_CODEC_CORTEX:
-        cortex_content = _render_governance_cortex(stem, frontmatter, body)
-    else:
-        cortex_content = _render_cortex(frontmatter, body)
+    # BLP-042: ALL .cortex files use the canonical CORTEX writer.
+    # ``render_governance_cortex`` is self-sufficient: it uses CODEC-CORTEX
+    # when present and ArqUX's own string builders otherwise. Gating it on
+    # ``_HAS_CODEC_CORTEX`` wrongly degraded every governance file to legacy
+    # YAML+markdown when the library was absent (roundtrip regression,
+    # test_writer_roundtrip).
+    cortex_content = _render_governance_cortex(stem, frontmatter, body)
 
     cortex_path.write_text(cortex_content, encoding="utf-8")
     return cortex_path, cortex_path  # Backward compat: returns (cortex, cortex)

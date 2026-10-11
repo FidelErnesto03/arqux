@@ -50,11 +50,19 @@ pytestmark = pytest.mark.skipif(
 
 
 def _copy_sample(tmp_path: Path) -> Path:
-    """Copy the sample package to tmp_path/sample for in-place rename."""
+    """Copy the sample package to tmp_path/sample for in-place rename.
+
+    Heavy local artifacts (voice models under ``.voice``/``*.onnx`` and the
+    virtualenvs) are ignored: the rename assertions only touch ``src``,
+    ``README.md``, ``pyproject.toml``, ``tests`` and ``.arqux``. Copying the
+    virtualenvs and ONNX models filled the tmpfs (~25 GB per run) and the
+    resulting I/O pressure made timing-sensitive tests flaky.
+    """
     dest = tmp_path / "sample"
     shutil.copytree(SAMPLE_DIR, dest, dirs_exist_ok=False, ignore=shutil.ignore_patterns(
         "__pycache__", "*.pyc", ".pytest_cache", ".mypy_cache", ".ruff_cache",
         "build", "dist", "*.egg-info", ".git",
+        ".voice", ".venv*", "*.onnx", "node_modules",
     ))
     return dest
 

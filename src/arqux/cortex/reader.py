@@ -61,6 +61,10 @@ _ENTRY_START_RE = re.compile(
 # GSIG/GCON declarations in glossary — skip in fallback
 _GSIG_RE = re.compile(r"^GSIG:|GCON:")
 
+# CODEC-CORTEX 0.1 format declaration.  It is metadata for the dispatcher,
+# not a second ArqUX section.
+_FORMAT_DECL_RE = re.compile(r"^\$0:format\s*\{")
+
 # Comment line
 _COMMENT_RE = re.compile(r"^#")
 
@@ -111,6 +115,12 @@ def _parse_fallback(text: str) -> dict:
         # Comment line
         if _COMMENT_RE.match(stripped):
             current_comments.append(stripped)
+            i += 1
+            continue
+
+        # CODEC-CORTEX's format declaration belongs to the existing glossary
+        # and must not reopen $0 as a regular section in the ArqUX fallback.
+        if _FORMAT_DECL_RE.match(stripped) and current_section is not None and current_section.get("id") == "$0":
             i += 1
             continue
 
@@ -178,6 +188,15 @@ def _parse_fallback(text: str) -> dict:
             body = m.group("body").strip()
             attrs = _parse_attrs_fallback(body)
             if attrs is not None:
+                # Strict CODEC-CORTEX symbol declarations are executable
+                # glossary metadata.  ArqUX keeps its legacy raw symbols in
+                # the model, but does not expose generated declarations as
+                # ordinary glossary entries on a read-back.
+                if current_section.get("id") == "$0" and {
+                    "type", "weight", "focus", "desc"
+                }.issubset(attrs):
+                    i += 1
+                    continue
                 current_section["entries"].append({
                     "sigil": sigil, "name": name, "attrs": attrs,
                 })

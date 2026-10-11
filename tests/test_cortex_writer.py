@@ -711,9 +711,10 @@ def test_no_glossary() -> None:
 
 
 def test_empty_document() -> None:
-    """An empty document produces just the $0 glossary header."""
+    """An empty document includes the mandatory CORTEX 0.1 declaration."""
     text = write_cortex_from_json({})
-    assert text.strip() == "$0"
+    assert text.startswith("$0\n")
+    assert '$0:format{cortex:"0.1", encoding:"UTF-8"}' in text
 
 
 def test_attrs_and_body_mutually_exclusive() -> None:

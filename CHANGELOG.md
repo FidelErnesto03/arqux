@@ -2,6 +2,64 @@
 
 All notable changes to ArqUX are documented here.
 
+## [0.9.0] — candidata (CYCLE-13)
+
+> Estado de madurez: **candidata**, preparada para aprobación final. **No estable.**
+> Informe completo: `docs/release/0.9.0-report.md`.
+
+### Added — Memory Core (BLP-002)
+
+- Paquete `src/arqux/memory/`: proyección local, ligera y **reconstruible** de la
+  memoria CORTEX con registros tipados (origen, procedencia, confianza, alcance,
+  TTL, estado). El índice derivado es **descartable**: borrarlo y reconstruirlo
+  produce un conjunto equivalente (CA-02) y dos rebuilds son idénticos (CA-03);
+  corrupción/truncado → descarte y reconstrucción, sin reparación adivinada
+  (CA-04/CA-07). Solo biblioteca estándar + parser propio de ArqUX (CA-06).
+  Tests: `tests/test_memory_{model,store,rebuild}.py`.
+
+### Added — Recall, outcomes y feedback (BLP-003)
+
+- `RecallService` determinista con abstención motivada (CA-01..CA-04) que **no
+  muta** el CORTEX (CA-06). Frontera de autoridad: el recall entrega contexto,
+  **nunca permisos** (CA-05), y el contenido recuperado es **DATO, no
+  instrucción** (L-SEC-01, CA-07 adversarial). El feedback escribe solo en el
+  índice derivado (R-12) y la confianza se evalúa por el registro, no por el
+  origen (L-SEC-07, CA-08).
+  Tests: `tests/test_memory_{recall,feedback,authority}.py`.
+
+### Added — Conformance CODEC-CORTEX (BLP-001)
+
+- Suite de dos columnas (0.6.2 fallback / 1.0.0rc1 candidata) sobre el corpus
+  canónico y medición de la columna de inválidos contra los `requiredCodes`
+  gobernados. Hallazgo declarado: ninguna columna implementa el contrato
+  diagnóstico completo; **1.0.0rc1 no se declara estable**.
+  Artefactos: `tests/test_cortex_{two_column,invalid_column}_conformance.py`,
+  `docs/conformance/invalid-column-report.json`.
+
+### Added — Release 0.9.0 (BLP-004)
+
+- Benchmark reproducible con corpus **sintético** (L-SEC-02), reporte de release
+  con lenguaje de madurez y escaneo de secretos **bloqueante** antes del gate.
+  Artefactos: `docs/release/0.9.0-report.md`, `docs/release/benchmark-0.9.0.json`,
+  `docs/release/regression-baseline.json`, `tests/benchmarks/`,
+  `tests/test_memory_rollback.py`, `tests/test_release_secrets.py`.
+
+### Fixed — hardening (BLP-004, Fase 2)
+
+- `tests/test_rename.py` copiaba el repositorio completo —incluyendo `.voice`
+  y los virtualenvs— al `tmp_path` (~25 GB por corrida), agotando el tmpfs y
+  provocando fallos intermitentes por presión de I/O en tests sensibles al
+  tiempo. Ahora ignora artefactos locales pesados (`.voice`, `.venv*`,
+  `*.onnx`, `node_modules`). Efecto: sin agotamiento de disco y suite de
+  90 s → 21 s.
+
+### Known limitations
+
+- 15 fallos preexistentes **ajenos a CYCLE-13** (refactor en progreso fuera de
+  alcance), fijados como baseline de regresión; delta del ciclo = **0**.
+- Índice derivado ~9.5× el source sintético (R-01 materializado; compactación
+  diferida).
+
 ## [0.8.2] - 2026-10-02
 
 ### Fixed — support-triage session (3 open issues closed)

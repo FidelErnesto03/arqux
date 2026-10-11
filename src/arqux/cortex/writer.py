@@ -40,6 +40,7 @@ from __future__ import annotations
 from typing import Any
 
 from ..formats import _serialise_attrs
+from .sigils import get_sigil
 
 __all__ = ["write_cortex_from_json"]
 
@@ -108,11 +109,97 @@ def _format_entry(entry: dict[str, Any]) -> str:
     raise ValueError(f"Entry {sigil}:{name} has neither 'attrs' nor 'body'")
 
 
-def write_cortex_from_json(doc: dict) -> str:
+def _symbol_declaration(sigil: str, entries: list[dict[str, Any]]) -> dict[str, Any]:
+    """Build a strict CORTEX 0.1 glossary declaration for *sigil*.
+
+    ArqUX historically emitted the glossary as comments only.  CODEC-CORTEX
+    1.0 validates the executable glossary, so a writer round-trip must emit a
+    declaration for every sigil used by an idea.  The declaration is inferred
+    from the document model and enriched with the local sigil cache when
+    available.  All fields are optional at the contract level: ArqUX brains
+    are intentionally open records and may evolve without changing the
+    declaration.
+    """
+    shapes = {"body" if "body" in entry and entry.get("body") is not None else "attrs"
+              for entry in entries}
+
+    definition = get_sigil(sigil) or {}
+    # A single glossary contract may describe a sigil used in both forms.  In
+    # that case cuerpo is the lossless CODEC-CORTEX contract: attrs entries
+    # remain syntactically valid bodies, while a cuerpo entry cannot be parsed
+    # as an attrs map.  Uniform attrs sigils retain their richer contract.
+    shape = "body" if "body" in shapes else next(iter(shapes), definition.get("type", "attrs"))
+    label = str(definition.get("name") or sigil.lower())
+    risk = str(definition.get("risk") or "B")
+    weight = risk if risk in {"B", "M", "H"} else "B"
+    description = str(definition.get("description") or f"ArqUX {sigil} entry")
+
+    if shape == "body":
+        return {
+            "sigil": sigil,
+            "name": label,
+            "attrs": {
+                "type": "cuerpo",
+                "weight": weight,
+                "focus": "$body",
+                "desc": description,
+            },
+        }
+
+    fields: list[str] = []
+    cached_fields = definition.get("fields") if definition else None
+    if isinstance(cached_fields, str) and cached_fields:
+        fields = [part.strip().split(":", 1)[0]
+                  for part in cached_fields.replace("|", ",").split(",")
+                  if part.strip()]
+    if not fields:
+        # Unknown/custom sigils and open ArqUX records use a generic contract.
+        # Copying every payload key into the glossary creates false duplicate-
+        # looking text on round-trip and is unnecessary for parsing.
+        fields = ["value"]
+    # An attrs declaration needs a focus that belongs to its contract.  An
+    # empty attrs entry is legal in ArqUX, so provide one optional placeholder
+    # rather than generating an invalid declaration.
+    if not fields:
+        fields = ["value"]
+    contract = "|".join(f"{key}:any?" for key in fields)
+    return {
+        "sigil": sigil,
+        "name": label,
+        "attrs": {
+            "type": "attrs",
+            "weight": weight,
+            "fields": contract,
+            "focus": fields[0],
+            "desc": description,
+        },
+    }
+
+
+def _generated_symbols(sections: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Return deterministic declarations for all sigils used by sections."""
+    grouped: dict[str, list[dict[str, Any]]] = {}
+    for section in sections:
+        if not isinstance(section, dict):
+            continue
+        for entry in section.get("entries", []):
+            if not isinstance(entry, dict):
+                continue
+            sigil = str(entry.get("sigil", ""))
+            if sigil:
+                grouped.setdefault(sigil, []).append(entry)
+    return [_symbol_declaration(sigil, grouped[sigil]) for sigil in sorted(grouped)]
+
+
+def write_cortex_from_json(doc: dict, *, strict: bool = False) -> str:
     """Serialize a JSON/dict document to CORTEX text.
 
     No dependency on CODEC-CORTEX. Uses ArqUX's own serialization
     primitives from :mod:`arqux.formats`.
+
+    When ``strict`` is true, legacy glossary data and ``$0.1`` metadata are
+    normalized into a document accepted by CODEC-CORTEX 1.0.0rc1. The
+    default preserves ArqUX's historical JSON round-trip contract.
 
     Parameters
     ----------
@@ -143,23 +230,116 @@ def write_cortex_from_json(doc: dict) -> str:
     header = glossary.get("header", "$0")
     comments = glossary.get("comments", [])
     symbols = glossary.get("symbols", [])
+    sections = doc.get("sections", [])
 
     lines.append(header)
     lines.append("")  # blank line after header
     for comment in comments:
         lines.append(comment)
 
-    # T-024: glossary entries serialize after the comments (were dropped).
+    # CODEC-CORTEX 1.0.0rc1 requires executable declarations such as
+    # ``LNG:lesson{type:attrs,...}``. Older ArqUX documents stored these as
+    # ``GSIG:LNG{...}``; strict mode upgrades those declarations.
+    strict_symbols: list[dict[str, Any]] = []
+    legacy_glossary_data: list[dict[str, Any]] = []
     for entry in symbols:
         if not isinstance(entry, dict):
             raise ValueError(
                 f"Glossary symbol must be a dict, got {type(entry).__name__}"
             )
+        attrs = entry.get("attrs")
+        if strict and str(entry.get("sigil")) == "GSIG" and isinstance(attrs, dict):
+            target = str(attrs.get("sigil") or entry.get("name") or "")
+            if target:
+                strict_symbols.append(_symbol_declaration(target, [entry]))
+            continue
+        if strict and isinstance(attrs, dict) and not {
+            "type", "weight", "focus", "desc"
+        }.issubset(attrs):
+            legacy_glossary_data.append(entry)
+            continue
+        strict_symbols.append(entry)
+
+    if not strict:
+        strict_symbols = list(symbols)
+
+    # T-024: glossary entries serialize after the comments.
+    for entry in strict_symbols:
         lines.append(_format_entry(entry))
         lines.append("")  # blank line after each entry
 
+    # CODEC-CORTEX validates that every sigil used outside the glossary has a
+    # strict declaration. Legacy GSIG declarations were normalized above.
+    declared: set[str] = set()
+    for entry in strict_symbols:
+        if not isinstance(entry, dict) or not isinstance(entry.get("attrs"), dict):
+            continue
+        attrs = entry["attrs"]
+        if {"type", "weight", "focus", "desc"}.issubset(attrs):
+            declared.add(str(entry.get("sigil")))
+    for entry in _generated_symbols(sections):
+        if entry["sigil"] in declared:
+            continue
+        lines.append(_format_entry(entry))
+        lines.append("")
+
+    if strict and legacy_glossary_data:
+        sections = list(sections)
+        used_ids = {
+            int(str(section.get("id", "")).lstrip("$").split(".", 1)[0])
+            for section in sections
+            if str(section.get("id", "")).lstrip("$").split(".", 1)[0].isdigit()
+        }
+        sections.insert(0, {
+            "id": f"${max(used_ids or {0}) + 1}",
+            "title": "MIGRATED GLOSSARY DATA",
+            "comments": ["# Entries moved from the legacy glossary during CODEC migration."],
+            "entries": legacy_glossary_data,
+        })
+
+    if strict:
+        normalized_sections: list[dict[str, Any]] = []
+        metadata_section: dict[str, Any] | None = None
+        for section in sections:
+            sid = str(section.get("id", ""))
+            if sid == "$0.1":
+                if metadata_section is None:
+                    metadata_section = {
+                        "id": "$19",
+                        "title": "ARQUX METADATA",
+                        "comments": list(section.get("comments", [])),
+                        "entries": list(section.get("entries", [])),
+                    }
+                    normalized_sections.append(metadata_section)
+                else:
+                    metadata_section.setdefault("entries", []).extend(section.get("entries", []))
+                continue
+            if sid == "$19" and metadata_section is not None:
+                metadata_section.setdefault("entries", []).extend(section.get("entries", []))
+                continue
+            normalized_sections.append(section)
+        sections = normalized_sections
+
+        # Recompute declarations after legacy glossary data has been moved
+        # into a numeric section.
+        for entry in _generated_symbols(sections):
+            if entry["sigil"] in declared:
+                continue
+            lines.append(_format_entry(entry))
+            lines.append("")
+            declared.add(entry["sigil"])
+
+    # The dispatcher in CODEC-CORTEX requires an explicit version declaration.
+    # Keep a caller-provided format declaration intact, otherwise emit the
+    # canonical CORTEX 0.1 declaration at the end of the glossary.  Keeping
+    # declarations before the format line also preserves compatibility with
+    # the legacy ArqUX parser, which treats ``$0:format`` as a glossary-bound
+    # metadata boundary.
+    if not header.startswith("$0:format"):
+        lines.append('$0:format{cortex:"0.1", encoding:"UTF-8"}')
+        lines.append("")
+
     # --- Sections ---
-    sections = doc.get("sections", [])
     for i, section in enumerate(sections):
         # OBS-003: validate section structure
         if not isinstance(section, dict):

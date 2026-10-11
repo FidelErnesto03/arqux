@@ -156,6 +156,153 @@ def cmd_serve(verbose: bool):
     run_server(verbose=verbose)
 
 
+@main.command("voice-serve")
+def cmd_voice_serve():
+    """Start the arqux-voice MCP server on stdio (requires arqux[voice])."""
+    try:
+        from .voice.server import run
+    except ImportError as exc:
+        click.echo(
+            f"ERROR: voice extra not installed ({exc}). "
+            "Run: pip install 'arqux[voice]'", err=True)
+        sys.exit(1)
+    run()
+
+
+@main.command("voice-doctor")
+def cmd_voice_doctor():
+    """Check the voice extension environment (devices, deps, models)."""
+    try:
+        from .voice.doctor import run
+    except ImportError as exc:
+        click.echo(
+            f"ERROR: voice extra not installed ({exc}). "
+            "Run: pip install 'arqux[voice]'", err=True)
+        sys.exit(1)
+    run()
+
+
+@main.group("voice-daemon")
+def cmd_voice_daemon():
+    """Control the optional persistent local voice daemon."""
+
+
+@cmd_voice_daemon.command("start")
+@click.option("--foreground", is_flag=True,
+              help="Keep the daemon attached to this terminal.")
+@click.option("--name", default="arqux-voice-daemon", show_default=True)
+@click.option("--mode", type=click.Choice(["solo", "meet"]), default="solo",
+              show_default=True)
+@click.option("--agent", default="alfred", show_default=True)
+@click.option("--lang", default="es", show_default=True)
+@click.option("--mic", default=None, help="PipeWire input selector.")
+def cmd_voice_daemon_start(foreground: bool, name: str, mode: str,
+                           agent: str, lang: str, mic: str | None):
+    """Start listening independently from MCP/agent processes."""
+    try:
+        from .voice.daemon import start_daemon
+        result = start_daemon(name=name, mode=mode, agent=agent, lang=lang,
+                              mic=mic, foreground=foreground)
+        click.echo(json.dumps(result, ensure_ascii=False, default=str))
+    except ImportError as exc:
+        click.echo(
+            f"ERROR: voice extra not installed ({exc}). "
+            "Run: pip install 'arqux[voice]'", err=True)
+        raise click.exceptions.Exit(1) from exc
+    except Exception as exc:  # noqa: BLE001
+        click.echo(f"ERROR: {exc}", err=True)
+        raise click.exceptions.Exit(1) from exc
+
+
+@cmd_voice_daemon.command("status")
+def cmd_voice_daemon_status():
+    """Show daemon and persistent meeting status."""
+    try:
+        from .voice.daemon import daemon_status
+        click.echo(json.dumps(daemon_status(), ensure_ascii=False, default=str))
+    except ImportError as exc:
+        click.echo(f"ERROR: voice extra not installed ({exc})", err=True)
+        raise click.exceptions.Exit(1) from exc
+
+
+@cmd_voice_daemon.command("stop")
+def cmd_voice_daemon_stop():
+    """Stop the daemon and release audio devices."""
+    try:
+        from .voice.daemon import stop_daemon
+        click.echo(json.dumps(stop_daemon(), ensure_ascii=False, default=str))
+    except ImportError as exc:
+        click.echo(f"ERROR: voice extra not installed ({exc})", err=True)
+        raise click.exceptions.Exit(1) from exc
+
+
+@cmd_voice_daemon.command("restart")
+@click.option("--name", default="arqux-voice-daemon", show_default=True)
+@click.option("--mode", type=click.Choice(["solo", "meet"]), default="solo",
+              show_default=True)
+@click.option("--agent", default="alfred", show_default=True)
+@click.option("--lang", default="es", show_default=True)
+@click.option("--mic", default=None, help="PipeWire input selector.")
+def cmd_voice_daemon_restart(name: str, mode: str, agent: str, lang: str,
+                             mic: str | None):
+    """Restart the persistent daemon with a fresh voice session."""
+    try:
+        from .voice.daemon import start_daemon, stop_daemon
+        stop_daemon()
+        result = start_daemon(name=name, mode=mode, agent=agent, lang=lang,
+                              mic=mic)
+        click.echo(json.dumps(result, ensure_ascii=False, default=str))
+    except ImportError as exc:
+        click.echo(f"ERROR: voice extra not installed ({exc})", err=True)
+        raise click.exceptions.Exit(1) from exc
+
+
+@main.group("session-bridge")
+def cmd_session_bridge():
+    """Control the independent canonical ArqUX host-session bridge."""
+
+
+@cmd_session_bridge.command("serve")
+@click.option("--socket", "socket_path", default=None,
+              help="Unix socket path; defaults to ARQUX_HOST_BRIDGE_SOCKET or XDG_RUNTIME_DIR.")
+@click.option("--request-timeout", default=90.0, type=float, show_default=True)
+def cmd_session_bridge_serve(socket_path: str | None, request_timeout: float):
+    """Run the host bridge broker in the foreground."""
+    try:
+        from .host_bridge import HostSessionBridge, host_bridge_socket_path, serve_host_bridge
+        path = socket_path or str(host_bridge_socket_path())
+        serve_host_bridge(path, HostSessionBridge(request_timeout_s=request_timeout))
+    except Exception as exc:  # noqa: BLE001
+        click.echo(f"ERROR: {exc}", err=True)
+        raise click.exceptions.Exit(1) from exc
+
+
+@main.command("comms-serve")
+def cmd_comms_serve():
+    """Start the arqux-comms MCP server on stdio (requires arqux[comms])."""
+    try:
+        from .comms.server import run
+    except ImportError as exc:
+        click.echo(
+            f"ERROR: comms extra not installed ({exc}). "
+            "Run: pip install 'arqux[comms]'", err=True)
+        sys.exit(1)
+    run()
+
+
+@main.command("comms-doctor")
+def cmd_comms_doctor():
+    """Check the comms extension environment (deps, token, egress)."""
+    try:
+        from .comms.doctor import run
+    except ImportError as exc:
+        click.echo(
+            f"ERROR: comms extra not installed ({exc}). "
+            "Run: pip install 'arqux[comms]'", err=True)
+        sys.exit(1)
+    run()
+
+
 @main.command("call")
 @click.argument("handler")
 @click.argument("args", nargs=-1)
@@ -313,6 +460,24 @@ def cmd_migrate(
         agent=agent, source=source, upstream_version=upstream_version,
     )
     click.echo(f"{'MIGRATED' if migrated else 'ALREADY_HAS_METADATA'}: {path}")
+
+
+@main.command("cortex-migrate")
+@click.argument("path", type=click.Path(exists=True))
+@click.option("--apply", is_flag=True, help="Write changes; default is dry-run.")
+@click.option("--no-backup", is_flag=True, help="Do not retain the atomic-write backup.")
+def cmd_cortex_migrate(path: str, apply: bool, no_backup: bool):
+    """Inspect or migrate legacy CORTEX files for CODEC-CORTEX 1.0.0rc1.
+
+    A file or directory may be supplied. The default is a non-mutating
+    preview; --apply performs atomic writes after CODEC verification.
+    """
+    from .cortex.migration import migrate_file, migrate_tree
+
+    target = Path(path)
+    kwargs = {"dry_run": not apply, "keep_backup": not no_backup}
+    results = migrate_tree(target, **kwargs) if target.is_dir() else [migrate_file(target, **kwargs)]
+    click.echo(json.dumps(results, ensure_ascii=False, indent=2, default=str))
 
 
 # === BLP-035: validate =====================================================

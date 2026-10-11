@@ -10,9 +10,13 @@ __pycache__/
 
 # Virtual environments
 .venv/
+.venv-voice/
 venv/
 env/
 ENV/
+
+# Voice models (large binaries — see src/arqux/skills/voice.skill.md)
+.voice/
 
 # IDE
 .vscode/

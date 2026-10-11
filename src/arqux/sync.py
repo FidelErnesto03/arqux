@@ -145,6 +145,7 @@ def sync_brain(
         except Exception:
             logger.exception("sync_brain: failed to update FCS:current @ $2 (continuing)")
 
+    requested_metrics = dict(metrics or {})
     if metrics and _upsert_metrics(doc, metrics, ts):
         changed = True
 
@@ -155,7 +156,11 @@ def sync_brain(
             logger.exception("sync_brain: failed to write brain (continuing)")
 
     if metrics:
-        _sync_meta_brain(project_root, metrics, event, ts)
+        # The project brain receives filesystem-truth counters, while the
+        # meta-brain event retains explicit counters supplied by the mutation.
+        # This keeps sync.run observability intact without making a caller's
+        # event appear to have been ignored.
+        _sync_meta_brain(project_root, requested_metrics, event, ts)
 
 
 def _upsert_metrics(doc: dict[str, Any], metrics: dict[str, Any], ts: str) -> bool:
@@ -212,6 +217,83 @@ def _count_blueprints(root: Path) -> dict[str, int]:
         except Exception:
             continue
     return counts
+
+
+_TASK_STATUS_RE = re.compile(r'WRK:task\{[^}]*?status:"([^"]+)"')
+
+
+def _read_task_status(tfile: Path) -> str:
+    """Status from a task ``.cortex`` (CORTEX ``WRK:task{...status:\\"...\\"}``).
+
+    ``parse_cortex_file`` expects YAML frontmatter, which task files do not
+    carry, so it returns ``{}`` — hence the direct regex.
+    """
+    try:
+        m = _TASK_STATUS_RE.search(tfile.read_text(encoding="utf-8"))
+        return m.group(1) if m else ""
+    except Exception:
+        return ""
+
+
+def recompute_brain_metrics(project_root: Path) -> dict[str, int]:
+    """True count metrics recomputed from the filesystem.
+
+    Fixes the frozen-KNW defect: handlers used to pass fixed constants
+    (``tasks_done=1``), so KNW metric entries could never express totals.
+    Recomputing absolute counts here lets every ``sync_brain`` /
+    ``reconcile_brain`` write correct, idempotent values.
+    """
+    root = (project_root.parent if project_root.name == ".arqux"
+            else project_root)
+    bp = _count_blueprints(root)
+
+    closed = opened = 0
+    cycles_dir = root / ".arqux" / "cycles"
+    if cycles_dir.is_dir():
+        for cdir in sorted(cycles_dir.iterdir()):
+            if not cdir.is_dir():
+                continue
+            status = ""
+            manifest = cdir / "MANIFEST.md"
+            if manifest.exists():
+                m = re.search(r'^status:\s*"([^"]+)"',
+                              manifest.read_text(encoding="utf-8"),
+                              re.MULTILINE)
+                status = m.group(1) if m else ""
+            if status == "closed":
+                closed += 1
+            else:
+                opened += 1
+
+    tasks_done = tasks_active = 0
+    if cycles_dir.is_dir():
+        for tfile in cycles_dir.rglob("tasks/*.cortex"):
+            st = _read_task_status(tfile).strip()
+            if st in ("done", "completed"):
+                tasks_done += 1
+            elif st in ("in_progress", "in-progress", "active"):
+                tasks_active += 1
+
+    return {
+        "blueprints_done": bp.get("done", 0),
+        "blueprints_draft": bp.get("draft", 0),
+        "blueprints_cancelled": bp.get("cancelled", 0),
+        "cycles_closed": closed,
+        "cycles_open": opened,
+        "tasks_done": tasks_done,
+        "tasks_active": tasks_active,
+    }
+
+
+def _merge_real_metrics(project_root: Path,
+                        metrics: dict[str, Any]) -> dict[str, Any]:
+    """Override count-metric keys with filesystem-recomputed totals."""
+    try:
+        real = recompute_brain_metrics(project_root)
+    except Exception:
+        logger.debug("sync_brain: metric recompute failed (continuing)")
+        return metrics
+    return {**metrics, **real}
 
 
 def _count_tests(root: Path) -> int:
@@ -284,6 +366,116 @@ def _upsert_meta_dom(meta_brain_path: Path, dom_name: str, project_root: Path) -
     )
 
 
+def _dom_identity(entry: dict[str, Any]) -> tuple[str, str]:
+    """Return the stable identity used to merge duplicate DOM records."""
+    attrs = entry.get("attrs") or {}
+    display_name = str(attrs.get("name") or entry.get("name") or "")
+    return ("name", _normalize_dom_name(display_name))
+
+
+def _dom_score(entry: dict[str, Any], canonical_name: str) -> tuple[int, int, int, str]:
+    """Prefer canonical names, populated paths, and the newest record."""
+    attrs = entry.get("attrs") or {}
+    entry_name = _normalize_dom_name(str(entry.get("name") or ""))
+    exact_name = int(entry_name == canonical_name)
+    has_path = int(bool(str(attrs.get("path") or "").strip()))
+    completeness = sum(1 for value in attrs.values() if value not in (None, ""))
+    updated = str(attrs.get("updated") or "")
+    return (exact_name, has_path, completeness, updated)
+
+
+def _dedupe_meta_dom(meta_brain_path: Path) -> dict[str, Any]:
+    """Merge semantically duplicate ``DOM`` entries in a workspace brain.
+
+    Older sync implementations avoided exact CORTEX key collisions by adding
+    suffixes to entry names (for example ``manhattan_0001_0005``).  That made
+    syntactically unique entries which still described the same project.  The
+    repair groups records by their declared project name, retains the newest
+    canonical entry, and fills missing non-conflicting attributes from the
+    historical records.  It is idempotent and writes only when a merge is
+    required.
+    """
+    result: dict[str, Any] = {
+        "duplicate_groups": 0,
+        "removed": 0,
+        "canonical": [],
+        "changed": False,
+    }
+    if not meta_brain_path.exists():
+        return result
+
+    try:
+        from arqux.cortex.atomic import atomic_write_json
+        from arqux.cortex.reader import cortex_to_dict
+
+        doc = cortex_to_dict(meta_brain_path.read_text(encoding="utf-8"))
+    except Exception as exc:
+        result["error"] = repr(exc)
+        return result
+
+    for section in doc.get("sections", []):
+        if not isinstance(section, dict) or section.get("id") != "$2":
+            continue
+        entries = section.get("entries", [])
+        if not isinstance(entries, list):
+            continue
+
+        groups: dict[tuple[str, str], list[tuple[int, dict[str, Any]]]] = {}
+        for index, entry in enumerate(entries):
+            if not isinstance(entry, dict) or entry.get("sigil") != "DOM":
+                continue
+            identity = _dom_identity(entry)
+            if identity[1]:
+                groups.setdefault(identity, []).append((index, entry))
+
+        replacements: dict[int, dict[str, Any]] = {}
+        removals: set[int] = set()
+        for (_, canonical_name), members in groups.items():
+            if len(members) < 2:
+                continue
+            result["duplicate_groups"] += 1
+            ranked = sorted(
+                members,
+                key=lambda item: _dom_score(item[1], canonical_name),
+                reverse=True,
+            )
+            keep_index, keep_entry = ranked[0]
+            merged = dict(keep_entry)
+            merged_attrs = dict(keep_entry.get("attrs") or {})
+            # Older entries may carry domain/cycle/governor while the newer
+            # metrics row carries the current counters.  Merge only missing
+            # values so current metrics and timestamps remain authoritative.
+            for _, candidate in ranked[1:]:
+                for key, value in (candidate.get("attrs") or {}).items():
+                    if key not in merged_attrs or merged_attrs[key] in (None, ""):
+                        merged_attrs[key] = value
+            merged["name"] = canonical_name
+            merged["attrs"] = merged_attrs
+            replacements[keep_index] = merged
+            for index, _ in members:
+                if index != keep_index:
+                    removals.add(index)
+            result["removed"] += len(members) - 1
+            result["canonical"].append(canonical_name)
+
+        if removals:
+            rebuilt: list[dict[str, Any]] = []
+            for index, entry in enumerate(entries):
+                if index in removals:
+                    continue
+                rebuilt.append(replacements.get(index, entry))
+            section["entries"] = rebuilt
+            result["changed"] = True
+
+    if result["changed"]:
+        try:
+            atomic_write_json(doc, str(meta_brain_path))
+        except Exception as exc:
+            result["error"] = repr(exc)
+            result["changed"] = False
+    return result
+
+
 def _sync_meta_brain(
     project_root: Path,
     metrics: dict[str, Any],
@@ -307,6 +499,8 @@ def _sync_meta_brain(
             return
 
         dom_name = _project_name(project_root)
+
+        _dedupe_meta_dom(meta_brain_path)
 
         dom_updates: dict[str, Any] = {"updated": ts, "last_event": event}
 
@@ -428,6 +622,7 @@ def reconcile_brain(project_root: Path) -> dict[str, Any]:
             # text is written only when no FCS entry exists.
             meta_brain = ws_root / "meta-brain.cortex"
             if meta_brain.exists():
+                result["meta_deduplication"] = _dedupe_meta_dom(meta_brain)
                 fcs_text = (
                     f"Reconciliacion completada. {total_blps} BLPs gestionados "
                     f"en {len(open_cycles) + len(closed_cycles)} ciclos "
@@ -513,11 +708,26 @@ def reconcile_brain(project_root: Path) -> dict[str, Any]:
                     )
                 result["reconciled"] = True
 
+                # Upsert real count metrics into $6/KNW (issue: KNW metrics
+                # were frozen because reconcile never wrote them).
+                try:
+                    from arqux.cortex.atomic import atomic_write_json as _awj
+                    from arqux.cortex.reader import cortex_to_dict as _c2d
+                    _doc = _c2d(brain_path.read_text(encoding="utf-8"))
+                    if _upsert_metrics(_doc,
+                                       recompute_brain_metrics(project_root),
+                                       ts):
+                        _awj(_doc, str(brain_path))
+                except Exception as _exc:
+                    result["errors"].append(f"metrics upsert failed: {_exc!r}")
+
         # 4. Sync to meta-brain DOM:<project> (always)
         try:
             if ws_root is not None:
                 meta_brain = ws_root / "meta-brain.cortex"
                 if meta_brain.exists():
+                    if "meta_deduplication" not in result:
+                        result["meta_deduplication"] = _dedupe_meta_dom(meta_brain)
                     dom_updates = {
                         "updated": ts,
                         "last_event": "brain.reconcile",
@@ -727,6 +937,134 @@ def _resolve_governor(project_root: Path) -> str:
     return ""
 
 
+def _read_blp_objective(text: str) -> str:
+    """Extract the cycle objective a blueprint declares, if any.
+
+    BLP-005 CA-19, hardened after Heimdall V-6. Only a *declaration*
+    counts: the ``objetivo``/``objective`` frontmatter key, or an explicit
+    ``*Objetivo:*`` line in the body. Free prose is never scanned.
+
+    The previous version searched the whole document for ``CYC-OBJ-N``,
+    so a blueprint stating "this does NOT address CYC-OBJ-7" was recorded
+    as serving CYC-OBJ-7. An index that guesses is worse than one that
+    admits ignorance, because the guess looks exactly like a truth.
+    """
+    fm_match = re.search(r"^---\s*\n(.*?)\n---", text, re.DOTALL)
+    if fm_match:
+        raw = _fm_val(fm_match.group(1), "objetivo") or _fm_val(
+            fm_match.group(1), "objective"
+        )
+        if raw:
+            return raw.strip()
+    declared = re.search(
+        r"^\s*\*\s*Objetivo\s*:\s*\*?\s*(CYC-OBJ-\d+)", text, re.MULTILINE | re.IGNORECASE
+    )
+    return declared.group(1) if declared else ""
+
+
+_OPERATOR_BLOCK_RE = re.compile(
+    r"<!--\s*OPERATOR\s*-->.*?<!--\s*/OPERATOR\s*-->", re.DOTALL
+)
+
+
+def _cell(value: str) -> str:
+    """Make a value safe to interpolate into a derived manifest table.
+
+    BLP-005 V-8 (Heimdall R-3, CRITICO). A blueprint title carrying
+    ``<!-- OPERATOR --> ... <!-- /OPERATOR -->`` was written into the §6
+    index verbatim. Because the reconciler preserves the operator block,
+    that injection became permanent and read as if the Architect had
+    written it. Any content derived from a blueprint must therefore lose
+    its ability to open a marker.
+
+    Comment delimiters are removed rather than escaped: a governance table
+    has no legitimate use for them, and leaving the text visible keeps the
+    index honest about what it contains.
+
+    Args:
+        value: Raw cell text.
+
+    Returns:
+        The text with comment delimiters removed and pipes escaped.
+    """
+    text = re.sub(r"<!--.*?-->", " ", value, flags=re.DOTALL)
+    text = re.sub(r"<!--|-->", "", text)
+    text = text.replace("|", "\\|")
+    text = re.sub(r"\s+", " ", text).strip()
+    return text
+
+
+def _operator_block(existing: str) -> str:
+    """Return the operator's preserved block from a section being rebuilt.
+
+    BLP-005 CA-19, hardened after Heimdall V-7. §6 and §7 are derived: the
+    reconciler regenerates them wholesale, so anything an operator wrote
+    between the markers used to vanish without warning. Rather than
+    document the loss, the section now carries an explicit block that
+    survives regeneration:
+
+    ``<!-- OPERATOR --> ... <!-- /OPERATOR -->``
+
+    The operator opts in by delimiting their note. Everything outside the
+    pair stays derived, so the section cannot quietly accumulate state
+    that the filesystem no longer reflects.
+
+    A block sitting inside a table row is refused outright. That is where
+    an injected one lands, and it is how Heimdall R-3 turned a blueprint
+    title into permanent manifest content.
+    """
+    found = _OPERATOR_BLOCK_RE.search(existing)
+    if not found:
+        return ""
+    line_start = existing.rfind("\n", 0, found.start()) + 1
+    if existing[line_start:found.start()].lstrip().startswith("|"):
+        return ""
+    return "\n\n" + found.group(0)
+
+
+def _replace_marked_section(text: str, number: int, body: str) -> str:
+    """Replace the content of ``§N`` without destroying its markers.
+
+    BLP-005 CA-19. Two cases:
+
+    * **Marked section** — the manifest declares
+      ``<!-- CYCLE:N --> ... <!-- /CYCLE:N -->``. Only the text between
+      the pair is replaced; both markers survive, so the section stays
+      parseable and the next reconcile can find it again.
+    * **Unmarked section** — fall back to the header-to-next-header span,
+      which is the pre-existing behaviour.
+
+    Args:
+        text: Manifest body.
+        number: Section number.
+        body: Replacement content.
+
+    Returns:
+        The text with the section body replaced.
+    """
+    marked = re.compile(
+        rf"(<!--\s*CYCLE:{number}\s*-->)(.*?)(<!--\s*/CYCLE:{number}\s*-->)",
+        re.DOTALL,
+    )
+    if marked.search(text):
+        return marked.sub(
+            lambda m: m.group(1)
+            + "\n"
+            + body
+            + _operator_block(m.group(2))
+            + "\n"
+            + m.group(3),
+            text,
+            count=1,
+        )
+
+    plain = re.compile(
+        rf"(## §{number}:[^\n]*\n)(?:.*?)(?=\n## §\d+:|\Z)",
+        re.DOTALL,
+    )
+    return plain.sub(lambda m: m.group(1) + "\n" + body + "\n", text, count=1)
+
+
 def reconcile_cycle(project_root: Path, cycle_id: str) -> dict[str, Any]:
     """Reconcile a single cycle's MANIFEST.md with filesystem reality.
 
@@ -791,6 +1129,9 @@ def reconcile_cycle(project_root: Path, cycle_id: str) -> dict[str, Any]:
                     "status": status,
                     "priority": priority,
                     "governor": governor,
+                    # BLP-005 CA-19: read the declared cycle objective so the
+                    # index can link each blueprint back to §3.
+                    "objective": _read_blp_objective(text),
                 })
             except Exception:
                 continue
@@ -800,14 +1141,9 @@ def reconcile_cycle(project_root: Path, cycle_id: str) -> dict[str, Any]:
     task_counts: dict[str, int] = {}
     if tasks_dir.is_dir():
         for tfile in sorted(tasks_dir.glob("*.cortex")):
-            try:
-                from arqux.core.state._project import parse_cortex_file
-                fm_t, _ = parse_cortex_file(tfile)
-                status = fm_t.get("status", "")
-                if status:
-                    task_counts[status] = task_counts.get(status, 0) + 1
-            except Exception:
-                continue
+            status = _read_task_status(tfile)
+            if status:
+                task_counts[status] = task_counts.get(status, 0) + 1
 
     total_blps = sum(bp_counts.values())
     total_tasks = sum(task_counts.values())
@@ -825,18 +1161,22 @@ def reconcile_cycle(project_root: Path, cycle_id: str) -> dict[str, Any]:
 
     table_rows = []
     for row in bp_rows:
-        te = row["title"].replace("|", "\\|")
+        te = _cell(row["title"])
         table_rows.append(
-            f"| {row['id']} | {te} | {row['status']} | {row['priority']} | {row['governor']} |"
+            f"| {row['id']} | {te} | {_cell(row['status'])} | {_cell(row['priority'])} "
+            f"| {_cell(row['objective']) or '—'} | {_cell(row['governor'])} |"
         )
+    # BLP-005 CA-19: the index carries the Objetivo column so §6 links each
+    # blueprint to the cycle objective it serves. Losing it disconnects the
+    # index from §3 and breaks the loop's objective selector.
     table_header = (
-        "| BLP ID | Título | Estado | Prioridad | Gobernador |\n"
-        "|---|---|---|---|---|"
+        "| BLP ID | Título | Estado | Prioridad | Objetivo | Gobernador |\n"
+        "|---|---|---|---|---|---|"
     )
     section_6 = (
         table_header + "\n" + "\n".join(table_rows)
         if table_rows
-        else table_header + "\n| _— | _Sin BLPs en este ciclo_ | _ | _ | _ |"
+        else table_header + "\n| _— | _Sin BLPs en este ciclo_ | _ | _ | _ | _ |"
     )
 
     # 4. Build §7 metrics
@@ -877,23 +1217,13 @@ def reconcile_cycle(project_root: Path, cycle_id: str) -> dict[str, Any]:
     try:
         manifest_text = manifest_path.read_text(encoding="utf-8")
 
-        # Replace §6 table: from header to next ## § or end
-        manifest_text = re.sub(
-            r"(## §6:[^\n]*\n)(?:.*?)(?=\n## §7:|\Z)",
-            lambda m: m.group(1) + "\n" + section_6 + "\n",
-            manifest_text,
-            count=1,
-            flags=re.DOTALL,
-        )
-
-        # Replace §7 section: from header to next ## § or end
-        manifest_text = re.sub(
-            r"(## §7:[^\n]*\n)(?:.*?)(?=\n## §8:|\Z)",
-            lambda m: m.group(1) + "\n" + section_7 + "\n",
-            manifest_text,
-            count=1,
-            flags=re.DOTALL,
-        )
+        # BLP-005 CA-19: replace only the content between the section's
+        # markers. The previous regex spanned from the header to the next
+        # ``## §N``, which swallowed the closing ``<!-- /CYCLE:N -->`` and
+        # any prose the blueprint had placed in the section, leaving the
+        # manifest structurally invalid after every reconcile.
+        manifest_text = _replace_marked_section(manifest_text, 6, section_6)
+        manifest_text = _replace_marked_section(manifest_text, 7, section_7)
 
         # BLP-003: synchronize the MANIFEST frontmatter with reality.
         fm_text, m_body = _split_frontmatter(manifest_text)

@@ -1119,21 +1119,77 @@ def cycle_to_cortex(cycle: dict) -> str:
     return "\n".join(parts) + "\n"
 
 
+def _cortex_entries(content: str, sigil: str) -> list[dict]:
+    """Extract ``SIGIL:name{...}`` entries (parsed attrs) from a body slice."""
+    out: list[dict] = []
+    for m in re.finditer(rf"\b{re.escape(sigil)}:\w+\{{([^}}]*)\}}", content):
+        try:
+            out.append(_parse_attrs(m.group(1)))
+        except Exception:  # noqa: BLE001
+            continue
+    return out
+
+
+def _normalize_section_content(key: str, content: str) -> str:
+    """Normalize a task section body to markdown lines the builders accept.
+
+    Handles both markdown bodies (``- value``) and already-serialized CORTEX
+    entries (``OBJ:objective{text:"..."}``) so that re-writing a CORTEX task
+    heals it instead of dropping the entries (BUG-006 round-trip).
+    """
+    spec = {"OBJ": ("OBJ", "text"),
+            "PRE": ("CNST", "text"),
+            "PROC": ("STP", "action"),
+            "AC": ("CLAIM", "criterion"),
+            "BLK": ("BLK", "condition")}
+    if key not in spec:
+        return content
+    sigil, attr = spec[key]
+    vals = [
+        _strip_attr_prefix(str(a.get(attr, "")), attr)
+        for a in _cortex_entries(content, sigil)
+    ]
+    vals = [v for v in vals if v]
+    if not vals:
+        return content
+    if key == "OBJ":
+        return " ".join(vals)
+    if key == "PROC":
+        return "\n".join(f"{i + 1}. {v}" for i, v in enumerate(vals))
+    return "\n".join(f"- {v}" for v in vals)
+
+
 def _parse_task_body(body: str) -> dict[str, str]:
     sections: dict[str, str] = {}
-    current_key = None
+    title_map = {
+        "OBJECTIVE": "OBJ", "PRECONDITIONS": "PRE", "PROCEDURE": "PROC",
+        "ACCEPTANCE": "AC", "BLOCKERS": "BLK",
+        "NOTE": "NOTE", "EVIDENCE": "EVIDENCE",
+    }
+    current_key: str | None = None
     current_lines: list[str] = []
+
+    def _flush() -> None:
+        if current_key and current_lines:
+            sections[current_key] = "\n".join(current_lines).strip()
+
     for line in body.splitlines():
-        m = re.match(r"^#\s*(\w+)", line)
-        if m:
-            if current_key:
-                sections[current_key] = "\n".join(current_lines).strip()
-            current_key = m.group(1)
+        md = re.match(r"^#\s*(\w+)", line)
+        cx = re.match(r"^\$\d+:\s*([A-Za-z ]+?)\s*$", line)
+        if md:
+            _flush()
+            current_key = md.group(1).upper()
+            current_lines = []
+        elif cx:
+            _flush()
+            current_key = title_map.get(cx.group(1).strip().upper())
             current_lines = []
         elif current_key:
             current_lines.append(line)
-    if current_key:
-        sections[current_key] = "\n".join(current_lines).strip()
+    _flush()
+
+    for key in list(sections):
+        sections[key] = _normalize_section_content(key, sections[key])
     return sections
 
 
