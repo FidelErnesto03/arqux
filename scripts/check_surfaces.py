@@ -83,7 +83,7 @@ def main() -> int:
         if bad:
             problems.append(f"{desc}: expected {count}, found {bad}")
 
-    for rel, pattern, desc, optional in VERSION_SURFACES:
+    for rel, pattern, desc, _optional in VERSION_SURFACES:
         found = _scan(rel, pattern)
         if not found:
             problems.append(f"{desc}: no version found")
