@@ -8,12 +8,19 @@ voice-doctor's live probe instead.
 import wave
 from pathlib import Path
 
-import numpy as np
 import pytest
 
+# The optional-voice guards MUST come before any third-party import this
+# module needs at collection time. `numpy` below ships with the voice extras
+# only, so importing it first raised ModuleNotFoundError during collection
+# whenever the extras are absent — and pytest treats a collection error as
+# fatal for the WHOLE run, not just this module. That is how CI came to
+# collect 1826 tests, abort on this one file, and execute zero.
 pytest.importorskip("faster_whisper")
 pytest.importorskip("onnxruntime")
 pytest.importorskip("piper")
+
+import numpy as np  # noqa: E402
 
 from arqux.voice.config import vad_model_path, voice_path  # noqa: E402
 from arqux.voice.gate import MentionGate  # noqa: E402
