@@ -11,7 +11,7 @@ from ... import formats
 # BLP-fix (T-005/G-9): _HAS_CODEC_CORTEX / _cc_* are defined in
 # core.state.__init__ (as None when CODEC-CORTEX is absent), so a
 # top-level 'from . import' is safe and no longer circular.
-from . import _HAS_CODEC_CORTEX, _cc_parser, _cc_renderer
+from . import _CODEC_CORTEX_MISSING, _HAS_CODEC_CORTEX, _cc_parser, _cc_renderer
 
 
 def write_cortex_pair(
@@ -67,7 +67,11 @@ def _write_md_twin(
     body: str,
 ) -> bool:
     """Write the .md twin. Returns True if CODEC-CORTEX was used."""
-    if _HAS_CODEC_CORTEX:
+    # Guard the renderer handle explicitly: under CODEC-CORTEX 1.0.0rc1 the
+    # parser resolves but render_hcortex_read does not exist, so _HAS_CODEC_CORTEX
+    # alone would reach a None handle and fall into the broad except below,
+    # silently losing the HCORTEX render instead of degrading on purpose.
+    if _HAS_CODEC_CORTEX and "render_hcortex_read" not in _CODEC_CORTEX_MISSING:
         # Try to parse as proper CORTEX and render.
         try:
             text = cortex_path.read_text(encoding="utf-8")

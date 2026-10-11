@@ -37,12 +37,23 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-# CODEC-CORTEX 1.0.0rc1 — latest published CORTEX/HCORTEX codec (pre-release).
+# CODEC-CORTEX — CORTEX/HCORTEX codec.
 # Optional since 0.7.0 (CYCLE-11 decoupling). ArqUX has its own reader/writer/crud/atomic
 # modules and degrades gracefully without codec-cortex. Install for full CODEC conformance
 # validation and the learning engine:  pip install "arqux[codec]"
+#
+# Pinned to the 0.6.x line, NOT to the 1.0.0rc1 candidate (2026-10-11, decision
+# of the Architect). Reason: the candidate renamed its import namespace to
+# `codec_cortex` and flattened the hierarchy, so `cortex.core.validator` and
+# `cortex.hcortex.read_renderer` no longer exist. ArqUX needs BOTH:
+# `validate` backs `cortex_verify` and `render_hcortex_read` backs HCORTEX
+# rendering. Under 1.0.0rc1 only `parse_cortex` survives, so pinning the
+# candidate silently disabled the whole CORTEX layer — 89 test failures
+# against a 15-failure baseline. See issue
+# 2026-10-11-la-dependencia-pineada-codec-cortex-1-0-0rc1-es-.
+# 0.6.2 is the newest release that provides the full surface.
 codec = [
-    "codec-cortex==1.0.0rc1",
+    "codec-cortex>=0.6.2,<0.7",
 ]
 # ARQUX Voice (BLP-015) — harness-agnostic local voice participation.
 # Fully local audio pipeline: faster-whisper STT + Piper/Kokoro TTS +

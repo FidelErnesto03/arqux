@@ -56,6 +56,34 @@ def requires_codec_cortex() -> None:
         )
 
 
+def requires_capability(capability: str) -> None:
+    """Raise RuntimeError naming the specific missing capability.
+
+    ``requires_codec_cortex()`` answers "is any codec present?", which is
+    true under CODEC-CORTEX 1.0.0rc1 even though that candidate ships no
+    validator and no HCORTEX read renderer.  Call sites that need one of
+    those two use this instead so the failure says WHICH capability is
+    absent and WHICH api shape was detected, instead of surfacing later as
+    an AttributeError on None.
+    """
+    from ...state import (
+        _CODEC_CORTEX_API,
+        _CODEC_CORTEX_MISSING,
+        codec_cortex_diagnostics,
+    )
+
+    if capability in _CODEC_CORTEX_MISSING:
+        diag = codec_cortex_diagnostics()
+        raise RuntimeError(
+            f"CODEC-CORTEX does not provide '{capability}'. "
+            f"Detected api={_CODEC_CORTEX_API or 'none'!r}, "
+            f"missing={list(_CODEC_CORTEX_MISSING)}, "
+            f"diagnostics={diag}. The rc1 candidate (codec-cortex==1.0.0rc1) "
+            f"exposes only parse_cortex; install a 0.6.x release for "
+            f"validate + render_hcortex_read."
+        )
+
+
 # --- Generic .cortex file operations -----------------------------------------
 
 
@@ -157,6 +185,7 @@ def cortex_verify(path: str | Path) -> dict:
     Raises RuntimeError if CODEC-CORTEX is not available.
     """
     requires_codec_cortex()
+    requires_capability("validate")
     path = Path(path)
     text = path.read_text(encoding="utf-8")
     doc = _cc_parser.parse_cortex(text, path=str(path))
@@ -179,6 +208,7 @@ def cortex_render(path: str | Path) -> str:
     Raises RuntimeError if CODEC-CORTEX is not available.
     """
     requires_codec_cortex()
+    requires_capability("render_hcortex_read")
     path = Path(path)
     text = path.read_text(encoding="utf-8")
     doc = _cc_parser.parse_cortex(text, path=str(path))

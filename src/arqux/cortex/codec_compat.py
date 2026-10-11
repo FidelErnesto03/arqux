@@ -60,7 +60,8 @@ def parse_with_codec(text: str, *, path: str | None = None) -> Any:
     info, parser = _backend()
     if parser is None:
         raise RuntimeError(
-            "CODEC-CORTEX is unavailable; install codec-cortex==1.0.0rc1"
+            "CODEC-CORTEX is unavailable; install codec-cortex>=0.6.2,<0.7 "
+            "(the 1.0.0rc1 candidate provides only parse_cortex)"
         )
     if info.parser == "legacy" and path is not None:
         return parser(text, path=path)
