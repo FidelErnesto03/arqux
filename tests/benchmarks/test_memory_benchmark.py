@@ -11,11 +11,23 @@ from __future__ import annotations
 
 import json
 import platform
+import re
 import sys
 import time
 from pathlib import Path
 
 from arqux.memory import LocalStore, RecallService, build_index
+
+REPO_ROOT = Path(__file__).resolve().parent.parent.parent
+
+
+def _declared_version() -> str:
+    """The version this repository declares, not the one installed."""
+    text = (REPO_ROOT / "pyproject.toml").read_text(encoding="utf-8")
+    match = re.search(r'^version\s*=\s*"([^"]+)"', text, re.MULTILINE)
+    if not match:
+        raise SystemExit("pyproject.toml: no [project].version found")
+    return match.group(1)
 
 ROOT = Path(__file__).resolve().parents[2]
 REPORT = ROOT / "docs" / "release" / "benchmark-0.9.0.json"
@@ -68,7 +80,13 @@ def test_benchmark_publishes_reproducible_evidence(tmp_path: Path) -> None:
     recall_ms = (time.perf_counter() - t0) * 1000
 
     report = {
-        "version": "0.9.0rc1",
+        # Derived from the DECLARED version in pyproject.toml, not hardcoded.
+        # A stale literal here makes the release report and this artifact
+        # disagree, which is exactly what scripts/check_surfaces.py catches.
+        # Deliberately not importlib.metadata: that reports the version of
+        # whatever was INSTALLED, which is stale in any venv predating a
+        # version bump, and would silently publish the wrong number.
+        "version": _declared_version(),
         "corpus": {
             "file": "synthetic.cortex",
             "records": n_records,
