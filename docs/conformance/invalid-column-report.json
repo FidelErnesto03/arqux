@@ -1,6 +1,6 @@
 {
   "generated_by": "tests/test_cortex_invalid_column_conformance.py",
-  "corpus": "/tmp/opencode/runner/codec-columns/column-b/conformance/corpus",
+  "corpus": "/home/vatrox/workspace/CODEC-CORTEX/conformance/corpus",
   "required_codes_are": "specification (what each invalid fixture should emit)",
   "columns": {
     "REF": {

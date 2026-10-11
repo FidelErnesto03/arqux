@@ -1,34 +1,31 @@
 {
-  "baseline_id": "cycle13-0.9.0",
-  "captured": "2026-10-10",
+  "baseline_id": "rc3-0.9.0",
+  "captured": "2026-10-11",
   "policy": "BLP-004 §7.6 / §13 — regression is measured against this fixed, dated baseline. Changing the baseline invalidates the comparison and forces a re-baseline. The 0.9.0 gate requires delta = 0 (no NEW failures), and every known failure is declared as a limitation.",
-  "scope": "The whole pytest suite at CYCLE-13 open. These failures are pre-existing and belong to an in-progress refactor OUTSIDE CYCLE-13's blueprints (writer/atomic strict default, brain seeding duplicates, blueprint.execute outcome, entry validation count, LNG prevention policy).",
-  "known_failures_count": 15,
+  "rebaselined_from": "cycle13-0.9.0 (2026-10-10, 15 known failures)",
+  "rebaseline_reason": "Ten of the fifteen were FIXED, not waived, in commit 844e323: write_cortex_from_json emitted every generated sigil declaration twice in strict mode, so each glossary entry appeared duplicated in $0 and CODEC-CORTEX rejected the document as E008_DUPLICATE_ENTRY. The first emission loop never recorded the sigil in the `declared` set, so the later 'recompute declarations' block re-emitted all of them. That single defect accounted for all 10 failures in tests/test_cortex_atomic.py and made atomic_write_json(strict=True) produce a different, larger document than write_cortex_from_json(strict=False) — 996 bytes vs 614. Re-baselining is therefore a correction of the record, not a relaxation of the gate: the count went DOWN because real defects were removed, and the five that remain are declared individually below with their cause.",
+  "scope": "The whole pytest suite at 0.9.0rc3. These five are NOT related to the writer fix. They fail because the fallback column's validator (codec-cortex 0.6.2) rejects ArqUX's own CORTEX dialect systematically: cortex/core/document_kind.py accepts only GSIG/GTYP/GMIC/GCON inside $0, while ArqUX declares its glossary as SIGIL:name{type,weight,focus,desc}, which is flagged E033_ZERO_SECTION_MEMORY_ENTRY. This is not specific to seeded brains — the project brain.cortex, the workspace meta-brain and the identity contracts all fail cortex_verify under this column. It is the same finding BLP-001 recorded: neither column implements the complete CORTEX 0.1 diagnostic contract, and the reference validator is not a usable oracle because it also rejects the 40 valid canonical fixtures (G001). Under the rc1 candidate there is no validator at all.",
+  "known_failures_count": 5,
   "known_failures": [
-    "tests/test_cortex_atomic.py::TestAtomicWriteJson::test_writes_valid_cortex",
-    "tests/test_cortex_atomic.py::TestAtomicWriteJson::test_bytes_written_correct",
-    "tests/test_cortex_atomic.py::TestBackupCreation::test_overwrite_creates_backup",
-    "tests/test_cortex_atomic.py::TestNoBackup::test_no_backup_when_keep_backup_false",
-    "tests/test_cortex_atomic.py::TestNoBackup::test_no_backup_for_new_file",
-    "tests/test_cortex_atomic.py::TestDryRun::test_dry_run_bytes_correct",
-    "tests/test_cortex_atomic.py::TestParentDirCreation::test_parent_dir_created",
-    "tests/test_cortex_atomic.py::TestWriteResult::test_result_fields_overwrite",
-    "tests/test_cortex_atomic.py::TestRoundTrip::test_json_to_file_matches_writer",
-    "tests/test_cortex_atomic.py::TestLargeDocument::test_large_doc_written",
-    "tests/test_sync_brain.py::test_sync_run_verify_passes",
     "tests/test_blp004_legacy_compat.py::test_execute_real_marks_table_acs",
     "tests/test_blp005_entry_content.py::test_entry_add_validation_errors_enumerated",
     "tests/test_blp042_policy.py::TestRecordLessonPrevention::test_no_direct_write_bypass",
-    "tests/test_project_init_onboarding.py::test_init_produces_valid_brain"
+    "tests/test_project_init_onboarding.py::test_init_produces_valid_brain",
+    "tests/test_sync_brain.py::test_sync_run_verify_passes"
   ],
-  "cycle13_own_suites": [
-    "tests/test_cortex_two_column_conformance.py",
-    "tests/test_cortex_invalid_column_conformance.py",
-    "tests/test_memory_model.py",
-    "tests/test_memory_store.py",
-    "tests/test_memory_rebuild.py",
-    "tests/test_memory_recall.py",
-    "tests/test_memory_feedback.py",
-    "tests/test_memory_authority.py"
-  ]
+  "known_failure_causes": {
+    "tests/test_blp004_legacy_compat.py::test_execute_real_marks_table_acs": "expects outcome 'complete', gets 'partial'. Related to HD-01: ArqUX has no execution mechanism at all (zero subprocess/Popen/os.system in src/arqux/handlers/), so the outcome is computed, never earned.",
+    "tests/test_blp005_entry_content.py::test_entry_add_validation_errors_enumerated": "expects 2 validation errors, gets 9. The count is inflated by E033 dialect diagnostics that the fallback validator raises on ArqUX's own glossary form.",
+    "tests/test_blp042_policy.py::TestRecordLessonPrevention::test_no_direct_write_bypass": "the entry retrieved from $0 is the glossary declaration LNG:lesson{...}, not the recorded lesson, because the dialect conflict places declarations where the lesson should be.",
+    "tests/test_project_init_onboarding.py::test_init_produces_valid_brain": "seeded brain invalid: 7x E033 for ARQX/DOM/ERR/FCS/IDN/OBJ/WRK declarations in $0, 3x E032 for incomplete FCS/OBJ/WRK.",
+    "tests/test_sync_brain.py::test_sync_run_verify_passes": "cortex_verify returns valid=False on a freshly synced brain, for the same dialect reason."
+  },
+  "resolution_paths": "Neither available column can satisfy BLP-004 §13's 'cortex verify --strict with no accepted errors'. Closing these five requires a dialect migration (move the glossary to GSIG/GTYP/GMIC/GCON, which touches every .cortex in the workspace and breaks the rc1 column) or a validator in the rc1 candidate, which is CODEC-CORTEX work rather than ArqUX work. Both are architecture decisions, not release decisions. Tracked as issue 2026-10-11-el-validador-de-la-columna-de-fallback-codec-cor.",
+  "rc3_own_suites": [
+    "tests/test_codec_resolution.py",
+    "tests/test_release_secrets.py",
+    "tests/test_release_report_citations.py",
+    "tests/benchmarks/test_memory_benchmark.py"
+  ],
+  "verified_on_ci": "Run 38167933403 (3.10/3.11/3.12) measured delta 0 against the previous baseline; rc3 re-measures against this one."
 }

@@ -1,5 +1,5 @@
 {
-  "version": "0.9.0rc2",
+  "version": "0.9.0rc3",
   "corpus": {
     "file": "synthetic.cortex",
     "records": 200,
@@ -8,21 +8,25 @@
   },
   "environment": {
     "python": "3.11.8",
-    "platform": "Linux-7.0.0-38-generic-x86_64-desconocido-with-glibc2.43"
+    "system": "Linux",
+    "release": "7.0.0-38-generic",
+    "machine": "x86_64",
+    "libc": "glibc2.43",
+    "probe": "python -m pytest tests/benchmarks --publish-benchmark -q"
   },
   "commands": [
-    "python -m pytest tests/benchmarks -q"
+    "python -m pytest tests/benchmarks --publish-benchmark -q"
   ],
   "results": {
-    "cold_start_ms": 7.678,
-    "rebuild_ms": 11.859,
-    "rebuild_again_ms": 11.703,
-    "recall_total_ms": 15.015,
+    "cold_start_ms": 8.132,
+    "rebuild_ms": 11.913,
+    "rebuild_again_ms": 11.728,
+    "recall_total_ms": 26.52,
     "recall_queries": 3,
     "records_projected": 200,
     "source_bytes": 19679,
-    "index_bytes": 187861,
-    "content_hash": "24cf01110542a61729bf49ceb4a0372655197f09936fae4eb51ff9cdcf286a82"
+    "index_bytes": 187862,
+    "content_hash": "fa55a1f9cf9d40b4890789f42e84c399dae38650cf751e9dcca9dcdc4ea94065"
   },
   "limitations": [
     "Timings are indicative on this host; they are not a claim about other hardware.",
