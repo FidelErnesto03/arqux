@@ -15,6 +15,8 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
+import pytest
+
 ROOT = Path(__file__).resolve().parent.parent
 REPORT = ROOT / "docs" / "release" / "0.9.0-report.md"
 
@@ -47,6 +49,36 @@ def _citations() -> list[str]:
 
 def test_report_exists() -> None:
     assert REPORT.is_file(), f"release report missing at {REPORT}"
+
+
+def test_benchmark_does_not_rewrite_release_evidence_on_a_plain_run(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Measuring must never publish; only an explicit request may.
+
+    The benchmark used to write `docs/release/benchmark-*.json` on every run,
+    so `pytest tests/benchmarks` silently replaced versioned release evidence
+    with timings from whatever machine ran it.
+    """
+    monkeypatch.delenv("BENCHMARK_PUBLISH", raising=False)
+
+    class Config:
+        def getoption(self, _name: str, default: object = None) -> object:
+            return default
+
+    from tests.benchmarks.test_memory_benchmark import _should_publish
+
+    assert _should_publish(Config()) is False, (
+        "a plain test run must not publish benchmark evidence"
+    )
+
+    monkeypatch.setenv("BENCHMARK_PUBLISH", "1")
+    assert _should_publish(Config()) is True
+
+    # And the env switch must survive the autouse _clean_env fixture, which
+    # strips every ARQUX_* variable. An ARQUX_-prefixed name was erased before
+    # the test could read it, which made the switch look inert.
+    assert not "BENCHMARK_PUBLISH".startswith("ARQUX_")
 
 
 def test_report_cites_at_least_twenty_artifacts() -> None:

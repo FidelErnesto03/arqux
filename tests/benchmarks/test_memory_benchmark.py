@@ -1,20 +1,35 @@
 """BLP-004 CA-02: a reproducible Memory Core benchmark.
 
 The corpus is synthetically generated — no secrets, no personal data, no
-production credentials (L-SEC-02). The benchmark publishes corpus, environment,
-commands and results to ``docs/release/benchmark-0.9.0.json``, and asserts only
-structural properties: timings are recorded, never asserted, so the suite is
-not flaky and the numbers are honest measurements, not claims.
+production credentials (L-SEC-02). The benchmark asserts only structural
+properties: timings are recorded, never asserted, so the suite is not flaky
+and the numbers are honest measurements, not claims.
+
+**Measuring and publishing are separate.** This module used to rewrite
+``docs/release/benchmark-0.9.0.json`` on every run, so a plain
+``pytest tests/benchmarks`` overwrote a release artifact with timings from
+whatever machine happened to run it — the versioned evidence of §2 of the
+release report changed on every invocation and ``git status`` was dirty by
+default. Now the report is written ONLY when publishing is asked for
+explicitly:
+
+    pytest tests/benchmarks --publish-benchmark
+
+or via the environment variable ``ARQUX_PUBLISH_BENCHMARK=1``, which is how
+a release run invokes it. Measuring always happens; publishing is opt-in.
 """
 
 from __future__ import annotations
 
 import json
+import os
 import platform
 import re
 import sys
 import time
 from pathlib import Path
+
+import pytest
 
 from arqux.memory import LocalStore, RecallService, build_index
 
@@ -29,10 +44,46 @@ def _declared_version() -> str:
         raise SystemExit("pyproject.toml: no [project].version found")
     return match.group(1)
 
+
+#: Env switch for publishing. Deliberately NOT prefixed ``ARQUX_``: the
+#: autouse ``_clean_env`` fixture in tests/conftest.py strips every variable
+#: matching ``ARQUX_*`` before each test, so an ARQUX_-prefixed switch is
+#: silently erased before the test can read it — which is exactly what
+#: happened here, and why the switch appeared to do nothing.
+PUBLISH_ENV = "BENCHMARK_PUBLISH"
+
+
+def _should_publish(config: pytest.Config) -> bool:
+    # The flag is registered in tests/benchmarks/conftest.py: a pytest_addoption
+    # in a test module never runs, because test modules are not plugins.
+    if config.getoption("publish_benchmark", default=False):
+        return True
+    return os.environ.get(PUBLISH_ENV) == "1"
+
+
 ROOT = Path(__file__).resolve().parents[2]
 REPORT = ROOT / "docs" / "release" / "benchmark-0.9.0.json"
 
 TOPICS = 50
+
+
+def _environment() -> dict[str, str]:
+    """Stable, separately-comparable fields.
+
+    Deliberately not ``platform.platform()``: it embeds ``uname -p``, which on
+    some hosts returns an empty or localized placeholder (this one returns
+    "desconocido"), and a release artifact should not publish a locale-
+    dependent string as if it were an environment fact. These fields compare
+    cleanly across machines.
+    """
+    return {
+        "python": sys.version.split()[0],
+        "system": platform.system(),
+        "release": platform.release(),
+        "machine": platform.machine(),
+        "libc": "".join(platform.libc_ver()),
+        "probe": "python -m pytest tests/benchmarks --publish-benchmark -q",
+    }
 
 
 def _synthetic_cortex(n_records: int) -> str:
@@ -55,7 +106,9 @@ def _synthetic_cortex(n_records: int) -> str:
     return "\n".join(lines) + "\n"
 
 
-def test_benchmark_publishes_reproducible_evidence(tmp_path: Path) -> None:
+def test_benchmark_publishes_reproducible_evidence(
+    tmp_path: Path, pytestconfig: pytest.Config
+) -> None:
     n_records = 200
     source = tmp_path / "synthetic.cortex"
     source.write_text(_synthetic_cortex(n_records), encoding="utf-8")
@@ -93,11 +146,8 @@ def test_benchmark_publishes_reproducible_evidence(tmp_path: Path) -> None:
             "synthetic": True,
             "contains_secrets": False,
         },
-        "environment": {
-            "python": sys.version.split()[0],
-            "platform": platform.platform(),
-        },
-        "commands": ["python -m pytest tests/benchmarks -q"],
+        "environment": _environment(),
+        "commands": ["python -m pytest tests/benchmarks --publish-benchmark -q"],
         "results": {
             "cold_start_ms": round(cold_start_ms, 3),
             "rebuild_ms": round(rebuild_ms, 3),
@@ -114,8 +164,13 @@ def test_benchmark_publishes_reproducible_evidence(tmp_path: Path) -> None:
             "Recall uses lexical + temporal ranking; no semantic model is involved (CA-06).",
         ],
     }
-    REPORT.parent.mkdir(parents=True, exist_ok=True)
-    REPORT.write_text(json.dumps(report, indent=2, ensure_ascii=False), encoding="utf-8")
+    # Measuring always happens; publishing only when explicitly requested.
+    # See the module docstring for why writing on every run was wrong.
+    if _should_publish(pytestconfig):
+        REPORT.parent.mkdir(parents=True, exist_ok=True)
+        REPORT.write_text(
+            json.dumps(report, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
+        )
 
     # Structural, deterministic assertions (no timing assertions).
     assert len(index.records) == n_records
