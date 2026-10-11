@@ -971,6 +971,10 @@ AUD:E_1528{date:"2026-10-11T19:24:42Z", event:"E-1528", task:"2026-10-11-el-camp
 
 AUD:E_1529{date:"2026-10-11T19:36:01Z", event:"E-1529", task:"2026-10-11-el-validador-de-la-columna-de-fallback-codec-cor", kind:"issue", agent:"alfred", result:"issue.create 2026-10-11-el-validador-de-la-columna-de-fallback-codec-cor.issue.md severity=high status=open by=alfred", evidence:"issue.create 2026-10-11-el-validador-de-la-columna-de-fallback-codec-cor.issue.md severity=high status=open by=alfred"}
 
+AUD:E_1530{date:"2026-10-11T19:48:48Z", event:"E-1530", task:"-", kind:"checkpoint", agent:"alfred", result:"cortex.checkpoint ok fcs=0.9.0rc3 publicada y verificada en CI (r obj=", evidence:"cortex.checkpoint ok fcs=0.9.0rc3 publicada y verificada en CI (r obj="}
+
+AUD:E_1531{date:"2026-10-11T19:51:14Z", event:"E-1531", task:"2026-10-11-friccion-de-uso-encontrada-al-hacer-dogfood-con-", kind:"issue", agent:"alfred", result:"issue.create 2026-10-11-friccion-de-uso-encontrada-al-hacer-dogfood-con-.issue.md severity=low status=open by=alfred", evidence:"issue.create 2026-10-11-friccion-de-uso-encontrada-al-hacer-dogfood-con-.issue.md severity=low status=open by=alfred"}
+
 
 $7: LESSONS
 
@@ -1371,7 +1375,7 @@ LNG:session_E_1500{type:"session", entry_count:94, summary:"artifact:5,blocker:1
 
 $8: ACTIVE_CONTEXT
 
-WRK:current{phase:"current", current:"sync.run: sync.run manual trigger — full sync to meta-brain", blocked:"no", survive:"work", updated:"2026-10-11T19:06:58Z", event:"sync.run", fcs:"0.9.0rc2 — cierre de release", obj:"", tasks:"", state:"active", last_turn:"2026-10-11T19:08:56Z"}
+WRK:current{phase:"current", current:"sync.run: sync.run manual trigger — full sync to meta-brain", blocked:"no", survive:"work", updated:"2026-10-11T19:06:58Z", event:"sync.run", fcs:"0.9.0rc3 publicada y verificada en CI (run 38168924989", obj:"", tasks:"", state:"active", last_turn:"2026-10-11T19:48:48Z"}
 
 
 $9: RISKS
