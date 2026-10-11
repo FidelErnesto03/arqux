@@ -2,9 +2,9 @@
 
 All notable changes to ArqUX are documented here.
 
-## [0.9.0] — candidata (CYCLE-13)
+## [0.9.0rc1] — pre-release (CYCLE-13)
 
-> Estado de madurez: **candidata**, preparada para aprobación final. **No estable.**
+> Estado de madurez: **pre-release / candidata**. **No estable.**
 > Informe completo: `docs/release/0.9.0-report.md`.
 
 ### Added — Memory Core (BLP-002)
