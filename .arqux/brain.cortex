@@ -937,6 +937,10 @@ AUD:E_1511{date:"2026-10-11T18:31:43Z", event:"E-1511", task:"2026-10-11-la-ci-e
 
 AUD:E_1512{date:"2026-10-11T18:35:47Z", event:"E-1512", task:"2026-10-11-el-gate-de-release-exige-delta-0-contra-la-linea", kind:"issue", agent:"alfred", result:"issue.update 2026-10-11-el-gate-de-release-exige-delta-0-contra-la-linea.issue.md status=open->fixed note=Corregido en 6778e64. La causa no era la carrera entre el hilo de submit y el po", evidence:"issue.update 2026-10-11-el-gate-de-release-exige-delta-0-contra-la-linea.issue.md status=open->fixed note=Corregido en 6778e64. La causa no era la carrera entre el hilo de submit y el po"}
 
+AUD:E_1513{date:"2026-10-11T18:50:44Z", event:"E-1513", task:"2026-10-11-la-evidencia-de-conformance-de-blp-001-citada-po", kind:"issue", agent:"alfred", result:"issue.create 2026-10-11-la-evidencia-de-conformance-de-blp-001-citada-po.issue.md severity=high status=open by=alfred", evidence:"issue.create 2026-10-11-la-evidencia-de-conformance-de-blp-001-citada-po.issue.md severity=high status=open by=alfred"}
+
+AUD:E_1514{date:"2026-10-11T18:50:57Z", event:"E-1514", task:"2026-10-11-la-evidencia-de-conformance-de-blp-001-citada-po", kind:"issue", agent:"alfred", result:"issue.update 2026-10-11-la-evidencia-de-conformance-de-blp-001-citada-po.issue.md status=open->fixed note=Corregido en b55844c y verificado en la CI real (run 38165363194, Python 3.10/3.", evidence:"issue.update 2026-10-11-la-evidencia-de-conformance-de-blp-001-citada-po.issue.md status=open->fixed note=Corregido en b55844c y verificado en la CI real (run 38165363194, Python 3.10/3."}
+
 
 $7: LESSONS
 
