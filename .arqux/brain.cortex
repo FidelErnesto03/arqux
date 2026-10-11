@@ -957,6 +957,10 @@ AUD:E_1521{date:"2026-10-11T19:08:56Z", event:"E-1521", task:"-", kind:"checkpoi
 
 AUD:E_1522{date:"2026-10-11T19:09:11Z", event:"E-1522", task:"2026-10-11-el-reporte-de-benchmark-se-regenera-en-cada-corr", kind:"issue", agent:"alfred", result:"issue.create 2026-10-11-el-reporte-de-benchmark-se-regenera-en-cada-corr.issue.md severity=medium status=open by=alfred", evidence:"issue.create 2026-10-11-el-reporte-de-benchmark-se-regenera-en-cada-corr.issue.md severity=medium status=open by=alfred"}
 
+AUD:E_1523{date:"2026-10-11T19:14:52Z", event:"E-1523", task:"2026-10-11-los-badges-del-readme-declaraban-valores-falsos-", kind:"issue", agent:"alfred", result:"issue.create 2026-10-11-los-badges-del-readme-declaraban-valores-falsos-.issue.md severity=high status=open by=alfred", evidence:"issue.create 2026-10-11-los-badges-del-readme-declaraban-valores-falsos-.issue.md severity=high status=open by=alfred"}
+
+AUD:E_1524{date:"2026-10-11T19:14:57Z", event:"E-1524", task:"2026-10-11-los-badges-del-readme-declaraban-valores-falsos-", kind:"issue", agent:"alfred", result:"issue.update 2026-10-11-los-badges-del-readme-declaraban-valores-falsos-.issue.md status=open->fixed note=Corregido en el mismo commit. Los tres badges puestos en su valor real (version ", evidence:"issue.update 2026-10-11-los-badges-del-readme-declaraban-valores-falsos-.issue.md status=open->fixed note=Corregido en el mismo commit. Los tres badges puestos en su valor real (version "}
+
 
 $7: LESSONS
 
