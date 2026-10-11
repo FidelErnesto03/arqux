@@ -42,6 +42,20 @@ jobs:
           uv run mypy src/arqux/ || true
         continue-on-error: true
 
+      - name: Fetch CODEC-CORTEX conformance columns
+        run: |
+          # Both conformance columns and the governed corpus come from
+          # codec-cortex at two pinned commit shas. Until 2026-10-11 the test
+          # suite read them from absolute paths under /home/vatrox/workspace,
+          # so 5 tests failed and 8 errored on every runner while
+          # docs/release/0.9.0-report.md §3 cited them as reproducible
+          # release evidence. The script also verifies the corpus manifest
+          # sha256, so a silent upstream change of the governed corpus cannot
+          # quietly invalidate the numbers in the report.
+          python scripts/fetch_conformance_columns.py \
+            --dest "$RUNNER_TEMP/codec-columns" \
+            --github-env "$GITHUB_ENV"
+
       - name: Test with pytest and coverage
         run: |
           uv run pytest --cov=arqux --cov-fail-under=65 -v

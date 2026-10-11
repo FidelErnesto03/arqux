@@ -27,14 +27,38 @@ from pathlib import Path
 import pytest
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-CODEC_ROOT = Path(os.environ.get("CODEC_ROOT", "/home/vatrox/workspace/CODEC-CORTEX"))
+
+_MISSING_COLUMNS = (
+    "Las columnas de conformance no estan disponibles. Se obtienen con:\n"
+    "    python scripts/fetch_conformance_columns.py --dest <dir>\n"
+    "que clona codec-cortex en dos refs pineados, verifica el sha256 del "
+    "manifest del corpus y exporta CODEC_ROOT, CODEC_062_PATH y "
+    "CODEC_RC1_PATH. Antes de 2026-10-11 estos defaults apuntaban a rutas "
+    "absolutas bajo /home/vatrox/workspace, por lo que la suite solo podia "
+    "correr en una maquina."
+)
+
+
+def _resolve(env_var: str, local_default: str) -> str:
+    value = os.environ.get(env_var)
+    if value:
+        return value
+    default = Path(local_default)
+    return str(default) if default.exists() else ""
+
+
+# Empty string when the column is absent: the tests below then fail with
+# _MISSING_COLUMNS, which names the fix. The previous behaviour was to fall
+# back to a hardcoded local path and fail with "canonical corpus not found
+# at /home/vatrox/..." — indistinguishable from a real conformance failure.
+CODEC_ROOT = Path(_resolve("CODEC_ROOT", "/home/vatrox/workspace/CODEC-CORTEX") or ".")
 CORPUS = CODEC_ROOT / "conformance" / "corpus"
 
-COLUMN_A_PATH = os.environ.get(
+COLUMN_A_PATH = _resolve(
     "CODEC_062_PATH",
     "/home/vatrox/workspace/UTILS/codec-cortex-legacy/codec-cortex-legacy/src",
 )
-COLUMN_B_PATH = os.environ.get("CODEC_RC1_PATH", str(CODEC_ROOT))
+COLUMN_B_PATH = _resolve("CODEC_RC1_PATH", str(CODEC_ROOT))
 
 COLUMNS = [
     pytest.param("A", COLUMN_A_PATH, id="fallback-0.6.2"),
@@ -78,7 +102,7 @@ def _run_column(column: str, codec_path: str, corpus: Path) -> dict:
     if not payloads:
         pytest.fail(
             f"column {column} produced no result — engine failed to import.\n"
-            f"PYTHONPATH={codec_path}\n{proc.stderr[-600:]}"
+            f"PYTHONPATH={codec_path}\n{proc.stderr[-600:]}\n\n{_MISSING_COLUMNS}"
         )
     return json.loads(payloads[-1])
 
@@ -90,7 +114,8 @@ def _run_column(column: str, codec_path: str, corpus: Path) -> dict:
 
 def test_corpus_is_present() -> None:
     """The governed corpus must exist, or the rest of this file proves nothing."""
-    assert CORPUS.is_dir(), f"canonical corpus not found at {CORPUS}"
+    if not CORPUS.is_dir():
+        pytest.fail(f"canonical corpus not found at {CORPUS}\n\n{_MISSING_COLUMNS}")
     manifest = CORPUS / "manifest.json"
     assert manifest.is_file(), "corpus manifest missing"
     declared = json.loads(manifest.read_text(encoding="utf-8"))
@@ -134,15 +159,22 @@ def test_both_columns_agree_on_the_same_fixture_set(column: str, codec_path: str
 
 
 def test_fallback_column_is_the_one_the_environment_actually_runs() -> None:
-    """Record the pin and which column the suite really exercises.
+    """Record the pin and that the suite really exercises the fallback engine.
 
     The pin used to declare ``codec-cortex==1.0.0rc1`` while the suite ran
     against 0.6.2 — and the pin was worse than useless, because the rc1
     candidate ships no validator and no HCORTEX read renderer, so
     installing it disabled the whole CORTEX layer (89 failures against a
     15-failure baseline). The pin now declares the 0.6.x line, the one that
-    provides the full surface. This test fails if that frontier moves again,
-    so the declaration and the exercised column cannot drift apart.
+    provides the full surface.
+
+    This test used to assert that the resolved import path contained the
+    literal string "codec-cortex-legacy", i.e. it asserted the NAME OF A LOCAL
+    DIRECTORY. That made the suite unrunnable anywhere else: with the columns
+    fetched by ``scripts/fetch_conformance_columns.py`` the engine is the
+    same code from a different directory and the assertion was false for the
+    wrong reason. It now asserts what actually matters — the engine layout is
+    the legacy one and the declared pin matches it.
     """
     declared = (REPO_ROOT / "pyproject.toml").read_text(encoding="utf-8")
 
@@ -154,18 +186,29 @@ def test_fallback_column_is_the_one_the_environment_actually_runs() -> None:
         "render_hcortex_read, so it silently disables cortex_verify"
     )
 
-    fallback_present = Path(COLUMN_A_PATH).is_dir()
-    assert fallback_present, f"fallback column not found at {COLUMN_A_PATH}"
+    if not Path(COLUMN_A_PATH).is_dir():
+        pytest.fail(f"fallback column not found at {COLUMN_A_PATH}\n\n{_MISSING_COLUMNS}")
 
     # The suite imports column A, so the candidate column is only covered
     # by the isolated subprocesses above — never by the ordinary import.
+    # Assert the LAYOUT (legacy `cortex.*`) rather than the location: the
+    # layout is the contract, the directory is an accident of this machine.
     result = subprocess.run(
-        [sys.executable, "-c", "import cortex.core.parser as p; print(p.__file__)"],
+        [
+            sys.executable,
+            "-c",
+            "import cortex.core.parser as p, cortex.core.validator as v;"
+            "print(p.__file__)",
+        ],
         capture_output=True,
         text=True,
         env={**os.environ, "PYTHONPATH": COLUMN_A_PATH},
     )
-    assert result.returncode == 0, result.stderr[-300:]
-    assert "codec-cortex-legacy" in result.stdout, (
-        f"the default import resolved elsewhere: {result.stdout.strip()}"
+    assert result.returncode == 0, (
+        f"the fallback column does not expose the legacy layout: "
+        f"{result.stderr[-300:]}\n\n{_MISSING_COLUMNS}"
+    )
+    assert "cortex/core/parser" in result.stdout.replace("\\", "/"), (
+        f"the fallback column resolved to an unexpected layout: "
+        f"{result.stdout.strip()}"
     )

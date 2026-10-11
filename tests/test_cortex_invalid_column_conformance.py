@@ -35,18 +35,36 @@ from pathlib import Path
 import pytest
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-CODEC_ROOT = Path(os.environ.get("CODEC_ROOT", "/home/vatrox/workspace/CODEC-CORTEX"))
+
+_MISSING_COLUMNS = (
+    "Las columnas de conformance no estan disponibles. Se obtienen con:\n"
+    "    python scripts/fetch_conformance_columns.py --dest <dir>\n"
+    "que clona codec-cortex en dos refs pineados, verifica el sha256 del "
+    "manifest del corpus y exporta CODEC_ROOT, CODEC_062_PATH y "
+    "CODEC_RC1_PATH. Antes de 2026-10-11 estos defaults apuntaban a rutas "
+    "absolutas bajo /home/vatrox/workspace, por lo que la suite solo podia "
+    "correr en una maquina."
+)
+
+
+def _resolve(env_var: str, local_default: str) -> Path:
+    value = os.environ.get(env_var)
+    if value:
+        return Path(value)
+    default = Path(local_default)
+    return default if default.exists() else Path(f"/nonexistent/{env_var}")
+
+
+CODEC_ROOT = _resolve("CODEC_ROOT", "/home/vatrox/workspace/CODEC-CORTEX")
 CORPUS = CODEC_ROOT / "conformance" / "corpus"
 MANIFEST = CORPUS / "manifest.json"
 TOOLS_PATH = CODEC_ROOT / "tools"
 
-COLUMN_A_PATH = Path(
-    os.environ.get(
-        "CODEC_062_PATH",
-        "/home/vatrox/workspace/UTILS/codec-cortex-legacy/codec-cortex-legacy/src",
-    )
+COLUMN_A_PATH = _resolve(
+    "CODEC_062_PATH",
+    "/home/vatrox/workspace/UTILS/codec-cortex-legacy/codec-cortex-legacy/src",
 )
-COLUMN_B_PATH = Path(os.environ.get("CODEC_RC1_PATH", str(CODEC_ROOT)))
+COLUMN_B_PATH = _resolve("CODEC_RC1_PATH", str(CODEC_ROOT))
 
 REPORT_PATH = Path(
     os.environ.get(
@@ -143,7 +161,7 @@ def _run_engine_column(column: str, codec_path: Path) -> list[dict]:
     if not lines:
         pytest.fail(
             f"column {column} produced no result — engine failed to import.\n"
-            f"PYTHONPATH={codec_path}\n{proc.stderr[-600:]}"
+            f"PYTHONPATH={codec_path}\n{proc.stderr[-600:]}\n\n{_MISSING_COLUMNS}"
         )
     return [json.loads(line) for line in lines]
 
@@ -182,6 +200,10 @@ def _reference_validator_self_conformance() -> dict:
 
 @pytest.fixture(scope="module")
 def manifest_cases() -> list[dict]:
+    if not MANIFEST.is_file():
+        pytest.fail(
+            f"corpus manifest not found at {MANIFEST}\n\n{_MISSING_COLUMNS}"
+        )
     manifest = json.loads(MANIFEST.read_text(encoding="utf-8"))
     return manifest["invalid"]
 
