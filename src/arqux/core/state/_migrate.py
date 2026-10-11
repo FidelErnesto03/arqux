@@ -17,7 +17,7 @@ from ...cortex.writer import write_cortex_from_json
 # (as None when CODEC-CORTEX is absent), so a top-level 'from . import'
 # is safe and no longer circular.
 from . import _cc_parser, _cc_validator
-from ._crud import requires_codec_cortex
+from ._crud import requires_capability, requires_codec_cortex
 
 
 def migrate_cortex_file(path: Path, *, dry_run: bool = False) -> bool:
@@ -41,6 +41,7 @@ def migrate_cortex_file(path: Path, *, dry_run: bool = False) -> bool:
         return False
 
     requires_codec_cortex()
+    requires_capability("validate")
 
     # 1. Check if migration is needed (has blocking errors).
     text = path.read_text(encoding="utf-8")

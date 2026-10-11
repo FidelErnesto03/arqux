@@ -134,16 +134,25 @@ def test_both_columns_agree_on_the_same_fixture_set(column: str, codec_path: str
 
 
 def test_fallback_column_is_the_one_the_environment_actually_runs() -> None:
-    """Document the pin-versus-reality gap instead of asserting it away.
+    """Record the pin and which column the suite really exercises.
 
-    ``pyproject.toml`` declares ``codec-cortex==1.0.0rc1`` while the
-    installed engine is 0.6.2. This test records which column the suite
-    really exercises so the discrepancy cannot be forgotten.
+    The pin used to declare ``codec-cortex==1.0.0rc1`` while the suite ran
+    against 0.6.2 — and the pin was worse than useless, because the rc1
+    candidate ships no validator and no HCORTEX read renderer, so
+    installing it disabled the whole CORTEX layer (89 failures against a
+    15-failure baseline). The pin now declares the 0.6.x line, the one that
+    provides the full surface. This test fails if that frontier moves again,
+    so the declaration and the exercised column cannot drift apart.
     """
-    pinned = "codec-cortex==1.0.0rc1" in (REPO_ROOT / "pyproject.toml").read_text(
-        encoding="utf-8"
+    declared = (REPO_ROOT / "pyproject.toml").read_text(encoding="utf-8")
+
+    assert "codec-cortex>=0.6.2,<0.7" in declared, (
+        "the declared pin changed; update §4 and re-check the frontier"
     )
-    assert pinned, "the declared pin changed; update §4 and re-check the frontier"
+    assert "codec-cortex==1.0.0rc1" not in declared, (
+        "the rc1 candidate was re-pinned: it has no validate and no "
+        "render_hcortex_read, so it silently disables cortex_verify"
+    )
 
     fallback_present = Path(COLUMN_A_PATH).is_dir()
     assert fallback_present, f"fallback column not found at {COLUMN_A_PATH}"
