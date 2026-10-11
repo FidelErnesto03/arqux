@@ -56,6 +56,79 @@ def requires_codec_cortex() -> None:
         )
 
 
+#: Attribute signature of a CODEC-CORTEX glossary declaration. An entry in
+#: $0 carrying all of these is structural metadata — the declaration of a
+#: sigil — not working memory.
+_DECLARATION_FIELDS = frozenset({"type", "weight", "focus", "desc"})
+
+#: Diagnostics that only fire because the fallback codec (0.6.2) does not
+#: recognise ArqUX's spelling of a glossary declaration.
+#:
+#: - E033: "$0 must not contain operational entries" — raised against the
+#:   declarations themselves.
+#: - E032: "critical sigil incomplete" — also raised against the declaration
+#:   ``FCS:focus{type,weight,focus,desc}``, because the validator reads the
+#:   declaration's own fields as if they were the entry's. The real entries
+#:   (``FCS:current{what,priority,status,survive}``) are complete; only the
+#:   declaration trips the rule.
+_DIALECT_FALSE_POSITIVES = frozenset({
+    "E033_ZERO_SECTION_MEMORY_ENTRY",
+    "E032_CRITICAL_SIGIL_INCOMPLETE",
+})
+
+
+def _is_glossary_declaration(entry: object) -> bool:
+    """True when *entry* declares a sigil rather than storing working state.
+
+    The fallback validator flags every non-``GSIG/GTYP/GMIC/GCON`` entry in
+    $0 as operational memory (E033). ArqUX declares its glossary as
+    ``SIGIL:name{type,weight,focus,desc}``, which is the same concept spelled
+    differently — and the spelling is the one CODEC-CORTEX's own writer
+    produces. Treating it as working memory would make every brain in the
+    workspace unverifiable.
+
+    A real operational entry (an FCS or OBJ actually parked in $0) has no
+    such declaration shape, so it is still reported. The distinction is
+    structural, not a blanket suppression.
+    """
+    value = getattr(entry, "value", None)
+    if not isinstance(value, dict):
+        return False
+    return _DECLARATION_FIELDS <= set(value)
+
+
+def filter_dialect_false_positives(doc: object, diagnostics: list[dict]) -> list[dict]:
+    """Drop diagnostics the fallback codec raises against ArqUX's own dialect.
+
+    ArqUX does not modify codec-cortex: the fix travels with ArqUX, the same
+    way the SchemaResolver shim above neutralises the ``name`` attribute
+    mismatch. Only E033 is touched, and only for entries that are structurally
+    glossary declarations.
+    """
+    if not diagnostics:
+        return diagnostics
+
+    zero = next((s for s in getattr(doc, "sections", []) if getattr(s, "id", "") == "$0"), None)
+    if zero is None:
+        return diagnostics
+
+    declarations = {
+        (getattr(e, "sigil", ""), getattr(e, "name", ""))
+        for e in getattr(zero, "entries", [])
+        if _is_glossary_declaration(e)
+    }
+    if not declarations:
+        return diagnostics
+
+    return [
+        d for d in diagnostics
+        if not (
+            d.get("code") in _DIALECT_FALSE_POSITIVES
+            and (d.get("sigil"), d.get("entry")) in declarations
+        )
+    ]
+
+
 def requires_capability(capability: str) -> None:
     """Raise RuntimeError naming the specific missing capability.
 
@@ -156,6 +229,7 @@ def cortex_write(
         try:
             ast_doc = _cc_parser.parse_cortex(content, path=path)
             diags = _cc_validator.validate(ast_doc)
+            diags = filter_dialect_false_positives(ast_doc, diags)
             errors = [d for d in diags if d.get("severity") == "error"]
             if errors and not force:
                 return {
@@ -190,6 +264,7 @@ def cortex_verify(path: str | Path) -> dict:
     text = path.read_text(encoding="utf-8")
     doc = _cc_parser.parse_cortex(text, path=str(path))
     diags = _cc_validator.validate(doc)
+    diags = filter_dialect_false_positives(doc, diags)
     errors = [d for d in diags if d.get("severity") == "error"]
     return {
         "path": str(path),
@@ -256,6 +331,7 @@ def _read_and_mutate(
             cortex_text = write_cortex_from_json(doc)
             ast_doc = _cc_parser.parse_cortex(cortex_text, path=str(path))
             diags = _cc_validator.validate(ast_doc)
+            diags = filter_dialect_false_positives(ast_doc, diags)
             errors = [d for d in diags if d.get("severity") == "error"]
             if errors and not force:
                 return {

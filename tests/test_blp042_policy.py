@@ -9,6 +9,10 @@ import pytest
 from arqux.handlers import cortex as cortex_handlers
 from arqux.permissions import PermissionContext
 
+#: Attributes of a CODEC-CORTEX glossary declaration. An entry carrying all of
+#: them is a declaration of the sigil, not a recorded instance of it.
+_DECLARATION_FIELDS = frozenset({"type", "weight", "focus", "desc"})
+
 # --- Fixtures ---------------------------------------------------------------
 
 @pytest.fixture
@@ -103,15 +107,24 @@ class TestRecordLessonPrevention:
         from cortex.core.parser import parse_cortex
         doc = parse_cortex(identity_file.read_text(encoding="utf-8"), path=str(identity_file))
 
-        # Find the LNG entry and verify all required fields
+        # Find the LNG entry and verify all required fields.
+        #
+        # Only OPERATIONAL lessons are checked. The identity file also carries
+        # the glossary declaration `LNG:lesson{type,weight,focus,desc}` in $0,
+        # which is metadata, not a lesson — asserting that it carries a
+        # `prevention` field is meaningless, and it made this test fail for a
+        # reason unrelated to what it claims to verify.
         lng_found = False
         for sec in doc.sections:
             for entry in sec.entries:
-                if entry.sigil == "LNG":
-                    lng_found = True
-                    assert isinstance(entry.value, dict), "LNG value should be a dict"
-                    assert "prevention" in entry.value, "LNG must have prevention field"
-                    assert "type" in entry.value, "LNG must have type field"
-                    assert "cause" in entry.value, "LNG must have cause field"
-                    assert "lesson" in entry.value, "LNG must have lesson field"
-        assert lng_found, "No LNG entry found in identity file"
+                if entry.sigil != "LNG":
+                    continue
+                if sec.id == "$0" or _DECLARATION_FIELDS <= set(entry.value or {}):
+                    continue  # glossary declaration
+                lng_found = True
+                assert isinstance(entry.value, dict), "LNG value should be a dict"
+                assert "prevention" in entry.value, "LNG must have prevention field"
+                assert "type" in entry.value, "LNG must have type field"
+                assert "cause" in entry.value, "LNG must have cause field"
+                assert "lesson" in entry.value, "LNG must have lesson field"
+        assert lng_found, "No operational LNG entry found in identity file"
