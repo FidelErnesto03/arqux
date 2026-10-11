@@ -46,7 +46,17 @@ jobs:
         run: |
           uv run pytest --cov=arqux --cov-fail-under=65 -v
 
+      # The four gates below are governance validations, not test results.
+      # They must run even when pytest exits non-zero: a failing step skips
+      # every later step in the job, so without `if: always()` a known
+      # regression in the suite silently disables arqux init, the handler
+      # count, the AGENTS.md hash and the P0-B permissions gate. Those four
+      # had never executed on any push because a collection error aborted
+      # pytest before them (issue 2026-10-11-la-ci-ejecuta-cero-pruebas).
+      # All four are verified green locally against the declared pin.
+
       - name: Validate arqux init
+        if: always()
         run: |
           uv run arqux init --path /tmp/test-ws
           test -f /tmp/test-ws/AGENTS.md
@@ -55,18 +65,21 @@ jobs:
           grep -q "DOM:arqux" /tmp/test-ws/.arqux/meta-brain.cortex
 
       - name: Validate handlers count
+        if: always()
         run: |
           COUNT=$(uv run arqux handlers | wc -l)
           test "$COUNT" -ge 73
           echo "Handlers: $COUNT"
 
       - name: Validate AGENTS.md hash
+        if: always()
         run: |
           TEMPLATE_HASH=$(sha256sum src/arqux/templates/AGENTS.md | cut -d' ' -f1)
           INSTALLED_HASH=$(sha256sum /tmp/test-ws/AGENTS.md | cut -d' ' -f1)
           test "$TEMPLATE_HASH" = "$INSTALLED_HASH"
 
       - name: Validate permissions (P0-B regression)
+        if: always()
         run: |
           uv run python -c "
           import os
