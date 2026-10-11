@@ -36,13 +36,37 @@ def _session():
     }
 
 
+def _wait_until_connectable(path, timeout_s: float = 5.0) -> None:
+    """Block until the bridge accepts connections, or fail loudly.
+
+    Existence of the socket file is NOT readiness. `UnixStreamServer`
+    creates the file in `server_bind()` and only starts listening in
+    `server_activate()`, so a client that sees the file can still be
+    refused with ECONNREFUSED. Spinning on `path.exists()` therefore made
+    this test fail intermittently under CPU load — it reproduced roughly
+    1 run in 7 with background load — which is exactly the kind of
+    non-determinism a release gate must not carry.
+    """
+    deadline = time.monotonic() + timeout_s
+    last: Exception | None = None
+    while time.monotonic() < deadline:
+        client = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+        try:
+            client.connect(str(path))
+            return
+        except OSError as exc:
+            last = exc
+            time.sleep(0.01)
+        finally:
+            client.close()
+    raise AssertionError(f"bridge socket never became connectable: {path} ({last})")
+
+
 def test_host_bridge_brokers_current_session_response(tmp_path):
     path = tmp_path / "host.sock"
     thread = threading.Thread(target=serve_host_bridge, args=(path,), daemon=True)
     thread.start()
-    deadline = time.monotonic() + 2
-    while not path.exists() and time.monotonic() < deadline:
-        time.sleep(0.01)
+    _wait_until_connectable(path)
 
     try:
         registered = _request(path, {"op": "register_session", "session": _session()})
@@ -77,8 +101,14 @@ def test_host_bridge_brokers_current_session_response(tmp_path):
         assert result == ["respuesta del agente activo"]
         assert adapter.status()["active_agent_id"] == "alfred"
     finally:
-        if path.exists():
-            _request(path, {"op": "shutdown"})
+        # Teardown must not mask a real failure with a teardown error: the
+        # server removes its own socket on exit, so `path.exists()` can be
+        # true for a socket nobody is listening on any more.
+        try:
+            if path.exists():
+                _request(path, {"op": "shutdown"})
+        except OSError:
+            pass
         thread.join(timeout=2)
 
 
