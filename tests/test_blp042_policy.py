@@ -119,7 +119,7 @@ class TestRecordLessonPrevention:
             for entry in sec.entries:
                 if entry.sigil != "LNG":
                     continue
-                if sec.id == "$0" or _DECLARATION_FIELDS <= set(entry.value or {}):
+                if sec.id == "$0" or set(entry.value or {}) >= _DECLARATION_FIELDS:
                     continue  # glossary declaration
                 lng_found = True
                 assert isinstance(entry.value, dict), "LNG value should be a dict"

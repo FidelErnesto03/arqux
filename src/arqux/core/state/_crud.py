@@ -94,7 +94,7 @@ def _is_glossary_declaration(entry: object) -> bool:
     value = getattr(entry, "value", None)
     if not isinstance(value, dict):
         return False
-    return _DECLARATION_FIELDS <= set(value)
+    return set(value) >= _DECLARATION_FIELDS
 
 
 def filter_dialect_false_positives(doc: object, diagnostics: list[dict]) -> list[dict]:
