@@ -81,9 +81,17 @@ jobs:
       - name: Validate handlers count
         if: always()
         run: |
+          # Derived from the declared surface instead of a hand-kept constant.
+          # The threshold used to sit at 73 while the real surface is 97, so
+          # up to 24 handlers could disappear without CI noticing — and this
+          # step never ran at all until 2026-10-11, so nothing caught it.
           COUNT=$(uv run arqux handlers | wc -l)
-          test "$COUNT" -ge 73
-          echo "Handlers: $COUNT"
+          EXPECTED=$(python scripts/check_surfaces.py --print-expected-handlers)
+          test "$COUNT" -eq "$EXPECTED" || {
+            echo "handler surface drift: CI sees $COUNT, declared $EXPECTED"
+            exit 1
+          }
+          echo "Handlers: $COUNT (matches declared surface)"
 
       - name: Validate AGENTS.md hash
         if: always()
