@@ -36,7 +36,7 @@ All notable changes to ArqUX are documented here.
   Artefactos: `tests/test_cortex_{two_column,invalid_column}_conformance.py`,
   `docs/conformance/invalid-column-report.json`.
 
-### Added — Release 0.9.0 (BLP-004)
+### Added — Release 0.9.0rc1 (BLP-004)
 
 - Benchmark reproducible con corpus **sintético** (L-SEC-02), reporte de release
   con lenguaje de madurez y escaneo de secretos **bloqueante** antes del gate.
