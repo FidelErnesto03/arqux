@@ -97,36 +97,94 @@ def _is_glossary_declaration(entry: object) -> bool:
     return set(value) >= _DECLARATION_FIELDS
 
 
+#: `LNG:` values that ArqUX uses to record a session summary rather than a
+#: behavioral lesson. codec-cortex models LNG as the lesson triple
+#: (cause/lesson/prevention) and has no notion of a session record filed under
+#: it, so it demands a lesson triple from entries that actually carry a
+#: session_id, a summary and a date. brain.cortex has three of these
+#: (``session_E_1113/1405/1500``).
+_SESSION_RECORD_TYPES = frozenset({"session"})
+
+
+def _drop_for(
+    doc: object,
+    diagnostics: list[dict],
+    declarations: set[tuple[str, str]] | None = None,
+) -> list[dict]:
+    """Remove dialect-mismatch diagnostics from *diagnostics*.
+
+    Two structurally-scoped exemption sets are applied:
+
+    - glossary declarations found in ``$0`` (the caller resolves those, since
+      it needs to know they exist before scanning every section);
+    - ``LNG:`` entries typed as session records, wherever they live.
+    """
+    if not diagnostics:
+        return diagnostics
+    drop: set[tuple[str, str]] = set(declarations or ())
+    drop |= {
+        (getattr(e, "sigil", ""), getattr(e, "name", ""))
+        for s in getattr(doc, "sections", [])
+        for e in getattr(s, "entries", [])
+        if _is_session_record(e)
+    }
+    if not drop:
+        return diagnostics
+    return [
+        d for d in diagnostics
+        if not (
+            d.get("code") in _DIALECT_FALSE_POSITIVES
+            and (d.get("sigil"), d.get("entry")) in drop
+        )
+    ]
+
+
+def _is_session_record(entry: object) -> bool:
+    """True when a ``LNG:`` entry is a session summary, not a lesson.
+
+    Scoped by the entry's own ``type`` attribute, so a real lesson that merely
+    mentions a session is still validated. Suppressing those would hide the
+    genuinely incomplete lesson that E032 exists to catch.
+    """
+    value = getattr(entry, "value", None)
+    if not isinstance(value, dict):
+        return False
+    return str(value.get("type", "")).casefold() in _SESSION_RECORD_TYPES
+
+
 def filter_dialect_false_positives(doc: object, diagnostics: list[dict]) -> list[dict]:
     """Drop diagnostics the fallback codec raises against ArqUX's own dialect.
 
     ArqUX does not modify codec-cortex: the fix travels with ArqUX, the same
     way the SchemaResolver shim above neutralises the ``name`` attribute
-    mismatch. Only E033 is touched, and only for entries that are structurally
-    glossary declarations.
+    mismatch. Two exemption sets are applied: glossary declarations found in
+    $0, and LNG entries typed as session records.
     """
     if not diagnostics:
         return diagnostics
 
-    zero = next((s for s in getattr(doc, "sections", []) if getattr(s, "id", "") == "$0"), None)
-    if zero is None:
-        return diagnostics
+    # BLP-046: the parser can emit more than one section with id "$0" (the
+    # header block plus the generated sigil-declaration block). Scanning only
+    # the first one silently disabled the shim whenever the declarations
+    # landed in the second.
+    zero_sections = [
+        s for s in getattr(doc, "sections", []) if getattr(s, "id", "") == "$0"
+    ]
+    if not zero_sections:
+        # No $0 means no glossary declarations, but session records may still
+        # live in $5/$6 and must be exempted.
+        return _drop_for(doc, diagnostics)
 
     declarations = {
         (getattr(e, "sigil", ""), getattr(e, "name", ""))
+        for zero in zero_sections
         for e in getattr(zero, "entries", [])
         if _is_glossary_declaration(e)
     }
     if not declarations:
-        return diagnostics
+        return _drop_for(doc, diagnostics)
 
-    return [
-        d for d in diagnostics
-        if not (
-            d.get("code") in _DIALECT_FALSE_POSITIVES
-            and (d.get("sigil"), d.get("entry")) in declarations
-        )
-    ]
+    return _drop_for(doc, diagnostics, declarations)
 
 
 def requires_capability(capability: str) -> None:
@@ -345,7 +403,15 @@ def _read_and_mutate(
     if dry_run:
         return {"dry_run": True, "path": str(path), "diagnostics": []}
     try:
-        result = atomic_write_json(doc, str(path))
+        # BUG-1: ``atomic_write_json`` defaults to strict=True, so every
+        # cortex.entry.* write went through the CODEC-CORTEX 1.0.0-rc.1
+        # serializer and injected a ``$0:format{...}`` line plus a sigil
+        # schema dictionary into ``$0`` of files that never asked for it.
+        # The pinned validator (codec-cortex 0.6.2) parses bare ``$0`` and
+        # tolerates undeclared sigils, so the entry CRUD path stays on the
+        # 0.6.2 dialect. The rc.1 upgrade remains explicit, on the migration
+        # handlers that ask for it (cortex.migrate, state._migrate).
+        result = atomic_write_json(doc, str(path), strict=False)
     except Exception as e:
         return {"error": f"Atomic write failed: {e}", "non_bypassable": True}
 

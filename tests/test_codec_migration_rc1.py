@@ -19,10 +19,18 @@ def _legacy_document() -> str:
 
 
 def test_writer_emits_strict_declarations_for_current_codec() -> None:
-    text = write_cortex_from_json(cortex_to_dict(_legacy_document()))
+    # strict=True is the contract this test names: rc.1 dialect is emitted
+    # only on the explicit strict path (see BUG-1 in test_empty_document).
+    text = write_cortex_from_json(cortex_to_dict(_legacy_document()), strict=True)
     assert "GSIG:" not in text
     assert "LNG:lesson{" in text
     assert '$0:format{cortex:"0.1", encoding:"UTF-8"}' in text
+
+
+def test_default_writer_does_not_emit_rc1_dialect() -> None:
+    """BUG-1 regression guard: default path must stay in the 0.6.2 dialect."""
+    text = write_cortex_from_json(cortex_to_dict(_legacy_document()))
+    assert '$0:format' not in text
 
 
 def test_codec_boundary_verifies_generated_text() -> None:

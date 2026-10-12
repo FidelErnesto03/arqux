@@ -239,7 +239,7 @@ def test_execute_real_marks_table_acs(arqux_env) -> None:
     bp_path = _install_legacy_bp(arqux_env)
     ready_blueprint("BLP-009", path=str(arqux_env.proj_root), ctx=arqux_env.gov_ctx)
     claim_blueprint("BLP-009", path=str(arqux_env.proj_root), ctx=arqux_env.exec_ctx)
-    r = execute_blueprint("BLP-009", dry_run=False, path=str(arqux_env.proj_root), ctx=arqux_env.exec_ctx)
+    r = execute_blueprint("BLP-009", dry_run=False, path=str(arqux_env.proj_root), ctx=arqux_env.gov_ctx)
     assert r.profile == OUT_WORK
     assert r.fields["outcome"] == "complete"
     fm = _read_fm(bp_path)

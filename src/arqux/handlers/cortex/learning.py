@@ -2,19 +2,100 @@
 
 from __future__ import annotations
 
+import hashlib
 import os
 import re
 from pathlib import Path
 
 from ...constants import ARQUX_DIR
+from ...cortex.reader import cortex_to_dict
 from ...cortex_out import CortexOUT
 from ...permissions import PermissionContext, enforce_ctx
 from ...state import crud_add, find_project_root
 
+#: Titles that identify the behavioral-lessons section of an identity file.
+_LESSONS_TITLE = re.compile(r"^(BEHAVIORAL\s+)?LESSONS$", re.IGNORECASE)
+
+
+def _lessons_section_for(path: Path) -> str | None:
+    """Return the id of the behavioral-lessons section, or ``None``.
+
+    Identity files do not share a section layout. In this workspace alfred and
+    jarvis keep lessons in ``$6`` while governor keeps them in ``$5``, and
+    heimdall/seshat use ``$6`` for EXPERTISE — a hardcoded id would file
+    lessons under DESCRIPTION or EXPERTISE.
+    """
+    doc = cortex_to_dict(path.read_text(encoding="utf-8"))
+    for section in doc.get("sections", []):
+        if _LESSONS_TITLE.match(str(section.get("title") or "").strip()):
+            return str(section.get("id", ""))
+    return None
+
+
+def _ensure_lessons_section(path: Path) -> str:
+    """Return the lessons section id, creating a *titled* one when absent.
+
+    ``crud_add(create_section=True)`` writes a bare ``$8`` with no title, which
+    this resolver would not recognise on the next call — so every lesson would
+    allocate a fresh section. The header is therefore created here, with the
+    title, and only then is the entry added into it.
+    """
+    found = _lessons_section_for(path)
+    if found is not None:
+        return found
+
+    doc = cortex_to_dict(path.read_text(encoding="utf-8"))
+    used = [
+        int(m.group(1))
+        for m in (
+            re.match(r"^\$(\d+)$", str(s.get("id", ""))) for s in doc.get("sections", [])
+        )
+        if m
+    ]
+    new_id = f"${max(used or [0]) + 1}"
+
+    text = path.read_text(encoding="utf-8")
+    if not text.endswith("\n"):
+        text += "\n"
+    text += f"\n{new_id}: BEHAVIORAL LESSONS\n\n"
+    path.write_text(text, encoding="utf-8")
+    return new_id
+
+
+def _derive_lesson_name(
+    lesson: str,
+    taken: set[str],
+    explicit: str | None = None,
+) -> str:
+    """Derive a unique, stable LNG entry name for *lesson*.
+
+    BUG-1 follow-up: the name used to be the first word of the lesson prose.
+    Spanish/English articles dominated, so ``alfred.cortex`` accumulated
+    ``LNG:al`` x10, ``LNG:en`` x9, ``LNG:el`` x9 and 51 E008 duplicate
+    entries in total. Entry identity must not come from prose.
+
+    Resolution order:
+      1. An explicit *name* supplied by the caller.
+      2. The first word, when it is still free.
+      3. The first word plus a digest of the lesson content. The digest makes
+         the result deterministic, so re-recording the same lesson yields the
+         same name instead of appending yet another numeric suffix.
+    """
+    if explicit:
+        candidate = re.sub(r"[^a-z0-9_]", "_", explicit.casefold())[:30].strip("_")
+        if candidate:
+            return candidate
+    first_word = lesson.lstrip(" -\"").lower().split()[0] if lesson.split() else "lesson"
+    candidate = re.sub(r"[^a-z0-9]", "_", first_word)[:30] or "lesson"
+    if candidate not in taken:
+        return candidate
+    digest = hashlib.sha256(lesson.encode("utf-8")).hexdigest()[:6]
+    return f"{candidate}_{digest}"
+
 
 def record_lesson_handler(
     lesson: str, kind: str | None = None, cause: str | None = None,
-    prevention: str | None = None,
+    prevention: str | None = None, name: str | None = None,
     agent_id: str | None = None,
     path: str | None = None, ctx: PermissionContext | None = None,
 ) -> CortexOUT:
@@ -34,6 +115,7 @@ def record_lesson_handler(
         kind=kind or "behavioral",
         cause=cause or "",
         prevention=prevention or "",
+        name=name,
         agent_id=authenticated.agent_id,
         path=path or "",
         ctx=ctx,
@@ -45,6 +127,7 @@ def record_lesson_handler_legacy(
     kind: str = "behavioral",
     cause: str = "",
     prevention: str = "",
+    name: str | None = None,
     agent_id: str = "",
     path: str = "",
     ctx: PermissionContext | None = None,
@@ -83,15 +166,20 @@ def record_lesson_handler_legacy(
             )
 
     try:
-        first_word = lesson.lstrip(" -\"").lower().split()[0] if lesson.split() else "lesson"
-        name = re.sub(r"[^a-z0-9]", "_", first_word)[:30] or "lesson"
-        if name in ("_", "*"):  # T-022: '_'/'*' are reserved selector names
-            name = "lesson"
+        content_text = identity_file.read_text(encoding="utf-8")
+        taken = {m.group(1) for m in re.finditer(r"^LNG:([A-Za-z0-9_]+)", content_text, re.M)}
+        entry_name = _derive_lesson_name(lesson, taken, name)
+        if entry_name in ("_", "*"):  # T-022: '_'/'*' are reserved selector names
+            entry_name = "lesson"
         value = {"type": kind, "cause": cause, "lesson": lesson, "prevention": prevention}
 
         result = crud_add(
             identity_file,
-            "$5", "LNG", name, value,
+            # Resolved by section title: identities disagree on the number
+            # ($5 for governor, $6 for alfred/jarvis) and some reuse $6 for
+            # EXPERTISE, so a fixed id files lessons under the wrong section.
+            _ensure_lessons_section(identity_file),
+            "LNG", entry_name, value,
             create_section=True,
             force=True,
         )
