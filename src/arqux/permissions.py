@@ -42,6 +42,7 @@ Environment variables:
 from __future__ import annotations
 
 import enum
+import functools
 import logging
 import os
 import warnings
@@ -59,7 +60,7 @@ from .constants import (
     ROLE_EXECUTOR,
     ROLE_GOVERNOR,
 )
-from .identity import IdentityManager
+from .identity import IdentityManager, IdentityNotFoundError
 
 # --- Identity name extraction helper (BLP-008 GOV-001 P2.2) ---
 
@@ -340,6 +341,67 @@ class PermissionContext:
             return p.parent
         return p
 
+    @staticmethod
+    @functools.lru_cache(maxsize=64)
+    def _canonical_agent_id(
+        agent_id: str,
+        project_root: str | Path | None = None,
+    ) -> str | None:
+        """Resolve *agent_id* to its canonical ArqUX identity name.
+
+        Mirrors ``identity.get``'s three-tier lookup (BLP-008 GOV-001 P2.2):
+        project identities, then workspace identities, then the identities
+        packaged with ArqUX.
+
+        The workspace tier is not optional here. Identities live at workspace
+        level by design (AGENTS.md ``AXM:identity_loading``), so a lookup
+        scoped only to the active project finds nothing for every agent whose
+        identity is not duplicated inside the project. That left ``agent_id``
+        silently degraded to the raw ``ARQUX_AGENT_ID`` value and logged a
+        resolution warning on *every* tool call.
+
+        Results are memoized per process: identity files are large (100–200 KB)
+        and ``from_env`` runs on every tool call, so re-reading and re-parsing
+        one per call is pure overhead. The cache is keyed by
+        ``(agent_id, project_root)``.
+        """
+        from .identity import IDENTITIES_DIR
+        from .state import find_project_root, find_workspace_root
+
+        canonical = agent_id.casefold()
+
+        candidates: list[Path] = []
+        effective_root = project_root if project_root is not None else find_project_root()
+        if effective_root is not None:
+            candidates.append(
+                PermissionContext._normalize_project_root(effective_root) / ARQUX_DIR / "identities"
+            )
+
+        workspace_arqux = find_workspace_root()
+        if workspace_arqux is not None:
+            candidates.append(workspace_arqux / "identities")
+
+        candidates.append(IDENTITIES_DIR)
+
+        for identities_dir in candidates:
+            try:
+                artifact = IdentityManager(identities_dir=identities_dir).resolve(canonical)
+            except IdentityNotFoundError:
+                continue
+            except Exception as exc:  # noqa: BLE001
+                # A tier that exists but cannot be read is NOT "not found".
+                # Swallowing it would silently fall through to the next tier and
+                # run the agent under the packaged identity instead of its own.
+                logger.warning(
+                    "from_env: identity tier unreadable agent_id=%s dir=%s: %s",
+                    agent_id, identities_dir, exc,
+                )
+                continue
+            name = _extract_identity_name(artifact.payload)
+            if name:
+                return name
+        return None
+
     @classmethod
     def from_env(cls, project_root: str | Path | None = None) -> PermissionContext:
         prefix = f"{PRODUCT_NAME_UPPER}_"
@@ -351,37 +413,23 @@ class PermissionContext:
         timestamp = int(timestamp_str) if timestamp_str else None
 
         # Resolve runtime agent_id to canonical ArqUX identity (BLP-008 GOV-001 P2.2)
-        if project_root is not None:
-            proj_path = cls._normalize_project_root(project_root)
-            try:
-                im = IdentityManager(project_root=proj_path)
-                artifact = im.resolve(agent_id)
-                # Extract name from IDN entry if available
-                name = _extract_identity_name(artifact.payload)
-                if name:
-                    agent_id = name
-            except Exception as exc:
+        try:
+            name = cls._canonical_agent_id(agent_id, project_root)
+            if name:
+                agent_id = name
+            else:
+                # Never fail silently: a run under the raw env value instead of
+                # the canonical identity is a governance-visible degradation.
                 logger.warning(
-                    "from_env: identity resolve failed for agent_id=%s project_root=%s: %s",
-                    agent_id, project_root, exc,
+                    "from_env: identity not resolved for agent_id=%s project_root=%s; "
+                    "falling back to the raw ARQUX_AGENT_ID value",
+                    agent_id, project_root,
                 )
-        else:
-            # P2 fallback: try to auto-detect project root from CWD
-            try:
-                from .state import find_project_root
-                auto_root = find_project_root()
-                if auto_root is not None:
-                    normalized = cls._normalize_project_root(auto_root)
-                    im = IdentityManager(project_root=normalized)
-                    artifact = im.resolve(agent_id)
-                    name = _extract_identity_name(artifact.payload)
-                    if name:
-                        agent_id = name
-            except Exception as exc:
-                logger.warning(
-                    "from_env: P2 fallback identity resolve failed for agent_id=%s: %s",
-                    agent_id, exc,
-                )
+        except Exception as exc:
+            logger.warning(
+                "from_env: identity resolve failed for agent_id=%s project_root=%s: %s",
+                agent_id, project_root, exc,
+            )
 
         # Validate role string.
         try:

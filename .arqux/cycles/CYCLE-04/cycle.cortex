@@ -33,4 +33,4 @@ ARQX:artifact{level:2, name:"cycle", usage:"state", kind:"native"}
 
 $1: CYCLE
 
-WRK:cycle{id:"CYCLE-04", name:"?", status:"closed", created:"", description:""}
+WRK:cycle{id:"CYCLE-04", name:"CORTEX-native-selfmanagement", status:"done", created:"2026-07-13T14:33:54Z", description:"", phase:"done", current:"Cerrado. Auto-gestion CORTEX-native.", blocked:"no", survive:"work"}

@@ -248,6 +248,7 @@ handler_schemas = [
                 "kind": {"type": "string", "description": "Lesson kind: behavioral/process/format/rule/infrastructure", "default": "behavioral"},
                 "cause": {"type": "string", "description": "What caused this lesson", "default": ""},
                 "prevention": {"type": "string", "description": "How to prevent this lesson from recurring. Required for LNG entries."},
+                "name": {"type": "string", "description": "Explicit LNG entry name. Recommended: without it the name is derived from the first word of the lesson, which collides on common articles (LNG:al, LNG:en, ...)."},
                 "agent_id": {"type": "string", "description": "Agent identifier (default: current agent)"},
                 "path": {"type": "string", "description": "Path to search up from for .arqux/identities/"},
             },

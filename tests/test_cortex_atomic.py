@@ -109,7 +109,7 @@ class TestAtomicWriteJson:
         atomic_write_json(doc, path)
         assert os.path.isfile(path)
         content = Path(path).read_text(encoding="utf-8")
-        expected = write_cortex_from_json(doc)
+        expected = write_cortex_from_json(doc, strict=True)
         assert content == expected
 
     def test_returns_write_result(self, doc: dict, tmp_path) -> None:
@@ -122,7 +122,7 @@ class TestAtomicWriteJson:
     def test_bytes_written_correct(self, doc: dict, tmp_path) -> None:
         path = str(tmp_path / "out.cortex")
         result = atomic_write_json(doc, path)
-        expected_bytes = len(write_cortex_from_json(doc).encode("utf-8"))
+        expected_bytes = len(write_cortex_from_json(doc, strict=True).encode("utf-8"))
         assert result.bytes_written == expected_bytes
 
 
@@ -153,7 +153,7 @@ class TestBackupCreation:
         # backup has old content
         assert Path(result.backup).read_text(encoding="utf-8") == original
         # path has new content
-        assert Path(path).read_text(encoding="utf-8") == write_cortex_from_json(doc)
+        assert Path(path).read_text(encoding="utf-8") == write_cortex_from_json(doc, strict=True)
 
 
 # ---------------------------------------------------------------------------
@@ -170,7 +170,7 @@ class TestNoBackup:
         assert result.backup is None
         assert not os.path.isfile(path + ".bak")
         # new content written
-        assert Path(path).read_text(encoding="utf-8") == write_cortex_from_json(doc)
+        assert Path(path).read_text(encoding="utf-8") == write_cortex_from_json(doc, strict=True)
 
     def test_no_backup_for_new_file(self, doc: dict, tmp_path) -> None:
         """AC-12: Write to new file: no backup, content written."""
@@ -179,7 +179,7 @@ class TestNoBackup:
         assert result.backup is None
         assert not os.path.isfile(path + ".bak")
         assert os.path.isfile(path)
-        assert Path(path).read_text(encoding="utf-8") == write_cortex_from_json(doc)
+        assert Path(path).read_text(encoding="utf-8") == write_cortex_from_json(doc, strict=True)
 
 
 # ---------------------------------------------------------------------------
@@ -199,7 +199,7 @@ class TestDryRun:
     def test_dry_run_bytes_correct(self, doc: dict, tmp_path) -> None:
         path = str(tmp_path / "dry.cortex")
         result = atomic_write_json(doc, path, dry_run=True)
-        expected = len(write_cortex_from_json(doc).encode("utf-8"))
+        expected = len(write_cortex_from_json(doc, strict=True).encode("utf-8"))
         assert result.bytes_written == expected
         assert result.backup is None
 
@@ -275,7 +275,7 @@ class TestParentDirCreation:
         assert not nested.exists()
         atomic_write_json(doc, path)
         assert os.path.isfile(path)
-        assert Path(path).read_text(encoding="utf-8") == write_cortex_from_json(doc)
+        assert Path(path).read_text(encoding="utf-8") == write_cortex_from_json(doc, strict=True)
 
     def test_deep_nested_dirs(self, tmp_path) -> None:
         path = str(tmp_path / "x" / "y" / "z" / "file.txt")
@@ -333,7 +333,7 @@ class TestWriteResult:
             f.write("x\n")
         result = atomic_write_json(doc, path)
         assert result.backup == str(os.path.abspath(path + ".bak"))
-        assert result.bytes_written == len(write_cortex_from_json(doc).encode("utf-8"))
+        assert result.bytes_written == len(write_cortex_from_json(doc, strict=True).encode("utf-8"))
 
     def test_result_fields_dry_run(self, doc: dict, tmp_path) -> None:
         path = str(tmp_path / "dry.cortex")
@@ -382,7 +382,7 @@ class TestRoundTrip:
         path = str(tmp_path / "rt.cortex")
         atomic_write_json(doc, path)
         on_disk = Path(path).read_text(encoding="utf-8")
-        expected = write_cortex_from_json(doc)
+        expected = write_cortex_from_json(doc, strict=True)
         assert on_disk == expected
 
     def test_text_to_file_exact(self, tmp_path) -> None:
@@ -467,7 +467,7 @@ class TestLargeDocument:
         path = str(tmp_path / "large.cortex")
         result = atomic_write_json(large_doc, path)
         content = Path(path).read_text(encoding="utf-8")
-        expected = write_cortex_from_json(large_doc)
+        expected = write_cortex_from_json(large_doc, strict=True)
         assert content == expected
         assert result.bytes_written == len(expected.encode("utf-8"))
         # spot check a few entries

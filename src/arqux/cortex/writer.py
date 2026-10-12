@@ -277,12 +277,13 @@ def write_cortex_from_json(doc: dict, *, strict: bool = False) -> str:
         attrs = entry["attrs"]
         if {"type", "weight", "focus", "desc"}.issubset(attrs):
             declared.add(str(entry.get("sigil")))
-    for entry in _generated_symbols(sections):
-        if entry["sigil"] in declared:
-            continue
-        lines.append(_format_entry(entry))
-        lines.append("")
-        declared.add(entry["sigil"])
+    if strict:
+        for entry in _generated_symbols(sections):
+            if entry["sigil"] in declared:
+                continue
+            lines.append(_format_entry(entry))
+            lines.append("")
+            declared.add(entry["sigil"])
 
     if strict and legacy_glossary_data:
         sections = list(sections)
@@ -339,13 +340,15 @@ def write_cortex_from_json(doc: dict, *, strict: bool = False) -> str:
             lines.append("")
             declared.add(entry["sigil"])
 
-    # The dispatcher in CODEC-CORTEX requires an explicit version declaration.
-    # Keep a caller-provided format declaration intact, otherwise emit the
-    # canonical CORTEX 0.1 declaration at the end of the glossary.  Keeping
-    # declarations before the format line also preserves compatibility with
-    # the legacy ArqUX parser, which treats ``$0:format`` as a glossary-bound
-    # metadata boundary.
-    if not header.startswith("$0:format"):
+    # The dispatcher in CODEC-CORTEX 1.0.0-rc.1 requires an explicit version
+    # declaration. The PINNED codec-cortex (0.6.2) does not: it parses bare
+    # ``$0`` and tolerates undeclared sigils. Emitting the rc.1 dialect
+    # unconditionally made every ``cortex.entry.add`` / ``entry.update`` write
+    # inject a ``$0:format{...}`` line plus a sigil-schema dictionary into
+    # ``$0`` of documents that never asked for it, which the pinned validator
+    # then reported as E033/E032 (BUG-1). The declaration is therefore emitted
+    # only on the explicit strict path used by the migration handlers.
+    if strict and not header.startswith("$0:format"):
         lines.append('$0:format{cortex:"0.1", encoding:"UTF-8"}')
         lines.append("")
 

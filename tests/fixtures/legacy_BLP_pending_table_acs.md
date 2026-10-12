@@ -22,7 +22,7 @@ part of the canonical lifecycle and ACs live in a markdown table in §11.
 
 ## §3: Precondiciones
 
-- [ ] Precondición verificable de ejemplo
+- [ ] Precondición verificable de ejemplo [exec:write_file path=pre.txt content=ok]
 
 ## §11: Criterios de Aceptacion
 
@@ -54,5 +54,5 @@ part of the canonical lifecycle and ACs live in a markdown table in §11.
 
 ## §14: Tareas
 
-- [ ] **T-1.1:** Fase de creacion de objetos
-- [ ] **T-1.2:** Fase de verificacion
+- [ ] **T-1.1:** Fase de creacion de objetos [exec:write_file path=out.txt content=hola]
+- [ ] **T-1.2:** Fase de verificacion [exec:read_file path=out.txt]

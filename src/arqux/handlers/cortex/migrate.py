@@ -19,7 +19,18 @@ from ...permissions import PermissionContext
 from ...pulse import append_pulse_to_brain, next_pulse_event_id
 from ...state import find_project_root
 
-VALID_TRANSFORMS = ("reseccionar", "resigilar")
+VALID_TRANSFORMS = ("reseccionar", "resigilar", "legacy_task")
+
+
+def _legacy_task(source_text: str) -> str:
+    """Migrate a legacy ``tasks/*.cortex`` artifact to CODEC-CORTEX v0.5."""
+    from ...cortex.legacy_task import STRIP_FRONTMATTER, migrate_legacy_task
+    from ...cortex.reader import cortex_to_dict
+    from ...cortex.writer import write_cortex_from_json
+
+    doc = cortex_to_dict(STRIP_FRONTMATTER(source_text))
+    migrated = migrate_legacy_task(doc)
+    return write_cortex_from_json(migrated, strict=True)
 
 
 def migrate_handler(
@@ -77,6 +88,8 @@ def migrate_handler(
     try:
         if transform == "reseccionar":
             migrated_text = _reseccionar(source_text)
+        elif transform == "legacy_task":
+            migrated_text = _legacy_task(source_text)
         else:  # resigilar
             migrated_text = _resigilar(source_text)
     except Exception as exc:  # noqa: BLE001

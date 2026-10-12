@@ -627,19 +627,46 @@ def file_validate_handler(
     def _strip_suffix(n: str) -> str:
         return _re.sub(r"_\d{4}$", "", n)
 
-    groups: dict[tuple[str, str, str], list] = defaultdict(list)
+    records: list[dict] = []
+    #: Parallel list holding the live entry dicts, so renaming mutates exactly
+    #: the right node. Matching by name alone cannot disambiguate two entries
+    #: that share a name — the previous implementation renamed only the first
+    #: match (``break``) and therefore never converged: a pair of ``a_0001``
+    #: was walked forward one step per run, forever.
+    entry_refs: list[dict] = []
     for sec in doc.get("sections", []):
         sec_id = sec.get("id", "")
         for entry in sec.get("entries", []):
             entry_name = entry.get("name", "")
-            entry_sigil = entry.get("sigil", "")
-            base = _strip_suffix(entry_name)
-            groups[(sec_id, entry_sigil, base)].append({
+            records.append({
                 "section": sec_id,
-                "sigil": entry_sigil,
+                "sigil": entry.get("sigil", ""),
                 "name": entry_name,
-                "base": base,
+                # Stable position; records that compare equal (same section,
+                # sigil and name) must still be individually addressable.
+                "_pos": len(records),
             })
+            entry_refs.append(entry)
+
+    # BLP-046 / BUG-002: collapse a suffixed variant (foo_0001) into its base
+    # group ONLY when an entry named exactly "foo" exists in the same
+    # (section, sigil). Without this guard the PULSE naming convention
+    # E_NNNN matched _\d{4}$ and every event collapsed onto base "E", so a
+    # brain with 88 distinct AUD:E_NNNN events reported 87 false duplicates
+    # and fix=true would have renamed the whole evidence log.
+    verbatim: set[tuple[str, str, str]] = {
+        (r["section"], r["sigil"], r["name"]) for r in records
+    }
+
+    def _group_key(r: dict) -> tuple[str, str, str]:
+        base = _strip_suffix(r["name"])
+        if base != r["name"] and (r["section"], r["sigil"], base) not in verbatim:
+            return (r["section"], r["sigil"], r["name"])
+        return (r["section"], r["sigil"], base)
+
+    groups: dict[tuple[str, str, str], list] = defaultdict(list)
+    for r in records:
+        groups[_group_key(r)].append(r)
 
     duplicates = {k: v for k, v in groups.items() if len(v) > 1}
     if not duplicates:
@@ -658,27 +685,32 @@ def file_validate_handler(
                     "sigil": sigil,
                     "old_name": e["name"],
                     "new_name": new_name,
+                    "_pos": e["_pos"],
                 })
 
     if not fix:
+        for r in report:
+            r.pop("_pos", None)
         return CortexOUT.work(
             f"file.validate ok — {len(report)} duplicate(s) detected (dry-run, fix=false)",
             path=path, fix=fix, total_duplicates=len(report),
             duplicates=report,
         )
 
-    # Apply renames in the dict model.
+    # Apply renames by direct reference. Renaming by name search cannot tell two
+    # same-named entries apart, so it renamed only one per run and the fix never
+    # converged.
     for r in report:
-        for sec in doc.get("sections", []):
-            if sec.get("id") != r["section"]:
-                continue
-            for ent in sec.get("entries", []):
-                if ent.get("name") == r["old_name"]:
-                    ent["name"] = r["new_name"]
-                    break
+        entry_refs[r["_pos"]]["name"] = r["new_name"]
+    # _pos is internal bookkeeping; never leak it to callers.
+    for r in report:
+        r.pop("_pos", None)
 
     try:
-        result = atomic_write_json(doc, str(target))
+        # BUG-1: strict=True would re-serialize the whole file in the
+        # CODEC-CORTEX rc.1 dialect, injecting $0:format and sigil schema
+        # declarations into a file that was valid in the pinned 0.6.2 dialect.
+        result = atomic_write_json(doc, str(target), strict=False)
         return CortexOUT.work(
             f"file.validate ok — {len(report)} duplicate(s) renamed",
             path=path, fix=fix, total_duplicates=len(report),

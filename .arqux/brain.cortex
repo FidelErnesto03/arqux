@@ -41,51 +41,6 @@ $0
 # cur=current pln=planned fut=future blk=blocked
 # min=minimum rec=recovery wrk=work full=full
 # ok=success fail=failure part=partial
-ARQX:artifact{type:"attrs", weight:"B", fields:"value:any?", focus:"value", desc:"ArqUX artifact metadata (level, name, usage, kind)"}
-
-AUD:audit{type:"attrs", weight:"M", fields:"value:any?", focus:"value", desc:"Audit event — append-only PULSE entry"}
-
-DEC:dec{type:"attrs", weight:"B", fields:"value:any?", focus:"value", desc:"ArqUX DEC entry"}
-
-ERR:error{type:"attrs", weight:"H", fields:"value:any?", focus:"value", desc:"Concurrency / error state entry"}
-
-FCS:focus{type:"attrs", weight:"H", fields:"value:any?", focus:"value", desc:"Active attention anchor — what the project is focused on now"}
-
-IDN:identity{type:"attrs", weight:"B", fields:"value:any?", focus:"value", desc:"Agent identity descriptor"}
-
-KNW:knowledge{type:"attrs", weight:"B", fields:"name:any?|topic:any?|content:any?|status:any?", focus:"name", desc:"Workspace-level knowledge entry"}
-
-LNG:lesson{type:"attrs", weight:"M", fields:"value:any?", focus:"value", desc:"Learned lesson — behavioral or process"}
-
-OBJ:objective{type:"attrs", weight:"H", fields:"value:any?", focus:"value", desc:"Active goal — stable project-level objective"}
-
-RSK:risk{type:"attrs", weight:"M", fields:"value:any?", focus:"value", desc:"Risk entry — description, impact, mitigation"}
-
-WRK:work{type:"attrs", weight:"M", fields:"value:any?", focus:"value", desc:"Work-in-progress entry — task or activity being executed"}
-
-ARQX:artifact{type:"attrs", weight:"B", fields:"value:any?", focus:"value", desc:"ArqUX artifact metadata (level, name, usage, kind)"}
-
-AUD:audit{type:"attrs", weight:"M", fields:"value:any?", focus:"value", desc:"Audit event — append-only PULSE entry"}
-
-DEC:dec{type:"attrs", weight:"B", fields:"value:any?", focus:"value", desc:"ArqUX DEC entry"}
-
-ERR:error{type:"attrs", weight:"H", fields:"value:any?", focus:"value", desc:"Concurrency / error state entry"}
-
-FCS:focus{type:"attrs", weight:"H", fields:"value:any?", focus:"value", desc:"Active attention anchor — what the project is focused on now"}
-
-IDN:identity{type:"attrs", weight:"B", fields:"value:any?", focus:"value", desc:"Agent identity descriptor"}
-
-KNW:knowledge{type:"attrs", weight:"B", fields:"name:any?|topic:any?|content:any?|status:any?", focus:"name", desc:"Workspace-level knowledge entry"}
-
-LNG:lesson{type:"attrs", weight:"M", fields:"value:any?", focus:"value", desc:"Learned lesson — behavioral or process"}
-
-OBJ:objective{type:"attrs", weight:"H", fields:"value:any?", focus:"value", desc:"Active goal — stable project-level objective"}
-
-RSK:risk{type:"attrs", weight:"M", fields:"value:any?", focus:"value", desc:"Risk entry — description, impact, mitigation"}
-
-WRK:work{type:"attrs", weight:"M", fields:"value:any?", focus:"value", desc:"Work-in-progress entry — task or activity being executed"}
-
-$0:format{cortex:"0.1", encoding:"UTF-8"}
 
 
 $0: format{cortex:"0.1", encoding:"UTF-8"}
@@ -975,6 +930,16 @@ AUD:E_1530{date:"2026-10-11T19:48:48Z", event:"E-1530", task:"-", kind:"checkpoi
 
 AUD:E_1531{date:"2026-10-11T19:51:14Z", event:"E-1531", task:"2026-10-11-friccion-de-uso-encontrada-al-hacer-dogfood-con-", kind:"issue", agent:"alfred", result:"issue.create 2026-10-11-friccion-de-uso-encontrada-al-hacer-dogfood-con-.issue.md severity=low status=open by=alfred", evidence:"issue.create 2026-10-11-friccion-de-uso-encontrada-al-hacer-dogfood-con-.issue.md severity=low status=open by=alfred"}
 
+AUD:E_1532{date:"2026-10-11T20:31:09Z", event:"E-1532", task:"-", kind:"checkpoint", agent:"alfred", result:"cortex.checkpoint ok fcs=Cierre de sesion de la revision de 0.9.0 obj=", evidence:"cortex.checkpoint ok fcs=Cierre de sesion de la revision de 0.9.0 obj="}
+
+AUD:E_1533{date:"2026-10-11T23:59:16Z", event:"E-1533", task:"2026-10-11-bug-1-critico-activo-en-arqux-y-mi-club-toda-esc", kind:"issue", agent:"alfred", result:"issue.create 2026-10-11-bug-1-critico-activo-en-arqux-y-mi-club-toda-esc.issue.md severity=blocking status=open by=alfred", evidence:"issue.create 2026-10-11-bug-1-critico-activo-en-arqux-y-mi-club-toda-esc.issue.md severity=blocking status=open by=alfred"}
+
+AUD:E_1534{date:"2026-10-11T23:59:16Z", event:"E-1534", task:"2026-10-11-bug-2-cortex-file-validate-reporta-falsos-positi", kind:"issue", agent:"alfred", result:"issue.create 2026-10-11-bug-2-cortex-file-validate-reporta-falsos-positi.issue.md severity=high status=open by=alfred", evidence:"issue.create 2026-10-11-bug-2-cortex-file-validate-reporta-falsos-positi.issue.md severity=high status=open by=alfred"}
+
+AUD:E_1535{date:"2026-10-11T23:59:16Z", event:"E-1535", task:"2026-10-11-bug-3-no-existen-los-handlers-cycle-mature-ni-cy", kind:"issue", agent:"alfred", result:"issue.create 2026-10-11-bug-3-no-existen-los-handlers-cycle-mature-ni-cy.issue.md severity=medium status=open by=alfred", evidence:"issue.create 2026-10-11-bug-3-no-existen-los-handlers-cycle-mature-ni-cy.issue.md severity=medium status=open by=alfred"}
+
+AUD:E_1536{date:"2026-10-12T00:19:43Z", event:"E-1536", task:"-", kind:"checkpoint", agent:"alfred", result:"cortex.checkpoint ok fcs=\"Sesion cerrada para reinicio de MCP. Co obj=gobierno", evidence:"cortex.checkpoint ok fcs=\"Sesion cerrada para reinicio de MCP. Co obj=gobierno"}
+
 
 $7: LESSONS
 
@@ -1362,11 +1327,11 @@ LNG:verifier_signal_noise{type:"behavioral", cause:"SchemaResolver.ALWAYS_REQUIR
 
 LNG:session_E_1113{type:"session", entry_count:62, summary:"artifact:8,blueprint_lifecycle:17,checkpoint:16,cortex_patch:3,decision:1,identity_switch:4,issue:6,metric:2,pulse_compact:1,session_handoff:4", session_id:"E-1113", agent:"alfred", date:"2026-10-05T14:31:33Z"}
 
-LNG:las{type:"process", cause:"Evaluacion de añadir handlers de comunicacion (WS/Telegram) al core de arqux: el registro tiene presupuesto fijo (test_registry afirma handler_count()==96) y agregar handlers rompe la suite.", lesson:"Las capacidades de frontera (voz, comunicaciones WS/Telegram) NO van en el core de gobernanza: viven en extensiones MCP aparte (proceso stdio + extra opcional), como arqux-voice. El core mantiene su presupuesto fijo de 96 handlers y permanece local/ligero."}
+LNG:las{type:"process", cause:"Evaluacion de añadir handlers de comunicacion (WS/Telegram) al core de arqux: el registro tiene presupuesto fijo (test_registry afirma handler_count()==96) y agregar handlers rompe la suite.", lesson:"Las capacidades de frontera (voz, comunicaciones WS/Telegram) NO van en el core de gobernanza: viven en extensiones MCP aparte (proceso stdio + extra opcional), como arqux-voice. El core mantiene su presupuesto fijo de 96 handlers y permanece local/ligero.", prevention:"Evaluar antes de anadir un handler al registro: si su superficie no es de gobernanza (voz, WS, Telegram), tiene que vivir como extension MCP con extra opcional, no como handler del core."}
 
-LNG:un{type:"rule", cause:"Un handler que escribe un artefacto sin preservar su estructura pierde información que el artefacto debe contener. La reconciliación reescribía §6 y §7 con un formato propio y eliminaba los marcadores.", lesson:"Un mecanismo que modifica un artefacto es responsable de la estructura completa de ese artefacto, no solo de su contenido. Reescribir una sección debe preservar sus marcadores: si el formato de salida difiere del formato de entrada, el ciclo entero pierde estructura de forma silenciosa."}
+LNG:un{type:"rule", cause:"Un handler que escribe un artefacto sin preservar su estructura pierde información que el artefacto debe contener. La reconciliación reescribía §6 y §7 con un formato propio y eliminaba los marcadores.", lesson:"Un mecanismo que modifica un artefacto es responsable de la estructura completa de ese artefacto, no solo de su contenido. Reescribir una sección debe preservar sus marcadores: si el formato de salida difiere del formato de entrada, el ciclo entero pierde estructura de forma silenciosa.", prevention:"Antes de aceptar que un handler preserva un artefacto, escribir el test que compara el archivo antes y despues. Comparar solo el contenido esperado deja pasar la perdida de estructura."}
 
-LNG:una{type:"rule", cause:"El selector usaba el orden de declaración de §3 mientras el Arquitecto había aprobado una secuencia distinta en conversación.", lesson:"Una secuencia aprobada en conversación no gobierna un loop. Si el loop va a obedecer un orden, ese orden debe vivir en un artefacto, no en un mensaje."}
+LNG:una{type:"rule", cause:"El selector usaba el orden de declaración de §3 mientras el Arquitecto había aprobado una secuencia distinta en conversación.", lesson:"Una secuencia aprobada en conversación no gobierna un loop. Si el loop va a obedecer un orden, ese orden debe vivir en un artefacto, no en un mensaje.", prevention:"Si un loop debe obedecer un orden, comprobar que ese orden esta escrito en el manifiesto o en un artefacto. Si solo existe en la conversacion, escalarlo en vez de elegir un criterio."}
 
 LNG:session_E_1405{type:"session", entry_count:291, summary:"blueprint_lifecycle:135,checkpoint:92,identity_switch:26,issue:10,pulse_compact:1,session_handoff:27", session_id:"E-1405", agent:"alfred", date:"2026-10-10T22:59:04Z"}
 
@@ -1375,7 +1340,7 @@ LNG:session_E_1500{type:"session", entry_count:94, summary:"artifact:5,blocker:1
 
 $8: ACTIVE_CONTEXT
 
-WRK:current{phase:"current", current:"sync.run: sync.run manual trigger — full sync to meta-brain", blocked:"no", survive:"work", updated:"2026-10-11T19:06:58Z", event:"sync.run", fcs:"0.9.0rc3 publicada y verificada en CI (run 38168924989", obj:"", tasks:"", state:"active", last_turn:"2026-10-11T19:48:48Z"}
+WRK:current{phase:"current", current:"sync.run: sync.run manual trigger — full sync to meta-brain", blocked:"no", survive:"work", updated:"2026-10-11T19:06:58Z", event:"sync.run", fcs:"\"Sesion cerrada para reinicio de MCP. Codigo listo en repo (4 fixes", obj:"gobierno", tasks:"\"aplicar-migracion-47-tasks", state:"blocked", last_turn:"2026-10-12T00:19:43Z"}
 
 
 $9: RISKS
@@ -1388,6 +1353,8 @@ $10: KNOWLEDGE
 KNW:mcp2_port_debt_0001{name:"mcp 2.x port debt", topic:"dependencies", status:"current", content:"pyproject.toml pinned to mcp>=1.0.0,<2 on 2026-09-25 after uv tool upgrade pulled mcp 2.2.0 and broke arqux serve: server.py uses lowlevel Server decorators (@server.list_tools()/@server.call_tool()) removed in mcp 2.x (AttributeError at build_server, server.py:108). DEBT: port server.py to the mcp 2.x server API, then unpin. Symptom if pin removed early: 'Server object has no attribute list_tools' on MCP startup. Reinstall path: uv tool install --force --reinstall --refresh /home/vatrox/workspace/ARQUX (plain 'uv tool install arqux' resolves from index/cache and ignores local pyproject edits)."}
 
 KNW:participant_identity_mn_0001{name:"Participant-Identity es M:N", topic:"identity_model", status:"current", content:"Decision del Arquitecto 2026-10-01: la relacion entre perfiles humanos (Participant, kind=human) y contratos agenticos (Identity .cortex) es MUCHOS A MUCHOS. La spec 0.8 §24 solo declara la direccion 1:N ('Un mismo Participant puede operar con varias Identities') y omite que una misma Identity (contrato) puede ser adoptada por multiples Participants. Ejemplo real: alfred.cortex bound por el Arquitecto en varios proyectos; un contrato 'executor' generico servible por distintos humanos. Gap de implementacion: no existe entidad Participant en runtime (agents.cortex registra solo IDN de agentes; project_bind ata agent+role a proyecto; bind_to_session no modela el humano detras). Pendiente: enmendar spec §24 para declarar M:N explicito y modelar el link Participant<->Identity."}
+
+SES:revision_0_9_0rc1_cierre{summary:"Revision de integridad del gate de 0.9.0rc1 cerrada. 0.9.0rc3 publicada en PyPI e instalada localmente. Suite de 0 a 2066 en verde, delta 0 sostenido en CI real.", agent:"alfred", blps:"ninguno", tasks:"ninguno", gaps:"Dos archivos sin commitear: fixture legacy con marcadores [exec:] y test BLP-004 con rol governor. Linea base dice 5 y la realidad es 0: re-baselinar. HD-01: la ejecucion existe pero es lista blanca de 3 acciones de archivo, no ejecuta comandos. E-1531 friccion de CLI sin abordar.", input:"Auditoria de integridad del gate de 0.9.0rc1", output:"0.9.0rc3 publicada en PyPI e instalada; suite 0 -> 2066 en verde con delta 0 sostenido en CI real", outcome:"cerrado - quedan dos gaps abiertos, declarados en gaps", date:"2026-10-11"}
 
 
 $11: CONCURRENCY

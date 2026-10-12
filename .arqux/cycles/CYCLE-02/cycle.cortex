@@ -33,4 +33,4 @@ ARQX:artifact{level:2, name:"cycle", usage:"state", kind:"native"}
 
 $1: CYCLE
 
-WRK:cycle{id:"CYCLE-02", name:"?", status:"closed", created:"", description:""}
+WRK:cycle{id:"CYCLE-02", name:"CYCLE-02", status:"done", created:"2026-07-11T13:26:59Z", description:"", phase:"done", current:"Cerrado. 6 tareas (T-001..T-006) de auditoria ejecutable. Governor: hermes.", blocked:"no", survive:"work"}

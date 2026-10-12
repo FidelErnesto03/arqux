@@ -711,9 +711,22 @@ def test_no_glossary() -> None:
 
 
 def test_empty_document() -> None:
-    """An empty document includes the mandatory CORTEX 0.1 declaration."""
+    """An empty document stays bare on the default path.
+
+    BUG-1: the default (non-strict) writer injected the rc.1 dialect
+    (``$0:format`` plus sigil-schema declarations) into every document,
+    including ones that never asked for it. The pinned codec-cortex 0.6.2
+    parses bare ``$0`` fine, so the declaration belongs to the strict path
+    only.
+    """
     text = write_cortex_from_json({})
     assert text.startswith("$0\n")
+    assert '$0:format' not in text
+
+
+def test_empty_document_strict_declares_format() -> None:
+    """The strict path still emits the CODEC-CORTEX 1.0.0-rc.1 declaration."""
+    text = write_cortex_from_json({}, strict=True)
     assert '$0:format{cortex:"0.1", encoding:"UTF-8"}' in text
 
 

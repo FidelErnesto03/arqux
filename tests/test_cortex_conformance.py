@@ -181,7 +181,9 @@ class TestConformanceCodec100rc1:
                 }
             ],
         }
-        output = write_cortex_from_json(doc)
+        # rc.1 conformance is the strict path's contract (BUG-1): the default
+        # writer targets the pinned codec-cortex 0.6.2 dialect.
+        output = write_cortex_from_json(doc, strict=True)
 
         assert '$0:format{cortex:"0.1", encoding:"UTF-8"}' in output
         parsed = parse_v1(output)
@@ -212,7 +214,7 @@ class TestConformanceCodec100rc1:
                 }
             ],
         }
-        output = write_cortex_from_json(doc)
+        output = write_cortex_from_json(doc, strict=True)
 
         parsed = parse_v1(output)
         assert any(symbol.sigil == "LNG" for symbol in parsed.glossary.symbols)

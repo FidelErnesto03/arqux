@@ -33,4 +33,4 @@ ARQX:artifact{level:2, name:"cycle", usage:"state", kind:"native"}
 
 $1: CYCLE
 
-WRK:cycle{id:"CYCLE-03", name:"?", status:"closed", created:"", description:""}
+WRK:cycle{id:"CYCLE-03", name:"CORTEX-native: Implementacion de vision canales I/E/B y meta-handlers", status:"done", created:"2026-07-11T17:57:01Z", description:"", phase:"done", current:"Cerrado. VISION I/E/B y meta-handlers. 1 tarea (T-001).", blocked:"no", survive:"work"}
