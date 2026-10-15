@@ -202,11 +202,17 @@ def claim_task(task_id: str, path: str | None = None, ctx: PermissionContext | N
     if cycle_id:
         reconcile_cycle(root, cycle_id)
 
+    from ..timelog_capture import observe
+
+    lifecycle = observe(root, ctx, event="open",
+                        operation_ref=f"task:{task_id}", activity=f"task:{task_id}")
+
     return CortexOUT.work(
         f"task.claim ok id={task_id} agent={caller}",
         task_id=task_id,
         status=TASK_IN_PROGRESS,
         assignee=caller,
+        lifecycle=lifecycle,
     )
 
 
@@ -274,12 +280,10 @@ def complete_task(
     write_cortex_pair(path.parent, task_id, fm, new_body)
 
     # Record in the brain's PULSE section (not a separate file).
-    from ..pulse import append_pulse_to_brain, next_pulse_event_id
+    from ..pulse import record_pulse
     agent = (ctx or PermissionContext.from_env()).agent_id
-    event_id = next_pulse_event_id(root)
-    append_pulse_to_brain(
+    event_id = record_pulse(
         root,
-        event_id=event_id,
         task_id=task_id,
         kind="task_complete",
         agent=agent,
@@ -298,11 +302,17 @@ def complete_task(
     if cycle_id:
         reconcile_cycle(root, cycle_id)
 
+    from ..timelog_capture import observe
+
+    lifecycle = observe(root, ctx, event="close",
+                        operation_ref=f"task:{task_id}", activity=f"task:{task_id}")
+
     return CortexOUT.work(
         f"task.complete ok id={task_id} (evidence in brain PULSE as {event_id})",
         task_id=task_id,
         status=TASK_DONE,
         pulse_event_id=event_id,
+        lifecycle=lifecycle,
     )
 
 
@@ -326,12 +336,10 @@ def fail_task(
     new_body = body.rstrip() + f"\n\n# BLOCK ({_now_iso()})\n{reason}\n"
     write_cortex_pair(path.parent, task_id, fm, new_body)
 
-    from ..pulse import append_pulse_to_brain, next_pulse_event_id
+    from ..pulse import record_pulse
     agent = (ctx or PermissionContext.from_env()).agent_id
-    event_id = next_pulse_event_id(root)
-    append_pulse_to_brain(
+    event_id = record_pulse(
         root,
-        event_id=event_id,
         task_id=task_id,
         kind="task_block",
         agent=agent,
@@ -343,11 +351,17 @@ def fail_task(
     if cycle_id:
         reconcile_cycle(root, cycle_id)
 
+    from ..timelog_capture import observe
+
+    lifecycle = observe(root, ctx, event="close",
+                        operation_ref=f"task:{task_id}", activity=f"task:{task_id}")
+
     return CortexOUT.work(
         f"task.fail ok id={task_id} reason={reason!r} (recorded in brain PULSE as {event_id})",
         task_id=task_id,
         status=TASK_BLOCKED,
         pulse_event_id=event_id,
+        lifecycle=lifecycle,
     )
 
 
@@ -889,12 +903,10 @@ def _record_run_pulse(
 ) -> None:
     """Append a PULSE event for the run call (best-effort)."""
     try:
-        from ..pulse import append_pulse_to_brain, next_pulse_event_id
+        from ..pulse import record_pulse
         agent = (ctx or PermissionContext.from_env()).agent_id
-        event_id = next_pulse_event_id(root)
-        append_pulse_to_brain(
+        record_pulse(
             root,
-            event_id=event_id,
             task_id=task_id,
             kind="task_run",
             agent=agent,

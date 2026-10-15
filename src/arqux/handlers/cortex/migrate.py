@@ -16,7 +16,7 @@ from pathlib import Path
 from ...cortex.parse_content import parse_content_entry
 from ...cortex_out import CortexOUT
 from ...permissions import PermissionContext
-from ...pulse import append_pulse_to_brain, next_pulse_event_id
+from ...pulse import record_pulse
 from ...state import find_project_root
 
 VALID_TRANSFORMS = ("reseccionar", "resigilar", "legacy_task")
@@ -213,10 +213,8 @@ def _record_pulse(
         if root is None:
             return
         agent = (ctx or PermissionContext.from_env()).agent_id
-        event_id = next_pulse_event_id(root)
-        append_pulse_to_brain(
+        record_pulse(
             root,
-            event_id=event_id,
             task_id="-",
             kind="cortex_migrate",
             agent=agent,

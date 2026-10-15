@@ -15,8 +15,10 @@ from __future__ import annotations
 
 from ..constants import CYCLES_DIR
 from ..cortex_out import CortexOUT
+from ..execution import authoritative_execution_key
 from ..permissions import PermissionContext
-from ..pulse import append_pulse_to_brain, next_pulse_event_id, read_pulse_from_brain
+from ..pulse import read_pulse_from_brain, record_pulse
+from ..session_identity import current_session_ref
 from ..state import find_project_root
 
 
@@ -46,15 +48,15 @@ def record_evidence(
         return CortexOUT.error(f"task {task_id} not found in any cycle", code="NOT_FOUND")
 
     agent = (ctx or PermissionContext.from_env()).agent_id
-    event_id = next_pulse_event_id(root)
-    append_pulse_to_brain(
+    ses_ref = current_session_ref(root, (ctx.execution_key if ctx else None) or authoritative_execution_key())
+    event_id = record_pulse(
         root,
-        event_id=event_id,
         task_id=task_id,
         kind=kind,
         agent=agent,
         payload=payload,
         cycle=cycle_id,
+        ses_ref=ses_ref or None,
     )
 
     return CortexOUT.work(
@@ -62,6 +64,7 @@ def record_evidence(
         event_id=event_id,
         task_id=task_id,
         cycle=cycle_id,
+        ses_ref=ses_ref,
         storage="brain.pulse",
     )
 

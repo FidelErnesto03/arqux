@@ -104,6 +104,23 @@ def test_every_cited_artifact_exists() -> None:
     )
 
 
+def _done_blueprints(cycle_dir: Path) -> list[str]:
+    """Blueprints of the cycle that actually shipped.
+
+    A ``cancelled`` (or ``draft``) blueprint is not part of what the release
+    shipped, so the report is under no obligation to cite it. Requiring every
+    ``BLP-*.md`` file meant a legitimate ``cancelled`` entry turned the check
+    red — the report was right and the check was wrong.
+    """
+    done: list[str] = []
+    for path in sorted(cycle_dir.glob("BLP-*.md")):
+        head = path.read_text(encoding="utf-8").split("\n---", 1)[0]
+        match = re.search(r'^status:\s*"?([a-z_]+)"?', head, re.MULTILINE)
+        if match and match.group(1) == "done":
+            done.append(path.stem)
+    return done
+
+
 def test_report_cites_every_blueprint_of_the_closed_cycle() -> None:
     """CYCLE-13 closed 6/6; the report table must not silently show fewer.
 
@@ -116,10 +133,10 @@ def test_report_cites_every_blueprint_of_the_closed_cycle() -> None:
     if not cycle_dir.is_dir():
         # Governance tree absent in a CI checkout — nothing to compare against.
         return
-    blueprints = sorted(p.stem for p in cycle_dir.glob("BLP-*.md"))
-    assert blueprints, "no blueprints found under CYCLE-13"
+    blueprints = _done_blueprints(cycle_dir)
+    assert blueprints, "no done blueprints found under CYCLE-13"
     uncited = [b for b in blueprints if b not in text]
     assert not uncited, (
         f"the release report does not mention {uncited}, but CYCLE-13 closed "
-        f"with {len(blueprints)} blueprints. State the cycle's real content."
+        f"with {len(blueprints)} done blueprints. State the cycle's real content."
     )

@@ -26,7 +26,7 @@ from ...cortex.atomic import atomic_write_json
 from ...cortex.reader import cortex_to_dict
 from ...cortex_out import CortexOUT
 from ...permissions import PermissionContext
-from ...pulse import append_pulse_to_brain, next_pulse_event_id
+from ...pulse import record_pulse
 from ...state import find_project_root
 
 _VALID_KEEP = ("first", "last")
@@ -384,10 +384,8 @@ def gc_handler(
         root = find_project_root(start=path)
         if root is not None:
             agent = (ctx or PermissionContext.from_env()).agent_id
-            event_id = next_pulse_event_id(root)
-            append_pulse_to_brain(
+            record_pulse(
                 root,
-                event_id=event_id,
                 task_id="-",
                 kind="cortex_gc",
                 agent=agent,

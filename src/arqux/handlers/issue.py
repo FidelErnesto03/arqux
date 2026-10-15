@@ -34,7 +34,7 @@ from pathlib import Path
 
 from ..cortex_out import CortexOUT
 from ..permissions import PermissionContext
-from ..pulse import append_pulse_to_brain, next_pulse_event_id, read_pulse_from_brain
+from ..pulse import read_pulse_from_brain, record_pulse
 from ..state import find_project_root
 
 VALID_SEVERITIES = ("low", "medium", "high", "blocking")
@@ -98,12 +98,10 @@ def _find_issue_file(issues_dir: Path, issue_id: str) -> Path | None:
 
 
 def _pulse(root: Path, task_id: str, payload: str, agent: str) -> str:
-    event_id = next_pulse_event_id(root)
-    append_pulse_to_brain(
-        root, event_id=event_id, task_id=task_id, kind="issue",
+    return record_pulse(
+        root, task_id=task_id, kind="issue",
         agent=agent, payload=payload,
     )
-    return event_id
 
 
 def create_issue(

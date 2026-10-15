@@ -17,7 +17,7 @@ from ...constants import (
     CYCLES_DIR,
 )
 from ...permissions import PermissionContext
-from ...pulse import append_pulse_to_brain, next_pulse_event_id
+from ...pulse import record_pulse
 from ...state import find_project_root, read_brain
 
 # ---------------------------------------------------------------------------
@@ -550,10 +550,8 @@ def _record_bp_evidence(
     """
     try:
         agent = (ctx or PermissionContext.from_env()).agent_id
-        event_id = next_pulse_event_id(root)
-        append_pulse_to_brain(
+        event_id = record_pulse(
             root,
-            event_id=event_id,
             task_id=task_id or bp_id,
             kind="blueprint_lifecycle",
             agent=agent,

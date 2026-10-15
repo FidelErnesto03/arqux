@@ -14,13 +14,23 @@ entries with kind="session". Each SES is self-contained and < 2KB.
 from __future__ import annotations
 
 import re
+from contextlib import suppress
 from pathlib import Path
 from typing import Any
 
 from ..constants import ARQUX_DIR, BRAIN_CORTEX
 from ..cortex_out import CortexOUT
+from ..execution import authoritative_execution_key
 from ..permissions import PermissionContext
-from ..pulse import append_pulse_to_brain, next_pulse_event_id, read_pulse_from_brain
+from ..pulse import read_pulse_from_brain, record_pulse
+from ..session_identity import (
+    close_session,
+    current_session_ref,
+    get_session,
+    list_sessions,
+    open_session,
+    timelog_path,
+)
 from ..state import find_project_root, find_workspace_root
 
 
@@ -30,10 +40,15 @@ def close(
     tasks: str | None = None,
     decisions: str | None = None,
     gaps: str | None = None,
+    session_ref: str | None = None,
     path: str | None = None,
     ctx: PermissionContext | None = None,
 ) -> CortexOUT:
-    """Close the current session and write a portable SES entry to brain PULSE.
+    """Close the session and write its portable summary to brain PULSE.
+
+    The session that gets closed is the one this execution is bound to (or the
+    explicit ``session_ref``); the global pointer and the newest event of the
+    project are never used to pick someone else's session.
 
     Args:
         summary: Short human-readable summary of what was accomplished.
@@ -41,6 +56,7 @@ def close(
         tasks: Comma-separated list of pending task IDs (e.g. "T-002,T-003").
         decisions: Comma-separated list of key decisions made.
         gaps: Comma-separated list of detected gaps or pending items.
+        session_ref: Explicit ``SESxxx`` to close. Defaults to this execution's.
         path: Path to project root. Defaults to cwd.
     """
     root = find_project_root(start=path)
@@ -48,6 +64,7 @@ def close(
         return CortexOUT.error("no project initialized", code="NOT_FOUND")
 
     agent = (ctx or PermissionContext.from_env()).agent_id
+    execution = _authoritative_execution(ctx)
 
     blps_list = _parse_csv(blps)
     tasks_list = _parse_csv(tasks)
@@ -60,6 +77,7 @@ def close(
         tasks=tasks_list,
         decisions=decisions_list,
         gaps=gaps_list,
+        agent=agent,
     )
 
     if len(ses_payload) > 2048:
@@ -68,48 +86,86 @@ def close(
             code="SES_TOO_LARGE",
         )
 
-    event_id = next_pulse_event_id(root)
-    append_pulse_to_brain(
+    session, error = _read_session(root, session_ref, execution, for_mutation=True)
+    if error:
+        return CortexOUT.error(error["message"], code=error["code"],
+                               **{k: v for k, v in error.items() if k not in ("code", "message")})
+
+    ses_ref = session["session_id"] if session else ""
+    event_id = record_pulse(
         root,
-        event_id=event_id,
         task_id="-",
         kind="session",
         agent=agent,
         payload=ses_payload,
+        ses_ref=ses_ref or None,
     )
+
+    if session is not None:
+        close_session(
+            root,
+            ses_ref,
+            agent=agent,
+            summary=summary,
+            blps=",".join(blps_list),
+            tasks=",".join(tasks_list),
+            decisions=",".join(decisions_list),
+            gaps=",".join(gaps_list),
+            lng_count=len(blps_list) + len(tasks_list) + len(decisions_list) + len(gaps_list),
+            event=event_id,
+        )
 
     # Trigger pulse.compact after SES write
     compact_result: dict = {}
     try:
         from ..pulse import compact_session_pulse
-        compact_result = compact_session_pulse(root, session_id=event_id, agent_id=agent)
+        compact_result = compact_session_pulse(
+            root,
+            session_id=event_id,
+            agent_id=agent,
+            ses_ref=ses_ref or None,
+        )
     except Exception:
         pass
+
+    # CYCLE-14 / BLP-003: the close is a natural boundary of the session block.
+    from ..timelog_capture import observe
+
+    lifecycle = observe(root, ctx, event="close",
+                        operation_ref=f"session:{ses_ref or 'legacy'}",
+                        activity="session")
 
     return CortexOUT.work(
         "session.close ok",
         event_id=event_id,
+        session_ref=ses_ref,
         agent=agent,
         size_bytes=len(ses_payload),
         summary=summary,
         compact=compact_result,
+        lifecycle=lifecycle,
     )
 
 
 def pulse_compact(
     session_id: str,
     *,
+    ses_ref: str | None = None,
     dry_run: bool = False,
     path: str | None = None,
     ctx: PermissionContext | None = None,
 ) -> CortexOUT:
-    """Compact pulse entries for a session. BLP-013 handler."""
+    """Compact pulse entries for a session. BLP-013 handler.
+
+    With ``ses_ref`` the selection is by membership, never by position.
+    """
     from ..pulse import compact_session_pulse
     root = find_project_root(start=path)
     if root is None:
         return CortexOUT.error("no project initialized", code="NOT_FOUND")
     agent = (ctx or PermissionContext.from_env()).agent_id
-    result = compact_session_pulse(root, session_id=session_id, agent_id=agent, dry_run=dry_run)
+    result = compact_session_pulse(root, session_id=session_id, agent_id=agent,
+                                   dry_run=dry_run, ses_ref=ses_ref)
     if result.get("error"):
         return CortexOUT.error(result["error"], code="COMPACT_ERROR")
     if result.get("skip"):
@@ -146,14 +202,128 @@ def compact_context(
     return CortexOUT.work("cortex.compact ok", wrk_full=content[:200])
 
 
+def _read_session(
+    root: Path,
+    session_ref: str | None,
+    execution: str | None,
+    *,
+    for_mutation: bool = False,
+) -> tuple[dict[str, Any] | None, dict[str, Any] | None]:
+    """Select the session a call must act on. Never mutates.
+
+    Resolution order:
+
+    1. an explicit ``session_ref`` (a real ``SESxxx`` entry);
+    2. the session bound to this execution;
+    3. ``None`` — the brain has no real session identity at all, so the legacy
+       PULSE ``SES:`` payload selection applies unchanged.
+
+    A read may fall back to the project's only real session and says so in
+    ``selected_by``. A mutation may not: adopting "the one open session" is how
+    one execution ends up closing another one's work.
+    """
+    from ..session_identity import find_session_for_execution
+
+    if session_ref:
+        session = get_session(root, session_ref)
+        if session is None:
+            return None, {"code": "SESSION_NOT_FOUND",
+                          "message": f"session {session_ref!r} not found in this project"}
+        return session, None
+
+    if execution:
+        session = find_session_for_execution(root, execution, state=None)
+        if session is not None:
+            return session, None
+
+    sessions = list_sessions(root)
+    if not sessions:
+        return None, None
+
+    if not for_mutation and len(sessions) == 1:
+        return sessions[0], None
+
+    code = "SESSION_BINDING_REQUIRED" if for_mutation else "SESSION_AMBIGUOUS"
+    message = (
+        "this execution has no session of its own in this project — a mutation "
+        "never adopts another execution's session; pass session_ref explicitly"
+        if for_mutation else
+        "several sessions exist in this project and none is bound to this "
+        "execution — pass session_ref explicitly; the latest session is "
+        "never selected implicitly"
+    )
+    return None, {"code": code, "message": message, "alternatives": _alternatives(sessions)}
+
+
+def _alternatives(sessions: list[dict[str, Any]]) -> list[str]:
+    return [
+        f'{s["session_id"]} ({s.get("state", "?")}, {s.get("agent", "?")}, '
+        f'opened {s.get("date", "?")})'
+        for s in sessions[-10:]
+    ]
+
+
+def _selected_by(session_ref: str | None, execution: str | None,
+                 session: dict[str, Any]) -> str:
+    """How the session was picked — never silently implied."""
+    if session_ref:
+        return "explicit"
+    if execution and session.get("execution") == execution:
+        return "execution"
+    return "single_session_project"
+
+
+def _authoritative_execution(ctx: PermissionContext | None) -> str | None:
+    """The execution key of *ctx*, but only when the transport supplied one.
+
+    ``PermissionContext.execution_key`` already carries only authoritative keys
+    (an implicit process key never populates it), so this is a straight read; it
+    stays a function so the rule has one place to live.
+    """
+    if ctx is not None and ctx.execution_key:
+        return ctx.execution_key
+    return authoritative_execution_key()
+
+
 def resume(
+    session_ref: str | None = None,
     path: str | None = None,
     ctx: PermissionContext | None = None,
 ) -> CortexOUT:
-    """Read the last SES entry from brain PULSE and return the context."""
+    """Read the session identified by ``session_ref`` (or this execution's) and
+    return its context. Read-only: never writes and never reopens."""
     root = find_project_root(start=path)
     if root is None:
         return CortexOUT.error("no project initialized", code="NOT_FOUND")
+
+    execution = (ctx.execution_key if ctx else None) or authoritative_execution_key()
+    session, error = _read_session(root, session_ref, execution)
+    if error:
+        return CortexOUT.error(error["message"], code=error["code"],
+                               **{k: v for k, v in error.items() if k not in ("code", "message")})
+
+    if session is not None:
+        return CortexOUT.work(
+            "session.resume ok",
+            selected_by=_selected_by(session_ref, execution, session),
+            session_ref=session["session_id"],
+            state=session.get("state", ""),
+            opened_at=session.get("date", ""),
+            closed_at=session.get("closed", ""),
+            timelog=session.get("timelog", ""),
+            agent=session.get("agent", ""),
+            project=session.get("project", ""),
+            scope=session.get("scope", ""),
+            blp=session.get("blp", ""),
+            execution=session.get("execution", ""),
+            summary=session.get("summary", ""),
+            blps=_parse_csv(session.get("blps", "")),
+            tasks=_parse_csv(session.get("tasks", "")),
+            decisions=_parse_csv(session.get("decisions", "")),
+            gaps=_parse_csv(session.get("gaps", "")),
+            lng_count=int(session.get("lng_count", "0") or 0),
+            source="session_identity",
+        )
 
     events = read_pulse_from_brain(root, limit=10_000)
     ses_entries = [e for e in events if e.get("kind") == "session"]
@@ -177,17 +347,47 @@ def resume(
         decisions=parsed.get("decisions", []),
         gaps=parsed.get("gaps", []),
         lng_count=parsed.get("lng_count", 0),
+        source="pulse_legacy",
     )
 
 
 def status(
+    session_ref: str | None = None,
     path: str | None = None,
     ctx: PermissionContext | None = None,
 ) -> CortexOUT:
-    """Read SES metadata without restoring full context."""
+    """Read session metadata without restoring full context. Read-only."""
     root = find_project_root(start=path)
     if root is None:
         return CortexOUT.error("no project initialized", code="NOT_FOUND")
+
+    execution = (ctx.execution_key if ctx else None) or authoritative_execution_key()
+    session, error = _read_session(root, session_ref, execution)
+    if error:
+        return CortexOUT.error(error["message"], code=error["code"],
+                               **{k: v for k, v in error.items() if k not in ("code", "message")})
+
+    if session is not None:
+        return CortexOUT.work(
+            "session.status ok",
+            selected_by=_selected_by(session_ref, execution, session),
+            session_ref=session["session_id"],
+            state=session.get("state", ""),
+            opened_at=session.get("date", ""),
+            closed_at=session.get("closed", ""),
+            timelog=session.get("timelog", ""),
+            agent=session.get("agent", ""),
+            project=session.get("project", ""),
+            scope=session.get("scope", ""),
+            execution=session.get("execution", ""),
+            summary=session.get("summary", ""),
+            blp_count=len(_parse_csv(session.get("blps", ""))),
+            task_count=len(_parse_csv(session.get("tasks", ""))),
+            decision_count=len(_parse_csv(session.get("decisions", ""))),
+            gap_count=len(_parse_csv(session.get("gaps", ""))),
+            lng_count=int(session.get("lng_count", "0") or 0),
+            source="session_identity",
+        )
 
     events = read_pulse_from_brain(root, limit=10_000)
     ses_entries = [e for e in events if e.get("kind") == "session"]
@@ -210,6 +410,7 @@ def status(
         decision_count=len(parsed.get("decisions", [])),
         gap_count=len(parsed.get("gaps", [])),
         lng_count=parsed.get("lng_count", 0),
+        source="pulse_legacy",
     )
 
 
@@ -252,21 +453,32 @@ def _resolve_project_from_meta_brain(ws_root: Path, project_name: str) -> Path |
     return None
 
 CONTEXT_CORTEX = "context.cortex"
+CONTEXTS_DIR = "contexts"
 
 
 def context_set(
     project: str,
     scope: str,
     blp: str | None = None,
+    intent: str = "new",
+    session_ref: str | None = None,
     path: str | None = None,
     ctx: PermissionContext | None = None,
 ) -> CortexOUT:
-    """Set the current session context pointer.
+    """Set the current session context pointer and open/attach the real session.
 
-    Locates the workspace from *path* (or CWD), resolves the target project
-    from meta-brain.cortex, validates it has a brain.cortex, and stores a
-    lightweight context entry in the workspace's ``.arqux/context.cortex``.
-    The context file is overwritten on each call (one context per workspace).
+    This is the natural mutating binding action, so it is where a session
+    becomes real (CYCLE-14 / BLP-001). It locates the workspace from *path*
+    (or CWD), resolves the target project from meta-brain.cortex, validates it
+    has a brain.cortex, opens or re-attaches the session identity bound to this
+    execution, and stores a lightweight context entry in the workspace's
+    ``.arqux/context.cortex``.
+
+    Args:
+        intent: ``new`` (default) opens or recovers this execution's session;
+            ``resumed`` re-attaches ``session_ref`` without changing its id or
+            its original start.
+        session_ref: explicit ``SESxxx`` reference, required by ``resumed``.
     """
     # Phase 1: locate workspace (from path or CWD)
     ws_root = find_workspace_root(start=path)
@@ -280,9 +492,11 @@ def context_set(
     # masking it.
     if ctx is not None:
         agent = ctx.agent_id
+        execution = _authoritative_execution(ctx)
     else:
         ctx_env = PermissionContext.from_env(project_root=ws_root)
         agent = ctx_env.agent_id
+        execution = authoritative_execution_key()
 
     # Phase 2: resolve target project from meta-brain
     project_root = _resolve_project_from_meta_brain(ws_root, project)
@@ -300,20 +514,66 @@ def context_set(
             code="NOT_FOUND",
         )
 
-    # Phase 4: write context at workspace level (single source of truth)
-    context_path = ws_root / CONTEXT_CORTEX
+    # Phase 4: open or re-attach the real session for this execution.
+    # Without an unambiguous execution binding the newest global session is
+    # never borrowed: the call is rejected instead (AC-03).
+    if not execution:
+        return CortexOUT.error(
+            "no execution binding available for session identity — start the MCP "
+            "transport (or set ARQUX_EXECUTION_KEY) so the session can be tied to "
+            "this execution instead of the workspace's latest session",
+            code="SESSION_BINDING_REQUIRED",
+        )
+    try:
+        session = open_session(
+            project_root,
+            agent=agent,
+            project=project,
+            execution=execution,
+            scope=scope,
+            blp=blp or "",
+            intent=intent,
+            session_ref=session_ref,
+        )
+    except PermissionError as exc:
+        return CortexOUT.error(str(exc), code="SESSION_IN_USE")
+    except ValueError as exc:
+        code = str(exc)
+        message = {
+            "SESSION_SELECTION_REQUIRED": (
+                "intent='resumed' requires an explicit session_ref (SESxxx); the "
+                "latest session of the project is never selected implicitly"
+            ),
+            "SESSION_NOT_FOUND": f"session {session_ref!r} not found in this project",
+        }.get(code, code)
+        return CortexOUT.error(message, code=code)
+
+    session_id = session["session_id"]
+
+    # Phase 5: write the context. The per-execution file is the real record —
+    # two executions of the same agent in one workspace must not overwrite each
+    # other. The single workspace slot is kept for callers that predate it.
     blp_part = f' blp="{_escape_ses_value(blp)}"' if blp else ""
     entry = (
         f'CTX:{agent} project="{_escape_ses_value(project)}"'
         f' scope="{_escape_ses_value(scope)}"{blp_part}'
         f' agent="{_escape_ses_value(agent)}"'
+        f' ses="{session_id}"'
         f' project_root="{_escape_ses_value(str(project_root))}"'
     )
-    context_path.write_text(f"$0\n\n$1: CURRENT\n{entry}\n", encoding="utf-8")
+    document = f"$0\n\n$1: CURRENT\n{entry}\n"
+    _write_context(ws_root, execution, document)
+    (ws_root / CONTEXT_CORTEX).write_text(document, encoding="utf-8")
 
     header = f"⬡ {agent} | {project} | {scope}"
     if blp:
         header += f" | {blp}"
+
+    # CYCLE-14 / BLP-003: binding to a project opens the session block.
+    from ..timelog_capture import observe
+
+    lifecycle = observe(project_root, ctx, event="open",
+                        operation_ref=f"session:{session_id}", activity="session")
 
     return CortexOUT.work(
         "session.context.set ok",
@@ -322,19 +582,76 @@ def context_set(
         scope=scope,
         blp=blp or "",
         agent=agent,
+        session_ref=session_id,
+        opened_at=session.get("date", ""),
+        timelog=session.get("timelog", ""),
+        timelog_path=str(timelog_path(project_root, session_id, session.get("date", ""))),
+        execution=execution,
+        lifecycle=lifecycle,
     )
+
+
+def _execution_slug(execution: str | None) -> str:
+    """Filesystem-safe, collision-free name for an execution key.
+
+    The key comes from the environment or the transport. Sanitising alone is not
+    enough: ``a/b`` and ``a_b`` would both become ``a_b`` and two different
+    executions would share one context file. A short digest of the *full* key
+    disambiguates them, and truncation can no longer merge two long keys.
+    """
+    if not execution:
+        return ""
+    import hashlib
+
+    readable = re.sub(r"[^A-Za-z0-9._-]", "_", execution).strip("._")[:64] or "exec"
+    digest = hashlib.sha256(execution.encode("utf-8")).hexdigest()[:12]
+    return f"{readable}-{digest}"
+
+
+def _context_file(ws_root: Path, execution: str | None) -> Path:
+    """This execution's context file.
+
+    The workspace slot is a fallback only for workspaces that predate
+    per-execution contexts. Once any execution has its own file, reading
+    another execution's slot would hand it that execution's scope and session.
+    """
+    slug = _execution_slug(execution)
+    if slug:
+        scoped = ws_root / CONTEXTS_DIR / f"{slug}.cortex"
+        if scoped.exists():
+            return scoped
+    contexts = ws_root / CONTEXTS_DIR
+    if slug and contexts.exists() and any(contexts.glob("*.cortex")):
+        return ws_root / CONTEXTS_DIR / f"{slug}.cortex"  # absent: no context yet
+    return ws_root / CONTEXT_CORTEX
+
+
+def _write_context(ws_root: Path, execution: str | None, document: str) -> Path:
+    """Persist *document* under this execution's own context file."""
+    target = ws_root / CONTEXT_CORTEX
+    slug = _execution_slug(execution)
+    if slug:
+        target = ws_root / CONTEXTS_DIR / f"{slug}.cortex"
+        target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_text(document, encoding="utf-8")
+    return target
 
 
 def context_get(
     path: str | None = None,
     ctx: PermissionContext | None = None,
 ) -> CortexOUT:
-    """Read the current context pointer from the workspace ``.arqux/context.cortex``."""
+    """Read the current context pointer.
+
+    Prefers this execution's own context file and falls back to the workspace
+    slot written by callers that predate it. Read-only.
+    """
     ws_root = find_workspace_root(start=path)
     if ws_root is None:
         return CortexOUT.error("no workspace root found", code="NOT_FOUND")
 
-    context_path = ws_root / CONTEXT_CORTEX
+    execution = (ctx.execution_key if ctx else None) or authoritative_execution_key()
+    context_path = _context_file(ws_root, execution)
     if not context_path.exists():
         return CortexOUT.error("no context set", code="NOT_FOUND")
 
@@ -808,14 +1125,15 @@ def _record_bootstrap_pulse(
     """Append a PULSE event for the bootstrap call (best-effort)."""
     try:
         agent = (ctx or PermissionContext.from_env()).agent_id
-        event_id = next_pulse_event_id(arqux_root)
-        append_pulse_to_brain(
+        record_pulse(
             arqux_root,
-            event_id=event_id,
             task_id="-",
             kind="session_bootstrap",
             agent=agent,
             payload=f"[session.bootstrap] agent={agent_id} project={project}",
+            ses_ref=current_session_ref(
+                arqux_root, (ctx.execution_key if ctx else None) or authoritative_execution_key()
+            ) or None,
         )
     except Exception:  # noqa: BLE001
         pass
@@ -907,19 +1225,18 @@ def handoff(
     handoff_path = handoffs_dir / f"{target_agent}.cortex"
     handoff_path.write_text(handoff_cortex, encoding="utf-8")
 
-    # Write PULSE for outgoing session.
-    try:
-        event_id = next_pulse_event_id(root)
-        append_pulse_to_brain(
+    # Write PULSE for outgoing session — telemetry never blocks the handoff.
+    with suppress(Exception):
+        record_pulse(
             root,
-            event_id=event_id,
             task_id="-",
             kind="session_handoff",
             agent=agent_id,
             payload=f"[session.handoff] from={agent_id} to={target_agent} summary={summary[:60]}",
+            ses_ref=current_session_ref(
+                root, (ctx.execution_key if ctx else None) or authoritative_execution_key()
+            ) or None,
         )
-    except Exception:  # noqa: BLE001
-        pass
 
     return CortexOUT.work(
         f"session.handoff ok from={agent_id} to={target_agent}",
@@ -931,12 +1248,12 @@ def handoff(
 
 
 handler_schemas = [
-    {"name": "session.close", "fn": close, "description": "Close the current session and write a portable SES entry to brain PULSE.", "input_schema": {"type": "object", "properties": {"summary": {"type": "string", "description": "Short human-readable summary of what was accomplished."}, "blps": {"type": "string", "description": "Comma-separated active blueprint IDs (e.g. BLP-006,BLP-007)."}, "tasks": {"type": "string", "description": "Comma-separated pending task IDs."}, "decisions": {"type": "string", "description": "Comma-separated key decisions made."}, "gaps": {"type": "string", "description": "Comma-separated detected gaps or pending items."}, "path": {"type": "string", "description": "Path to project root. Defaults to cwd."}}, "required": ["summary"]}},
-    {"name": "session.resume", "fn": resume, "description": "Read the last SES entry from brain PULSE and restore the context.", "input_schema": {"type": "object", "properties": {"path": {"type": "string", "description": "Path to project root. Defaults to cwd."}}}},
-    {"name": "session.status", "fn": status, "description": "Read SES metadata without restoring full context.", "input_schema": {"type": "object", "properties": {"path": {"type": "string", "description": "Path to project root. Defaults to cwd."}}}},
-    {"name": "session.context.set", "fn": context_set, "description": "Set the current session context pointer (project + scope + optional BLP). Validates project exists and returns the formatted header.", "input_schema": {"type": "object", "properties": {"project": {"type": "string", "description": "Project name (e.g. ARQUX)"}, "scope": {"type": "string", "description": "Scope within project (e.g. CYCLE-01)"}, "blp": {"type": "string", "description": "Optional active BLP ID (e.g. BLP-014)"}, "path": {"type": "string", "description": "Path to workspace root. Defaults to cwd."}}, "required": ["project", "scope"]}},
+    {"name": "session.close", "fn": close, "description": "Close the session bound to this execution (or the explicit session_ref) and write its portable summary to brain PULSE. Never closes the newest session of the project when it belongs to another execution.", "input_schema": {"type": "object", "properties": {"summary": {"type": "string", "description": "Short human-readable summary of what was accomplished."}, "blps": {"type": "string", "description": "Comma-separated active blueprint IDs (e.g. BLP-006,BLP-007)."}, "tasks": {"type": "string", "description": "Comma-separated pending task IDs."}, "decisions": {"type": "string", "description": "Comma-separated key decisions made."}, "gaps": {"type": "string", "description": "Comma-separated detected gaps or pending items."}, "session_ref": {"type": "string", "description": "Explicit SESxxx to close. Defaults to this execution's session."}, "path": {"type": "string", "description": "Path to project root. Defaults to cwd."}}, "required": ["summary"]}},
+    {"name": "session.resume", "fn": resume, "description": "Restore the context of a session. Read-only: selects by explicit session_ref, else the session bound to this execution, else rejects an ambiguous choice instead of taking the newest session. Brains without real session identity keep the legacy PULSE selection.", "input_schema": {"type": "object", "properties": {"session_ref": {"type": "string", "description": "Explicit SESxxx reference."}, "path": {"type": "string", "description": "Path to project root. Defaults to cwd."}}}},
+    {"name": "session.status", "fn": status, "description": "Read session metadata without restoring full context. Read-only, same selection rules as session.resume.", "input_schema": {"type": "object", "properties": {"session_ref": {"type": "string", "description": "Explicit SESxxx reference."}, "path": {"type": "string", "description": "Path to project root. Defaults to cwd."}}}},
+    {"name": "session.context.set", "fn": context_set, "description": "Set the current session context pointer (project + scope + optional BLP) and open or re-attach the real session bound to this execution. Validates project exists and returns the formatted header.", "input_schema": {"type": "object", "properties": {"project": {"type": "string", "description": "Project name (e.g. ARQUX)"}, "scope": {"type": "string", "description": "Scope within project (e.g. CYCLE-01)"}, "blp": {"type": "string", "description": "Optional active BLP ID (e.g. BLP-014)"}, "intent": {"type": "string", "enum": ["new", "resumed"], "default": "new", "description": "'new' opens or recovers this execution's session; 'resumed' re-attaches session_ref without changing its id or original start."}, "session_ref": {"type": "string", "description": "Explicit SESxxx reference; required when intent='resumed'."}, "path": {"type": "string", "description": "Path to workspace root. Defaults to cwd."}}, "required": ["project", "scope"]}},
     {"name": "session.context.get", "fn": context_get, "description": "Read the current context pointer and return the formatted header.", "input_schema": {"type": "object", "properties": {"path": {"type": "string", "description": "Path to workspace root. Defaults to cwd."}}}},
     {"name": "session.bootstrap", "fn": bootstrap, "description": "Bootstrap a session using the authenticated identity. An explicit agent_id must match the caller (BLP-002). Returns cortex_context (canal I) and hcortex_dashboard (canal E).", "input_schema": {"type": "object", "properties": {"path": {"type": "string", "description": "Starting path. Defaults to cwd."}, "agent_id": {"type": "string", "description": "Optional identity selector; must match the authenticated caller."}}}},
     {"name": "session.handoff", "fn": handoff, "description": "Serialize the current session context as CORTEX and write a handoff PULSE for the target agent (BLP-010 meta-handler). Supports dry_run mode.", "input_schema": {"type": "object", "properties": {"target_agent": {"type": "string", "description": "ID of the agent receiving the handoff."}, "content": {"type": "string", "description": "CORTEX content with keys target_agent, summary, blps, tasks."}, "dry_run": {"type": "boolean", "default": False}, "path": {"type": "string"}}, "required": ["target_agent"]}},
-    {"name": "session.pulse.compact", "fn": pulse_compact, "description": "Compact pulse entries for a session. Prunes non-SES entries, writes consolidated LNG lesson.", "input_schema": {"type": "object", "properties": {"session_id": {"type": "string"}, "dry_run": {"type": "boolean", "default": False}, "path": {"type": "string"}}, "required": ["session_id"]}},
+    {"name": "session.pulse.compact", "fn": pulse_compact, "description": "Compact pulse entries for a session. With ses_ref, selection is by membership: only that session's pulses are pruned and concurrent or legacy pulses are never reassigned by position. Writes a consolidated LNG lesson.", "input_schema": {"type": "object", "properties": {"session_id": {"type": "string"}, "ses_ref": {"type": "string", "description": "Select by session membership instead of position."}, "dry_run": {"type": "boolean", "default": False}, "path": {"type": "string"}}, "required": ["session_id"]}},
 ]

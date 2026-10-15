@@ -111,6 +111,53 @@ def file_lock(
             tlock.release()
 
 
+_RELOCKS: dict[str, threading.RLock] = {}
+_RELOCKS_GUARD = threading.Lock()
+_RELOCAL = threading.local()
+
+
+@contextmanager
+def reentrant_file_lock(
+    lock_path: Path | str,
+    *,
+    timeout: float = 10.0,
+) -> Generator[None, None, None]:
+    """Exclusive lock that may be re-entered by the same thread.
+
+    Every read-modify-write of a .cortex file goes through this: the parser
+    reads the whole file, the mutation applies in memory, and the writer
+    replaces the file. An atomic *replace* is not exclusion — two processes
+    that both read the old text and then both write lose one of the two
+    writes, silently, with no error anywhere.
+
+    Reentrancy is required because legitimate callers nest: opening a session
+    takes the brain lock and then performs several CORTEX operations, each of
+    which takes it again. A plain second ``flock`` on a new descriptor would
+    deadlock against the one the same thread already holds.
+    """
+    path = Path(lock_path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    key = str(path.resolve())
+    with _RELOCKS_GUARD:
+        rlock = _RELOCKS.setdefault(key, threading.RLock())
+    if not rlock.acquire(timeout=timeout):
+        raise TimeoutError(f"could not acquire lock {path} within {timeout}s")
+    depths = getattr(_RELOCAL, "depths", None)
+    if depths is None:
+        depths = _RELOCAL.depths = {}
+    depth = depths.get(key, 0)
+    depths[key] = depth + 1
+    try:
+        if depth:
+            yield
+        else:
+            with file_lock(path, timeout=timeout):
+                yield
+    finally:
+        depths[key] = depth
+        rlock.release()
+
+
 # --- Race-free ID generators ----------------------------------------------
 
 

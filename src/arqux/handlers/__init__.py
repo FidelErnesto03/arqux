@@ -38,6 +38,7 @@ from . import (
     skill,
     sync,
     task,
+    timelog,
     workspace,
 )
 from . import context as context_pkg
@@ -63,7 +64,7 @@ def _register(spec: HandlerSpec) -> None:
 
 # --- Register all handlers from each module ---------------------------------
 
-for mod in (workspace, project, cycle, task, evidence, issue, protocol, session, cortex, skill, blueprint, sync, context_pkg, identity_pkg, handler):
+for mod in (workspace, project, cycle, task, evidence, issue, protocol, session, cortex, skill, blueprint, sync, timelog, context_pkg, identity_pkg, handler):
     for info in mod.handler_schemas:
         _register(HandlerSpec(**info))
 

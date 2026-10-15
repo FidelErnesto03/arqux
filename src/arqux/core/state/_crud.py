@@ -366,9 +366,22 @@ def _read_and_mutate(
 
     *mutate_fn* receives the parsed dict and returns it (modified).
     """
-    text = path.read_text(encoding="utf-8")
-    doc = cortex_to_dict(text)
-    doc = mutate_fn(doc)
+    from ...concurrency import reentrant_file_lock
+
+    # CYCLE-14 / BLP-001: this is the read-modify-write of every governed
+    # artifact. Without exclusion two processes both read the old text and the
+    # second write silently discards the first one (measured: ~55% of
+    # concurrent cortex.entry.add calls lost). The lock is reentrant, so
+    # callers that already hold the brain lock are not blocked by it.
+    with reentrant_file_lock(path.with_name(path.name + ".lock")):
+        text = path.read_text(encoding="utf-8")
+        doc = cortex_to_dict(text)
+        doc = mutate_fn(doc)
+        return _write_mutated(path, doc, force=force, dry_run=dry_run)
+
+
+def _write_mutated(path: Path, doc: dict, *, force: bool, dry_run: bool) -> dict:
+    """Validate and write a mutated document. Caller holds the artifact lock."""
 
     # Optional validation via CODEC-CORTEX (if available).
     # T-027: brain-level validation applies to BRAINS only. Issue/task/

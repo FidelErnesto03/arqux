@@ -45,6 +45,9 @@ LITE_EXTRA: set[str] = {
     "session.context.set",
     "session.resume",
     "session.status",
+    # CYCLE-14 / BLP-004: read-only consultation is safe at LITE; correction and
+    # purge stay FULL-only (explicit control actions).
+    "timelog.query",
 }
 
 LITE_HANDLERS: set[str] = NANO_HANDLERS | LITE_EXTRA

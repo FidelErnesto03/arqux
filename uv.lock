@@ -39,7 +39,7 @@ wheels = [
 
 [[package]]
 name = "arqux"
-version = "0.9.0rc1"
+version = "0.9.0rc3"
 source = { editable = "." }
 dependencies = [
     { name = "click" },
@@ -84,7 +84,7 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "click", specifier = ">=8.1.0" },
-    { name = "codec-cortex", marker = "extra == 'codec'", specifier = "==1.0.0rc1" },
+    { name = "codec-cortex", marker = "extra == 'codec'", specifier = ">=0.6.2,<0.7" },
     { name = "faster-whisper", marker = "extra == 'voice'", specifier = ">=1.0.0" },
     { name = "httpx", marker = "extra == 'comms'", specifier = ">=0.24" },
     { name = "kokoro-onnx", marker = "extra == 'voice'", specifier = ">=0.6.1" },
@@ -399,11 +399,10 @@ wheels = [
 
 [[package]]
 name = "codec-cortex"
-version = "1.0.0rc1"
+version = "0.6.2"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/e0/10/aaffd89a6ac0306b8d1dbf93e5c1e2eb554de15825992b75e9cb963af1ca/codec_cortex-1.0.0rc1.tar.gz", hash = "sha256:4cfbb93afc32d639edfa4614da2d7ff6e69c450cb3e367b408eb9a9d6d68ea30", size = 56935, upload-time = "2026-10-10T20:16:52.989Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/c6/dd/bda812ff6f889cf05b82c812a4a6304184f80aaa8cd6e8e70576786914fc/codec_cortex-1.0.0rc1-py3-none-any.whl", hash = "sha256:5b1b4656d211ebf35834f0b5dfa39e1305bb17dcbcafbfff18ba31d8288d6de3", size = 65043, upload-time = "2026-10-10T20:16:51.808Z" },
+    { url = "https://files.pythonhosted.org/packages/b7/c5/b4272ceb4173c246bd4482b96cb7bb6725bfd39ed6befd82193025fe84b3/codec_cortex-0.6.2-py3-none-any.whl", hash = "sha256:4344d10ad7804aad2c7baf0a8867db9dce30d6e88a8f488c75d20650c7b33857", size = 278017, upload-time = "2026-07-16T20:59:40.964Z" },
 ]
 
 [[package]]

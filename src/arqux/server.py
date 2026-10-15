@@ -25,6 +25,7 @@ from .constants import (
     PRODUCT_NAME_TITLE,
 )
 from .cortex_out import CortexOUT
+from .execution import bind_execution_key, current_execution_key, mint_execution_key
 from .handlers import REGISTRY
 from .permissions import PermissionContext, PermissionDenied
 
@@ -86,6 +87,11 @@ def build_server() -> Any:
         ) from exc
 
     server = Server(PRODUCT_NAME)
+    # CYCLE-14 / BLP-001: the transport supplies the execution key. One MCP
+    # server process is one execution; a host bridge may rebind it explicitly
+    # for a different logical execution. Never derived from the agent identity.
+    if current_execution_key() is None:
+        bind_execution_key(mint_execution_key())
     tools: list[Tool] = []
     handlers: dict[str, Any] = {}
     # Maps safe name (underscores) → real dotted handler name

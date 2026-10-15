@@ -881,15 +881,13 @@ def install_skill(
     # PULSE.
     if not dry_run:
         try:
-            from ..pulse import append_pulse_to_brain, next_pulse_event_id
+            from ..pulse import record_pulse
             from ..state import find_project_root as _fpr
             project_arqux = _fpr(start=path)
             if project_arqux is not None:
                 agent = (ctx or PermissionContext.from_env()).agent_id
-                event_id = next_pulse_event_id(project_arqux)
-                append_pulse_to_brain(
+                record_pulse(
                     project_arqux,
-                    event_id=event_id,
                     task_id="-",
                     kind="skill_install",
                     agent=agent,
