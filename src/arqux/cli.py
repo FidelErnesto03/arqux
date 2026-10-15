@@ -50,6 +50,14 @@ def _call_handler(name: str, raw_args: list[str]) -> str:
             return f"ERROR: unknown handler '{name}'. Available:\n{available}"
 
     spec = REGISTRY[name]
+    # CYCLE-14 / BLP-001: the CLI is a transport too. Bind an execution key when
+    # none was supplied, or session mutations (context.set/close) refuse with
+    # SESSION_BINDING_REQUIRED. Each invocation is its own execution; continuity
+    # across invocations requires an explicit ARQUX_EXECUTION_KEY.
+    from .execution import authoritative_execution_key, bind_execution_key, mint_execution_key
+
+    if authoritative_execution_key() is None:
+        bind_execution_key(mint_execution_key("cli"))
     ctx = PermissionContext.from_env()
 
     # Parse key=value arguments
