@@ -50,6 +50,11 @@ SECTION_ACTIVITIES = "$2"
 SECTION_RECEIPTS = "$3"
 
 _GLOSSARY = (
+    # $0 must be a real section header, not just a comment: the CODEC-CORTEX
+    # parser rejects a file whose first section is not $0
+    # (E002_GLOSSARY_NOT_FIRST). The glossary text lives in the comments below it.
+    "$0\n"
+    "\n"
     "# -- $0: TIMLOG LOCAL GLOSSARY --\n"
     "# Sigil | Name     | Type  | Risk | Cognitive Layer | Description\n"
     "# TLG   | timelog  | attrs | B    | Episodic        | Timelog identity and metadata\n"
