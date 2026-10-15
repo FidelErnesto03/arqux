@@ -192,7 +192,12 @@ def switch(
             if ses and execution:
                 project_root = Path(current.get("project_root", ""))
                 existing = get_session(project_root, ses)
-                if existing is not None and existing.get("execution") == execution:
+                # Only an OPEN session is re-attached. A closed one belongs to a
+                # finished execution: switching identity must not reopen it,
+                # which would clear its `closed` fact and append an interval.
+                if (existing is not None
+                        and existing.get("execution") == execution
+                        and existing.get("state") == "open"):
                     rebind(
                         project_root,
                         agent=canonical,

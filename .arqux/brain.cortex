@@ -89,6 +89,8 @@ $4: SESSIONS
 
 SES:SES001{date:"2026-10-15T14:51:46Z", state:"open", agent:"Alfred", project:"ARQUX", execution:"exec-955cd6e2a2254ab29ae5229221cd6b4b", intent:"new", scope:"CYCLE-14", blp:"", timelog:"SES001_20261015_145146.cortex", intervals:"[2026-10-15T14:51:46Z/]", closed:"", summary:"", blps:"", tasks:"", decisions:"", gaps:"", lng_count:"0", event:"", timelog_state:"created"}
 
+SES:SES002{date:"2026-10-15T14:54:46Z", state:"open", agent:"alfred", project:"ARQUX", execution:"exec-0dd43f49100d487c93837976524d77e6", intent:"new", scope:"CYCLE-14", blp:"", timelog:"SES002_20261015_145446.cortex", intervals:"[2026-10-15T14:54:46Z/2026-10-15T14:54:56Z][2026-10-15T14:56:36Z/]", closed:"", summary:"Prueba en vivo MCP: verificacion de CYCLE-14 tras reinicio", blps:"BLP-001,BLP-002,BLP-003", tasks:"", decisions:"", gaps:"", lng_count:"3", event:"E-1699", timelog_state:"created"}
+
 
 $5: HANDOFFS
 
@@ -1194,6 +1196,16 @@ AUD:E_1696{date:"2026-10-15T14:04:26Z", event:"E-1696", task:"BLP-006", kind:"bl
 AUD:E_1697{date:"2026-10-15T14:04:27Z", event:"E-1697", task:"-", kind:"checkpoint", agent:"Alfred", result:"cortex.checkpoint ok fcs=\"CYCLE-14: los 6 BLP estan DONE. Siguien obj=Ejecucion completa gobernada de CYCLE-14", evidence:"cortex.checkpoint ok fcs=\"CYCLE-14: los 6 BLP estan DONE. Siguien obj=Ejecucion completa gobernada de CYCLE-14"}
 
 AUD:E_1698{date:"2026-10-15T14:05:23Z", event:"E-1698", task:"-", kind:"checkpoint", agent:"Alfred", result:"cortex.checkpoint ok fcs=\"CYCLE-14 CERRADO. 6 BLP done obj=Ejecucion completa gobernada de CYCLE-14", evidence:"cortex.checkpoint ok fcs=\"CYCLE-14 CERRADO. 6 BLP done obj=Ejecucion completa gobernada de CYCLE-14"}
+
+AUD:E_1699{date:"2026-10-15T14:54:56Z", event:"E-1699", task:"-", kind:"session", agent:"Alfred", result:"SES:2026-10-15T14:54:56Z agent=Alfred summary=\"Prueba en vivo MCP: verificacion de CYCLE-14 tras reinicio\" blps=[BLP-001,BLP-002,BLP-003] tasks=[-] decisions=[-] gaps=[-] lng_count=3", evidence:"SES:2026-10-15T14:54:56Z agent=Alfred summary=\"Prueba en vivo MCP: verificacion de CYCLE-14 tras reinicio\" blps=[BLP-001,BLP-002,BLP-003] tasks=[-] decisions=[-] gaps=[-] lng_count=3", ses_ref:"SES002"}
+
+AUD:E_1700{date:"2026-10-15T14:56:36Z", event:"E-1700", task:"-", kind:"session_handoff", agent:"Alfred", result:"[session.handoff] from=Alfred to=heimdall summary=identity switch from Alfred", evidence:"[session.handoff] from=Alfred to=heimdall summary=identity switch from Alfred", ses_ref:"SES002"}
+
+AUD:E_1701{date:"2026-10-15T14:56:37Z", event:"E-1701", task:"-", kind:"identity_switch", agent:"Alfred", result:"[identity.switch] from=Alfred to=heimdall context_updated=True", evidence:"[identity.switch] from=Alfred to=heimdall context_updated=True", ses_ref:"SES002"}
+
+AUD:E_1702{date:"2026-10-15T14:58:32Z", event:"E-1702", task:"-", kind:"session_handoff", agent:"Alfred", result:"[session.handoff] from=Alfred to=alfred summary=identity switch from Alfred", evidence:"[session.handoff] from=Alfred to=alfred summary=identity switch from Alfred", ses_ref:"SES002"}
+
+AUD:E_1703{date:"2026-10-15T14:58:32Z", event:"E-1703", task:"-", kind:"identity_switch", agent:"Alfred", result:"[identity.switch] from=Alfred to=alfred context_updated=True", evidence:"[identity.switch] from=Alfred to=alfred context_updated=True", ses_ref:"SES002"}
 
 
 $7: LESSONS
