@@ -101,6 +101,16 @@ def close(
         ses_ref=ses_ref or None,
     )
 
+    # CYCLE-14 / BLP-003: the close is a natural boundary of the session block.
+    # It must be captured while the session is still OPEN — after close_session
+    # the recorder refuses to touch a closed session (and the block would be
+    # left open).
+    from ..timelog_capture import observe
+
+    lifecycle = observe(root, ctx, event="close",
+                        operation_ref=f"session:{ses_ref or 'legacy'}",
+                        activity="session")
+
     if session is not None:
         close_session(
             root,
@@ -127,13 +137,6 @@ def close(
         )
     except Exception:
         pass
-
-    # CYCLE-14 / BLP-003: the close is a natural boundary of the session block.
-    from ..timelog_capture import observe
-
-    lifecycle = observe(root, ctx, event="close",
-                        operation_ref=f"session:{ses_ref or 'legacy'}",
-                        activity="session")
 
     return CortexOUT.work(
         "session.close ok",

@@ -274,3 +274,22 @@ class TestCaptureAfterClose:
         result = repair(bound.proj_root, bound.ctx, event="close",
                         operation_ref="late-op")
         assert result["status"] == STATUS_REJECTED
+
+
+class TestCloseClosesTheSessionBlock:
+    """The close boundary must land on the OPEN session, before it is closed."""
+
+    def test_session_close_closes_the_timelog_block(self, bound):
+        from arqux.handlers.session import close
+
+        sid = bound.session["session_id"]
+        capture(bound.proj_root, bound.ctx, event="open",
+                operation_ref=f"session:{sid}", activity="session")
+
+        close(summary="done", path=str(bound.proj_root), ctx=bound.ctx)
+
+        doc = load(bound.proj_root, sid, opened_at=bound.session["date"])
+        block = doc["blocks"].get(f"session_{sid}")
+        assert block is not None, doc["blocks"]
+        assert block["state"] == "closed"
+        assert block["end"]
