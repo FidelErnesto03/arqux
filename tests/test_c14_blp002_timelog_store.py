@@ -333,3 +333,14 @@ def test_execution_slug_never_collides_for_distinct_keys(arqux_env):
     for pair in pairs:
         assert _execution_slug(pair[0]) != _execution_slug(pair[1])
     assert _execution_slug("a/b") == _execution_slug("a/b")  # deterministic
+
+
+def test_timelog_is_valid_cortex_with_glossary_first(session):
+    """The official reader must accept it: $0 first, not only as a comment."""
+    from arqux.state import cortex_read
+
+    path = canonical_path(session.proj_root, session.session_id, session.opened_at)
+    doc = cortex_read(str(path))
+    ids = [s["id"] for s in doc["sections"]]
+    assert ids[0] == "$0", ids
+    assert ids == ["$0", "$1", "$2", "$3"], ids
