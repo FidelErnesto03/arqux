@@ -60,6 +60,7 @@ from .constants import (
     ROLE_EXECUTOR,
     ROLE_GOVERNOR,
 )
+from .execution import authoritative_execution_key
 from .identity import IdentityManager, IdentityNotFoundError
 
 # --- Identity name extraction helper (BLP-008 GOV-001 P2.2) ---
@@ -148,6 +149,8 @@ GOVERNOR_ONLY: tuple[str, ...] = (
 # (cortex.render.diagram, cortex.render.validate_file) are caller
 # outputs, not governance state.
 MUTATING_HANDLERS: frozenset[str] = frozenset({
+    # CYCLE-14 / BLP-004: an explicit correction always writes a revision.
+    "timelog.review",
     # blueprint mutations
     "blueprint.create",
     "blueprint.ready", "blueprint.claim",
@@ -254,6 +257,11 @@ CONDITIONAL_MUTATING: dict[str, tuple[str, ...]] = {
     # Without content, reads the skill file (auditor-legit); a truthy
     # content param writes the file/section.
     "skill.edit": ("content",),
+    # preview=True (default) returns a non-mutating preview; preview=False
+    # applies archive/summarize/delete.
+    "timelog.purge": ("!preview",),
+    # preview is read-only; prepare/send/reconcile write the batch/receipt.
+    "timelog.project": ("action!=preview",),
 }
 
 def _resolve_call_kwargs(handler: str, call_kwargs: dict[str, Any]) -> dict[str, Any]:
@@ -297,7 +305,27 @@ def _is_mutating_invocation(handler: str, call_kwargs: dict[str, Any]) -> bool:
     """
     if call_kwargs.get("dry_run"):
         return False
-    return all(call_kwargs.get(flag) for flag in CONDITIONAL_MUTATING[handler])
+    return all(_mutating_flag(call_kwargs, flag)
+               for flag in CONDITIONAL_MUTATING[handler])
+
+
+def _mutating_flag(call_kwargs: dict[str, Any], flag: str) -> bool:
+    """Evaluate one conditional-mutator flag.
+
+    A leading ``!`` inverts the test, for handlers whose mutating switch is a
+    *default-safe* boolean like ``preview=True``: ``timelog.purge`` mutates when
+    ``preview`` is False, not when some flag is True.
+
+    ``name!=value`` compares instead of testing truthiness, for handlers whose
+    switch is an *action word*: ``timelog.project`` mutates when
+    ``action != "preview"``, which is not expressible as a boolean flag.
+    """
+    if "!=" in flag:
+        name, _, value = flag.partition("!=")
+        return str(call_kwargs.get(name)) != value
+    if flag.startswith("!"):
+        return not call_kwargs.get(flag[1:])
+    return bool(call_kwargs.get(flag))
 
 
 # Handlers that require HMAC signature verification (CRÍTICO-1 fix).
@@ -325,6 +353,12 @@ class PermissionContext:
     signature: str | None = None
     timestamp: int | None = None
     verified: bool = False  # True if HMAC signature has been verified
+    # CYCLE-14 / BLP-001: which *execution* is acting. Independent of
+    # ``agent_id``: two concurrent executions of the same agent carry the same
+    # identity but must not share a session. ``None`` means no unambiguous
+    # execution binding — mutating session handlers must reject rather than
+    # borrow another execution's session.
+    execution_key: str | None = None
 
     @staticmethod
     def _normalize_project_root(root: str | Path) -> Path:
@@ -449,6 +483,7 @@ class PermissionContext:
             signature=signature,
             timestamp=timestamp,
             verified=False,
+            execution_key=authoritative_execution_key(),
         )
 
     def check(self, handler_name: str, **call_kwargs: Any) -> None:

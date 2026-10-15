@@ -8,6 +8,7 @@ Both are append-only operations on the brain sections dict.
 
 from __future__ import annotations
 
+import os
 import re
 from pathlib import Path
 
@@ -30,6 +31,13 @@ _PULSE_ID_RE = re.compile(r"^(E-|SES-|OBS-|HDL-)\d+$")
 def _is_valid_pulse_id(event_id: str) -> bool:
     """Validate pulse event ID format (BLP-008 GOV-001 P4.1)."""
     return bool(_PULSE_ID_RE.match(event_id))
+
+
+def _brain_lock(project_root: Path):
+    """Brain-wide write lock; see ``session_identity.brain_lock``."""
+    from .session_identity import brain_lock
+
+    return brain_lock(project_root)
 
 
 def next_pulse_event_id(project_root: Path) -> str:
@@ -66,6 +74,37 @@ def next_pulse_event_id(project_root: Path) -> str:
         candidate += 1
 
 
+def record_pulse(
+    project_root: Path,
+    *,
+    task_id: str | None,
+    kind: str,
+    agent: str,
+    payload: str,
+    cycle: str | None = None,
+    ses_ref: str | None = None,
+) -> str:
+    """Allocate an event id and append the pulse under a single brain lock.
+
+    Allocating and writing in two separate critical sections lets two
+    processes read the same maximum id and produce the same ``E-XXXX``, with the
+    second write silently overwriting the first (and its ``ses_ref``).
+    """
+    with _brain_lock(project_root):
+        event_id = next_pulse_event_id(project_root)
+        append_pulse_to_brain(
+            project_root,
+            event_id=event_id,
+            task_id=task_id,
+            kind=kind,
+            agent=agent,
+            payload=payload,
+            cycle=cycle,
+            ses_ref=ses_ref,
+        )
+    return event_id
+
+
 def append_pulse_to_brain(
     project_root: Path,
     *,
@@ -75,6 +114,7 @@ def append_pulse_to_brain(
     agent: str,
     payload: str,
     cycle: str | None = None,
+    ses_ref: str | None = None,
 ) -> str:
     """Append a pulse entry to the brain's PULSE section.
 
@@ -101,12 +141,38 @@ def append_pulse_to_brain(
     value = {"date": ts, "event": event_id, "task": task_id or "-", "kind": kind, "agent": agent, "result": payload, "evidence": payload}
     if cycle:
         value["cycle"] = cycle
-    crud_add(
-        brain_path, "$6", "AUD", event_id.replace("-", "_"),
-        value,
-        create_section=True, force=True,
-    )
+    # CYCLE-14 / BLP-001: membership. A pulse that does not say which session
+    # produced it cannot be compacted later without guessing.
+    if ses_ref:
+        value["ses_ref"] = ses_ref
+    with _brain_lock(project_root):
+        # Last line of defence: a caller that pre-allocated its id outside the
+        # lock may hand us one that another process just took. Renaming here is
+        # what keeps two processes from silently overwriting each other's
+        # evidence (and its membership).
+        if event_id in _existing_ids(brain_path):
+            event_id = next_pulse_event_id(project_root)
+            value["event"] = event_id
+        crud_add(
+            brain_path, "$6", "AUD", event_id.replace("-", "_"),
+            value,
+            create_section=True, force=True,
+        )
     return f"- [{ts}] id={event_id} task={task_id or '-'} kind={kind} agent={agent} :: {payload}"
+
+
+def _existing_ids(brain_path: Path) -> set[str]:
+    """Ids already present in PULSE, both API and storage spelling."""
+    try:
+        result = crud_read(brain_path, "$6/AUD:*")
+    except Exception:
+        return set()
+    ids = set()
+    for entry in result.get("entries", []):
+        value = entry.get("value")
+        value = value if isinstance(value, dict) else {}
+        ids.add(value.get("event", entry.get("name", "")))
+    return ids
 
 
 def read_pulse_from_brain(
@@ -115,6 +181,7 @@ def read_pulse_from_brain(
     task_id: str | None = None,
     cycle: str | None = None,
     since: str | None = None,
+    ses_ref: str | None = None,
     limit: int | None = 100,
     offset: int = 0,
 ) -> list[dict[str, str]]:
@@ -146,10 +213,13 @@ def read_pulse_from_brain(
             "agent": val.get("agent", ""),
             "payload": val.get("evidence", val.get("result", "")),
             "cycle": val.get("cycle", ""),
+            "ses_ref": val.get("ses_ref", ""),
         }
         if task_id and ev["task"] != task_id:
             continue
         if cycle and ev.get("cycle") != cycle:
+            continue
+        if ses_ref and ev.get("ses_ref") != ses_ref:
             continue
         if since and ev["ts"] < since:
             continue
@@ -224,6 +294,35 @@ def read_handoffs(
 # --- Pulse compaction (BLP-013) ----------------------------------------------
 
 
+def _normalize_id(event_id: str) -> str:
+    """Compare ids regardless of the storage spelling (E-0005 / E_0005)."""
+    return (event_id or "").replace("_", "-").strip()
+
+
+def _line_entry_id(line: str) -> str:
+    """The id a PULSE line actually declares, or '' when the line has none.
+
+    Handles both the stored ``AUD:E_0005{...}`` form and the legacy
+    ``- [ts] id=E-0005 task=...`` form.
+    """
+    stripped = line.strip()
+    if stripped.startswith("AUD:"):
+        rest = stripped[len("AUD:"):]
+        name = re.split(r"[{\s]", rest, maxsplit=1)[0]
+        return _normalize_id(name)
+    if stripped.startswith("- ["):
+        m = re.search(r"\bid=(\S+)", stripped)
+        return _normalize_id(m.group(1)) if m else ""
+    return ""
+
+
+def _atomic_write_text(path: Path, text: str) -> None:
+    """Replace *path* through a temporary file (caller holds the brain lock)."""
+    temporary = path.with_name(f".{path.name}.tmp")
+    temporary.write_text(text, encoding="utf-8")
+    os.replace(temporary, path)
+
+
 def _prune_pulse_entries(
     brain_path: Path,
     entry_ids: list[str],
@@ -235,18 +334,19 @@ def _prune_pulse_entries(
         return {"pruned": 0, "errors": 0, "dry_run": dry_run}
     text = brain_path.read_text(encoding="utf-8")
     lines = text.splitlines()
+    # Compare the entry's OWN id, never a substring. An id appearing inside a
+    # payload (e.g. "E-0005" quoted in another entry's evidence) must not take
+    # that other entry down with it.
+    wanted = {_normalize_id(eid) for eid in entry_ids}
     pruned = 0
     kept: list[str] = []
     for line in lines:
-        stripped = line.strip()
-        if (stripped.startswith("AUD:") or stripped.startswith("- [")) and any(
-            eid in stripped for eid in entry_ids
-        ):
+        if _line_entry_id(line) in wanted:
             pruned += 1
             continue
         kept.append(line)
     if not dry_run:
-        brain_path.write_text("\n".join(kept) + "\n", encoding="utf-8")
+        _atomic_write_text(brain_path, "\n".join(kept) + "\n")
     result: dict = {"pruned": pruned, "errors": 0, "dry_run": dry_run}
     if dry_run:
         result["would_prune"] = pruned
@@ -259,12 +359,18 @@ def compact_session_pulse(
     session_id: str,
     agent_id: str = "system",
     dry_run: bool = False,
+    ses_ref: str | None = None,
 ) -> dict:
     """Compact pulse entries for a completed session.
 
-    Reads all pulse entries, prunes non-SES entries between this SES
-    and the previous SES, writes a consolidated LNG lesson, and records
-    a meta-event AUD.
+    With ``ses_ref`` (CYCLE-14 / BLP-001) selection is by *membership*: only
+    pulses whose ``ses_ref`` is exactly this session are compacted. Concurrent
+    sessions interleave in PULSE, and legacy pulses carry no membership at all
+    — neither may be silently reassigned or pruned by position.
+
+    Without ``ses_ref`` the legacy positional rule applies unchanged (everything
+    between this SES and the previous one), so brains written before real
+    session identity keep their previous behaviour.
     """
     brain_path = _brain_cortex_path(project_root)
     if not brain_path.exists():
@@ -292,36 +398,76 @@ def compact_session_pulse(
             break
 
     ses_idx = next((j for j, ae in enumerate(all_entries) if ae["id"] == session_id), len(all_entries) - 1)
-    entries_to_compact = [
-        all_entries[j] for j in range(prev_ses_idx + 1, ses_idx)
-        if all_entries[j].get("kind") != "session"
-    ]
+    if ses_ref:
+        owner = ses_entry.get("ses_ref") or ""
+        if owner != ses_ref:
+            # Including an unlabelled close: compacting by membership requires
+            # proving the close belongs to the session being compacted. Without
+            # that proof the event could belong to anyone.
+            return {
+                "error": (
+                    f"session event {session_id} belongs to "
+                    f"{owner or 'no recorded session'}, not to {ses_ref}"
+                ),
+                "compacted": False,
+            }
+        entries_to_compact = [
+            e for e in all_entries
+            if e.get("kind") != "session"
+            and e.get("ses_ref") == ses_ref
+            and e["id"] != session_id
+        ]
+    else:
+        entries_to_compact = [
+            all_entries[j] for j in range(prev_ses_idx + 1, ses_idx)
+            if all_entries[j].get("kind") != "session"
+        ]
     entry_count = len(entries_to_compact)
 
-    # Idempotency check BEFORE entry count — already compacted sessions
-    # may have 0 entries because all were pruned
-    lng_name = f"session_{session_id.replace('-', '_')}"
-    try:
-        existing = crud_read(brain_path, f"$7/LNG:{lng_name}")
-        if existing.get("entries"):
-            return {"skip": True, "reason": f"already compacted (LNG:{lng_name} exists)", "lng_name": lng_name, "entry_count": entry_count, "compacted": False}
-    except Exception:
-        pass
-
-    if entry_count < 5:
-        return {"skip": True, "reason": f"only {entry_count} entries (< 5)", "entry_count": entry_count, "compacted": False}
-
+    lng_name = f"session_{(ses_ref or session_id).replace('-', '_')}"
     kind_counts: dict[str, int] = {}
     for e in entries_to_compact:
         k = e.get("kind", "unknown")
         kind_counts[k] = kind_counts.get(k, 0) + 1
     summary = ",".join(f"{k}:{v}" for k, v in sorted(kind_counts.items()))
 
-    entry_ids = [e["id"] for e in entries_to_compact]
+    # The compactor rewrites the whole PULSE section twice (lesson + prune), so
+    # its mutations belong to the same exclusion as every other brain writer.
+    # The idempotency check must live in that same critical section: checking
+    # here and writing there is a TOCTOU gap where every concurrent compactor
+    # observes "not yet compacted" and writes its own lesson.
+    with _brain_lock(project_root):
+        return _compact_locked(
+            brain_path, project_root, session_id, ses_ref, agent_id, entry_count,
+            entries_to_compact, lng_name, summary, dry_run,
+        )
 
+
+def _compact_locked(
+    brain_path, project_root, session_id, ses_ref, agent_id, entry_count,
+    entries_to_compact, lng_name, summary, dry_run,
+) -> dict:
     if dry_run:
-        return {"dry_run": True, "entry_count": entry_count, "ses_preserved": True, "entries_to_prune": entry_ids, "lng_name": lng_name, "summary": summary, "compacted": False}
+        return {"dry_run": True, "selection": "membership" if ses_ref else "positional", "entry_count": entry_count, "ses_preserved": True, "entries_to_prune": [e["id"] for e in entries_to_compact], "lng_name": lng_name, "summary": summary, "compacted": False}
 
+    # Idempotency check BEFORE entry count — already compacted sessions may have
+    # 0 entries because all were pruned. It shares this critical section with
+    # the write that follows it, which is what makes the guard atomic.
+    try:
+        existing = crud_read(brain_path, f"$7/LNG:{lng_name}")
+        if existing.get("entries"):
+            return {"skip": True,
+                    "reason": f"already compacted (LNG:{lng_name} exists)",
+                    "lng_name": lng_name, "entry_count": entry_count,
+                    "compacted": False}
+    except Exception:
+        pass
+
+    if entry_count < 5:
+        return {"skip": True, "reason": f"only {entry_count} entries (< 5)",
+                "entry_count": entry_count, "compacted": False}
+
+    entry_ids = [e["id"] for e in entries_to_compact]
     # Write LNG — ensure $0 has LNG sigil, then use crud_add
     text = brain_path.read_text(encoding="utf-8")
     if "$0" not in text[:200]:
@@ -339,13 +485,19 @@ def compact_session_pulse(
     crud_add(
         brain_path, "$7", "LNG", lng_name,
         {"type": "session", "entry_count": entry_count, "summary": summary,
-         "session_id": session_id, "agent": agent_id, "date": _now_iso()},
+         "session_id": session_id, "ses_ref": ses_ref or "", "agent": agent_id,
+         "date": _now_iso()},
         create_section=True, force=True,
     )
 
     prune_result = _prune_pulse_entries(brain_path, entry_ids)
 
     meta_id = next_pulse_event_id(project_root)
-    append_pulse_to_brain(project_root, event_id=meta_id, task_id="-", kind="pulse_compact", agent=agent_id, payload=f"pulse.compact ok session={session_id} pruned={prune_result['pruned']} lng={lng_name} summary={summary}")
+    append_pulse_to_brain(
+        project_root, event_id=meta_id, task_id="-", kind="pulse_compact",
+        agent=agent_id, ses_ref=ses_ref or None,
+        payload=(f"pulse.compact ok session={session_id} ses_ref={ses_ref or '-'} "
+                 f"pruned={prune_result['pruned']} lng={lng_name} summary={summary}"),
+    )
 
-    return {"compacted": True, "pruned": prune_result["pruned"], "entry_count": entry_count, "ses_preserved": True, "meta_event": meta_id, "lng_name": lng_name, "summary": summary}
+    return {"compacted": True, "selection": "membership" if ses_ref else "positional", "pruned": prune_result["pruned"], "entry_count": entry_count, "ses_preserved": True, "meta_event": meta_id, "lng_name": lng_name, "summary": summary}

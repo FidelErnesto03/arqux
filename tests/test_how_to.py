@@ -7,7 +7,7 @@ from arqux.handlers.handler import _load_guides, how_to
 _TOPICS = {
     "sesion_boot", "cambiar_identidad", "ciclo_blueprint",
     "tarea_blueprint_checkbox", "evidencia_pulse", "editar_skill_local",
-    "checkpoint_wrk", "cerrar_sesion",
+    "checkpoint_wrk", "cerrar_sesion", "registro_tiempo",
 }
 
 

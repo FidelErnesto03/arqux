@@ -43,3 +43,9 @@ coverage.xml
 *.bak
 *.bak-*
 *.orig
+
+# CYCLE-14 / BLP-001 — governance write locks (transient, never committed)
+.arqux/.sessions.lock
+.arqux/.brain.lock
+.arqux/contexts/
+*.cortex.lock

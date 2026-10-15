@@ -11,12 +11,13 @@ $0
 
 
 $1: SESSION START
-
 IDN:session_start{ purpose:"Protocol for starting a session in an already-governed workspace. This is the FIRST thing executed on session begin. Works at 3 nesting levels.", when:"Every session start in a governed workspace." }
 
 AXM:session_context_first{ The FIRST response in a governed workspace MUST include context from brain.cortex. Never just a greeting. The Architect opens with a word, the agent responds with awareness. }
 
 STP:session_context{
+  0_handler_discovery:"After AGENTS.md determines tier: call handler.list(tier=NANO|LITE|FULL) to discover available handlers from the MCP registry. This replaces the old static mcp-handlers.skill.md.",
+  0_usage_guide:"When unsure HOW to perform a task, call handler.how_to(intent) for the exact handler sequence + example (curated corpus packaged with ArqUX). No-match returns available topics and hints. To read any skill — including nested ones like workflows/w10-identity-handoff via relative path — use skill.get(name); skill.list only lists root skills.",
   0_session_resume:"Call session.resume() to check for a previous SES. If found, include in context: last agent, summary, active BLPs, pending tasks, decisions, gaps. The SES complements brain.cortex — it does not replace it.",
   1_workspace_level:"If cwd is workspace root (no project): present the WORKSPACE DASHBOARD (see template below). List projects from meta-brain with minimal description. Ask which project to work on.",
   2_project_level:"If cwd is inside a project: read brain.cortex. Present: project name, active cycle, blueprint count + status, current focus (FCS), recent lessons (LNG). If session.resume() returned a SES, append the handoff context. Ask what to work on.",
@@ -39,8 +40,6 @@ AXM:workspace_dashboard{ The first response at workspace level MUST follow this 
 
 — ¿En qué proyecto trabajamos, Arquitecto?
 }
-
-
 $2: INTERACTION PROTOCOL
 
 AXM:architect_first{ El usuario es "el Arquitecto". Toda decisión, dirección y visión viene del Arquitecto. El agente ejecuta, sugiere, informa — nunca decide por el Arquitecto. Ante cualquier ambigüedad: preguntar. }
@@ -111,7 +110,40 @@ HDL:cortex.render{ signature:"render(path)", purpose:"Render a .cortex file to H
 
 
 $7: EVIDENCE & SESSION LIFE
-
 AXM:evidence_over_opinion{ Toda decisión, blocker y completitud produce evidencia. Si no está registrado, no pasó. Preferir evidence.record sobre afirmaciones verbales. }
 
-STP:session_close{ when:"Fin de sesión o pausa larga", action:"session.close(summary='...', blps='...', tasks='...', decisions='...', gaps='...'). Esto preserva el contexto para la próxima sesión vía session.resume(). El contexto activo y el header se pierden al cerrar — session.resume() los restaura desde el SES." }
+STP:timelog_gate{ when:"ANTES de session.close, en cualquier proyecto gobernado", action:"Aplicar skill timelog-compliance: cortex.entry.get $10/KNW:timelog_watermark_* -> si hay actividad (git log, pulsos SES) con timestamp > coverage_until, reconstruir bloques y proponer registro al Arquitecto vía tw_log; tras cargar, cortex.entry.update del watermark. Si no hay watermark y el proyecto usa Teamwork, ofrecer bootstrap. Si no hay actividad pendiente, continuar al cierre sin bloquear." }
+
+STP:session_close{ when:"Fin de sesión o pausa larga (tras STP:timelog_gate)", action:"session.close(summary='...', blps='...', tasks='...', decisions='...', gaps='...'). Esto preserva el contexto para la próxima sesión vía session.resume(). El contexto activo y el header se pierden al cerrar — session.resume() los restaura desde el SES." }
+
+$8: ACTIVIDAD & TIEMPO (CYCLE-14)
+
+AXM:timelog_native{ El registro de actividad y tiempo es NATIVO de ARQUX: un archivo CORTEX por proyecto/SES en <proyecto>/.arqux/timelog/SESXXX_yyyymmdd_hhmiss.cortex. No hay base de datos, JSONL ni cronometro. El nombre deriva del ID SES real y del inicio UTC original y NO cambia al reanudar, cambiar de identidad ni cerrar. }
+
+STP:timelog_requirements{ Los siete requisitos del contrato temporal:
+ 1_ses_real:"Cada sesion gobernada tiene una entrada SES real desde su apertura; el workspace es contenedor y no abre sesion.",
+ 2_ruta_acordada:"Un unico archivo canonico por proyecto/SES en .arqux/timelog/; los temporales tecnicos son .cortex y no canonicos.",
+ 3_inicio_conservado:"El inicio UTC original se fija al abrir y se conserva al reanudar/cerrar; la duracion se deriva despues.",
+ 4_independencia:"Dos ejecuciones concurrentes no comparten contexto ni registro; la seleccion es por SES/ejecucion, nunca por el ultimo evento global.",
+ 5_limites_naturales:"Los limites de actividad son efecto interno de acciones de gobierno autorizadas; sin pulsos periodicos ni cronometros.",
+ 6_consulta_control:"Consulta, correccion y depuracion dependen de instrucciones del usuario; proyectar nunca depura.",
+ 7_conjunto_cobertura:"Usuario y agente son una unidad funcional; la participacion separada es opcional. Sin senal o autoridad se declara cobertura limitada (coverage=limited) sin fabricar inicio/fin."
+}
+
+AXM:timelog_no_dedicated_calls{ Los handlers ya ejecutan cada regla: abrir/reanudar/cerrar SES y reclamar/completar tareas registran sus propios limites. El agente NO pide llamadas rutinarias de anotacion, NO arranca cronometros y NO carga el timelog completo; recibe referencias y un resumen minimo. }
+
+HDL:timelog.query{ signature:"timelog.query(session_ref?, view='session'|'multisession', limit?, offset?)", purpose:"Vista SOLO LECTURA de los bloques de una SES: duraciones UTC y banderas (open/unterminated/end_before_start/sin zona/no parseable) y total por union de intervalos. La vista multisession conserva procedencia y no crea archivo conjunto.", readonly:true }
+
+HDL:timelog.review{ signature:"timelog.review(block_id, changes, reason, authorization_ref, session_ref?, expected_revision?)", purpose:"Correccion autorizada: escribe una revision con motivo y referencia de la instruccion del usuario y marca recibos previos como stale; nunca modifica la copia remota.", mutating:true }
+
+HDL:timelog.purge{ signature:"timelog.purge(selection, authorization_ref, mode='archive'|'summarize'|'delete', preview=true, session_ref?, expected_revision?)", purpose:"Depuracion de alcance exacto. preview=true (por defecto) no muta. delete elimina archivo canonico y auxiliares y deja un tombstone sin contenido; el contenido borrado no se recrea por resume/retry/proyeccion.", mutating:"condicional (preview=false)" }
+
+HDL:timelog.project{ signature:"timelog.project(...)", status:"PENDIENTE — BLP-006 (proyeccion externa opcional). No inventar API ni prometer envio hasta verificarla.", pending:true }
+
+AXM:timelog_permissions{ La consulta es solo lectura y respeta el rol; el auditor puede consultar pero no revisar ni purgar (preview permitido, supresion no). El registrador de ciclo de vida tiene autoridad propia y no convierte una lectura en escritura. }
+
+LIM:timelog_no_new_skill{ No se crea AGENTS.md ni skill nueva para esta capacidad; este protocolo y guides.cortex son la matriz vigente. AGENTS.md es solo referencia y no se modifica. }
+
+AXM:timelog_language{ El idioma de la sesion gobierna los entregables; las reglas priorizan el trabajo conjunto sin rankings ni atribucion de culpa. }
+
+AXM:timelog_external_optional{ La adopcion del nucleo no requiere credenciales ni conexion externa; un proveedor externo es un puente opcional y no se activa en esta fase. }

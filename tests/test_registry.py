@@ -14,9 +14,9 @@ from __future__ import annotations
 from arqux.handlers import REGISTRY, handler_count, list_handlers
 
 
-def test_handler_count_is_97() -> None:
-    """Total handler count is 97 (BLP-006 added cycle.reopen)."""
-    assert handler_count() == 97
+def test_handler_count_is_101() -> None:
+    """Total handler count is 101 (CYCLE-14/BLP-004+006 added 4 timelog handlers)."""
+    assert handler_count() == 101
 
 
 def test_handler_list_accepts_mcp_context() -> None:
@@ -54,7 +54,7 @@ def test_handler_names_follow_module_convention() -> None:
     modules: set[str] = {
         "workspace", "project", "cycle", "task", "evidence", "issue", "protocol",
         "session", "cortex", "identity", "skill", "blueprint", "setup",
-        "context", "handler", "sync",
+        "context", "handler", "sync", "timelog",
     }
     for name in names:
         module = name.split(".", 1)[0]

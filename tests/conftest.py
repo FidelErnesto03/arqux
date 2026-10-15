@@ -43,6 +43,21 @@ def auditor_ctx() -> PermissionContext:
 
 
 @pytest.fixture(autouse=True)
+def _transport_execution_key():
+    """Bind an execution key for every test, as the MCP transport does.
+
+    CYCLE-14 / BLP-001: session identity belongs to an execution, and only the
+    transport can say which one it is. Tests that exercise the keyless path
+    bind ``None`` themselves.
+    """
+    from arqux.execution import bind_execution_key, mint_execution_key, reset_execution_key
+
+    token = bind_execution_key(mint_execution_key())
+    yield
+    reset_execution_key(token)
+
+
+@pytest.fixture(autouse=True)
 def _clean_env(monkeypatch: pytest.MonkeyPatch) -> None:
     """Remove any ARQUX_* env vars set by previous tests."""
     for key in list(os.environ.keys()):

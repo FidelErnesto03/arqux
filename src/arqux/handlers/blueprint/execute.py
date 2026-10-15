@@ -20,13 +20,14 @@ Supports dry_run mode, which reports without mutating state.
 from __future__ import annotations
 
 import re
+from contextlib import suppress
 from pathlib import Path
 from typing import Any
 
 from ...cortex.parse_content import parse_content_entry
 from ...cortex_out import CortexOUT
 from ...permissions import PermissionContext
-from ...pulse import append_pulse_to_brain, next_pulse_event_id
+from ...pulse import record_pulse
 from ...state import find_project_root
 from ..execution import ExecutionError, execute_action
 from ._helpers import (
@@ -341,19 +342,15 @@ def execute_blueprint(
         f"certificadas, veredicto={outcome}."
     )
 
-    # PULSE.
-    try:
-        event_id = next_pulse_event_id(root)
-        append_pulse_to_brain(
+    # PULSE — telemetry never blocks the governance result.
+    with suppress(Exception):
+        record_pulse(
             root,
-            event_id=event_id,
             task_id=bp_id,
             kind="blueprint_execute",
             agent=agent,
             payload=f"[blueprint.execute] bp_id={bp_id} outcome={outcome} state={target_state}",
         )
-    except Exception:  # noqa: BLE001
-        pass
 
     return CortexOUT.work(
         f"blueprint.execute ok bp_id={bp_id} tasks={len(tasks_report)} "

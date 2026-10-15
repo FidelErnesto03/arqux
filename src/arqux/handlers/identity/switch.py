@@ -21,10 +21,13 @@ from pathlib import Path
 from ...constants import IDENTITIES_DIR, OUT_ERROR
 from ...cortex.parse_content import parse_content_entry
 from ...cortex_out import CortexOUT
+from ...execution import authoritative_execution_key
 from ...permissions import PermissionContext
-from ...pulse import append_pulse_to_brain, next_pulse_event_id
+from ...pulse import record_pulse
+from ...session_identity import current_session_ref, get_session
+from ...session_identity import open_session as rebind
 from ...state import find_project_root, find_workspace_root
-from ..session import CONTEXT_CORTEX, _escape_ses_value, context_get, handoff
+from ..session import CONTEXT_CORTEX, _escape_ses_value, _write_context, context_get, handoff
 from .get import get_handler
 
 
@@ -146,21 +149,61 @@ def switch(
 
     # Step 4 — update active context (same store/format as context.set).
     context_updated = False
+    session_rebound = False
+    # An execution with no context of its own updates nothing: the workspace
+    # pointer belongs to whichever execution last bound it.
+    owns_context = False
     if has_context:
         try:
             ws_root = find_workspace_root(start=start)
             assert ws_root is not None  # context_get already resolved it
+            execution = (ctx.execution_key if ctx else None) or authoritative_execution_key()
+            owner_ses = current.get("ses", "")
+            owner_root = current.get("project_root", "")
+            owns_context = bool(execution) and _pointer_owned_by(
+                Path(owner_root) if owner_root else None, owner_ses, execution
+            )
             blp = current.get("blp", "")
             blp_part = f' blp="{_escape_ses_value(blp)}"' if blp else ""
+            ses = current.get("ses", "")
+            # CYCLE-14 / BLP-001: the session belongs to the execution, not to
+            # the agent name. Switching identity preserves membership; only the
+            # agent recorded inside the session entry changes.
+            ses_part = f' ses="{_escape_ses_value(ses)}"' if ses else ""
             entry = (
                 f'CTX:{canonical} project="{_escape_ses_value(current.get("project", ""))}"'
                 f' scope="{_escape_ses_value(current.get("scope", ""))}"{blp_part}'
-                f' agent="{_escape_ses_value(canonical)}"'
+                f' agent="{_escape_ses_value(canonical)}"{ses_part}'
                 f' project_root="{_escape_ses_value(current.get("project_root", ""))}"'
             )
-            (ws_root / CONTEXT_CORTEX).write_text(
-                f"$0\n\n$1: CURRENT\n{entry}\n", encoding="utf-8"
-            )
+            document = f"$0\n\n$1: CURRENT\n{entry}\n"
+            # Only an execution that owns the pointer may publish context. A
+            # caller reading another execution's scope/session must not copy it
+            # into its own record, and must not republish it as the workspace
+            # pointer either: that would keep handing their work to whoever
+            # switches identity next.
+            if owns_context:
+                _write_context(ws_root, execution, document)
+                (ws_root / CONTEXT_CORTEX).write_text(document, encoding="utf-8")
+            # The session belongs to an execution, not to the workspace pointer.
+            # Rebinding it from the global pointer would hand another
+            # execution's session to this caller, so the caller must already be
+            # the one bound to it; otherwise membership is left untouched.
+            if ses and execution:
+                project_root = Path(current.get("project_root", ""))
+                existing = get_session(project_root, ses)
+                if existing is not None and existing.get("execution") == execution:
+                    rebind(
+                        project_root,
+                        agent=canonical,
+                        project=current.get("project", ""),
+                        execution=execution,
+                        scope=current.get("scope", ""),
+                        blp=current.get("blp", ""),
+                        intent="resumed",
+                        session_ref=ses,
+                    )
+                    session_rebound = True
             context_updated = True
         except OSError as exc:
             # Handoff already persisted — report partial state honestly.
@@ -178,10 +221,8 @@ def switch(
     try:
         pulse_root = find_project_root(start=start)
         if pulse_root is not None:
-            event_id = next_pulse_event_id(pulse_root)
-            append_pulse_to_brain(
+            record_pulse(
                 pulse_root,
-                event_id=event_id,
                 task_id="-",
                 kind="identity_switch",
                 agent=from_agent,
@@ -189,9 +230,25 @@ def switch(
                     f"[identity.switch] from={from_agent} to={canonical} "
                     f"context_updated={context_updated}"
                 ),
+                ses_ref=(
+                    current_session_ref(
+                        pulse_root, (ctx.execution_key if ctx else None) or authoritative_execution_key()
+                    ) or None
+                ),
             )
     except Exception:  # noqa: BLE001
         pass
+
+    # CYCLE-14 / BLP-003: a change of identity is an activity boundary on the
+    # execution's own session; it refreshes evidence, it does not open a block.
+    from ...timelog_capture import observe
+
+    lifecycle = observe(
+        find_project_root(start=start) or start, ctx,
+        event="boundary",
+        operation_ref=f"identity-switch:{from_agent}->{canonical}",
+        activity="identity-switch",
+    )
 
     return CortexOUT.work(
         f"identity.switch ok from={from_agent} to={canonical}"
@@ -204,8 +261,20 @@ def switch(
         available_identities=available,
         handoff_path=handoff_out.fields.get("handoff_path", ""),
         context_updated=context_updated,
+        context_owned=owns_context,
+        session_rebound=session_rebound,
+        lifecycle=lifecycle,
         dry_run=False,
     )
+
+
+def _pointer_owned_by(project_root: Path | None, ses_ref: str, execution: str) -> bool:
+    """Does the workspace context pointer describe *this* execution's session?"""
+    if not execution or not project_root or not ses_ref:
+        # No session recorded: nothing to steal, the pointer is workspace-wide.
+        return True
+    existing = get_session(project_root, ses_ref)
+    return existing is not None and existing.get("execution") == execution
 
 
 def _build_header(agent: str, current: dict[str, str]) -> str:

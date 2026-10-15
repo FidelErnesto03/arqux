@@ -15,8 +15,9 @@ from pathlib import Path
 from ...constants import ARQUX_DIR, BRAIN_CORTEX
 from ...core.state import CONTEXT_CORTEX, find_workspace_root
 from ...cortex_out import CortexOUT
+from ...execution import authoritative_execution_key
 from ...permissions import PermissionContext
-from ...pulse import append_pulse_to_brain, next_pulse_event_id
+from ...pulse import record_pulse
 from ...state import crud_read, crud_update, find_project_root
 
 _KEY_COLON_RE = re.compile(r"[A-Za-z_][A-Za-z0-9_]*\s*:")
@@ -130,11 +131,15 @@ def checkpoint_handler(
 
     # Record meta-event
     try:
-        event_id = next_pulse_event_id(root)
-        append_pulse_to_brain(
-            root, event_id=event_id, task_id="-",
+        from ...session_identity import current_session_ref
+
+        record_pulse(
+            root, task_id="-",
             kind="checkpoint", agent=agent,
             payload=f"cortex.checkpoint ok fcs={value['fcs'][:40]} obj={value['obj'][:40]}",
+            ses_ref=current_session_ref(
+                root, (ctx.execution_key if ctx else None) or authoritative_execution_key()
+            ) or None,
         )
     except Exception:
         pass
