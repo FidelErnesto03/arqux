@@ -582,3 +582,32 @@ class TestPruningMatchesTheEntryIdNotASubstring:
         # The entry that merely quotes the pruned id survives.
         assert quoted.replace("-", "_") in remaining, remaining
         assert first.replace("-", "_") not in remaining
+
+
+class TestIdentitySwitchStateTransitions:
+    """H-A: switching identity must not reopen a closed session."""
+
+    def test_switch_does_not_reopen_a_closed_session(self, arqux_env):
+        from arqux.handlers.identity.switch import switch
+        from arqux.handlers.session import close, context_set
+
+        key = mint_execution_key()
+        token = bind_execution_key(key)
+        try:
+            ctx = PermissionContext(agent_id="test-governor", role="governor",
+                                    execution_key=key)
+            out = context_set(project="test-proj", scope="CYCLE-TEST",
+                              path=str(arqux_env.ws_root), ctx=ctx)
+            sid = out.fields["session_ref"]
+            close(summary="done", path=str(arqux_env.proj_root), ctx=ctx)
+            before = get_session(arqux_env.proj_root, sid)
+            assert before["state"] == "closed"
+
+            result = switch("alfred", path=str(arqux_env.proj_root), ctx=ctx)
+
+            after = get_session(arqux_env.proj_root, sid)
+            assert after["state"] == "closed"
+            assert after["closed"] == before["closed"]
+            assert result.fields["session_rebound"] is False
+        finally:
+            reset_execution_key(token)

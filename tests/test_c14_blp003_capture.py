@@ -246,3 +246,31 @@ class TestAc07AnnotationRecovery:
         result = capture(bound.proj_root, bound.ctx, event="close",
                          operation_ref="never-opened", activity="task:never")
         assert result["status"] == STATUS_PENDING
+
+
+class TestCaptureAfterClose:
+    """H-B: the recorder must not write into a closed session."""
+
+    def test_capture_after_close_is_limited_and_writes_nothing(self, bound):
+        from arqux.session_identity import close_session
+
+        sid = bound.session["session_id"]
+        close_session(bound.proj_root, sid, agent="test-governor", summary="done")
+        before = load(bound.proj_root, sid, opened_at=bound.session["date"])
+
+        result = capture(bound.proj_root, bound.ctx, event="open",
+                         operation_ref="late-op", activity="late")
+
+        after = load(bound.proj_root, sid, opened_at=bound.session["date"])
+        assert result["status"] == STATUS_SKIPPED
+        assert result["coverage"] == COVERAGE_LIMITED
+        assert before["blocks"] == after["blocks"]
+
+    def test_repair_after_close_is_rejected(self, bound):
+        from arqux.session_identity import close_session
+
+        sid = bound.session["session_id"]
+        close_session(bound.proj_root, sid, agent="test-governor", summary="done")
+        result = repair(bound.proj_root, bound.ctx, event="close",
+                        operation_ref="late-op")
+        assert result["status"] == STATUS_REJECTED

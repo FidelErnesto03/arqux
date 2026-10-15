@@ -118,6 +118,13 @@ def capture(
     if session is None:
         return _result(STATUS_SKIPPED, coverage=COVERAGE_LIMITED,
                        reason=f"session {session_id} not found")
+    if session.get("state") != "open":
+        # A closed session is finished. Recording new activity into it would
+        # fabricate limits on work that belongs to no open execution; declare
+        # limited coverage and write nothing.
+        return _result(STATUS_SKIPPED, coverage=COVERAGE_LIMITED,
+                       reason=f"session {session_id} is {session.get('state')}, not open; "
+                              "no activity is recorded")
     opened_at = session.get("date", "")
 
     try:
@@ -195,9 +202,9 @@ def repair(
                        reason="no session bound to this execution",
                        operation_ref=operation_ref)
     session = get_session(project_root, session_id)
-    if session is None:
+    if session is None or session.get("state") != "open":
         return _result(STATUS_REJECTED, coverage=COVERAGE_LIMITED,
-                       reason=f"session {session_id} not found",
+                       reason=f"session {session_id} is not open",
                        operation_ref=operation_ref)
     try:
         _require_file(project_root, session_id, session.get("date", ""))
