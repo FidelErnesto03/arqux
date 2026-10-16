@@ -596,7 +596,7 @@ def context_set(
         header += f" | {blp}"
 
     # CYCLE-14 / BLP-003: binding to a project opens the session block.
-    from ..timelog_capture import observe
+    from ..timelog_capture import observe, unbound_warning
 
     lifecycle = observe(project_root, ctx, event="open",
                         operation_ref=f"session:{session_id}", activity="session")
@@ -614,6 +614,7 @@ def context_set(
         timelog_path=str(timelog_path(project_root, session_id, session.get("date", ""))),
         execution=execution,
         lifecycle=lifecycle,
+        warnings=[w for w in (unbound_warning(lifecycle, action="session.context_set"),) if w],
     )
 
 
@@ -919,6 +920,11 @@ def _bootstrap_workspace(
         agent_id=agent_id,
         cortex_context=cortex_context,
         hcortex_dashboard=hcortex_dashboard,
+        warnings=[
+            "TIMELOG_UNBOUND: bootstrap at workspace level binds no session — "
+            "no timelog is recording. When the Architect names a project, call "
+            "session.context_set(project, scope) to open the SES before work starts."
+        ],
     )
 
 

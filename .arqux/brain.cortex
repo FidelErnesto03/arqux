@@ -1392,6 +1392,10 @@ AUD:E_1793{date:"2026-10-16T17:59:03Z", event:"E-1793", task:"2026-10-16-session
 
 AUD:E_1794{date:"2026-10-16T17:59:18Z", event:"E-1794", task:"2026-10-16-session-close-sin-sesion-bound-cerraba-exitosame", kind:"issue", agent:"Alfred", result:"issue.update 2026-10-16-session-close-sin-sesion-bound-cerraba-exitosame.issue.md status=open->fixed note=Gate implementado: session.close ahora devuelve warnings=[TIMELOG_UNBOUND: ...] ", evidence:"issue.update 2026-10-16-session-close-sin-sesion-bound-cerraba-exitosame.issue.md status=open->fixed note=Gate implementado: session.close ahora devuelve warnings=[TIMELOG_UNBOUND: ...] "}
 
+AUD:E_1795{date:"2026-10-16T17:59:30Z", event:"E-1795", task:"-", kind:"checkpoint", agent:"Alfred", result:"cortex.checkpoint ok fcs= obj=", evidence:"cortex.checkpoint ok fcs= obj="}
+
+AUD:E_1796{date:"2026-10-16T18:02:47Z", event:"E-1796", task:"-", kind:"checkpoint", agent:"Alfred", result:"cortex.checkpoint ok fcs= obj=", evidence:"cortex.checkpoint ok fcs= obj="}
+
 
 $7: LESSONS
 
@@ -1794,7 +1798,7 @@ LNG:session_E_1537{type:"session", entry_count:36, summary:"checkpoint:4,issue:3
 
 $8: ACTIVE_CONTEXT
 
-WRK:current{phase:"current", current:"task.complete: task T-010 completed", blocked:"no", survive:"work", updated:"2026-10-16T17:40:41Z", event:"task.complete", fcs:"", obj:"", tasks:"", state:"\"4224b8a pusheado; doctor +check_residue +check_orphan_dirs (ws 7/7", last_turn:"2026-10-16T17:40:50Z"}
+WRK:current{phase:"current", current:"task.complete: task T-010 completed", blocked:"no", survive:"work", updated:"2026-10-16T17:40:41Z", event:"task.complete", fcs:"", obj:"", tasks:"", state:"\"unbound_warning() en timelog_capture; warnings en session.close(con pulse)", last_turn:"2026-10-16T18:02:46Z"}
 
 
 $9: RISKS
