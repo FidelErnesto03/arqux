@@ -111,6 +111,28 @@ def close(
                         operation_ref=f"session:{ses_ref or 'legacy'}",
                         activity="session")
 
+    # Gate: a silent lifecycle skip means the session's work was never
+    # registered in the native timelog. Surface it loudly — in the result
+    # and in the audit trail — instead of degrading quietly.
+    warnings: list[str] = []
+    if lifecycle.get("status") == "skipped":
+        reason = lifecycle.get("reason", "")
+        warnings.append(
+            "TIMELOG_UNBOUND: session.close wrote no native timelog block "
+            f"({reason}). This session's work is NOT registered — bind a "
+            "session via session.context_set(project, scope) or session.open "
+            "before closing."
+        )
+        with suppress(Exception):
+            record_pulse(
+                root,
+                task_id="-",
+                kind="timelog_unbound",
+                agent=agent,
+                payload=f"[timelog] close without bound session: {reason}",
+                ses_ref=ses_ref or None,
+            )
+
     if session is not None:
         close_session(
             root,
@@ -147,6 +169,7 @@ def close(
         summary=summary,
         compact=compact_result,
         lifecycle=lifecycle,
+        warnings=warnings,
     )
 
 
