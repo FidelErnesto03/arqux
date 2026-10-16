@@ -116,7 +116,10 @@ def check_metadata_section(arqux_dir: Path) -> CheckResult:
             continue
         try:
             text = path.read_text(encoding="utf-8")
-            if "$0.1:" in text or "$0.1 " in text:
+            # Match $0.1 only as a section header — historical lessons may
+            # legitimately mention "$0.1" inside entry payloads (the
+            # migration lessons themselves do).
+            if re.search(r"^\$0\.1[:\s]", text, re.MULTILINE):
                 issues.append(f"{name} uses $0.1 (should be $19)")
         except Exception:
             issues.append(f"{name} unreadable")
@@ -296,9 +299,19 @@ def check_nested_arqux(arqux_dir: Path) -> CheckResult:
     )
 
 
-def check_arqux_dir_structure(arqux_dir: Path) -> CheckResult:
-    """Verify .arqux/ has expected subdirectories."""
-    expected_dirs = ["skills", "cycles", "identities", "templates"]
+def check_arqux_dir_structure(arqux_dir: Path, ctx: str = "both") -> CheckResult:
+    """Verify .arqux/ has the subdirectories its context expects.
+
+    A workspace .arqux never holds cycles/blueprints (the workspace is a
+    container, not a project); a project .arqux expects cycles+packages
+    (project_init) and may carry skills/templates overrides.
+    """
+    if ctx == "workspace":
+        expected_dirs = ["identities", "skills", "templates", "packages"]
+    elif ctx == "project":
+        expected_dirs = ["cycles", "packages"]
+    else:
+        expected_dirs = ["skills", "templates", "packages"]
     present = [d for d in expected_dirs if (arqux_dir / d).is_dir()]
     missing = [d for d in expected_dirs if d not in present]
     if missing:
@@ -403,7 +416,7 @@ def run_all(path: str | None = None, fix: bool = False) -> CortexOUT:
 
     # Context-agnostic checks
     checks.append(check_nested_arqux(arqux_dir))
-    checks.append(check_arqux_dir_structure(arqux_dir))
+    checks.append(check_arqux_dir_structure(arqux_dir, ctx))
     checks.append(check_metadata_section(arqux_dir))
 
     if ctx == "workspace":

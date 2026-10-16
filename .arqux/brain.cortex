@@ -1380,6 +1380,8 @@ AUD:E_1787{date:"2026-10-16T16:23:03Z", event:"E-1787", task:"T-009", kind:"task
 
 AUD:E_1788{date:"2026-10-16T16:23:20Z", event:"E-1788", task:"-", kind:"checkpoint", agent:"Alfred", result:"cortex.checkpoint ok fcs= obj=", evidence:"cortex.checkpoint ok fcs= obj="}
 
+AUD:E_1789{date:"2026-10-16T16:28:27Z", event:"E-1789", task:"-", kind:"checkpoint", agent:"Alfred", result:"cortex.checkpoint ok fcs= obj=", evidence:"cortex.checkpoint ok fcs= obj="}
+
 
 $7: LESSONS
 
@@ -1782,7 +1784,7 @@ LNG:session_E_1537{type:"session", entry_count:36, summary:"checkpoint:4,issue:3
 
 $8: ACTIVE_CONTEXT
 
-WRK:current{phase:"current", current:"task.complete: task T-009 completed", blocked:"no", survive:"work", updated:"2026-10-16T16:23:03Z", event:"task.complete", fcs:"", obj:"", tasks:"", state:"commit 396c5cb en origin/master; residuo archivado en .arqux/archive/hygiene-2026-10-16/ (reversible); bug filename sanitizado (NAME_COMPONENT_RE); 3 skills+8 workflows+templates resincronizados; w03 desplegado; check_surfaces ahora verifica paridad byte-identica; issue handoff filename fixed (E-1786); T-009 done (E-1787)", last_turn:"2026-10-16T16:23:19Z"}
+WRK:current{phase:"current", current:"task.complete: task T-009 completed", blocked:"no", survive:"work", updated:"2026-10-16T16:23:03Z", event:"task.complete", fcs:"", obj:"", tasks:"", state:"\"commit 89409cb en origin/master; symlink circular .arqux/.arqux->. eliminado (marcador forense en archive/hygiene-2026-10-16/); copia real anidada de UTILS archivada; doctor.check_nested_arqux nuevo (fail en circular y en copia real", last_turn:"2026-10-16T16:28:27Z"}
 
 
 $9: RISKS
