@@ -217,7 +217,7 @@ def main(argv: list[str] | None = None) -> int:
     # absent in CI), every packaged skill/template must be deployed and
     # byte-identical — a drifted copy serves stale contracts to agents.
     # AGENTS.md lives only at the workspace root, never in templates/.
-    _SKIP_TEMPLATES = {"AGENTS.md", "task.cortex", "task.md"}
+    skip_templates = {"AGENTS.md", "task.cortex", "task.md"}
     for sub in ("skills", "templates"):
         pkg_dir = ROOT / "src" / "arqux" / sub
         dep_dir = ROOT.parent / ".arqux" / sub
@@ -225,7 +225,7 @@ def main(argv: list[str] | None = None) -> int:
             continue
         orphans: list[str] = []
         for pkg in sorted(pkg_dir.rglob("*")):
-            if not pkg.is_file() or (sub == "templates" and pkg.name in _SKIP_TEMPLATES):
+            if not pkg.is_file() or (sub == "templates" and pkg.name in skip_templates):
                 continue
             rel = pkg.relative_to(pkg_dir)
             deployed = dep_dir / rel
@@ -241,7 +241,7 @@ def main(argv: list[str] | None = None) -> int:
         for dep in sorted(dep_dir.rglob("*")):
             if (
                 dep.is_file()
-                and dep.name not in _SKIP_TEMPLATES
+                and dep.name not in skip_templates
                 and not (pkg_dir / dep.relative_to(dep_dir)).is_file()
             ):
                 orphans.append(str(dep.relative_to(dep_dir)))

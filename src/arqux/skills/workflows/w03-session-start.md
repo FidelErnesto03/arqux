@@ -41,6 +41,7 @@ G --> A: Open question — what to work on?
 }
 
 STP:w03_s{
+  0_preflight:"Run `arqux doctor` — surface any warn/fail (nested .arqux, residue, orphan dirs, drift) in the dashboard BEFORE context. Never report a healthy tree without checking.",
   1:"Verify ARQUX_AGENT_ROLE — report if auditor/empty",
   2_workspace_level:"List projects from meta-brain: name, last active, status. Ask which to work on.",
   3_project_level:"Read brain.cortex: project, active cycle, blueprints (count + status). Present in HCORTEX.",

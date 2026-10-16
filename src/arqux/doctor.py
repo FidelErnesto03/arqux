@@ -299,6 +299,85 @@ def check_nested_arqux(arqux_dir: Path) -> CheckResult:
     )
 
 
+# Directories each governance level legitimately holds. Anything else under
+# .arqux/ is residue (empty dirs from older models, misplaced project-level
+# concepts) — workspace audit 2026-10-16 removed cycles/blueprints/handoffs/
+# issues/backups that had no business at workspace level.
+_WS_DIRS = {"archive", "contexts", "identities", "issues", "packages", "skills", "templates"}
+_PROJ_DIRS = {
+    "archive", "audits", "backups", "blueprints", "contexts", "cycles",
+    "handoffs", "identities", "issues", "packages", "reports", "scripts",
+    "skills", "templates", "timelog",
+}
+_RESIDUE_ALWAYS = (".bck", ".pre-")
+_RESIDUE_ORPHAN = (".bak", ".lock")  # residue only when the target is gone
+
+
+def check_orphan_dirs(arqux_dir: Path, ctx: str = "both") -> CheckResult:
+    """Directories inside .arqux/ that no handler writes at this level."""
+    allowed = _WS_DIRS if ctx == "workspace" else _PROJ_DIRS if ctx == "project" else _WS_DIRS | _PROJ_DIRS
+    orphans = [
+        d.name for d in sorted(arqux_dir.iterdir())
+        if d.is_dir() and not d.is_symlink() and d.name not in allowed
+    ]
+    if orphans:
+        return CheckResult(
+            name="orphan dirs",
+            status="warn",
+            message=f"Directories with no writer at this level: {orphans}",
+            detail="Empty/misplaced governance dirs are residue — archive them under archive/hygiene-<date>/",
+            fixable=False,
+            context="both",
+        )
+    return CheckResult(
+        name="orphan dirs",
+        status="pass",
+        message="Every directory has a writer at this level",
+        context="both",
+    )
+
+
+def check_residue(arqux_dir: Path) -> CheckResult:
+    """Backup/lock residue inside .arqux/ whose target is missing or stale.
+
+    atomic writes leave ``<file>.bak`` next to the target; migrations leave
+    ``.bck``; locks should never survive their writer. ``archive/`` is
+    exempt (it is where residue goes to die).
+    """
+    leftovers: list[str] = []
+    for f in sorted(arqux_dir.rglob("*")):
+        if not f.is_file() or "archive" in f.parts:
+            continue
+        name = f.name
+        if name.endswith(_RESIDUE_ALWAYS) or f.match("*.bak-*"):
+            leftovers.append(str(f.relative_to(arqux_dir)))
+            continue
+        for suffix in _RESIDUE_ORPHAN:
+            if name.endswith(suffix):
+                # A live atomic rotation sits next to its target — only an
+                # orphan (target deleted/never existed) is residue.
+                target = f.with_name(name[: -len(suffix)])
+                if not target.exists():
+                    leftovers.append(str(f.relative_to(arqux_dir)))
+                break
+    if leftovers:
+        return CheckResult(
+            name="residue files",
+            status="warn",
+            message=f"{len(leftovers)} backup/lock residue file(s) in .arqux",
+            detail=", ".join(leftovers[:8])
+            + " — archive under archive/hygiene-<date>/ (nothing is deleted)",
+            fixable=False,
+            context="both",
+        )
+    return CheckResult(
+        name="residue files",
+        status="pass",
+        message="No backup/lock residue",
+        context="both",
+    )
+
+
 def check_arqux_dir_structure(arqux_dir: Path, ctx: str = "both") -> CheckResult:
     """Verify .arqux/ has the subdirectories its context expects.
 
@@ -417,6 +496,8 @@ def run_all(path: str | None = None, fix: bool = False) -> CortexOUT:
     # Context-agnostic checks
     checks.append(check_nested_arqux(arqux_dir))
     checks.append(check_arqux_dir_structure(arqux_dir, ctx))
+    checks.append(check_orphan_dirs(arqux_dir, ctx))
+    checks.append(check_residue(arqux_dir))
     checks.append(check_metadata_section(arqux_dir))
 
     if ctx == "workspace":

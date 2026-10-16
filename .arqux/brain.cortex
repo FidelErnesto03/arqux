@@ -42,6 +42,31 @@ $0
 # cur=current pln=planned fut=future blk=blocked
 # min=minimum rec=recovery wrk=work full=full
 # ok=success fail=failure part=partial
+ARQX:artifact{type:"attrs", weight:"B", fields:"value:any?", focus:"value", desc:"ArqUX artifact metadata (level, name, usage, kind)"}
+
+AUD:audit{type:"attrs", weight:"M", fields:"value:any?", focus:"value", desc:"Audit event — append-only PULSE entry"}
+
+DEC:dec{type:"attrs", weight:"B", fields:"value:any?", focus:"value", desc:"ArqUX DEC entry"}
+
+ERR:error{type:"attrs", weight:"H", fields:"value:any?", focus:"value", desc:"Concurrency / error state entry"}
+
+FCS:focus{type:"attrs", weight:"H", fields:"value:any?", focus:"value", desc:"Active attention anchor — what the project is focused on now"}
+
+IDN:identity{type:"attrs", weight:"B", fields:"value:any?", focus:"value", desc:"Agent identity descriptor"}
+
+KNW:knowledge{type:"attrs", weight:"B", fields:"name:any?|topic:any?|content:any?|status:any?", focus:"name", desc:"Workspace-level knowledge entry"}
+
+LNG:lesson{type:"attrs", weight:"M", fields:"value:any?", focus:"value", desc:"Learned lesson — behavioral or process"}
+
+OBJ:objective{type:"attrs", weight:"H", fields:"value:any?", focus:"value", desc:"Active goal — stable project-level objective"}
+
+RSK:risk{type:"attrs", weight:"M", fields:"value:any?", focus:"value", desc:"Risk entry — description, impact, mitigation"}
+
+SES:session{type:"attrs", weight:"B", fields:"value:any?", focus:"value", desc:"Session record — agent session context"}
+
+WRK:work{type:"attrs", weight:"M", fields:"value:any?", focus:"value", desc:"Work-in-progress entry — task or activity being executed"}
+
+$0:format{cortex:"0.1", encoding:"UTF-8"}
 
 
 $19: ARQUX METADATA
@@ -852,7 +877,7 @@ KNW:sync_run{name:"sync_run", value:"1", updated:"2026-10-15T14:04:33Z", topic:"
 
 KNW:blueprints_done{name:"blueprints_done", value:"1", updated:"2026-10-15T14:04:26Z", topic:"metrics", content:"metric blueprints_done=1", status:"current"}
 
-KNW:tasks_active{name:"tasks_active", value:"1", updated:"2026-10-16T16:18:36Z", topic:"metrics", content:"metric tasks_active=1", status:"current"}
+KNW:tasks_active{name:"tasks_active", value:"1", updated:"2026-10-16T17:35:24Z", topic:"metrics", content:"metric tasks_active=1", status:"current"}
 
 KNW:tasks_done{name:"tasks_done", value:"1", updated:"2026-10-16T16:23:03Z", topic:"metrics", content:"metric tasks_done=1", status:"done"}
 
@@ -1382,6 +1407,8 @@ AUD:E_1788{date:"2026-10-16T16:23:20Z", event:"E-1788", task:"-", kind:"checkpoi
 
 AUD:E_1789{date:"2026-10-16T16:28:27Z", event:"E-1789", task:"-", kind:"checkpoint", agent:"Alfred", result:"cortex.checkpoint ok fcs= obj=", evidence:"cortex.checkpoint ok fcs= obj="}
 
+AUD:E_1790{date:"2026-10-16T16:36:24Z", event:"E-1790", task:"-", kind:"checkpoint", agent:"Alfred", result:"cortex.checkpoint ok fcs= obj=", evidence:"cortex.checkpoint ok fcs= obj="}
+
 
 $7: LESSONS
 
@@ -1784,7 +1811,7 @@ LNG:session_E_1537{type:"session", entry_count:36, summary:"checkpoint:4,issue:3
 
 $8: ACTIVE_CONTEXT
 
-WRK:current{phase:"current", current:"task.complete: task T-009 completed", blocked:"no", survive:"work", updated:"2026-10-16T16:23:03Z", event:"task.complete", fcs:"", obj:"", tasks:"", state:"\"commit 89409cb en origin/master; symlink circular .arqux/.arqux->. eliminado (marcador forense en archive/hygiene-2026-10-16/); copia real anidada de UTILS archivada; doctor.check_nested_arqux nuevo (fail en circular y en copia real", last_turn:"2026-10-16T16:28:27Z"}
+WRK:current{phase:"current", current:"task.create: task T-010 created in CYCLE-14", blocked:"no", survive:"work", updated:"2026-10-16T17:35:24Z", event:"task.create", fcs:"", obj:"", tasks:"", state:"\"commit 3ef422f en origin/master; estructura final: archive+contexts+identities+packages+skills(+originals", last_turn:"2026-10-16T16:36:24Z"}
 
 
 $9: RISKS
