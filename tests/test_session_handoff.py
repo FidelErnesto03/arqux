@@ -104,3 +104,45 @@ def test_handoff_executor_identity_preserved(workspace_root: Path, governor_ctx)
         ctx=jarvis,
     )
     assert 'from:"jarvis"' in _handoff_text(project_dir, "heimdall"), result.fields
+
+
+def test_handoff_rejects_malformed_target_agent(workspace_root: Path, governor_ctx) -> None:
+    """Workspace audit 2026-10-16: a multiline/payload target_agent must not
+    corrupt the handoff filename — handoffs/heimdall\nsummary:... never again."""
+    project_dir = _setup_project(workspace_root, governor_ctx)
+    heimdall = _ctx("heimdall")
+
+    for bad in (
+        "heimdall\nsummary:x\nblps:\ntasks:",   # the observed corruption
+        "../escape",                            # traversal
+        "a/b",                                  # separator
+        "with space",                           # whitespace
+    ):
+        result = _run_in_project(
+            project_dir,
+            session.handoff,
+            target_agent=bad,
+            content=f'target_agent:"{bad}", summary:"x", blps:"", tasks:""',
+            path=str(project_dir),
+            ctx=heimdall,
+        )
+        assert result.fields.get("code") == "INVALID_ARGS", (bad, result.fields)
+
+    handoffs = project_dir / ".arqux" / "handoffs"
+    written = [p.name for p in handoffs.glob("*.cortex")] if handoffs.is_dir() else []
+    assert all("\n" not in n and "/" not in n for n in written)
+
+
+def test_handoff_accepts_canonical_agent_id(workspace_root: Path, governor_ctx) -> None:
+    """A normal slug still reaches the handoff writer."""
+    project_dir = _setup_project(workspace_root, governor_ctx)
+    result = _run_in_project(
+        project_dir,
+        session.handoff,
+        target_agent="jarvis",
+        content='target_agent:"jarvis", summary:"ok", blps:"", tasks:""',
+        path=str(project_dir),
+        ctx=_ctx("heimdall"),
+    )
+    assert result.profile == "OUT-WORK", result.fields
+    assert "HOF:handoff" in _handoff_text(project_dir, "jarvis")

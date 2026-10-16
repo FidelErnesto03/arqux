@@ -213,6 +213,41 @@ def main(argv: list[str] | None = None) -> int:
         if data.get("version") != version:
             problems.append(f"{path.name}: expected {version}, found {data.get('version')}")
 
+    # Deployed parity: when a sibling workspace .arqux exists (local dev;
+    # absent in CI), every packaged skill/template must be deployed and
+    # byte-identical — a drifted copy serves stale contracts to agents.
+    # AGENTS.md lives only at the workspace root, never in templates/.
+    _SKIP_TEMPLATES = {"AGENTS.md", "task.cortex", "task.md"}
+    for sub in ("skills", "templates"):
+        pkg_dir = ROOT / "src" / "arqux" / sub
+        dep_dir = ROOT.parent / ".arqux" / sub
+        if not dep_dir.is_dir():
+            continue
+        orphans: list[str] = []
+        for pkg in sorted(pkg_dir.rglob("*")):
+            if not pkg.is_file() or (sub == "templates" and pkg.name in _SKIP_TEMPLATES):
+                continue
+            rel = pkg.relative_to(pkg_dir)
+            deployed = dep_dir / rel
+            if not deployed.is_file():
+                problems.append(
+                    f"{sub} parity: packaged {rel} is not deployed to {deployed}"
+                )
+            elif pkg.read_bytes() != deployed.read_bytes():
+                problems.append(
+                    f"{sub} parity: {rel} diverges from the packaged version — "
+                    f"resync with `cp src/arqux/{sub}/{rel} ../.arqux/{sub}/{rel}`"
+                )
+        for dep in sorted(dep_dir.rglob("*")):
+            if (
+                dep.is_file()
+                and dep.name not in _SKIP_TEMPLATES
+                and not (pkg_dir / dep.relative_to(dep_dir)).is_file()
+            ):
+                orphans.append(str(dep.relative_to(dep_dir)))
+        if orphans:
+            print(f"info: workspace-only {sub} (no packaged twin): {orphans}")
+
     if problems:
         print("SURFACE HOMOLOGATION FAILED:")
         for problem in problems:

@@ -15,6 +15,7 @@ from ...constants import (
     ARQUX_DIR,
     BLUEPRINTS_DIR,
     CYCLES_DIR,
+    is_name_component,
 )
 from ...permissions import PermissionContext
 from ...pulse import record_pulse
@@ -481,6 +482,8 @@ def _has_learning_recorded(root: Path, bp_id: str) -> bool:
         except Exception:
             pass
         # Fallback: check workspace identity file directly
+        if not is_name_component(identity_name):
+            continue
         identity_file = ws_dir / f"{identity_name}.cortex"
         if identity_file.exists():
             try:
