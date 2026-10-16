@@ -42,31 +42,6 @@ $0
 # cur=current pln=planned fut=future blk=blocked
 # min=minimum rec=recovery wrk=work full=full
 # ok=success fail=failure part=partial
-ARQX:artifact{type:"attrs", weight:"B", fields:"value:any?", focus:"value", desc:"ArqUX artifact metadata (level, name, usage, kind)"}
-
-AUD:audit{type:"attrs", weight:"M", fields:"value:any?", focus:"value", desc:"Audit event — append-only PULSE entry"}
-
-DEC:dec{type:"attrs", weight:"B", fields:"value:any?", focus:"value", desc:"ArqUX DEC entry"}
-
-ERR:error{type:"attrs", weight:"H", fields:"value:any?", focus:"value", desc:"Concurrency / error state entry"}
-
-FCS:focus{type:"attrs", weight:"H", fields:"value:any?", focus:"value", desc:"Active attention anchor — what the project is focused on now"}
-
-IDN:identity{type:"attrs", weight:"B", fields:"value:any?", focus:"value", desc:"Agent identity descriptor"}
-
-KNW:knowledge{type:"attrs", weight:"B", fields:"name:any?|topic:any?|content:any?|status:any?", focus:"name", desc:"Workspace-level knowledge entry"}
-
-LNG:lesson{type:"attrs", weight:"M", fields:"value:any?", focus:"value", desc:"Learned lesson — behavioral or process"}
-
-OBJ:objective{type:"attrs", weight:"H", fields:"value:any?", focus:"value", desc:"Active goal — stable project-level objective"}
-
-RSK:risk{type:"attrs", weight:"M", fields:"value:any?", focus:"value", desc:"Risk entry — description, impact, mitigation"}
-
-SES:session{type:"attrs", weight:"B", fields:"value:any?", focus:"value", desc:"Session record — agent session context"}
-
-WRK:work{type:"attrs", weight:"M", fields:"value:any?", focus:"value", desc:"Work-in-progress entry — task or activity being executed"}
-
-$0:format{cortex:"0.1", encoding:"UTF-8"}
 
 
 $19: ARQUX METADATA
@@ -1403,6 +1378,8 @@ AUD:E_1786{date:"2026-10-16T16:23:03Z", event:"E-1786", task:"2026-10-16-session
 
 AUD:E_1787{date:"2026-10-16T16:23:03Z", event:"E-1787", task:"T-009", kind:"task_complete", agent:"Alfred", result:"Auditoria workspace/.arqux ejecutada en loop: (a) residuo archivado en .arqux/archive/hygiene-2026-10-16/ (2 handoffs de nombre corrupto + jarvis stale, 11 backups/locks raiz incluido brain.cortex.lock huerfano, 13 baks/bck de identidades, 5 issues legacy BUG-002..006, 2 docs sueltos, skills/originals/); (b) fix defecto vivo: NAME_COMPONENT_RE/is_name_component en constants.py aplicado a session.handoff + identity_resolver + _unified + _helpers (param->filename ya no puede corromper ni atravesar); (c) sync: 3 skills obsoletas + 8 workflows + 6 templates resincronizados desde el paquete, w03 desplegado; (d) prevencion: check_surfaces.py ahora verifica paridad byte-a-byte skills+templates desplegados vs paquete (bloquea drift, informa huerfanos). surface homologation OK; 63 tests verde; ruff limpio.", evidence:"Auditoria workspace/.arqux ejecutada en loop: (a) residuo archivado en .arqux/archive/hygiene-2026-10-16/ (2 handoffs de nombre corrupto + jarvis stale, 11 backups/locks raiz incluido brain.cortex.lock huerfano, 13 baks/bck de identidades, 5 issues legacy BUG-002..006, 2 docs sueltos, skills/originals/); (b) fix defecto vivo: NAME_COMPONENT_RE/is_name_component en constants.py aplicado a session.handoff + identity_resolver + _unified + _helpers (param->filename ya no puede corromper ni atravesar); (c) sync: 3 skills obsoletas + 8 workflows + 6 templates resincronizados desde el paquete, w03 desplegado; (d) prevencion: check_surfaces.py ahora verifica paridad byte-a-byte skills+templates desplegados vs paquete (bloquea drift, informa huerfanos). surface homologation OK; 63 tests verde; ruff limpio.", cycle:"CYCLE-14"}
 
+AUD:E_1788{date:"2026-10-16T16:23:20Z", event:"E-1788", task:"-", kind:"checkpoint", agent:"Alfred", result:"cortex.checkpoint ok fcs= obj=", evidence:"cortex.checkpoint ok fcs= obj="}
+
 
 $7: LESSONS
 
@@ -1805,7 +1782,7 @@ LNG:session_E_1537{type:"session", entry_count:36, summary:"checkpoint:4,issue:3
 
 $8: ACTIVE_CONTEXT
 
-WRK:current{phase:"current", current:"task.complete: task T-009 completed", blocked:"no", survive:"work", updated:"2026-10-16T16:23:03Z", event:"task.complete", fcs:"", obj:"", tasks:"", state:"\"origin/master al dia (8f68c82 backlog + 7d04341 guides.cortex); AGENTS.md §5 multi-proveedor; timelog-compliance v2.4.0; 36 issues resueltos (35 verified", last_turn:"2026-10-16T15:15:42Z"}
+WRK:current{phase:"current", current:"task.complete: task T-009 completed", blocked:"no", survive:"work", updated:"2026-10-16T16:23:03Z", event:"task.complete", fcs:"", obj:"", tasks:"", state:"commit 396c5cb en origin/master; residuo archivado en .arqux/archive/hygiene-2026-10-16/ (reversible); bug filename sanitizado (NAME_COMPONENT_RE); 3 skills+8 workflows+templates resincronizados; w03 desplegado; check_surfaces ahora verifica paridad byte-identica; issue handoff filename fixed (E-1786); T-009 done (E-1787)", last_turn:"2026-10-16T16:23:19Z"}
 
 
 $9: RISKS
