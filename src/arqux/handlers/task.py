@@ -202,7 +202,7 @@ def claim_task(task_id: str, path: str | None = None, ctx: PermissionContext | N
     if cycle_id:
         reconcile_cycle(root, cycle_id)
 
-    from ..timelog_capture import observe
+    from ..timelog_capture import observe, unbound_warning
 
     lifecycle = observe(root, ctx, event="open",
                         operation_ref=f"task:{task_id}", activity=f"task:{task_id}")
@@ -213,6 +213,7 @@ def claim_task(task_id: str, path: str | None = None, ctx: PermissionContext | N
         status=TASK_IN_PROGRESS,
         assignee=caller,
         lifecycle=lifecycle,
+        warnings=[w for w in (unbound_warning(lifecycle, action="task.claim"),) if w],
     )
 
 
@@ -302,7 +303,7 @@ def complete_task(
     if cycle_id:
         reconcile_cycle(root, cycle_id)
 
-    from ..timelog_capture import observe
+    from ..timelog_capture import observe, unbound_warning
 
     lifecycle = observe(root, ctx, event="close",
                         operation_ref=f"task:{task_id}", activity=f"task:{task_id}")
@@ -313,6 +314,7 @@ def complete_task(
         status=TASK_DONE,
         pulse_event_id=event_id,
         lifecycle=lifecycle,
+        warnings=[w for w in (unbound_warning(lifecycle, action="task.complete"),) if w],
     )
 
 
@@ -351,7 +353,7 @@ def fail_task(
     if cycle_id:
         reconcile_cycle(root, cycle_id)
 
-    from ..timelog_capture import observe
+    from ..timelog_capture import observe, unbound_warning
 
     lifecycle = observe(root, ctx, event="close",
                         operation_ref=f"task:{task_id}", activity=f"task:{task_id}")
@@ -362,6 +364,7 @@ def fail_task(
         status=TASK_BLOCKED,
         pulse_event_id=event_id,
         lifecycle=lifecycle,
+        warnings=[w for w in (unbound_warning(lifecycle, action="task.fail"),) if w],
     )
 
 

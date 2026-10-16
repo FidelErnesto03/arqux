@@ -171,6 +171,23 @@ def capture(
                    session_ref=session_id)
 
 
+def unbound_warning(lifecycle: dict[str, Any], *, action: str) -> str | None:
+    """Loud warning when a lifecycle event wrote no timelog block.
+
+    Every governance boundary that observes time MUST surface an unbound
+    execution — a silent skip is the failure that hid a full unregistered
+    session (ENVX_INFRA, 2026-10-16).
+    """
+    if lifecycle.get("status") != "skipped":
+        return None
+    reason = lifecycle.get("reason", "")
+    return (
+        f"TIMELOG_UNBOUND: {action} wrote no native timelog block ({reason}). "
+        "This work is NOT registered — bind a session via "
+        "session.context_set(project, scope) or session.open."
+    )
+
+
 def observe(project_root: Path | str, ctx: PermissionContext | None, *,
             event: str, operation_ref: str, activity: str,
             session_ref: str | None = None) -> dict[str, Any]:
