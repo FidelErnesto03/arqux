@@ -18,11 +18,36 @@ from __future__ import annotations
 
 import json
 import re
+import subprocess
 import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "src"))
+
+
+def _git(*args: str) -> str | None:
+    """Run a read-only git query against the repo; None when unavailable."""
+    try:
+        out = subprocess.run(
+            ["git", "-C", str(ROOT), *args],
+            capture_output=True, text=True, timeout=10,
+        )
+    except Exception:
+        return None
+    return out.stdout if out.returncode == 0 else None
+
+
+def _unstaged_modified(rel: str) -> bool:
+    """True when *rel* is tracked and has modifications not yet staged.
+
+    pre-commit stashes unstaged changes before running hooks, so the hook
+    sees the index/HEAD content — not what the author just edited. A
+    surface failure in that state means "your fix is not staged", not
+    "surfaces diverge"; the check must say so precisely.
+    """
+    names = _git("diff", "--name-only", "--", rel)
+    return bool(names) and rel in names.split()
 
 
 def canonical_handler_count() -> int:
@@ -161,6 +186,18 @@ def main(argv: list[str] | None = None) -> int:
         if found is None:
             continue  # optional: no workspace cortex present
         if not found or found[0] != version:
+            if _unstaged_modified(rel):
+                # pre-commit stashed the unstaged edit: the hook is reading
+                # HEAD while the fix sits in the working tree. This is a
+                # staging issue, not a surface divergence — say so.
+                problems.append(
+                    f"{desc}: expected {version}, found "
+                    f"{found[0] if found else 'none'} — "
+                    f"{rel} is tracked and has UNSTAGED changes; "
+                    f"pre-commit stashed them, so the hook read the old "
+                    f"content. Run `git add {rel}` and commit again"
+                )
+                continue
             problems.append(f"{desc}: expected {version}, found {found[0] if found else 'none'}")
 
     for path in sorted((ROOT / "docs" / "release").glob("*-report.md")):

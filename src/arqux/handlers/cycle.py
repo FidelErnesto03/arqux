@@ -765,7 +765,11 @@ def synthesize_cycle(
 
     sections = parse_content_sections(content)
     if not sections:
-        return CortexOUT.error("no sections parsed from content", code="INVALID_ARGS")
+        from .blueprint._synthesize_common import no_sections_hint
+        return CortexOUT.error(
+            f"no sections parsed from content — {no_sections_hint(content)}",
+            code="INVALID_ARGS",
+        )
     sections_written = []
     for sid, section_body in sections.items():
         try:

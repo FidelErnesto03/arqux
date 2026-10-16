@@ -112,12 +112,10 @@ HDL:cortex.render{ signature:"render(path)", purpose:"Render a .cortex file to H
 $7: EVIDENCE & SESSION LIFE
 AXM:evidence_over_opinion{ Toda decisión, blocker y completitud produce evidencia. Si no está registrado, no pasó. Preferir evidence.record sobre afirmaciones verbales. }
 
-STP:timelog_gate{ when:"ANTES de session.close, en cualquier proyecto gobernado", action:"Aplicar skill timelog-compliance: cortex.entry.get $10/KNW:timelog_watermark_* -> si hay actividad (git log, pulsos SES) con timestamp > coverage_until, reconstruir bloques y proponer registro al Arquitecto vía tw_log; tras cargar, cortex.entry.update del watermark. Si no hay watermark y el proyecto usa Teamwork, ofrecer bootstrap. Si no hay actividad pendiente, continuar al cierre sin bloquear." }
+STP:timelog_gate{ when:"ANTES de session.close, en cualquier proyecto gobernado", action:"El modelo nativo (§8) ya registró los límites de la SES vía lifecycle handlers — no hay watermark, reconstrucción manual ni tw_log. El gate se reduce a la proyección externa opcional: si el Arquitecto pidió registrar horas en un proveedor externo, ejecutar timelog.project(action='preview') y proponer el envío (prepare -> send con authorization_ref). Si no hubo tal pedido, continuar al cierre sin bloquear. Nunca arrancar cronómetros ni leer el timelog completo." }
 
 STP:session_close{ when:"Fin de sesión o pausa larga (tras STP:timelog_gate)", action:"session.close(summary='...', blps='...', tasks='...', decisions='...', gaps='...'). Esto preserva el contexto para la próxima sesión vía session.resume(). El contexto activo y el header se pierden al cerrar — session.resume() los restaura desde el SES." }
-
 $8: ACTIVIDAD & TIEMPO (CYCLE-14)
-
 AXM:timelog_native{ El registro de actividad y tiempo es NATIVO de ARQUX: un archivo CORTEX por proyecto/SES en <proyecto>/.arqux/timelog/SESXXX_yyyymmdd_hhmiss.cortex. No hay base de datos, JSONL ni cronometro. El nombre deriva del ID SES real y del inicio UTC original y NO cambia al reanudar, cambiar de identidad ni cerrar. }
 
 STP:timelog_requirements{ Los siete requisitos del contrato temporal:
@@ -138,7 +136,7 @@ HDL:timelog.review{ signature:"timelog.review(block_id, changes, reason, authori
 
 HDL:timelog.purge{ signature:"timelog.purge(selection, authorization_ref, mode='archive'|'summarize'|'delete', preview=true, session_ref?, expected_revision?)", purpose:"Depuracion de alcance exacto. preview=true (por defecto) no muta. delete elimina archivo canonico y auxiliares y deja un tombstone sin contenido; el contenido borrado no se recrea por resume/retry/proyeccion.", mutating:"condicional (preview=false)" }
 
-HDL:timelog.project{ signature:"timelog.project(...)", status:"PENDIENTE — BLP-006 (proyeccion externa opcional). No inventar API ni prometer envio hasta verificarla.", pending:true }
+HDL:timelog.project{ signature:"timelog.project(block_ids?, action='preview'|'prepare'|'send'|'reconcile', authorization_ref?, session_ref?, expected_revision?)", purpose:"Proyeccion externa opcional de un lote del timelog. preview es solo lectura; prepare persiste la identidad del lote; send requiere una autorizacion ligada a esa identidad; reconcile registra el resultado remoto.", implemented:"handlers/timelog.py", mutating:"condicional (preview no muta)" }
 
 AXM:timelog_permissions{ La consulta es solo lectura y respeta el rol; el auditor puede consultar pero no revisar ni purgar (preview permitido, supresion no). El registrador de ciclo de vida tiene autoridad propia y no convierte una lectura en escritura. }
 
@@ -146,4 +144,4 @@ LIM:timelog_no_new_skill{ No se crea AGENTS.md ni skill nueva para esta capacida
 
 AXM:timelog_language{ El idioma de la sesion gobierna los entregables; las reglas priorizan el trabajo conjunto sin rankings ni atribucion de culpa. }
 
-AXM:timelog_external_optional{ La adopcion del nucleo no requiere credenciales ni conexion externa; un proveedor externo es un puente opcional y no se activa en esta fase. }
+AXM:timelog_external_optional{ La adopcion del nucleo no requiere credenciales ni conexion externa; un proveedor externo es un puente opcional que se activa solo por instruccion del Arquitecto via timelog.project. }

@@ -13,6 +13,25 @@ logger = logging.getLogger(__name__)
 from pathlib import Path
 
 
+def no_sections_hint(content: str) -> str:
+    """Actionable hint when parse_content_sections() found nothing.
+
+    Surfaces the P1.2a diagnostic in the handler output instead of only
+    logging it: callers see the exact $N:{body} form expected.
+    """
+    bare = re.findall(r"\$(\d+):\s*(?!\{)", content or "")
+    if bare:
+        return (
+            f"found $N: without braces {bare} — the per-section form is "
+            "$N:{body} (e.g. $1:{...} $2:{...})"
+        )
+    return (
+        "expected per-section CORTEX: $N:{body} "
+        "(e.g. $1:{propósito} $2:{alcance}); for multiline payloads via "
+        "CLI use content=@file or content=@- (stdin)"
+    )
+
+
 def parse_content_sections(content: str) -> dict[str, str]:
     """Parse a CORTEX content payload into ``{section_id: body}``.
 
@@ -32,6 +51,8 @@ def parse_content_sections(content: str) -> dict[str, str]:
     if not text:
         return out
 
+    bare_refs = re.findall(r"\$(\d+):\s*(?!\{)", text)
+
     # 1. Per-section form: scan for $N:{...} or $N.N:{...}
     pattern = re.compile(r"\$(\d+(?:\.\d+)?):\s*\{")
     matches = list(pattern.finditer(text))
@@ -43,7 +64,6 @@ def parse_content_sections(content: str) -> dict[str, str]:
             if body is not None:
                 out[sid] = body.strip()
         # Warn if some $N: patterns were found without braces (missing {})
-        bare_refs = re.findall(r"\$(\d+):\s*(?!\{)", text)
         if bare_refs and not out:
             logger.warning(
                 "P1.2a: found $N: patterns without braces: %s. "
