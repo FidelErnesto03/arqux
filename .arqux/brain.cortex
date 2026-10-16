@@ -1362,6 +1362,12 @@ AUD:E_1778{date:"2026-10-16T14:47:53Z", event:"E-1778", task:"-", kind:"session_
 
 AUD:E_1779{date:"2026-10-16T14:47:53Z", event:"E-1779", task:"-", kind:"identity_switch", agent:"Alfred", result:"[identity.switch] from=Alfred to=alfred context_updated=False", evidence:"[identity.switch] from=Alfred to=alfred context_updated=False"}
 
+AUD:E_1780{date:"2026-10-16T14:50:22Z", event:"E-1780", task:"-", kind:"checkpoint", agent:"Alfred", result:"cortex.checkpoint ok fcs= obj=", evidence:"cortex.checkpoint ok fcs= obj="}
+
+AUD:E_1781{date:"2026-10-16T14:52:34Z", event:"E-1781", task:"-", kind:"checkpoint", agent:"Alfred", result:"cortex.checkpoint ok fcs= obj=", evidence:"cortex.checkpoint ok fcs= obj="}
+
+AUD:E_1782{date:"2026-10-16T15:08:59Z", event:"E-1782", task:"-", kind:"checkpoint", agent:"Alfred", result:"cortex.checkpoint ok fcs= obj=", evidence:"cortex.checkpoint ok fcs= obj="}
+
 
 $7: LESSONS
 
@@ -1764,7 +1770,7 @@ LNG:session_E_1537{type:"session", entry_count:36, summary:"checkpoint:4,issue:3
 
 $8: ACTIVE_CONTEXT
 
-WRK:current{phase:"current", current:"task.complete: task T-008 completed", blocked:"no", survive:"work", updated:"2026-10-16T14:47:08Z", event:"task.complete", fcs:"", obj:"", tasks:"", state:"\"0 open", last_turn:"2026-10-16T14:47:13Z"}
+WRK:current{phase:"current", current:"task.complete: task T-008 completed", blocked:"no", survive:"work", updated:"2026-10-16T14:47:08Z", event:"task.complete", fcs:"", obj:"", tasks:"", state:"\"timelog-compliance v2.4.0: Teamwork es UNA instancia del patron proveedor-externo; no_double_send ahora es por-proveedor (mismo intervalo a N proveedores es legitimo", last_turn:"2026-10-16T15:08:58Z"}
 
 
 $9: RISKS
