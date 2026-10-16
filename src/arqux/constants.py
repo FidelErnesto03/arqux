@@ -11,6 +11,7 @@ canonical surface to swap. After running `scripts/rename-product.py <name>`:
 from __future__ import annotations
 
 import os
+import re
 from dataclasses import dataclass
 from enum import Enum
 from importlib.metadata import PackageNotFoundError
@@ -118,6 +119,20 @@ ROLE_EXECUTOR: str = "executor"
 ROLE_AUDITOR: str = "auditor"
 
 ALL_ROLES: tuple[str, ...] = (ROLE_GOVERNOR, ROLE_EXECUTOR, ROLE_AUDITOR)
+
+# --- Identifier hygiene ------------------------------------------------------
+#
+# Any caller-provided value that becomes a single path component (agent ids,
+# skill names, task ids) must match this — a slug without separators, so a
+# payload like "heimdall\nsummary:..." can never corrupt a filename or escape
+# the directory (workspace audit 2026-10-16: corrupted handoffs/*.cortex).
+NAME_COMPONENT_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_-]*$")
+
+
+def is_name_component(value: str | None) -> bool:
+    """True when *value* is safe to embed as one path component."""
+    return bool(NAME_COMPONENT_RE.match(value or ""))
+
 
 # --- Task state machine ----------------------------------------------------
 

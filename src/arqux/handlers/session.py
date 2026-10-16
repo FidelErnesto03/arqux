@@ -18,7 +18,7 @@ from contextlib import suppress
 from pathlib import Path
 from typing import Any
 
-from ..constants import ARQUX_DIR, BRAIN_CORTEX
+from ..constants import ARQUX_DIR, BRAIN_CORTEX, is_name_component
 from ..cortex_out import CortexOUT
 from ..execution import authoritative_execution_key
 from ..permissions import PermissionContext
@@ -1189,6 +1189,12 @@ def handoff(
 
     if not target_agent:
         return CortexOUT.error("target_agent is required", code="INVALID_ARGS")
+    if not is_name_component(target_agent):
+        return CortexOUT.error(
+            f"target_agent must be a single agent id (slug), got {target_agent!r} "
+            "— it becomes the handoff filename handoffs/<id>.cortex and the HOF 'to' field",
+            code="INVALID_ARGS",
+        )
 
     root = find_project_root(start=path)
     if root is None:

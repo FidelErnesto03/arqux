@@ -12,6 +12,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from .constants import is_name_component
+
 
 def resolve_agent_identity(
     agent_id: str,
@@ -34,6 +36,9 @@ def resolve_agent_identity(
         unchanged if resolution fails.
     """
     if not agent_id:
+        return agent_id
+    if not is_name_component(agent_id):
+        # Never let a malformed id become a path component.
         return agent_id
 
     candidates: list[Path] = []

@@ -5,7 +5,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-from ...constants import ARQUX_DIR, IDENTITIES_DIR
+from ...constants import ARQUX_DIR, IDENTITIES_DIR, is_name_component
 from ._common import _resolve_project_root
 from ._elevate import elevate_candidate
 from ._lesson import (
@@ -48,6 +48,10 @@ def _resolve_behavioral_paths(
     """
     if not agent:
         raise AgentIdentityError("agent name must be non-empty")
+    if not is_name_component(agent):
+        raise AgentIdentityError(
+            f"agent name {agent!r} is not a safe path component"
+        )
     identities_dir = Path(project_root or Path.cwd()) / ARQUX_DIR / "identities"
     if not identities_dir.exists():
         identities_dir = IDENTITIES_DIR
