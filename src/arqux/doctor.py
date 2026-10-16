@@ -262,6 +262,40 @@ def check_readme_badge(arqux_dir: Path) -> CheckResult:
 # ---------------------------------------------------------------------------
 
 
+def check_nested_arqux(arqux_dir: Path) -> CheckResult:
+    """Detect a nested/circular ``.arqux`` inside ``.arqux``.
+
+    A ``.arqux/.arqux`` entry — a symlink resolving to an ancestor or a
+    copied governance tree — makes recursive scans loop forever or
+    double-process the tree (observed 2026-10-16: ``.arqux/.arqux -> .``).
+    """
+    nested = arqux_dir / ".arqux"
+    if not nested.is_symlink() and not nested.exists():
+        return CheckResult(
+            name="nested .arqux",
+            status="pass",
+            message="No .arqux inside .arqux",
+            context="both",
+        )
+    if nested.is_symlink():
+        resolved = nested.resolve()
+        circular = resolved in (arqux_dir, *arqux_dir.parents)
+        detail = (
+            f"{nested} is a symlink -> {resolved}"
+            + (" (circular: resolves to an ancestor — infinite recursion)" if circular else "")
+        )
+    else:
+        detail = f"{nested} is a real directory — duplicated governance tree"
+    return CheckResult(
+        name="nested .arqux",
+        status="fail",
+        message="Nested .arqux inside .arqux",
+        detail=detail,
+        fixable=False,
+        context="both",
+    )
+
+
 def check_arqux_dir_structure(arqux_dir: Path) -> CheckResult:
     """Verify .arqux/ has expected subdirectories."""
     expected_dirs = ["skills", "cycles", "identities", "templates"]
@@ -368,6 +402,7 @@ def run_all(path: str | None = None, fix: bool = False) -> CortexOUT:
     fixes: FixMap = {}
 
     # Context-agnostic checks
+    checks.append(check_nested_arqux(arqux_dir))
     checks.append(check_arqux_dir_structure(arqux_dir))
     checks.append(check_metadata_section(arqux_dir))
 
