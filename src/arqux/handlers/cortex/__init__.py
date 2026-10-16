@@ -500,7 +500,7 @@ handler_schemas = [
                 "sigil": {"type": "string", "description": "Only affect duplicate groups with this sigil (e.g. 'AUD')."},
                 "name": {"type": "string", "description": "Only affect duplicate groups with this entry name (e.g. 'E_0157')."},
                 "keep": {"type": "string", "enum": ["first", "last"], "default": "first", "description": "Which occurrences keep the original name: first or last in file order."},
-                "mode": {"type": "string", "enum": ["dedupe", "rename"], "default": "dedupe", "description": "dedupe removes extra occurrences; rename preserves all and assigns unique sequential names."},
+                "mode": {"type": "string", "enum": ["dedupe", "rename", "purge_dialect"], "default": "dedupe", "description": "dedupe removes extra occurrences; rename preserves all and assigns unique sequential names; purge_dialect removes rc.1 artifacts injected into $0 (BUG-1 residual: $0:format line + generated sigil-schema declarations unreachable via entry CRUD)."},
             },
             "required": ["path"],
         },

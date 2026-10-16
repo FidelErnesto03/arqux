@@ -22,7 +22,7 @@ from collections import defaultdict
 from pathlib import Path
 from typing import Any
 
-from ...cortex.atomic import atomic_write_json
+from ...cortex.atomic import atomic_write_json, atomic_write_text
 from ...cortex.reader import cortex_to_dict
 from ...cortex_out import CortexOUT
 from ...permissions import PermissionContext
@@ -30,11 +30,180 @@ from ...pulse import record_pulse
 from ...state import find_project_root
 
 _VALID_KEEP = ("first", "last")
-_VALID_MODE = ("dedupe", "rename")
+_VALID_MODE = ("dedupe", "rename", "purge_dialect")
 
 # Entry names ending in digits have a "numeric suffix" used by rename
 # mode: ``E_0157`` -> prefix ``E_``, suffix ``0157`` (width 4).
 _NUM_SUFFIX_RE = re.compile(r"^(?P<prefix>.*?)(?P<digits>\d+)$")
+
+# --- purge_dialect (BUG-1 residual) -------------------------------------------
+#
+# The strict rc.1 writer used to inject into ``$0`` a ``$0:format{...}``
+# version line plus a generated sigil-schema dictionary — entries the
+# ArqUX dict model does not represent, so no CRUD selector can reach
+# them (``entry.list $0`` -> count=0, ``entry.delete`` rejects the
+# section).  This mode removes them at text level.
+#
+# A generated schema declaration has the shape
+# ``SIGIL:name{type:"...", weight:"...", focus:"...", desc:"..."}`` —
+# all four declaration keys present.  ArqUX-dialect files declare their
+# glossary as ``#`` comment-table rows instead, so a file whose ``$0``
+# block contains declaration entries but NO comment-table glossary is
+# a genuinely migrated rc.1 document: purging it would strip required
+# declarations, so we refuse.
+
+#: ``$0:format{...}`` or ``$0: format{...}`` version line.
+_FORMAT_LINE_RE = re.compile(r"^\s*\$0\s*:\s*format\s*\{")
+
+#: Schema declaration: SIGIL:name{...} carrying all four declaration keys.
+_DECL_LINE_RE = re.compile(
+    r"^\s*[A-Z][A-Z0-9_]*\s*:\s*[\w.\-]+\s*\{[^}]*\}"
+)
+
+#: A ``#`` comment row containing ``|`` marks the ArqUX comment-table
+#: glossary — the dialect signal that makes declaration lines foreign.
+_COMMENT_TABLE_RE = re.compile(r"^\s*#.*\|")
+
+#: Start of a numbered section ($1, $2.1, ...) ends the $0 block.
+_SECTION_RE = re.compile(r"^\s*\$(?!0\s*[:{\s])\d")
+
+
+def _purge_dialect_scan(text: str) -> dict[str, Any]:
+    """Locate removable rc.1 artifacts inside the ``$0`` block."""
+    lines = text.splitlines(keepends=True)
+    # $0 region: from the first ``$0`` header line to the first numbered
+    # section header.
+    start = next(
+        (i for i, ln in enumerate(lines)
+         if re.match(r"^\s*\$0\b", ln)),
+        None,
+    )
+    if start is None:
+        return {"error": "no $0 section found", "code": "NOT_FOUND"}
+    end = next(
+        (i for i, ln in enumerate(lines[start + 1:], start + 1)
+         if _SECTION_RE.match(ln)),
+        len(lines),
+    )
+    block = lines[start:end]
+
+    has_comment_table = any(_COMMENT_TABLE_RE.match(ln) for ln in block)
+    artifacts: list[dict[str, Any]] = []
+    for off, ln in enumerate(block[1:], start=1):
+        stripped = ln.strip()
+        if _FORMAT_LINE_RE.match(ln):
+            artifacts.append(
+                {"line": start + off + 1, "kind": "format_declaration",
+                 "content": stripped}
+            )
+            continue
+        m = _DECL_LINE_RE.match(ln)
+        if m:
+            body = m.group(0)
+            if all(f"{k}:" in body for k in ("type", "weight", "focus", "desc")):
+                artifacts.append(
+                    {"line": start + off + 1, "kind": "schema_declaration",
+                     "content": stripped}
+                )
+    return {
+        "start": start, "end": end, "lines": lines,
+        "has_comment_table": has_comment_table, "artifacts": artifacts,
+    }
+
+
+def _purge_dialect(
+    path: str,
+    *,
+    dry_run: bool,
+    force: bool,
+    ctx: PermissionContext | None,
+) -> CortexOUT:
+    """Remove rc.1 dialect artifacts injected into ``$0`` (BUG-1 residual).
+
+    Operates at text level because the artifacts are not representable
+    in the ArqUX dict model — no CRUD selector reaches them.
+    """
+    src_path = Path(path)
+    if not src_path.exists():
+        return CortexOUT.error(f"file not found: {path}", code="NOT_FOUND")
+    scan = _purge_dialect_scan(src_path.read_text(encoding="utf-8"))
+    if "error" in scan:
+        return CortexOUT.error(scan["error"], code=scan["code"])
+
+    artifacts = scan["artifacts"]
+    if not scan["has_comment_table"] and artifacts:
+        # No comment-table glossary: the declarations are the file's own
+        # dialect, not injected noise — purging would break an
+        # intentionally migrated rc.1 document.
+        return CortexOUT.error(
+            "no comment-table glossary in $0 — this looks like an "
+            "intentionally migrated rc.1 file; refusing to strip its "
+            "declarations",
+            code="INVALID_STATE",
+        )
+    common = {"path": path, "mode": "purge_dialect"}
+    if not artifacts:
+        return CortexOUT.work(
+            f"cortex.gc purge_dialect ok — 0 artifacts in {path}",
+            dry_run=dry_run, force=force, artifacts=[], removed=0,
+            **common,
+        )
+    if dry_run:
+        return CortexOUT.work(
+            f"cortex.gc purge_dialect dry_run — {len(artifacts)} "
+            f"artifact(s) would be removed from $0",
+            dry_run=True, force=False, artifacts=artifacts,
+            would_remove=len(artifacts), removed=0, **common,
+        )
+    if not force:
+        return CortexOUT.error(
+            f"{len(artifacts)} dialect artifact(s) found — "
+            "pass force=True to purge",
+            code="CONFIRM_REQUIRED",
+        )
+
+    drop = {a["line"] - 1 for a in artifacts}
+    lines = scan["lines"]
+    kept = [ln for i, ln in enumerate(lines) if i not in drop]
+    # Tidy: collapse runs of 3+ blank lines left inside the $0 block.
+    out: list[str] = []
+    blanks = 0
+    for i, ln in enumerate(kept):
+        if not ln.strip():
+            blanks += 1
+            if i < scan["end"] and blanks > 1:
+                continue
+        else:
+            blanks = 0
+        out.append(ln)
+    try:
+        result = atomic_write_text("".join(out), str(src_path))
+    except Exception as exc:
+        return CortexOUT.error(
+            f"cortex.gc purge_dialect failed: {exc}", code="GC_ERROR",
+        )
+    try:
+        root = find_project_root(start=path)
+        if root is not None:
+            agent = (ctx or PermissionContext.from_env()).agent_id
+            record_pulse(
+                root, task_id="-", kind="cortex_gc", agent=agent,
+                payload=(
+                    f"[cortex.gc] mode=purge_dialect "
+                    f"removed={len(artifacts)} path={src_path.name}"
+                ),
+            )
+    except Exception:
+        pass
+    return CortexOUT.work(
+        f"cortex.gc purge_dialect ok — {len(artifacts)} artifact(s) "
+        f"removed from {path}",
+        dry_run=False, force=True, removed=len(artifacts),
+        artifacts=artifacts,
+        bytes_written=getattr(result, "bytes_written", None),
+        backup=getattr(result, "backup", None),
+        **common,
+    )
 
 # Attr keys that may embed the entry's own identifier.  Pulse AUD entries
 # store ``event:"E-0157"`` (hyphen form) while the entry name is
@@ -199,6 +368,12 @@ def gc_handler(
     src_path = Path(path)
     if not src_path.exists():
         return CortexOUT.error(f"file not found: {path}", code="NOT_FOUND")
+
+    # BUG-1 residual: text-level purge of rc.1 artifacts injected into $0.
+    # Runs before the dict-model scan because those artifacts are not
+    # representable in the model — no selector can reach them.
+    if mode == "purge_dialect":
+        return _purge_dialect(path, dry_run=dry_run, force=force, ctx=ctx)
 
     try:
         doc = cortex_to_dict(src_path.read_text(encoding="utf-8"))

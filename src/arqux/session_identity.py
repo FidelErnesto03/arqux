@@ -233,6 +233,12 @@ def open_session(
             "timelog": timelog_name(session_id, opened_at),
             "intervals": f"[{opened_at}/]",
             "closed": "",
+            # CODEC SES contract requires input/output/outcome non-empty.
+            # An open session honestly reports itself in flight; close()
+            # rewrites output/outcome with the real result.
+            "input": f"{intent}:{project}/{scope}",
+            "output": "in_progress",
+            "outcome": "open",
             "summary": "",
             "blps": "",
             "tasks": "",
@@ -311,7 +317,13 @@ def reopen_session(
         intervals = (f"{intervals}[{opened_at}/]" if intervals.startswith("[")
                      else f"[{opened_at}/]")
         updates = {"state": "open", "intervals": intervals, "closed": "",
-                   "execution": execution, "agent": agent}
+                   "execution": execution, "agent": agent,
+                   # Keep the SES entry codec-complete across the reopen:
+                   # legacy entries may lack input/output/outcome.
+                   "input": session.get("input") or
+                            f"{session.get('intent', 'resumed')}:{session.get('project', '')}/{session.get('scope', '')}",
+                   "output": "in_progress",
+                   "outcome": "open"}
         if scope:
             updates["scope"] = scope
         if blp:
@@ -388,6 +400,12 @@ def _close_locked(
         "closed": closed_at,
         "intervals": intervals,
         "summary": summary,
+        # CODEC SES contract: output/outcome carry the episode result.
+        # Also repairs legacy entries that predate the fields.
+        "input": session.get("input") or
+                 f"{session.get('intent', 'new')}:{session.get('project', '')}/{session.get('scope', '')}",
+        "output": summary or "session closed without summary",
+        "outcome": "closed",
         "blps": blps,
         "tasks": tasks,
         "decisions": decisions,

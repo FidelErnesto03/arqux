@@ -60,11 +60,23 @@ def _call_handler(name: str, raw_args: list[str]) -> str:
         bind_execution_key(mint_execution_key("cli"))
     ctx = PermissionContext.from_env()
 
-    # Parse key=value arguments
+    # Parse key=value arguments. A value of @path reads the payload from a
+    # file and @- reads it from stdin — the natural way to pass multiline
+    # CORTEX content through a shell (issue: arqux call ergonomics).
     kwargs: dict[str, Any] = {}
     for arg in raw_args:
         if "=" in arg:
             key, val = arg.split("=", 1)
+            if val.startswith("@"):
+                if val == "@-":
+                    val = sys.stdin.read()
+                else:
+                    try:
+                        val = Path(val[1:]).read_text(encoding="utf-8")
+                    except OSError as exc:
+                        return f"ERROR: cannot read {val[1:]!r}: {exc}"
+                kwargs[key] = val
+                continue
             # Try JSON parsing for complex values
             try:
                 kwargs[key] = json.loads(val)
@@ -328,6 +340,51 @@ def cmd_call(handler: str, args: tuple[str, ...]):
     # P1-A/P1-B FIX: non-zero exit code on ERROR.
     if isinstance(result, str) and (result.startswith("ERROR") or "OUT-ERROR" in result):
         sys.exit(1)
+
+
+def _group_dispatch(prefix: str, sub: str, args: tuple[str, ...]) -> None:
+    """Forward ``arqux <prefix> <sub> k=v...`` to the ``<prefix>.<sub>`` handler.
+
+    First-level sugar for the handler surface: ``arqux cycle create name=X``
+    is ``arqux call cycle.create name=X``. Unknown subcommands fall through
+    to the registry's own 'unknown handler' message with the full list.
+    """
+    result = _call_handler(f"{prefix}.{sub.replace('-', '_')}", list(args))
+    click.echo(result)
+    if isinstance(result, str) and (result.startswith("ERROR") or "OUT-ERROR" in result):
+        sys.exit(1)
+
+
+@main.command("project",
+              context_settings={"ignore_unknown_options": True,
+                                "allow_extra_args": True})
+@click.argument("sub")
+@click.argument("args", nargs=-1, type=click.UNPROCESSED)
+def cmd_project(sub: str, args: tuple[str, ...]):
+    """First-level shortcut for project.* handlers.
+
+    Examples:
+        arqux project status
+        arqux project init name=DEMO
+        arqux project lessons
+    """
+    _group_dispatch("project", sub, args)
+
+
+@main.command("cycle",
+              context_settings={"ignore_unknown_options": True,
+                                "allow_extra_args": True})
+@click.argument("sub")
+@click.argument("args", nargs=-1, type=click.UNPROCESSED)
+def cmd_cycle(sub: str, args: tuple[str, ...]):
+    """First-level shortcut for cycle.* handlers.
+
+    Examples:
+        arqux cycle current
+        arqux cycle create name=CYCLE-15
+        arqux cycle synthesize cycle_id=CYCLE-14 content=@manifest.cortex
+    """
+    _group_dispatch("cycle", sub, args)
 
 
 @main.command("cortex-verify")
