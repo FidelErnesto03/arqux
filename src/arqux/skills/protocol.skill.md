@@ -115,6 +115,8 @@ AXM:evidence_over_opinion{ Toda decisión, blocker y completitud produce evidenc
 STP:timelog_gate{ when:"ANTES de session.close, en cualquier proyecto gobernado", action:"El modelo nativo (§8) ya registró los límites de la SES vía lifecycle handlers — no hay watermark, reconstrucción manual ni tw_log. El gate se reduce a la proyección externa opcional: si el Arquitecto pidió registrar horas en un proveedor externo, ejecutar timelog.project(action='preview') y proponer el envío (prepare -> send con authorization_ref). Si no hubo tal pedido, continuar al cierre sin bloquear. Nunca arrancar cronómetros ni leer el timelog completo." }
 
 STP:session_close{ when:"Fin de sesión o pausa larga (tras STP:timelog_gate)", action:"session.close(summary='...', blps='...', tasks='...', decisions='...', gaps='...'). Esto preserva el contexto para la próxima sesión vía session.resume(). El contexto activo y el header se pierden al cerrar — session.resume() los restaura desde el SES." }
+
+LIM:archive_policy{ En .arqux/ nada se borra: todo residuo (backups viejos, locks huerfanos, archivos corruptos, directorios de nivel incorrecto) se mueve a archive/hygiene-<fecha>/ con una nota .NOTE.txt cuando el origen no es evidente. El doctor (check_residue / check_orphan_dirs / check_nested_arqux) detecta y reporta; el archivado es decision del Arquitecto. }
 $8: ACTIVIDAD & TIEMPO (CYCLE-14)
 AXM:timelog_native{ El registro de actividad y tiempo es NATIVO de ARQUX: un archivo CORTEX por proyecto/SES en <proyecto>/.arqux/timelog/SESXXX_yyyymmdd_hhmiss.cortex. No hay base de datos, JSONL ni cronometro. El nombre deriva del ID SES real y del inicio UTC original y NO cambia al reanudar, cambiar de identidad ni cerrar. }
 

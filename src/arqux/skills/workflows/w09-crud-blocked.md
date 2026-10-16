@@ -35,3 +35,7 @@ STP:w09_cli{ 1:"`arqux brain repair <path> --dry-run` para previsualizar reparac
 $5: Lesson
 
 LNG:crud_blocked_legacy{type:"contextual", cause:"E032/E034 bloquean writes en brains legacy", lesson:"Auto-repair CODEC-CORTEX v0.4.3 cura E032/E034 con force=True. Verificar version, reintentar con force=True. Si falla, escalar."}
+
+$6: Filename hygiene
+
+AXM:w09_name_component{ Todo parametro del caller que termine en un nombre de archivo (agent_id, skill name, task_id) pasa por is_name_component() antes de tocar el filesystem — un payload multilinea o con separadores nunca se convierte en path. Referencia: workspace audit 2026-10-16 (handoffs de nombre corrupto). }
