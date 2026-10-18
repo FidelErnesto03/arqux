@@ -25,6 +25,7 @@ Rules this module enforces:
 
 from __future__ import annotations
 
+import re
 import time
 from pathlib import Path
 from typing import Any
@@ -37,6 +38,7 @@ from .session_identity import (
     current_session_ref,
     find_session_for_execution,
     get_session,
+    list_sessions,
 )
 
 COVERAGE_FULL = "full"
@@ -46,6 +48,33 @@ STATUS_APPLIED = "applied"
 STATUS_PENDING = "pending"
 STATUS_REJECTED = "rejected"
 STATUS_SKIPPED = "skipped"
+
+# --- BLP-022: pre-write validation gate ------------------------------------
+#
+# Every writer of governance state consults this gate *before* it mutates
+# anything. It answers two questions — is an open session bound to this
+# execution, and does the destination admit the entry — and returns a typed,
+# actionable rejection when the answer is no. The gate never adapts: no
+# auto-binding a session, no re-classifying the destination. Persisting invalid
+# state and warning about it afterwards is the exact defect it removes.
+
+#: The one exact remediation command for an unbound execution (T-1.2). Shared
+#: by the gate and by ``unbound_warning`` so the operator learns a single
+#: message, never a parallel one.
+SESSION_BIND_REMEDIATION = "session.context_set(project, scope) or session.open"
+
+#: Stable rejection codes (BLP-022 §10). No mutation accompanies any of them.
+SESSION_UNBOUND = "SESSION_UNBOUND"
+DESTINATION_NOT_ALLOWED = "DESTINATION_NOT_ALLOWED"
+CYCLE_CLOSED = "CYCLE_CLOSED"
+
+#: Sigils carrying live/episodic working state. A Level-1 identity contract
+#: (BEHAVIORAL) admits none of them — codec-cortex raises E023 when one lands
+#: in the ``$0`` of an identity file (E-1808).
+_LIVE_STATE_SIGILS = frozenset({"FCS", "OBJ", "WRK", "SES", "LNG"})
+
+#: Architectural level of a Level-1 (BEHAVIORAL) artifact — identity contract.
+_LEVEL_BEHAVIORAL = 1
 
 # Increments only when a call is made *solely* to record a time. The whole point
 # of this BLP is that no such call exists; the counter exists so AC-04 can prove
@@ -183,9 +212,172 @@ def unbound_warning(lifecycle: dict[str, Any], *, action: str) -> str | None:
     reason = lifecycle.get("reason", "")
     return (
         f"TIMELOG_UNBOUND: {action} wrote no native timelog block ({reason}). "
-        "This work is NOT registered — bind a session via "
-        "session.context_set(project, scope) or session.open."
+        f"This work is NOT registered — bind a session via {SESSION_BIND_REMEDIATION}."
     )
+
+
+# --- BLP-022: pre-write validation gate ------------------------------------
+
+
+def _open_session_for(
+    project_root: Path | str,
+    ctx: PermissionContext | None,
+    session_ref: str | None = None,
+) -> str:
+    """Session id bound to this execution *and open*, or ``""``.
+
+    Distinct from ``_session_ref_for`` (which accepts any state): a writer may
+    only proceed against a session that is actually open, because a closed
+    session's timelog refuses new blocks — persisting against it would be the
+    silent degradation this gate rejects.
+    """
+    session_id = _session_ref_for(project_root, ctx, session_ref)
+    if not session_id:
+        return ""
+    session = get_session(project_root, session_id)
+    if session is None or session.get("state") != "open":
+        return ""
+    return session_id
+
+
+def require_bound_session(
+    project_root: Path | str,
+    ctx: PermissionContext | None,
+    *,
+    action: str,
+    session_ref: str | None = None,
+) -> dict[str, Any] | None:
+    """Rejection dict when no open session is bound, else ``None``.
+
+    Reuses the ``TIMELOG_UNBOUND`` wording and the single exact remediation
+    command (T-1.2, R-04) so the operator learns one message, not two.
+
+    Legacy-compatible by design (BLP-022 §7.4, reusing the existing gate): a
+    project with *no* session identity at all has nothing to bind, so the writer
+    proceeds and surfaces the ``TIMELOG_UNBOUND`` warning instead. The rejection
+    bites only once real session identity exists — which is exactly the E-1805
+    case, where a bound session existed and the writer ignored it.
+    """
+    if _open_session_for(project_root, ctx, session_ref):
+        return None
+    if not list_sessions(project_root):
+        return None
+    return {
+        "code": SESSION_UNBOUND,
+        "message": (
+            f"TIMELOG_UNBOUND: {action} rejected before writing — this project has "
+            "session identity but none is bound to this execution, so the work "
+            f"could not be registered. Bind a session via {SESSION_BIND_REMEDIATION}."
+        ),
+        "remediation": SESSION_BIND_REMEDIATION,
+    }
+
+
+def _declared_level(path: Path | str) -> int | None:
+    """The level the artifact *declares* in ``ARQX:artifact{level:N}``.
+
+    Read from the declaration, never inferred: a file that carries none (or
+    cannot be read) returns ``None`` so the destination gate declines to judge
+    it instead of inventing a level.
+    """
+    p = Path(path)
+    if not p.is_file():
+        return None
+    try:
+        text = p.read_text(encoding="utf-8")
+    except OSError:
+        return None
+    match = re.search(r"ARQX:artifact\{[^}]*?\blevel:(\d+)", text)
+    if not match:
+        return None
+    try:
+        return int(match.group(1))
+    except ValueError:
+        return None
+
+
+def _declares_axioms(path: Path | str) -> bool:
+    """True when a level-1 artifact carries an AXM (contract) entry.
+
+    codec-cortex classifies such an artifact as "skill" and applies E023 to any
+    live-state sigil in it (verified: LNG in a level-1 file with no AXM is not
+    flagged). The destination gate mirrors that exact rule instead of rejecting
+    every level-1 file, so it bites where corruption is real (E-1808) and leaves
+    contract-less level-1 artifacts untouched.
+    """
+    p = Path(path)
+    try:
+        text = p.read_text(encoding="utf-8")
+    except OSError:
+        return False
+    return re.search(r"(?m)^AXM:", text) is not None
+
+
+def require_writable_destination(
+    path: Path | str,
+    sigil: str,
+    *,
+    action: str,
+) -> dict[str, Any] | None:
+    """Rejection dict when *path*'s level cannot hold a *sigil* entry, else ``None``.
+
+    A Level-1 identity contract classified as a skill (it declares AXIOMS)
+    admits no live-state sigil (E023). Returns ``None`` when the destination
+    admits the entry, when no level is declared, or when the level-1 artifact is
+    not a contract.
+    """
+    if _declared_level(path) != _LEVEL_BEHAVIORAL:
+        return None
+    if sigil.upper() not in _LIVE_STATE_SIGILS:
+        return None
+    if not _declares_axioms(path):
+        return None
+    return {
+        "code": DESTINATION_NOT_ALLOWED,
+        "message": (
+            f"DESTINATION_NOT_ALLOWED: {action} rejected — a Level-1 identity "
+            f"contract cannot hold live-state sigil {sigil.upper()} (E023). "
+            "Persist it in a project brain.cortex (Level 3) instead."
+        ),
+        "remediation": "persist the entry in <project>/.arqux/brain.cortex",
+    }
+
+
+def cycle_is_closed(project_root: Path | str, cycle: str | None) -> bool:
+    """True when *cycle*'s MANIFEST declares ``status: closed``.
+
+    ``project_root`` is the project's ``.arqux/`` directory. A cycle with no
+    MANIFEST declares nothing to contradict, so it is not closed.
+    """
+    if not cycle:
+        return False
+    manifest = Path(project_root) / "cycles" / cycle / "MANIFEST.md"
+    if not manifest.is_file():
+        return False
+    try:
+        text = manifest.read_text(encoding="utf-8")
+    except OSError:
+        return False
+    return re.search(r"(?m)^status:\s*[\"']?closed\b", text) is not None
+
+
+def require_open_cycle(
+    project_root: Path | str,
+    cycle: str | None,
+    *,
+    action: str,
+) -> dict[str, Any] | None:
+    """Rejection dict when *cycle* is closed, else ``None``."""
+    if not cycle_is_closed(project_root, cycle):
+        return None
+    return {
+        "code": CYCLE_CLOSED,
+        "message": (
+            f"CYCLE_CLOSED: {action} rejected — cycle {cycle} is closed and cannot "
+            "receive new governance state. Write to the active (open) cycle."
+        ),
+        "remediation": "write to the active (open) cycle",
+    }
 
 
 def observe(project_root: Path | str, ctx: PermissionContext | None, *,
@@ -249,6 +441,10 @@ def activity_of(event: str, task_id: str = "", agent: str = "") -> str:
 __all__ = [
     "COVERAGE_FULL",
     "COVERAGE_LIMITED",
+    "CYCLE_CLOSED",
+    "DESTINATION_NOT_ALLOWED",
+    "SESSION_BIND_REMEDIATION",
+    "SESSION_UNBOUND",
     "STATUS_APPLIED",
     "STATUS_PENDING",
     "STATUS_REJECTED",
@@ -256,7 +452,11 @@ __all__ = [
     "activity_of",
     "capture",
     "current_session_ref",
+    "cycle_is_closed",
     "dedicated_timelog_calls",
     "observe",
     "repair",
+    "require_bound_session",
+    "require_open_cycle",
+    "require_writable_destination",
 ]

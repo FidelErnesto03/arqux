@@ -103,9 +103,13 @@ class TestAc05LanguageAndJointWork:
 
 
 class TestAc06DiscoveryHonesty:
-    def test_projection_is_marked_pending(self):
+    def test_projection_state_is_documented(self):
         text = SRC_MATRIX.read_text(encoding="utf-8")
-        assert "PENDIENTE" in text and "BLP-006" in text
+        # The external projection is no longer "pending (BLP-006)": it is
+        # implemented (timelog.project). The guard is the honest documented
+        # state, not a fixed label.
+        assert "timelog.project" in text
+        assert 'implemented:"handlers/timelog.py"' in text
 
     def test_how_to_returns_the_timelog_guide(self):
         from arqux.handlers import REGISTRY
@@ -128,10 +132,12 @@ class TestAc06DiscoveryHonesty:
 
 
 class TestAc07NoExternalEffects:
-    def test_matrix_states_external_is_optional_and_inactive(self):
+    def test_matrix_states_external_is_optional_and_opt_in(self):
         text = SRC_MATRIX.read_text(encoding="utf-8")
         assert "timelog_external_optional" in text
-        assert "no se activa en esta fase" in text
+        # Optional and inactive by default: it runs only on explicit instruction.
+        assert "puente opcional" in text
+        assert "solo por instruccion del Arquitecto" in text
 
     def test_no_timer_or_provider_is_configured(self):
         for path in (SRC_MATRIX, SRC_GUIDES):

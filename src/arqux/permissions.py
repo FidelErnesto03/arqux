@@ -55,6 +55,7 @@ logger = logging.getLogger(__name__)
 
 from .constants import (
     ARQUX_DIR,
+    OUT_ERROR,
     PRODUCT_NAME_UPPER,
     ROLE_AUDITOR,
     ROLE_EXECUTOR,
@@ -111,6 +112,27 @@ class Role(str, enum.Enum):
         prefix = f"{PRODUCT_NAME_UPPER}_"
         role_str = os.environ.get(f"{prefix}AGENT_ROLE", ROLE_GOVERNOR)
         return cls.from_string(role_str)
+
+
+#: Governance role for each canonical agent identity. The *active* identity —
+#: the agent named by the session context pointer — decides the effective role;
+#: the transport env var is only a fallback. Without this, an identity switch
+#: left the governor bit from the server env in place and a read-only auditor
+#: could mutate state (F6, audit of BLP-022).
+_AGENT_ROLE_BY_NAME: dict[str, str] = {
+    "alfred": ROLE_GOVERNOR,
+    "governor": ROLE_GOVERNOR,
+    "jarvis": ROLE_EXECUTOR,
+    "executor": ROLE_EXECUTOR,
+    "heimdall": ROLE_AUDITOR,
+    "seshat": ROLE_AUDITOR,
+    "auditor": ROLE_AUDITOR,
+}
+
+#: Handlers that change WHICH identity is active. They stay callable from any
+#: role; otherwise a session that switched to an auditor could never switch
+#: back (F6). Elevation through this control is a separate concern.
+ROLE_CONTROL_HANDLERS: frozenset[str] = frozenset({"identity.switch"})
 
 
 class PermissionDenied(Exception):
@@ -603,6 +625,46 @@ def deny(role: str, handler: str, reason: str = "not_allowed") -> PermissionDeni
     return PermissionDenied(
         agent_id="<unknown>", role=role, handler=handler, reason=reason,
     )
+
+
+def resolve_active_role(path: str | None = None) -> str | None:
+    """Governance role of the ACTIVE identity, from the session context pointer.
+
+    F6: the transport default (``ARQUX_AGENT_ROLE``, governor) must not grant a
+    read-only identity the power to mutate. Returns the role mapped from the
+    agent named in the context pointer, or ``None`` when there is no pointer or
+    the agent is unknown (the caller then keeps the env role).
+    """
+    try:
+        from .handlers.session import context_get  # lazy: handlers import permissions
+        out = context_get(path=path)
+    except Exception:  # noqa: BLE001 — resolution is best-effort
+        return None
+    if getattr(out, "profile", "") == OUT_ERROR:
+        return None
+    fields = getattr(out, "fields", {}) or {}
+    agent = str(fields.get("agent", "")).casefold()
+    return _AGENT_ROLE_BY_NAME.get(agent)
+
+
+def apply_active_identity_role(
+    ctx: PermissionContext,
+    *,
+    handler: str | None = None,
+    path: str | None = None,
+) -> PermissionContext:
+    """Override *ctx*'s role with the active identity's (F6).
+
+    ``ROLE_CONTROL_HANDLERS`` are exempt so the active identity can always be
+    changed. When the pointer is absent or the agent is unknown, the ctx keeps
+    the role it already had.
+    """
+    if handler in ROLE_CONTROL_HANDLERS:
+        return ctx
+    role = resolve_active_role(path)
+    if role:
+        ctx.role = role
+    return ctx
 
 
 def enforce_ctx(

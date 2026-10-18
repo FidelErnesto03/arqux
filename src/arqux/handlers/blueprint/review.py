@@ -65,6 +65,17 @@ def complete_blueprint(
     if bp_path is None:
         return CortexOUT.error(f"blueprint {bp_id} not found", code="NOT_FOUND")
 
+    # BLP-022 invariante A: reject before mutating when this project has session
+    # identity but none is bound to this execution (E-1805).
+    from ...timelog_capture import require_bound_session
+
+    rejection = require_bound_session(root, ctx, action="blueprint.complete")
+    if rejection:
+        return CortexOUT.error(
+            rejection["message"], code=rejection["code"],
+            remediation=rejection["remediation"],
+        )
+
     err = _transition(bp_id, fm.get("status", BP_DRAFT), BP_DONE)
     if err:
         return CortexOUT.error(err, code="INVALID_STATE")
