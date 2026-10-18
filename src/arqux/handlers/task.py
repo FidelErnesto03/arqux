@@ -108,23 +108,38 @@ def create_task(
             code="INVALID_ARGS",
         )
 
-    # Find the current cycle.
+    # Find the target cycle: explicit > active/open cycle > last OPEN directory.
+    # FIX (T-037): before, `_cc.data` (a CortexOUT has `.fields`, not `.data`)
+    # was always missing, so the fallback silently picked the last directory by
+    # name — which could be a CLOSED cycle (E-1816 pattern, task.create).
+    from ..timelog_capture import cycle_is_closed, require_open_cycle
+
     cycles_base = root / CYCLES_DIR
     if not cycles_base.exists():
         return CortexOUT.error("no cycles — call cycle.create first", code="NOT_FOUND")
-    open_cycles = [p.name for p in sorted(cycles_base.iterdir()) if p.is_dir()]
-    if not open_cycles:
+    cycle_dirs = [p.name for p in sorted(cycles_base.iterdir()) if p.is_dir()]
+    if not cycle_dirs:
         return CortexOUT.error("no cycles — call cycle.create first", code="NOT_FOUND")
-    # BLP-fix (G-5/G-6): respetar ciclo explicito; si no, usar el ciclo
-    # actual del proyecto en lugar del ultimo por orden alfabetico.
-    if cycle and cycle in open_cycles:
-        cycle_id = cycle
-    else:
+
+    cycle_id = (cycle or "").strip()
+    if cycle_id and cycle_id not in cycle_dirs:
+        return CortexOUT.error(f"cycle {cycle_id} not found", code="NOT_FOUND")
+    if not cycle_id:
         from .cycle import current_cycle as _current_cycle
 
         _cc = _current_cycle(path=path)
-        _open = _cc.data.get("open_cycles", []) if hasattr(_cc, "data") else []
-        cycle_id = cycle or (_open[-1] if _open else open_cycles[-1])
+        _open = _cc.fields.get("open_cycles", []) if hasattr(_cc, "fields") else []
+        cycle_id = _open[-1] if _open else ""
+    if not cycle_id:
+        open_names = [n for n in cycle_dirs if not cycle_is_closed(root, n)]
+        cycle_id = open_names[-1] if open_names else cycle_dirs[-1]
+
+    rejection = require_open_cycle(root, cycle_id, action="task.create")
+    if rejection:
+        return CortexOUT.error(
+            rejection["message"], code=rejection["code"],
+            remediation=rejection["remediation"],
+        )
 
     task_id = next_task_id(root, cycle_id)
     fm = {
@@ -185,6 +200,17 @@ def claim_task(task_id: str, path: str | None = None, ctx: PermissionContext | N
     path, fm, body = _load_task(root, task_id, cycle=_cycle_from_path(path), path=path)
     if path is None:
         return _task_lookup_error(task_id, fm)
+
+    # BLP-022 invariante A: reject before mutating when this project has session
+    # identity but none is bound to this execution (E-1805).
+    from ..timelog_capture import require_bound_session
+
+    rejection = require_bound_session(root, ctx, action="task.claim")
+    if rejection:
+        return CortexOUT.error(
+            rejection["message"], code=rejection["code"],
+            remediation=rejection["remediation"],
+        )
 
     if fm.get("status") not in (TASK_OPEN, TASK_DRAFT):
         return CortexOUT.error(
@@ -271,6 +297,16 @@ def complete_task(
     path, fm, body = _load_task(root, task_id, cycle=_cycle_from_path(path), path=path)
     if path is None:
         return _task_lookup_error(task_id, fm)
+
+    # BLP-022 invariante A: same pre-write gate as task.claim (E-1805).
+    from ..timelog_capture import require_bound_session
+
+    rejection = require_bound_session(root, ctx, action="task.complete")
+    if rejection:
+        return CortexOUT.error(
+            rejection["message"], code=rejection["code"],
+            remediation=rejection["remediation"],
+        )
 
     if fm.get("status") == TASK_DONE:
         return CortexOUT.error("task already done", code="INVALID_STATE")

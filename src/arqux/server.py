@@ -31,7 +31,11 @@ from .execution import (
     mint_execution_key,
 )
 from .handlers import REGISTRY
-from .permissions import PermissionContext, PermissionDenied
+from .permissions import (
+    PermissionContext,
+    PermissionDenied,
+    apply_active_identity_role,
+)
 
 
 def _safe_name(name: str) -> str:
@@ -44,6 +48,10 @@ def _wrap_handler(name: str, handler: Any) -> Any:
 
     async def wrapped(**kwargs: Any) -> str:
         ctx = PermissionContext.from_env()
+        # F6: the effective role follows the ACTIVE identity (context pointer),
+        # not the static transport default. Without it a server started as
+        # governor lets a switched-to auditor mutate state.
+        apply_active_identity_role(ctx, handler=name)
         try:
             # T-020: forward the call args — ctx.check resolves signature
             # defaults for CONDITIONAL_MUTATING evaluation (e.g.

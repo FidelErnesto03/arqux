@@ -55,6 +55,7 @@ def synthesize_blueprint(
     bp_id: str,
     content: str | None = None,
     *,
+    cycle: str | None = None,
     path: str | None = None,
     ctx: PermissionContext | None = None,
 ) -> CortexOUT:
@@ -114,7 +115,22 @@ def synthesize_blueprint(
 
     # Find or create the BLP file. When freshly created, the helper persists
     # the canonical template itself (preserving the ``quality_gates@`` block).
-    bp_path, fm, body, created = _find_or_create_blueprint(root, bp_id, ctx, path_hint=path)
+    # BLP-022 invariante C (E-1816): the write cycle is the explicit one or the
+    # context cycle — never "the most recent by order" — and a closed cycle is
+    # refused before any file is created.
+    from ...timelog_capture import require_open_cycle
+
+    target_cycle = _resolve_target_cycle(root, cycle)
+    rejection = require_open_cycle(root, target_cycle, action="blueprint.synthesize")
+    if rejection:
+        return CortexOUT.error(
+            rejection["message"], code=rejection["code"],
+            remediation=rejection["remediation"],
+        )
+
+    bp_path, fm, body, created = _find_or_create_blueprint(
+        root, bp_id, ctx, path_hint=path, cycle=target_cycle,
+    )
 
     # GUIDE MODE: scan BLP with Sequencer and return next pending section.
     from ...core.sequencer import Sequencer
@@ -171,35 +187,78 @@ def _prompt_yaml(created: bool, bp_path: Path, bp_id: str) -> CortexOUT:
 # ---------------------------------------------------------------------------
 
 
+def _resolve_target_cycle(root: Path, cycle: str | None) -> str | None:
+    """The cycle ``synthesize`` writes to: the explicit one, else the context.
+
+    Never "the most recent by order" (E-1816). With no explicit cycle and no
+    context pointer, the fallback mirrors ``_find_or_create_blueprint`` — the
+    last non-closed cycle, else the last directory — so the closed-cycle check
+    of ``require_open_cycle`` still applies to *every* path (F5).
+    """
+    if cycle:
+        return cycle
+
+    from ...state import crud_read
+    from ...timelog_capture import cycle_is_closed
+
+    brain_path = root / "brain.cortex"
+    if not brain_path.exists():
+        brain_path = root / ".arqux" / "brain.cortex"
+    if brain_path.exists():
+        try:
+            cur = crud_read(brain_path, "FCS:current")
+            fcs = cur.get("entries", [{}])[0].get("value", {}) if cur.get("entries") else {}
+            context_cycle = fcs.get("cycle", "") or None
+        except Exception:  # noqa: BLE001
+            context_cycle = None
+        if context_cycle:
+            return context_cycle
+
+    cycles_base = root / CYCLES_DIR
+    if cycles_base.exists():
+        names = [c.name for c in sorted(cycles_base.iterdir()) if c.is_dir()]
+        open_names = [n for n in names if not cycle_is_closed(root, n)]
+        if open_names:
+            return open_names[-1]
+        if names:
+            return names[-1]  # even a closed one — require_open_cycle will reject
+    return None
+
+
 def _find_or_create_blueprint(
     root: Path,
     bp_id: str,
     ctx: PermissionContext | None,
     *,
     path_hint: str | None = None,
+    cycle: str | None = None,
 ) -> tuple[Path, dict[str, Any], str, bool]:
     """Find the BLP file in the active cycle, or create a new draft.
 
-    synthesize only searches the ACTIVE cycle — BLP numbers reset per cycle
-    and the synthesizer must respect session context.
+    synthesize only searches one cycle — BLP numbers reset per cycle and the
+    synthesizer must respect session context. ``cycle`` (BLP-022) is the
+    resolved target; when absent the context pointer decides, never "the most
+    recent by order".
 
     Returns ``(bp_path, frontmatter, body, created)``.
     """
     cycles_base = root / CYCLES_DIR
 
-    # Determine active cycle from session context
+    # Determine the write cycle: the explicit target wins, else the context
+    # pointer from the brain.
     from ...state import crud_read
-    cycle_id = ""
-    try:
-        brain_path = root / "brain.cortex"
-        if not brain_path.exists():
-            brain_path = root / ".arqux" / "brain.cortex"
-        if brain_path.exists():
-            cur = crud_read(brain_path, "FCS:current")
-            fcs = cur.get("entries", [{}])[0].get("value", {}) if cur.get("entries") else {}
-            cycle_id = fcs.get("cycle", "")
-    except Exception:
-        pass
+    cycle_id = cycle or ""
+    if not cycle_id:
+        try:
+            brain_path = root / "brain.cortex"
+            if not brain_path.exists():
+                brain_path = root / ".arqux" / "brain.cortex"
+            if brain_path.exists():
+                cur = crud_read(brain_path, "FCS:current")
+                fcs = cur.get("entries", [{}])[0].get("value", {}) if cur.get("entries") else {}
+                cycle_id = fcs.get("cycle", "")
+        except Exception:
+            pass
 
     # 1. Active cycle lookup (scope: only the active cycle)
     if cycle_id and cycles_base.exists():

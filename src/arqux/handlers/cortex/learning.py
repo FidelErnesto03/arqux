@@ -171,24 +171,40 @@ def record_lesson_handler_legacy(
         entry_name = _derive_lesson_name(lesson, taken, name)
         if entry_name in ("_", "*"):  # T-022: '_'/'*' are reserved selector names
             entry_name = "lesson"
-        value = {"type": kind, "cause": cause, "lesson": lesson, "prevention": prevention}
-
-        result = crud_add(
-            identity_file,
-            # Resolved by section title: identities disagree on the number
-            # ($5 for governor, $6 for alfred/jarvis) and some reuse $6 for
-            # EXPERTISE, so a fixed id files lessons under the wrong section.
-            _ensure_lessons_section(identity_file),
-            "LNG", entry_name, value,
-            create_section=True,
-            force=True,
-        )
-        if "error" in result:
-            return CortexOUT.error(result["error"], code="CRUD_ERROR")
     except Exception as exc:  # noqa: BLE001
         return CortexOUT.error(str(exc), code="IDENTITY_UPDATE_ERROR")
 
+    value = {"type": kind, "cause": cause, "lesson": lesson, "prevention": prevention}
+
+    # BLP-022 invariante B (E-1808): a Level-1 identity contract admits no
+    # live-state sigil. When the identity declares level 1 the lesson is filed
+    # in an apt destination (the project brain) instead of corrupting the
+    # contract; if no apt destination exists the write is rejected.
+    from ...timelog_capture import require_writable_destination
+
+    destination_rejection = require_writable_destination(
+        identity_file, "LNG", action="identity.record",
+    )
+    filed_in_identity = destination_rejection is None
+    if filed_in_identity:
+        try:
+            result = crud_add(
+                identity_file,
+                # Resolved by section title: identities disagree on the number
+                # ($5 for governor, $6 for alfred/jarvis) and some reuse $6 for
+                # EXPERTISE, so a fixed id files lessons under the wrong section.
+                _ensure_lessons_section(identity_file),
+                "LNG", entry_name, value,
+                create_section=True,
+                force=True,
+            )
+            if "error" in result:
+                return CortexOUT.error(result["error"], code="CRUD_ERROR")
+        except Exception as exc:  # noqa: BLE001
+            return CortexOUT.error(str(exc), code="IDENTITY_UPDATE_ERROR")
+
     scan_candidates = 0
+    filed_in_brain = False
     try:
         from ...learning import scan_brain  # lazy: allow monkeypatch
 
@@ -197,24 +213,36 @@ def record_lesson_handler_legacy(
             project_dir = root.parent
             brain_path = project_dir / ".arqux" / "brain.cortex"
             if brain_path.exists():
-                crud_add(
+                brain_result = crud_add(
                     brain_path,
-                    "$7", "LNG", name,
-                    {"type": kind, "cause": cause, "lesson": lesson},
+                    "$7", "LNG", entry_name,
+                    {"type": kind, "cause": cause, "lesson": lesson,
+                     "prevention": prevention},
                     create_section=True,
                 )
+                # F4: only a clean write counts as filed — a crud_add that
+                # returned an error must NOT be reported as persisted.
+                filed_in_brain = "error" not in brain_result
 
             scan = scan_brain(project_dir, verbose=True)
             scan_candidates = len(scan.get("candidates", []))
     except Exception:  # noqa: BLE001
         pass
 
+    if not filed_in_identity and not filed_in_brain:
+        return CortexOUT.error(
+            destination_rejection["message"],
+            code=destination_rejection["code"],
+            remediation=destination_rejection["remediation"],
+        )
+
     result = CortexOUT.work(
-        f"identity.record ok agent={agent} lesson={name} kind={kind}",
+        f"identity.record ok agent={agent} lesson={entry_name} kind={kind}",
         agent=agent,
         kind=kind,
-        lesson=name,
+        lesson=entry_name,
         file=str(identity_file),
+        destination="identity" if filed_in_identity else "brain",
     )
     if scan_candidates:
         result.fields["hint"] = f"{scan_candidates} learning candidate(s) detected — run cortex.learn.elevate to review"
