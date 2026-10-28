@@ -22,10 +22,12 @@ from arqux.execution import (
 from arqux.permissions import PermissionContext
 from arqux.session_identity import (
     SESSION_ID_RE,
+    SessionOpenExists,
     get_session,
     list_sessions,
     next_session_id,
     open_session,
+    open_sessions,
     reopen_session,
     timelog_name,
     timelog_path,
@@ -179,25 +181,29 @@ class TestAc03StandbyAndBindingRequired:
 
 
 class TestAc04Concurrency:
-    def test_reentry_of_the_same_context_reuses_one_session(self, arqux_env):
-        """T-039: a new execution returning to the same context re-attaches."""
-        a = open_session(arqux_env.proj_root, agent="test-governor",
+    def test_second_open_of_the_same_project_is_refused(self, arqux_env):
+        """Room model (2026-10-28): one open session per project."""
+        first = open_session(arqux_env.proj_root, agent="test-governor",
+                             project="test-proj", execution=mint_execution_key(),
+                             scope="CYCLE-TEST")
+        with pytest.raises(SessionOpenExists):
+            open_session(arqux_env.proj_root, agent="test-governor",
                          project="test-proj", execution=mint_execution_key(),
                          scope="CYCLE-TEST")
-        b = open_session(arqux_env.proj_root, agent="test-governor",
-                         project="test-proj", execution=mint_execution_key(),
-                         scope="CYCLE-TEST")
-        assert a["session_id"] == b["session_id"]
         assert len(list_sessions(arqux_env.proj_root)) == 1
+        assert get_session(arqux_env.proj_root, first["session_id"])["state"] == "open"
 
-    def test_distinct_contexts_get_distinct_sessions(self, arqux_env):
-        a = open_session(arqux_env.proj_root, agent="test-governor",
-                         project="test-proj", execution=mint_execution_key(),
-                         scope="CYCLE-A")
-        b = open_session(arqux_env.proj_root, agent="test-governor",
-                         project="test-proj", execution=mint_execution_key(),
-                         scope="CYCLE-B")
-        assert a["session_id"] != b["session_id"]
+    def test_a_different_scope_joins_the_same_room(self, arqux_env):
+        first = open_session(arqux_env.proj_root, agent="test-governor",
+                             project="test-proj", execution=mint_execution_key(),
+                             scope="CYCLE-A")
+        resumed = open_session(arqux_env.proj_root, agent="test-governor",
+                               project="test-proj", execution=mint_execution_key(),
+                               scope="CYCLE-B", intent="resumed",
+                               session_ref=first["session_id"])
+        assert resumed["session_id"] == first["session_id"]
+        assert resumed["scope"] == "CYCLE-B"
+        assert len(list_sessions(arqux_env.proj_root)) == 1
 
     def test_concurrent_open_allocates_unique_ids(self, arqux_env):
         results: list[str] = []
@@ -220,9 +226,12 @@ class TestAc04Concurrency:
         for t in threads:
             t.join(timeout=15)
 
-        assert not errors, errors
-        assert len(results) == 4
-        assert len(set(results)) == 4
+        # Room model: one of the four creates the room; the other three are
+        # told to resume or close it instead of stacking a second session.
+        assert len(results) == 1, results
+        assert len(errors) == 3, errors
+        assert all(isinstance(e, SessionOpenExists) for e in errors), errors
+        assert len(open_sessions(arqux_env.proj_root)) == 1
 
     def test_concurrent_repeat_of_one_execution_keeps_one_ses(self, arqux_env):
         key = mint_execution_key()
@@ -244,15 +253,19 @@ class TestAc04Concurrency:
         assert len(set(results)) == 1
         assert len(list_sessions(arqux_env.proj_root)) == 1
 
-    def test_no_redirect_through_the_global_pointer(self, arqux_env):
+    def test_resume_repoints_the_pointer_without_a_second_session(self, arqux_env):
         first = _bind("test-proj", key=mint_execution_key(), ws=arqux_env.ws_root,
                       scope="CYCLE-A")
         second = _bind("test-proj", key=mint_execution_key(), ws=arqux_env.ws_root,
-                       scope="CYCLE-B")
-        assert first.fields["session_ref"] != second.fields["session_ref"]
+                       scope="CYCLE-B", intent="resumed",
+                       session_ref=first.fields["session_ref"])
+
+        assert second.fields["session_ref"] == first.fields["session_ref"]
         context = (arqux_env.ws_root / ".arqux" / "context.cortex").read_text()
-        assert f'ses:"{second.fields["session_ref"]}"' in context
-        assert get_session(arqux_env.proj_root, first.fields["session_ref"])["state"] == "open"
+        assert f'ses:"{first.fields["session_ref"]}"' in context
+        assert get_session(arqux_env.proj_root,
+                           first.fields["session_ref"])["state"] == "open"
+        assert len(list_sessions(arqux_env.proj_root)) == 1
 
 
 class TestNamespaceAllocation:

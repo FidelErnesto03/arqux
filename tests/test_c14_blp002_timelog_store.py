@@ -112,12 +112,12 @@ class TestAc02CanonicalFile:
 
 class TestAc03ConcurrencyAndExclusion:
     def test_two_sessions_have_distinct_files(self, arqux_env):
+        from tests.conftest import rotate_session
+
         a = open_session(arqux_env.proj_root, agent="test-governor",
                          project="test-proj", execution=mint_execution_key(),
                          scope="CYCLE-A")
-        b = open_session(arqux_env.proj_root, agent="test-governor",
-                         project="test-proj", execution=mint_execution_key(),
-                         scope="CYCLE-B")
+        b = rotate_session(arqux_env.proj_root, scope="CYCLE-B")
         assert a["timelog"] != b["timelog"]
         assert len(list_timelogs(arqux_env.proj_root)) == 2
 

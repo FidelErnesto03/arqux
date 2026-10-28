@@ -16,47 +16,51 @@ from arqux.pulse import next_pulse_event_id, read_pulse_from_brain, record_pulse
 from arqux.session_identity import list_sessions, open_session
 
 
-def _context_scope(execution: str) -> str:
-    """A distinct scope per execution key.
-
-    Reentry (T-039) re-attaches a session when the same ``(agent, project,
-    scope)`` is already open, so two processes get two sessions only when their
-    context differs — a distinct scope is exactly that.
-    """
-    return f"SCOPE-{execution}"
-
-
-def _open_worker(project_root: str, executions: list[str], queue) -> None:  # pragma: no cover
-    """Child process: open one session per execution key."""
+def _open_worker(project_root: str, session_ref: str, executions: list[str],
+                 queue) -> None:  # pragma: no cover
+    """Child process: join the project's room from each execution key."""
     for execution in executions:
         session = open_session(project_root, agent="test-governor",
                                project="test-proj", execution=execution,
-                               scope=_context_scope(execution))
+                               intent="resumed", session_ref=session_ref)
         queue.put(session["session_id"])
 
 
-def _pulse_worker(project_root: str, executions: list[str], queue) -> None:  # pragma: no cover
-    """Child process: open a session and record one pulse on it."""
+def _pulse_worker(project_root: str, session_ref: str, executions: list[str],
+                  queue) -> None:  # pragma: no cover
+    """Child process: join the room and record one pulse on it."""
     for execution in executions:
         session = open_session(project_root, agent="test-governor",
                                project="test-proj", execution=execution,
-                               scope=_context_scope(execution))
+                               intent="resumed", session_ref=session_ref)
         queue.put(record_pulse(
             project_root, task_id="T-1.1", kind="note", agent="test-governor",
             payload=f"note for {execution}", ses_ref=session["session_id"],
         ))
 
 
-def _run(worker, project_root: str, batches: list[list[str]]) -> list[str]:
+def _run(worker, project_root, batches) -> list[str]:
+    """Run *worker* in one process per batch.
+
+    A batch is either a plain list (workers that take it whole) or a
+    ``(session_ref, executions)`` tuple for the room-model workers.
+    """
     ctx = mp.get_context("spawn")
     queue = ctx.Queue()
-    procs = [
-        ctx.Process(target=worker, args=(project_root, batch, queue))
-        for batch in batches
-    ]
+    procs = []
+    expected = 0
+    for batch in batches:
+        if isinstance(batch, tuple):
+            session_ref, executions = batch
+            procs.append(ctx.Process(
+                target=worker, args=(project_root, session_ref, executions, queue)))
+            expected += len(executions)
+        else:
+            procs.append(ctx.Process(target=worker, args=(project_root, batch, queue)))
+            expected += len(batch)
     for proc in procs:
         proc.start()
-    results = [queue.get(timeout=120) for _ in range(sum(len(b) for b in batches))]
+    results = [queue.get(timeout=120) for _ in range(expected)]
     for proc in procs:
         proc.join(timeout=120)
         assert proc.exitcode == 0, f"child exited with {proc.exitcode}"
@@ -64,20 +68,29 @@ def _run(worker, project_root: str, batches: list[list[str]]) -> list[str]:
 
 
 class TestCrossProcessExclusion:
-    def test_concurrent_processes_get_unique_sessions(self, arqux_env):
-        batches = [[mint_execution_key()] for _ in range(4)]
+    def test_concurrent_processes_converge_on_one_room(self, arqux_env):
+        """Room model (2026-10-28): the project has one open session, and every
+        process that joins it lands on the same id."""
+        room = open_session(arqux_env.proj_root, agent="test-governor",
+                            project="test-proj", execution=mint_execution_key())
+        batches = [(room["session_id"], [mint_execution_key()]) for _ in range(4)]
         ids = _run(_open_worker, str(arqux_env.proj_root), batches)
-        assert len(set(ids)) == 4
-        assert len(list_sessions(arqux_env.proj_root)) == 4
+        assert set(ids) == {room["session_id"]}
+        assert len(list_sessions(arqux_env.proj_root)) == 1
 
     def test_repeated_open_from_one_execution_never_duplicates(self, arqux_env):
         key = mint_execution_key()
-        ids = _run(_open_worker, str(arqux_env.proj_root), [[key]] * 3)
-        assert set(ids) == {ids[0]}
+        room = open_session(arqux_env.proj_root, agent="test-governor",
+                            project="test-proj", execution=key)
+        ids = _run(_open_worker, str(arqux_env.proj_root),
+                   [(room["session_id"], [key])] * 3)
+        assert set(ids) == {room["session_id"]}
         assert len(list_sessions(arqux_env.proj_root)) == 1
 
     def test_concurrent_writes_lose_nothing_and_never_reuse_an_id(self, arqux_env):
-        batches = [[mint_execution_key()] for _ in range(5)]
+        room = open_session(arqux_env.proj_root, agent="test-governor",
+                            project="test-proj", execution=mint_execution_key())
+        batches = [(room["session_id"], [mint_execution_key()]) for _ in range(5)]
         ids = _run(_pulse_worker, str(arqux_env.proj_root), batches)
         assert len(set(ids)) == 5
         stored = {e["id"] for e in read_pulse_from_brain(arqux_env.proj_root, limit=None)}
@@ -85,14 +98,14 @@ class TestCrossProcessExclusion:
         assert next_pulse_event_id(arqux_env.proj_root) not in ids
 
     def test_every_pulse_keeps_its_own_membership(self, arqux_env):
-        batches = [[mint_execution_key()] for _ in range(3)]
+        room = open_session(arqux_env.proj_root, agent="test-governor",
+                            project="test-proj", execution=mint_execution_key())
+        batches = [(room["session_id"], [mint_execution_key()]) for _ in range(3)]
         ids = _run(_pulse_worker, str(arqux_env.proj_root), batches)
-        sessions = list_sessions(arqux_env.proj_root)
-        assert len(sessions) == 3
         pulses = [p for p in read_pulse_from_brain(arqux_env.proj_root, limit=None)
                   if p["kind"] == "note"]
         assert len(pulses) == len(ids)
-        assert {p["ses_ref"] for p in pulses} == {s["session_id"] for s in sessions}
+        assert {p["ses_ref"] for p in pulses} == {room["session_id"]}
 
 
 @pytest.mark.skipif(not hasattr(mp, "get_all_start_methods"), reason="no multiprocessing")

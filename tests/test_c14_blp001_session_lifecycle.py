@@ -73,13 +73,18 @@ class TestAc05ReadsStayReadOnlyAndUnambiguous:
 
     def test_ambiguous_selection_is_rejected_with_alternatives(self, arqux_env):
         from arqux.handlers.session import resume
+        from arqux.session_identity import SESSION_SECTION, SESSION_SIGIL, brain_path
+        from arqux.state import crud_add
 
         a = open_session(arqux_env.proj_root, agent="test-governor",
                          project="test-proj", execution=mint_execution_key(),
                          scope="CYCLE-A")
-        b = open_session(arqux_env.proj_root, agent="test-governor",
-                         project="test-proj", execution=mint_execution_key(),
-                         scope="CYCLE-B")
+        # Room model: a second open session cannot be opened, but legacy brains
+        # still carry the residue this test protects against.
+        value = {k: v for k, v in a.items() if k != "session_id"}
+        crud_add(brain_path(arqux_env.proj_root), SESSION_SECTION, SESSION_SIGIL,
+                 "SES002", value, create_section=True, force=True)
+        b = {"session_id": "SES002"}
         result = resume(path=str(arqux_env.proj_root),
                         ctx=PermissionContext(agent_id="test-governor", role="governor",
                                               execution_key="exec-unbound"))
@@ -136,23 +141,24 @@ class TestAc05ReadsStayReadOnlyAndUnambiguous:
 
 
 class TestAc07CloseAndProjectSwitch:
-    def test_close_closes_the_execution_session_only(self, arqux_env):
+    def test_close_requires_the_session_holder(self, arqux_env):
+        """Room model: solo quien sostiene la sala puede cerrarla."""
         from arqux.handlers.session import close
 
         key_a, key_b = mint_execution_key(), mint_execution_key()
-        token_a, token_b = bind_execution_key(key_a), bind_execution_key(key_b)
+        token_a = bind_execution_key(key_a)
         try:
             a = open_session(arqux_env.proj_root, agent="test-governor",
                              project="test-proj", execution=key_a, scope="CYCLE-A")
-            b = open_session(arqux_env.proj_root, agent="test-governor",
-                             project="test-proj", execution=key_b, scope="CYCLE-B")
-            result = close(summary="done by A", path=str(arqux_env.proj_root), ctx=_ctx(key_a))
-            assert result.fields["session_ref"] == a["session_id"]
-            assert get_session(arqux_env.proj_root, a["session_id"])["state"] == "closed"
-            assert get_session(arqux_env.proj_root, b["session_id"])["state"] == "open"
         finally:
-            reset_execution_key(token_b)
             reset_execution_key(token_a)
+
+        open_session(arqux_env.proj_root, agent="test-governor", project="test-proj",
+                     execution=key_b, intent="resumed", session_ref=a["session_id"])
+
+        result = close(summary="done by A", path=str(arqux_env.proj_root), ctx=_ctx(key_a))
+        assert result.profile == "OUT-ERROR", result
+        assert get_session(arqux_env.proj_root, a["session_id"])["state"] == "open"
 
     def test_close_emits_evidence_with_explicit_membership(self, bound):
         from arqux.handlers.session import close
@@ -225,12 +231,12 @@ class TestAc06MembershipAndCompaction:
         key = mint_execution_key()
         token = bind_execution_key(key)
         try:
+            from tests.conftest import rotate_session
+
             mine = open_session(arqux_env.proj_root, agent="test-governor",
                                 project="test-proj", execution=key, scope="CYCLE-A")
-            theirs = open_session(arqux_env.proj_root, agent="test-governor",
-                                  project="test-proj", execution=mint_execution_key(),
-                                  scope="CYCLE-B")
             _evidence(arqux_env.proj_root, mine["session_id"], n=6, tag="mine")
+            theirs = rotate_session(arqux_env.proj_root, scope="CYCLE-B")
             _evidence(arqux_env.proj_root, theirs["session_id"], n=6, tag="theirs")
             _evidence(arqux_env.proj_root, None, n=6, tag="legacy")
 
@@ -316,16 +322,13 @@ class TestAuditFindings:
         try:
             mine = open_session(arqux_env.proj_root, agent="test-governor",
                                 project="test-proj", execution=owner, scope="CYCLE-A")
-            theirs = open_session(arqux_env.proj_root, agent="test-governor",
-                                  project="test-proj", execution=mint_execution_key(),
-                                  scope="CYCLE-B")
             _bind("test-proj", key=owner, ws=arqux_env.ws_root)
             switch("alfred", path=str(arqux_env.proj_root),
                    ctx=PermissionContext(agent_id="test-governor", role="governor",
                                          execution_key=owner))
-            untouched = get_session(arqux_env.proj_root, theirs["session_id"])
-            assert untouched["execution"] != owner
-            assert get_session(arqux_env.proj_root, mine["session_id"]) is not None
+            after = get_session(arqux_env.proj_root, mine["session_id"])
+            assert after["execution"] == owner
+            assert len(list_sessions(arqux_env.proj_root)) == 1
         finally:
             reset_execution_key(token)
 
@@ -350,14 +353,13 @@ class TestAuditFindings:
     def test_compaction_refuses_a_foreign_session_event(self, arqux_env):
         """H-07: compactar el evento de cierre de otra sesión."""
         from arqux.pulse import compact_session_pulse
+        from tests.conftest import rotate_session
 
         mine = open_session(arqux_env.proj_root, agent="test-governor",
                             project="test-proj", execution=mint_execution_key(),
                             scope="CYCLE-A")
         _evidence(arqux_env.proj_root, mine["session_id"], n=6, tag="mine")
-        theirs = open_session(arqux_env.proj_root, agent="test-governor",
-                              project="test-proj", execution=mint_execution_key(),
-                              scope="CYCLE-B")
+        theirs = rotate_session(arqux_env.proj_root, scope="CYCLE-B")
         event_id = next_pulse_event_id(arqux_env.proj_root)
         append_pulse_to_brain(arqux_env.proj_root, event_id=event_id, task_id="-",
                               kind="session", agent="test-governor", payload="SES:x",
@@ -377,8 +379,9 @@ class TestAuditFindings:
         token_a, token_b = bind_execution_key(key_a), bind_execution_key(key_b)
         try:
             a = _bind("test-proj", key=key_a, ws=arqux_env.ws_root, scope="CYCLE-A")
-            b = _bind("test-proj", key=key_b, ws=arqux_env.ws_root, scope="CYCLE-B")
-            assert a.fields["session_ref"] != b.fields["session_ref"]
+            b = _bind("test-proj", key=key_b, ws=arqux_env.ws_root, scope="CYCLE-B",
+                      intent="resumed", session_ref=a.fields["session_ref"])
+            assert a.fields["session_ref"] == b.fields["session_ref"]
             assert context_get(path=str(arqux_env.ws_root),
                                ctx=_ctx(key_a)).fields["scope"] == "CYCLE-A"
             assert context_get(path=str(arqux_env.ws_root),
@@ -423,19 +426,27 @@ class TestSecondAuditFindings:
         assert result.profile != "OUT-ERROR", result.fields
         assert get_session(arqux_env.proj_root, theirs["session_id"])["state"] == "closed"
 
-    def test_resume_cannot_steal_a_live_session(self, arqux_env):
-        """AC-07 / H-06: reanudar una sesión viva de otra ejecución se rechaza."""
+    def test_resume_takes_over_the_room(self, arqux_env):
+        """Policy 2026-10-28: una sesión abierta es retomable por diseño.
+
+        H-06 rechazaba esto. La política vigente lo permite: si la máquina se
+        apagó sin cerrar, el trabajo sigue pendiente y la sala es retomable.
+        """
         owner = mint_execution_key()
         token = bind_execution_key(owner)
         try:
             theirs = open_session(arqux_env.proj_root, agent="test-governor",
                                   project="test-proj", execution=owner)
-            result = _bind("test-proj", ws=arqux_env.ws_root, key=mint_execution_key(),
-                           intent="resumed", session_ref=theirs["session_id"])
-            assert result.fields["code"] == "SESSION_IN_USE"
-            assert get_session(arqux_env.proj_root, theirs["session_id"])["execution"] == owner
         finally:
             reset_execution_key(token)
+
+        new_key = mint_execution_key()
+        result = _bind("test-proj", ws=arqux_env.ws_root, key=new_key,
+                       intent="resumed", session_ref=theirs["session_id"])
+        assert result.profile == "OUT-WORK", result
+        stored = get_session(arqux_env.proj_root, theirs["session_id"])
+        assert stored["execution"] == new_key
+        assert stored["date"] == theirs["date"]
 
     def test_close_keeps_interval_notation_readable(self, arqux_env):
         """N-02: cerrar una sesión corrompía la marca de intervalo."""
