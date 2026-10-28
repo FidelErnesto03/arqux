@@ -453,6 +453,33 @@ def compact_session_pulse(
         )
 
 
+_LESSON_DECLARATION = "# LNG | lesson | attrs | M | Episodic | Behavioral lessons"
+
+
+def _declare_lesson_sigil(brain_path: Path) -> None:
+    """Make the glossary declare ``LNG`` through the validated atomic writer.
+
+    CYCLE-12 / BLP-027: the previous version edited the brain with
+    ``write_text`` — no atomic rename, no CODEC validation, and a conditional
+    expression that mixed a ternary with ``elif``. The declaration itself is
+    cosmetic for ArqUX's own reader (T-028) but keeps strict validators quiet.
+    """
+    from .state import cortex_write
+
+    text = brain_path.read_text(encoding="utf-8")
+    if "$0" not in text[:200]:
+        text = ("$0\n# -- $0: MINIMAL LOCAL GLOSSARY --\n"
+                f"{_LESSON_DECLARATION}\n\n{text}")
+    elif "LNG " not in text[:500]:
+        newline = text.find("\n", text.find("$0"))
+        if newline <= 0:
+            return
+        text = text[:newline] + "\n" + _LESSON_DECLARATION + text[newline:]
+    else:
+        return
+    cortex_write(str(brain_path), text)
+
+
 def _compact_locked(
     brain_path, project_root, session_id, ses_ref, agent_id, entry_count,
     entries_to_compact, lng_name, summary, dry_run,
@@ -478,19 +505,7 @@ def _compact_locked(
                 "entry_count": entry_count, "compacted": False}
 
     entry_ids = [e["id"] for e in entries_to_compact]
-    # Write LNG — ensure $0 has LNG sigil, then use crud_add
-    text = brain_path.read_text(encoding="utf-8")
-    if "$0" not in text[:200]:
-        # No $0 glossary — add minimal one
-        glossary = "$0\n# -- $0: MINIMAL LOCAL GLOSSARY --\n# LNG | lesson | attrs | M | Episodic | Behavioral lessons\n"
-        text = glossary + "\n" + text
-        brain_path.write_text(text, encoding="utf-8")
-    elif "LNG " not in text[:text.find("\n\n")] if "\n\n" in text else "LNG " not in text[:500]:
-        # $0 exists but no LNG — prepend LNG declaration
-        idx = text.find("\n", text.find("$0"))
-        if idx > 0:
-            text = text[:idx] + "\n# LNG | lesson | attrs | M | Episodic | Behavioral lessons" + text[idx:]
-            brain_path.write_text(text, encoding="utf-8")
+    _declare_lesson_sigil(brain_path)
 
     crud_add(
         brain_path, "$7", "LNG", lng_name,

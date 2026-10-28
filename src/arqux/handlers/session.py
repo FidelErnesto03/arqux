@@ -148,30 +148,39 @@ def close(
             event=event_id,
         )
 
-    # Trigger pulse.compact after SES write
-    compact_result: dict = {}
-    try:
-        from ..pulse import compact_session_pulse
-        compact_result = compact_session_pulse(
-            root,
-            session_id=event_id,
-            agent_id=agent,
-            ses_ref=ses_ref or None,
-        )
-    except Exception:
-        pass
+    # CYCLE-12 / BLP-027: closing used to compact this session's pulse trail
+    # into a single LNG census, erasing the per-turn record (SES015,
+    # 2026-10-28: five checkpoints became "checkpoint:5"). Consolidating
+    # evidence is the Architect's decision, so the close only reports what it
+    # leaves behind; session.pulse.compact stays as the explicit operation.
+    pulse_events = 0
+    if ses_ref:
+        with suppress(Exception):
+            from ..pulse import read_pulse_from_brain
 
-    return CortexOUT.work(
-        "session.close ok",
-        event_id=event_id,
-        session_ref=ses_ref,
-        agent=agent,
-        size_bytes=len(ses_payload),
-        summary=summary,
-        compact=compact_result,
-        lifecycle=lifecycle,
-        warnings=warnings,
-    )
+            pulse_events = sum(
+                1 for e in read_pulse_from_brain(root, ses_ref=ses_ref, limit=10_000)
+                if e.get("id") != event_id
+            )
+
+    fields: dict[str, Any] = {
+        "event_id": event_id,
+        "session_ref": ses_ref,
+        "agent": agent,
+        "size_bytes": len(ses_payload),
+        "summary": summary,
+        "pulse_events": pulse_events,
+        "lifecycle": lifecycle,
+        "warnings": warnings,
+    }
+    if pulse_events:
+        fields["hint"] = (
+            f"{pulse_events} pulse event(s) from this session are left "
+            f"uncompacted; consolidate them with "
+            f"session.pulse.compact(session_id='{event_id}', ses_ref='{ses_ref}') "
+            "if you want the census instead of the trail"
+        )
+    return CortexOUT.work("session.close ok", **fields)
 
 
 def pulse_compact(
