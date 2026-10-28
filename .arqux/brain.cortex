@@ -62,7 +62,7 @@ IDN:governor{level:"2", project:"ARQUX", path:"/home/vatrox/workspace/ARQUX", go
 
 $2: FOCUS
 
-FCS:current{what:"Blueprint BLP-024 listo para ejecutar", priority:"medium", status:"current", survive:"work", updated:"2026-10-28T13:44:50Z", event:"blueprint.ready", cycle:"CYCLE-14"}
+FCS:current{what:"Próximo BLP o cierre de ciclo", priority:"medium", status:"current", survive:"work", updated:"2026-10-28T13:47:30Z", event:"blueprint.complete", cycle:"CYCLE-14"}
 
 DEC:cp01_aprobado{date:"2026-10-10", by:"architect", scope:"CYCLE-13", cp01:"aprobado — matriz rc1/fallback, diseño de migración reversible, contratos Memory Core y recall, inicio de implementación autorizado", cp01a:"aprobado — orden BLP-005, BLP-001, BLP-002, BLP-003, BLP-004", basis:"mejor aprovechamiento y facilidad de acción; corregir el ejecutor antes de construir sobre él", qg09:"cerrado", next:"redactar BLP-005", next_cp:"CP-05 revisión de autenticidad"}
 
@@ -878,7 +878,7 @@ AUD:E_0677{date:"2026-09-18T21:13:54Z", event:"E-0677", task:"-", kind:"session"
 
 KNW:sync_run{name:"sync_run", value:"1", updated:"2026-10-15T14:04:33Z", topic:"metrics", content:"metric sync_run=1", status:"current"}
 
-KNW:blueprints_done{name:"blueprints_done", value:"1", updated:"2026-10-18T19:05:01Z", topic:"metrics", content:"metric blueprints_done=1", status:"current"}
+KNW:blueprints_done{name:"blueprints_done", value:"1", updated:"2026-10-28T13:47:30Z", topic:"metrics", content:"metric blueprints_done=1", status:"current"}
 
 KNW:tasks_active{name:"tasks_active", value:"1", updated:"2026-10-23T20:21:23Z", topic:"metrics", content:"metric tasks_active=1", status:"current"}
 
@@ -1714,6 +1714,14 @@ AUD:E_1996{date:"2026-10-28T13:47:19Z", event:"E-1996", task:"T-1.3", kind:"blue
 
 AUD:E_1997{date:"2026-10-28T13:47:19Z", event:"E-1997", task:"T-1.4", kind:"blueprint_lifecycle", agent:"Alfred", result:"[blueprint.task] task T-1.4 marked as completed — src/arqux/formats.py: _legacy_entry_name en LESSONS/RISKS de ambos builders; guard en write_brain_sections.", evidence:"[blueprint.task] task T-1.4 marked as completed — src/arqux/formats.py: _legacy_entry_name en LESSONS/RISKS de ambos builders; guard en write_brain_sections."}
 
+AUD:E_1998{date:"2026-10-28T13:47:30Z", event:"E-1998", task:"BLP-024", kind:"blueprint_lifecycle", agent:"Alfred", result:"[blueprint.complete] BLP BLP-024 completed — Causa raiz: roundtrip read_brain -> write_brain_sections (formats.brain_from_model). Rutas reescritas sobre CRUD en sessions.py y cycle.py; guard lossy en write_brain_sections; _legacy_entry_name descarta lineas vacias y desambigua repetidas. AC-01..AC-07 verified. Commit b4c8b1f. Suite: 2500 passed, 2 skipped. Brain del proyecto: 0 duplicados.", evidence:"[blueprint.complete] BLP BLP-024 completed — Causa raiz: roundtrip read_brain -> write_brain_sections (formats.brain_from_model). Rutas reescritas sobre CRUD en sessions.py y cycle.py; guard lossy en write_brain_sections; _legacy_entry_name descarta lineas vacias y desambigua repetidas. AC-01..AC-07 verified. Commit b4c8b1f. Suite: 2500 passed, 2 skipped. Brain del proyecto: 0 duplicados."}
+
+AUD:E_1999{date:"2026-10-28T13:47:34Z", event:"E-1999", task:"2026-10-26-brain-el-brain-del-proyecto-degrada-las-leccione", kind:"issue", agent:"Alfred", result:"issue.update 2026-10-26-brain-el-brain-del-proyecto-degrada-las-leccione.issue.md status=open->fixed note=Causa raíz identificada (2026-10-28, BLP-024): NO era cortex.checkpoint — su tes", evidence:"issue.update 2026-10-26-brain-el-brain-del-proyecto-degrada-las-leccione.issue.md status=open->fixed note=Causa raíz identificada (2026-10-28, BLP-024): NO era cortex.checkpoint — su tes"}
+
+AUD:E_2000{date:"2026-10-28T13:47:37Z", event:"E-2000", task:"-", kind:"checkpoint", agent:"Alfred", result:"cortex.checkpoint ok fcs=issue BRAIN (blocking) corregido en BLP- obj=", evidence:"cortex.checkpoint ok fcs=issue BRAIN (blocking) corregido en BLP- obj=", ses_ref:"SES015"}
+
+AUD:E_2001{date:"2026-10-28T13:47:41Z", event:"E-2001", task:"-", kind:"checkpoint", agent:"Alfred", result:"cortex.checkpoint ok fcs=issue BRAIN (blocking) corregido en BLP- obj=seguir con los issues abiertos de ARQUX ", evidence:"cortex.checkpoint ok fcs=issue BRAIN (blocking) corregido en BLP- obj=seguir con los issues abiertos de ARQUX ", ses_ref:"SES015"}
+
 
 $7: LESSONS
 
@@ -2132,7 +2140,7 @@ LNG:session_SES009{type:"session", entry_count:6, summary:"checkpoint:3,note:3",
 
 $8: ACTIVE_CONTEXT
 
-WRK:current{phase:"current", current:"blueprint.ready: BLP-024 ready", blocked:"no", survive:"work", updated:"2026-10-28T13:44:50Z", event:"blueprint.ready", fcs:"Politica de expiracion de sesiones", obj:"AXM:session_expiry implementada: sesiones foreign open pre-00:00 se autocierran en open_session/resumed; la bound a la ejecucion actual sobrevive", tasks:"T-045 done; 6 zombies cerrados previamente (SES001/002/005/007/009/011)", state:"suite 2492 verde; axioma en workspace AGENTS.md", last_turn:"2026-10-23T20:23:45Z"}
+WRK:current{phase:"current", current:"blueprint.complete: BLP BLP-024 completed and approved", blocked:"no", survive:"work", updated:"2026-10-28T13:47:30Z", event:"blueprint.complete", fcs:"issue BRAIN (blocking) corregido en BLP-024", obj:"seguir con los issues abiertos de ARQUX (timelog high", tasks:"BLP-024 done commit b4c8b1f", state:"issue BRAIN fixed pendiente verdicto heimdall", last_turn:"2026-10-28T13:47:40Z"}
 
 
 $9: RISKS
