@@ -49,6 +49,31 @@ $0
 # cur=current pln=planned fut=future blk=blocked
 # min=minimum rec=recovery wrk=work full=full
 # ok=success fail=failure part=partial
+ARQX:artifact{type:"attrs", weight:"B", fields:"value:any?", focus:"value", desc:"ArqUX artifact metadata (level, name, usage, kind)"}
+
+AUD:audit{type:"attrs", weight:"M", fields:"value:any?", focus:"value", desc:"Audit event — append-only PULSE entry"}
+
+DEC:dec{type:"attrs", weight:"B", fields:"value:any?", focus:"value", desc:"ArqUX DEC entry"}
+
+ERR:error{type:"attrs", weight:"H", fields:"value:any?", focus:"value", desc:"Concurrency / error state entry"}
+
+FCS:focus{type:"attrs", weight:"H", fields:"value:any?", focus:"value", desc:"Active attention anchor — what the project is focused on now"}
+
+IDN:identity{type:"attrs", weight:"B", fields:"value:any?", focus:"value", desc:"Agent identity descriptor"}
+
+KNW:knowledge{type:"attrs", weight:"B", fields:"name:any?|topic:any?|content:any?|status:any?", focus:"name", desc:"Workspace-level knowledge entry"}
+
+LNG:lesson{type:"attrs", weight:"M", fields:"value:any?", focus:"value", desc:"Learned lesson — behavioral or process"}
+
+OBJ:objective{type:"attrs", weight:"H", fields:"value:any?", focus:"value", desc:"Active goal — stable project-level objective"}
+
+RSK:risk{type:"attrs", weight:"M", fields:"value:any?", focus:"value", desc:"Risk entry — description, impact, mitigation"}
+
+SES:session{type:"attrs", weight:"B", fields:"value:any?", focus:"value", desc:"Session record — agent session context"}
+
+WRK:work{type:"attrs", weight:"M", fields:"value:any?", focus:"value", desc:"Work-in-progress entry — task or activity being executed"}
+
+$0:format{cortex:"0.1", encoding:"UTF-8"}
 
 
 $19: ARQUX METADATA
@@ -63,7 +88,7 @@ IDN:governor{level:"2", project:"ARQUX", path:"/home/vatrox/workspace/ARQUX", go
 
 $2: FOCUS
 
-FCS:current{what:"Próximo BLP o cierre de ciclo", priority:"medium", status:"current", survive:"work", updated:"2026-10-28T14:43:19Z", event:"blueprint.complete", cycle:"CYCLE-14"}
+FCS:current{what:"Ciclo cerrado", priority:"medium", status:"current", survive:"work", updated:"2026-10-28T19:45:15Z", event:"cycle.close", cycle:"CYCLE-14"}
 
 DEC:cp01_aprobado{date:"2026-10-10", by:"architect", scope:"CYCLE-13", cp01:"aprobado — matriz rc1/fallback, diseño de migración reversible, contratos Memory Core y recall, inicio de implementación autorizado", cp01a:"aprobado — orden BLP-005, BLP-001, BLP-002, BLP-003, BLP-004", basis:"mejor aprovechamiento y facilidad de acción; corregir el ejecutor antes de construir sobre él", qg09:"cerrado", next:"redactar BLP-005", next_cp:"CP-05 revisión de autenticidad"}
 
@@ -82,6 +107,8 @@ DEC:loop_ampliado_seleccion_y_ventana{date:"2026-10-10", by:"architect", scope:"
 DEC:loop_autonomo_extendido_2026_10_10{sigilo:"DEC", date:"2026-10-10", auth:"Arquitecto", scope:"CYCLE-13", obj:"Operar el Loop Autonomo Ampliado sin disponibilidad del Arquitecto", permite:"['ejecutar tareas de BLP-001 a BLP-004', 'recopilar y registrar evidencia real', 'escalar por defecto ante cambios de alcance', 'corregir defectos tecnicos dictaminados', 'detenerse en punto seguro si se agota el presupuesto']", prohibe:"['commit o push sin autorizacion expresa', 'certificar criterios sin dictamen de auditor', 'cerrar BLP-001 a BLP-004 en autoridad propia de ejecutor', 'corregir los checkbox de 3 que contradicen 6', 'elegir el criterio de ordenamiento no resuelto']", limite:"Heimdall es un perfil de identidad, no un proceso independiente. Su dictamen separa rol y traza, no criterio. Por eso el loop no puede cerrar BLP-001 a BLP-004 sin su firma: Alfred figura como gobernador y ejecutor a la vez.", riesgo_residual:"auto-certificacion mitigada por registro, no por independencia", ventana:"CP-07 cada 3 blueprints cerrados, 20s, cortesia no bloqueante"}
 
 DEC:cycle_13_aprobado_total_2026_10_10{sigilo:"DEC", date:"2026-10-10", auth:"Arquitecto", scope:"CYCLE-13", declara:"CYCLE-13 aprobado completo. El loop autonomo no se detiene ni espera intervencion hasta concluir el ciclo.", resuelve:"El conflicto gobernador=ejecutor=alfred en BLP-001 a 004. La aprobacion del Arquitecto es la autoridad superior al dictamen de auditor y sustituye esa separacion.", alcanza:"['ejecucion completa de BLP-001 a BLP-004', 'certificacion bajo aprobacion del Arquitecto', 'cierre de los cinco blueprints y del ciclo']", no_alcanza:"['commit o push, que siguen bajo LIM:no_auto_commit y no fueron mencionados', 'correccion de los checkbox de 3, que son afirmaciones de gobernanza sobre resultados y no fueron autorizadas por el Arquitecto']", lectura:"La orden de no detenerse se aplica al trabajo del ciclo, no al versionado. Versionar es un eje distinto y sigue requiriendo su propia autorizacion."}
+
+LNG:cycle_12_completion{type:"process", cause:"44 task(s) completed in CYCLE-12", lesson:"Completed tasks show effective cycle planning", prevention:"Keep the completion criteria explicit in the manifest", status:"current"}
 
 
 $3: OBJECTIVES
@@ -505,7 +532,7 @@ AUD:E_0491{event:"E-0491", evidence:"[parse_blp_template] count=19 path=/home/va
 
 AUD:E_0300{event:"E-0300", evidence:"Parche AGENTS.md aplicado y verificado", task:"BLP-018", kind:"decision", agent:"alfred", result:"Parche AGENTS.md aplicado y verificado", date:"2026-08-17"}
 
-KNW:cycles_closed{name:"cycles_closed", value:"1", updated:"2026-10-28T14:19:10Z", topic:"metrics", content:"metric cycles_closed=1", status:"current"}
+KNW:cycles_closed{name:"cycles_closed", value:"1", updated:"2026-10-28T19:45:15Z", topic:"metrics", content:"metric cycles_closed=1", status:"current"}
 
 AUD:E_0301_0003{date:"2026-08-17T13:30:00Z", event:"E-0301", task:"-", kind:"decision", agent:"alfred", result:"Cierre de 5 ciclos anteriores a CYCLE-11 ordenado por Arquitecto. CYCLE-01, 07, 08, 09, 10 cerrados como SUPERSEDED by CYCLE-11. cycle_current confirma solo CYCLE-11 abierto. Bug: cycle_current lee status de MANIFEST.md no de cycle.cortex.", evidence:"5 ciclos cerrados, 1 abierto"}
 
@@ -1845,6 +1872,8 @@ AUD:E_2064{date:"2026-10-28T14:45:10Z", event:"E-2064", task:"-", kind:"session"
 
 AUD:E_2065{date:"2026-10-28T14:45:33Z", event:"E-2065", task:"-", kind:"checkpoint", agent:"Alfred", result:"cortex.checkpoint ok fcs=politica de compactacion verificada en v obj=sin trabajo abierto", evidence:"cortex.checkpoint ok fcs=politica de compactacion verificada en v obj=sin trabajo abierto", ses_ref:"SES017"}
 
+AUD:E_2066{date:"2026-10-28T19:45:14Z", event:"E-2066", task:"-", kind:"cycle", agent:"Alfred", result:"CYCLE-12 closed: Cierre de CYCLE-12 tras 27 BLPs: 19 done, 2 cancelados, 2 drafts sin iniciar (BLP-013 modelo Participant/Identity, BLP-021 skills) y 4 vivos que se movieron a CYCLE-15 (voz, comms, fluidez y sesion unica multimodal). El ciclo cumplio su proposito: correcciones de handlers y del core detectadas en produccion, incluidos los tres issues del 2026-10-26 (brain, timelog, issue.create) y la politica de sesion unica del 2026-10-28. Los dos drafts quedan aqui como diseno no iniciado. (44 completed, 0 failed)", evidence:"CYCLE-12 closed: Cierre de CYCLE-12 tras 27 BLPs: 19 done, 2 cancelados, 2 drafts sin iniciar (BLP-013 modelo Participant/Identity, BLP-021 skills) y 4 vivos que se movieron a CYCLE-15 (voz, comms, fluidez y sesion unica multimodal). El ciclo cumplio su proposito: correcciones de handlers y del core detectadas en produccion, incluidos los tres issues del 2026-10-26 (brain, timelog, issue.create) y la politica de sesion unica del 2026-10-28. Los dos drafts quedan aqui como diseno no iniciado. (44 completed, 0 failed)", cycle:"CYCLE-12"}
+
 
 $7: LESSONS
 
@@ -2265,7 +2294,7 @@ LNG:session_SES015{type:"session", entry_count:5, summary:"checkpoint:5", sessio
 
 $8: ACTIVE_CONTEXT
 
-WRK:current{phase:"current", current:"blueprint.complete: BLP BLP-027 completed and approved", blocked:"no", survive:"work", updated:"2026-10-28T14:43:19Z", event:"blueprint.complete", fcs:"politica de compactacion verificada en vivo", obj:"sin trabajo abierto", tasks:"BLP-027 done", state:"SES016 cerrada sin compactar y SES017 abierta", last_turn:"2026-10-28T14:45:32Z"}
+WRK:current{phase:"current", current:"cycle.close: cycle CYCLE-12 closed", blocked:"no", survive:"work", updated:"2026-10-28T19:45:15Z", event:"cycle.close", fcs:"politica de compactacion verificada en vivo", obj:"sin trabajo abierto", tasks:"BLP-027 done", state:"SES016 cerrada sin compactar y SES017 abierta", last_turn:"2026-10-28T14:45:32Z"}
 
 
 $9: RISKS
