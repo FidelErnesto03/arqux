@@ -71,7 +71,7 @@ _SELECTOR_RE = re.compile(
 )
 
 
-def parse_selector(selector: str) -> dict:
+def parse_selector(selector: str, *, allow_deprecated: bool = False) -> dict:
     """Parse a CORTEX selector string into components.
 
     Formats::
@@ -81,7 +81,10 @@ def parse_selector(selector: str) -> dict:
         '$7'                → {"section": "$7", "sigil": None, "name": None}
 
     The name '_' is rejected with ValueError (T-022): it is not a
-    wildcard; address entries by exact name or with '*'.
+    wildcard; address entries by exact name or with '*'. ``allow_deprecated``
+    exists because the legacy brain builder wrote entries *named* ``_``: those
+    entries cannot be repaired otherwise, so an explicit force=True reaches
+    them while an accidental legacy selector still fails.
 
     Raises ``ValueError`` if *selector* is malformed or uses '_'.
     """
@@ -90,7 +93,7 @@ def parse_selector(selector: str) -> dict:
     m = _SELECTOR_RE.match(selector.strip())
     if not m:
         raise ValueError(f"Invalid selector: {selector!r}")
-    if m.group("name") == "_":
+    if m.group("name") == "_" and not allow_deprecated:
         raise ValueError(
             f"Selector name '_' is deprecated and rejected (T-022): {selector!r}. "
             f"Use the exact entry name or '*'."
@@ -243,6 +246,7 @@ def update_entry(
     set_: dict | None = None,
     replace_body: str | None = None,
     append: bool = False,
+    allow_deprecated: bool = False,
 ) -> dict:
     """Update entries matching *selector*.  Modifies *doc* in-place.  Returns *doc*.
 
@@ -257,7 +261,7 @@ def update_entry(
     """
     if set_ is None and replace_body is None:
         raise ValueError("update_entry requires at least one of set_ or replace_body")
-    parts = parse_selector(selector)
+    parts = parse_selector(selector, allow_deprecated=allow_deprecated)
     section = _find_section(doc, parts["section"])
     if section is None:
         raise ValueError(f"Section {parts['section']!r} not found in doc")
@@ -298,12 +302,13 @@ def update_entry(
 # ---------------------------------------------------------------------------
 
 
-def delete_entry(doc: dict, selector: str) -> dict:
+def delete_entry(doc: dict, selector: str, *,
+                 allow_deprecated: bool = False) -> dict:
     """Delete entries matching *selector*.  Modifies *doc* in-place.  Returns *doc*.
 
     Raises ``ValueError`` if no entries match.
     """
-    parts = parse_selector(selector)
+    parts = parse_selector(selector, allow_deprecated=allow_deprecated)
     section = _find_section(doc, parts["section"])
     if section is None:
         raise ValueError(f"Section {parts['section']!r} not found in doc")
@@ -324,7 +329,8 @@ def delete_entry(doc: dict, selector: str) -> dict:
 # ---------------------------------------------------------------------------
 
 
-def move_entry(doc: dict, selector: str, to_section: str) -> dict:
+def move_entry(doc: dict, selector: str, to_section: str, *,
+               allow_deprecated: bool = False) -> dict:
     """Move entries matching *selector* to *to_section*.
 
     Modifies *doc* in-place.  Returns *doc*.
@@ -335,7 +341,7 @@ def move_entry(doc: dict, selector: str, to_section: str) -> dict:
     if dest is None:
         raise ValueError(f"Destination section {to_section!r} does not exist")
 
-    parts = parse_selector(selector)
+    parts = parse_selector(selector, allow_deprecated=allow_deprecated)
     src = _find_section(doc, parts["section"])
     if src is None:
         raise ValueError(f"Section {parts['section']!r} not found in doc")
