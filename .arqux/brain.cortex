@@ -87,7 +87,7 @@ IDN:governor{level:"2", project:"ARQUX", path:"/home/vatrox/workspace/ARQUX", go
 
 $2: FOCUS
 
-FCS:current{what:"Blueprint BLP-025 listo para ejecutar", priority:"medium", status:"current", survive:"work", updated:"2026-10-28T13:50:16Z", event:"blueprint.ready", cycle:"CYCLE-14"}
+FCS:current{what:"Blueprint BLP-026 listo para ejecutar", priority:"medium", status:"current", survive:"work", updated:"2026-10-28T14:13:08Z", event:"blueprint.ready", cycle:"CYCLE-14"}
 
 DEC:cp01_aprobado{date:"2026-10-10", by:"architect", scope:"CYCLE-13", cp01:"aprobado — matriz rc1/fallback, diseño de migración reversible, contratos Memory Core y recall, inicio de implementación autorizado", cp01a:"aprobado — orden BLP-005, BLP-001, BLP-002, BLP-003, BLP-004", basis:"mejor aprovechamiento y facilidad de acción; corregir el ejecutor antes de construir sobre él", qg09:"cerrado", next:"redactar BLP-005", next_cp:"CP-05 revisión de autenticidad"}
 
@@ -903,7 +903,7 @@ AUD:E_0677{date:"2026-09-18T21:13:54Z", event:"E-0677", task:"-", kind:"session"
 
 KNW:sync_run{name:"sync_run", value:"1", updated:"2026-10-15T14:04:33Z", topic:"metrics", content:"metric sync_run=1", status:"current"}
 
-KNW:blueprints_done{name:"blueprints_done", value:"1", updated:"2026-10-28T13:47:30Z", topic:"metrics", content:"metric blueprints_done=1", status:"current"}
+KNW:blueprints_done{name:"blueprints_done", value:"1", updated:"2026-10-28T13:54:59Z", topic:"metrics", content:"metric blueprints_done=1", status:"current"}
 
 KNW:tasks_active{name:"tasks_active", value:"1", updated:"2026-10-23T20:21:23Z", topic:"metrics", content:"metric tasks_active=1", status:"current"}
 
@@ -1747,6 +1747,34 @@ AUD:E_2000{date:"2026-10-28T13:47:37Z", event:"E-2000", task:"-", kind:"checkpoi
 
 AUD:E_2001{date:"2026-10-28T13:47:41Z", event:"E-2001", task:"-", kind:"checkpoint", agent:"Alfred", result:"cortex.checkpoint ok fcs=issue BRAIN (blocking) corregido en BLP- obj=seguir con los issues abiertos de ARQUX ", evidence:"cortex.checkpoint ok fcs=issue BRAIN (blocking) corregido en BLP- obj=seguir con los issues abiertos de ARQUX ", ses_ref:"SES015"}
 
+AUD:E_2002{date:"2026-10-28T13:54:46Z", event:"E-2002", task:"BLP-025", kind:"blueprint_lifecycle", agent:"Alfred", result:"[blueprint.ac] AC AC-01 verified — tests/test_t040_timelog_honest_totals.py::TestHeartbeat y ::TestHonestTotals: last_activity, elapsed_seconds y elapsed_is_window verificados.", evidence:"[blueprint.ac] AC AC-01 verified — tests/test_t040_timelog_honest_totals.py::TestHeartbeat y ::TestHonestTotals: last_activity, elapsed_seconds y elapsed_is_window verificados."}
+
+AUD:E_2003{date:"2026-10-28T13:54:47Z", event:"E-2003", task:"BLP-025", kind:"blueprint_lifecycle", agent:"Alfred", result:"[blueprint.ac] AC AC-02 verified — test_total_is_null_while_a_block_is_open: total_seconds None, closed_seconds 3600, open_block_count 1. Test preexistente actualizado al contrato nuevo.", evidence:"[blueprint.ac] AC AC-02 verified — test_total_is_null_while_a_block_is_open: total_seconds None, closed_seconds 3600, open_block_count 1. Test preexistente actualizado al contrato nuevo."}
+
+AUD:E_2004{date:"2026-10-28T13:54:47Z", event:"E-2004", task:"BLP-025", kind:"blueprint_lifecycle", agent:"Alfred", result:"[blueprint.ac] AC AC-03 verified — test_multisession_handler_output_is_json: json.loads sobre la salida del handler no falla y preserva session_ref y total.", evidence:"[blueprint.ac] AC AC-03 verified — test_multisession_handler_output_is_json: json.loads sobre la salida del handler no falla y preserva session_ref y total."}
+
+AUD:E_2005{date:"2026-10-28T13:54:48Z", event:"E-2005", task:"BLP-025", kind:"blueprint_lifecycle", agent:"Alfred", result:"[blueprint.ac] AC AC-04 verified — TestSummary: day/session/project con definition y window_vs_productive; periodo inválido rechazado con TIMELOG_INVALID_PERIOD.", evidence:"[blueprint.ac] AC AC-04 verified — TestSummary: day/session/project con definition y window_vs_productive; periodo inválido rechazado con TIMELOG_INVALID_PERIOD."}
+
+AUD:E_2006{date:"2026-10-28T13:54:53Z", event:"E-2006", task:"BLP-025", kind:"blueprint_lifecycle", agent:"Alfred", result:"[blueprint.ac] AC AC-05 verified — Suite completa: 2514 passed, 2 skipped.", evidence:"[blueprint.ac] AC AC-05 verified — Suite completa: 2514 passed, 2 skipped."}
+
+AUD:E_2007{date:"2026-10-28T13:54:53Z", event:"E-2007", task:"BLP-025", kind:"blueprint_lifecycle", agent:"Alfred", result:"[blueprint.ac] AC AC-06 verified — python scripts/check_surfaces.py → surface homologation OK (handlers=102, version=0.9.0rc3).", evidence:"[blueprint.ac] AC AC-06 verified — python scripts/check_surfaces.py → surface homologation OK (handlers=102, version=0.9.0rc3)."}
+
+AUD:E_2008{date:"2026-10-28T13:54:53Z", event:"E-2008", task:"T-1.1", kind:"blueprint_lifecycle", agent:"Alfred", result:"[blueprint.task] task T-1.1 marked as completed — tests/test_t040_timelog_honest_totals.py, 14 casos.", evidence:"[blueprint.task] task T-1.1 marked as completed — tests/test_t040_timelog_honest_totals.py, 14 casos."}
+
+AUD:E_2009{date:"2026-10-28T13:54:54Z", event:"E-2009", task:"T-1.2", kind:"blueprint_lifecycle", agent:"Alfred", result:"[blueprint.task] task T-1.2 marked as completed — timelog_store: last_activity + touch(); timelog_capture: boundary/update llaman touch.", evidence:"[blueprint.task] task T-1.2 marked as completed — timelog_store: last_activity + touch(); timelog_capture: boundary/update llaman touch."}
+
+AUD:E_2010{date:"2026-10-28T13:54:57Z", event:"E-2010", task:"T-1.3", kind:"blueprint_lifecycle", agent:"Alfred", result:"[blueprint.task] task T-1.3 marked as completed — timelog_control: describe_block y union_seconds con null/closed_seconds/open_elapsed_seconds/as_of.", evidence:"[blueprint.task] task T-1.3 marked as completed — timelog_control: describe_block y union_seconds con null/closed_seconds/open_elapsed_seconds/as_of."}
+
+AUD:E_2011{date:"2026-10-28T13:54:58Z", event:"E-2011", task:"T-1.4", kind:"blueprint_lifecycle", agent:"Alfred", result:"[blueprint.task] task T-1.4 marked as completed — cortex_out._format_value: dicts y listas anidadas vía json.dumps.", evidence:"[blueprint.task] task T-1.4 marked as completed — cortex_out._format_value: dicts y listas anidadas vía json.dumps."}
+
+AUD:E_2012{date:"2026-10-28T13:54:58Z", event:"E-2012", task:"T-1.5", kind:"blueprint_lifecycle", agent:"Alfred", result:"[blueprint.task] task T-1.5 marked as completed — timelog.summary + schema; superficies a 102 en HANDLERS.md, README, comms.skill (repo y workspace) y meta-brain.", evidence:"[blueprint.task] task T-1.5 marked as completed — timelog.summary + schema; superficies a 102 en HANDLERS.md, README, comms.skill (repo y workspace) y meta-brain."}
+
+AUD:E_2013{date:"2026-10-28T13:54:59Z", event:"E-2013", task:"BLP-025", kind:"blueprint_lifecycle", agent:"Alfred", result:"[blueprint.complete] BLP BLP-025 completed — El bloque abierto informa last_activity y elapsed_seconds calculado por el servidor; el total es null (nunca 0) mientras haya bloque abierto; la salida anidada es JSON válido; timelog.summary cubre día, sesión y proyecto. AC-01..AC-06 verified. Commit 1058718. Suite: 2514 passed, 2 skipped. Superficies homologadas a 102 handlers.", evidence:"[blueprint.complete] BLP BLP-025 completed — El bloque abierto informa last_activity y elapsed_seconds calculado por el servidor; el total es null (nunca 0) mientras haya bloque abierto; la salida anidada es JSON válido; timelog.summary cubre día, sesión y proyecto. AC-01..AC-06 verified. Commit 1058718. Suite: 2514 passed, 2 skipped. Superficies homologadas a 102 handlers."}
+
+AUD:E_2014{date:"2026-10-28T13:55:02Z", event:"E-2014", task:"2026-10-26-timelog-el-bloque-de-sesi-n-abierto-no-tiene-dur", kind:"issue", agent:"Alfred", result:"issue.update 2026-10-26-timelog-el-bloque-de-sesi-n-abierto-no-tiene-dur.issue.md status=open->fixed note=Corregido en BLP-025 (commit 1058718). (1) El bloque ACT gana last_activity: ope", evidence:"issue.update 2026-10-26-timelog-el-bloque-de-sesi-n-abierto-no-tiene-dur.issue.md status=open->fixed note=Corregido en BLP-025 (commit 1058718). (1) El bloque ACT gana last_activity: ope"}
+
+AUD:E_2015{date:"2026-10-28T13:55:03Z", event:"E-2015", task:"-", kind:"checkpoint", agent:"Alfred", result:"cortex.checkpoint ok fcs=issues BRAIN y TIMELOG corregidos (BLP-0 obj=seguir con issue.create (medium) y halla", evidence:"cortex.checkpoint ok fcs=issues BRAIN y TIMELOG corregidos (BLP-0 obj=seguir con issue.create (medium) y halla", ses_ref:"SES015"}
+
 
 $7: LESSONS
 
@@ -2165,7 +2193,7 @@ LNG:session_SES009{type:"session", entry_count:6, summary:"checkpoint:3,note:3",
 
 $8: ACTIVE_CONTEXT
 
-WRK:current{phase:"current", current:"blueprint.ready: BLP-025 ready", blocked:"no", survive:"work", updated:"2026-10-28T13:50:16Z", event:"blueprint.ready", fcs:"issue BRAIN (blocking) corregido en BLP-024", obj:"seguir con los issues abiertos de ARQUX (timelog high", tasks:"BLP-024 done commit b4c8b1f", state:"issue BRAIN fixed pendiente verdicto heimdall", last_turn:"2026-10-28T13:47:40Z"}
+WRK:current{phase:"current", current:"blueprint.ready: BLP-026 ready", blocked:"no", survive:"work", updated:"2026-10-28T14:13:08Z", event:"blueprint.ready", fcs:"issues BRAIN y TIMELOG corregidos (BLP-024", obj:"seguir con issue.create (medium) y hallazgos nuevos", tasks:"2 BLPs done commits b4c8b1f y 1058718", state:"2 de 3 issues ARQUX en fixed", last_turn:"2026-10-28T13:55:03Z"}
 
 
 $9: RISKS
