@@ -62,11 +62,11 @@ class TestAc01NaturalBoundaries:
         assert document["blocks"][f"session_{ses}"]["end"]
 
     def test_task_boundaries_land_in_their_own_session(self, bound, arqux_env):
-        other = open_session(arqux_env.proj_root, agent="test-governor",
-                             project="test-proj", execution=mint_execution_key(),
-                             scope="CYCLE-OTHER")
         capture(bound.proj_root, bound.ctx, event="open",
                 operation_ref="task:T-1.1", activity="task:T-1.1")
+        from tests.conftest import rotate_session
+
+        other = rotate_session(arqux_env.proj_root, scope="CYCLE-OTHER")
         mine = load(bound.proj_root, bound.session["session_id"],
                     opened_at=bound.session["date"])
         theirs = load(arqux_env.proj_root, other["session_id"],

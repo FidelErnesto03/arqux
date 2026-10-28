@@ -152,9 +152,9 @@ class TestSummary:
                    start="2026-10-15T01:00:00Z")
         close_block(session.proj_root, session.sid, operation_ref="a",
                     end="2026-10-15T02:00:00Z")
-        other = open_session(arqux_env.proj_root, agent="test-governor",
-                             project="test-proj", execution=mint_execution_key(),
-                             scope="CYCLE-OTHER")
+        from tests.conftest import rotate_session
+
+        other = rotate_session(arqux_env.proj_root, scope="CYCLE-OTHER")
         open_block(arqux_env.proj_root, other["session_id"], operation_ref="b",
                    start="2026-10-16T01:00:00Z")
         close_block(arqux_env.proj_root, other["session_id"], operation_ref="b",

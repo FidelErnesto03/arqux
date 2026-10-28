@@ -51,8 +51,9 @@ class TestAc01QueryReadOnly:
         assert before == after
 
     def test_multisession_view_creates_no_joint_file(self, session, arqux_env):
-        other = open_session(arqux_env.proj_root, agent="test-governor", project="test-proj",
-                             execution=mint_execution_key(), scope="CYCLE-OTHER")
+        from tests.conftest import rotate_session
+
+        other = rotate_session(arqux_env.proj_root, scope="CYCLE-OTHER")
         files_before = list_timelogs(arqux_env.proj_root)
         result = query(arqux_env.proj_root, "", view="multisession")
         assert result["view"] == "multisession"
@@ -237,11 +238,12 @@ class TestAc06PurgeIntegration:
         assert result["status"] == "rejected"
 
     def test_purge_does_not_touch_another_session(self, session, arqux_env):
-        other = open_session(arqux_env.proj_root, agent="test-governor", project="test-proj",
-                             execution=mint_execution_key(), scope="CYCLE-OTHER")
+        _seed(session, "T-1.1", "2026-10-15T01:00:00Z", "2026-10-15T02:00:00Z")
+        from tests.conftest import rotate_session
+
+        other = rotate_session(arqux_env.proj_root, scope="CYCLE-OTHER")
         open_block(arqux_env.proj_root, other["session_id"], operation_ref="T-9.9",
                    start="2026-10-15T01:00:00Z")
-        _seed(session, "T-1.1", "2026-10-15T01:00:00Z", "2026-10-15T02:00:00Z")
         purge(session.proj_root, session.sid, selection=["T_1.1"],
               mode="delete", preview=False, authorization_ref="msg-9",
               opened_at=session.opened)

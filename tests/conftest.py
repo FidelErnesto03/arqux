@@ -21,6 +21,32 @@ from arqux.constants import (
 from arqux.permissions import PermissionContext
 
 
+def rotate_session(
+    proj_root: Path,
+    *,
+    agent: str = "test-governor",
+    project: str = "test-proj",
+    scope: str = "",
+    execution: str | None = None,
+    summary: str = "rotacion de prueba",
+) -> dict:
+    """Close the open room and open the next session.
+
+    Room model (Architect, 2026-10-28): a project has one open session at a
+    time, so a test that needs a second session closes the first one. The
+    closed session keeps its timelog and its SES entry — that is what makes
+    the history comparable.
+    """
+    from arqux.execution import mint_execution_key
+    from arqux.session_identity import close_session, open_session, open_sessions
+
+    for current in open_sessions(proj_root):
+        close_session(proj_root, current["session_id"],
+                      agent=current.get("agent") or agent, summary=summary)
+    return open_session(proj_root, agent=agent, project=project,
+                        execution=execution or mint_execution_key(), scope=scope)
+
+
 @pytest.fixture
 def workspace_root(tmp_path: Path) -> Path:
     """A clean workspace root directory."""

@@ -25,6 +25,7 @@ from ..permissions import PermissionContext
 from ..pulse import read_pulse_from_brain, record_pulse
 from ..session_identity import (
     ReentryAmbiguous,
+    SessionOpenExists,
     close_session,
     current_session_ref,
     get_session,
@@ -610,6 +611,27 @@ def context_set(
         )
     except PermissionError as exc:
         return CortexOUT.error(str(exc), code="SESSION_IN_USE")
+    except SessionOpenExists as exc:
+        # Policy (Architect, 2026-10-28): an open session means the work is not
+        # finished. A new session on the same project requires closing that one
+        # or resuming it — present both commands, never decide for the user.
+        alternatives = [
+            (
+                f'{s["session_id"]} ({s.get("state", "?")}, {s.get("agent", "?")}, '
+                f'scope {s.get("scope", "") or "-"}, opened {s.get("date", "?")}) — '
+                f"resume: session.context_set(project, scope, intent='resumed', "
+                f"session_ref='{s['session_id']}') | "
+                f"close: session.close(session_ref='{s['session_id']}', summary='...')"
+            )
+            for s in exc.alternatives
+        ]
+        return CortexOUT.error(
+            "SESSION_OPEN_EXISTS: this project already has an open session. An "
+            "open session means the work is not finished: resume it, or close it "
+            "before opening a new one.",
+            code="SESSION_OPEN_EXISTS",
+            alternatives=alternatives,
+        )
     except ReentryAmbiguous as exc:
         alternatives = [
             f'{s["session_id"]} ({s.get("state", "?")}, {s.get("agent", "?")}, '

@@ -49,31 +49,6 @@ $0
 # cur=current pln=planned fut=future blk=blocked
 # min=minimum rec=recovery wrk=work full=full
 # ok=success fail=failure part=partial
-ARQX:artifact{type:"attrs", weight:"B", fields:"value:any?", focus:"value", desc:"ArqUX artifact metadata (level, name, usage, kind)"}
-
-AUD:audit{type:"attrs", weight:"M", fields:"value:any?", focus:"value", desc:"Audit event — append-only PULSE entry"}
-
-DEC:dec{type:"attrs", weight:"B", fields:"value:any?", focus:"value", desc:"ArqUX DEC entry"}
-
-ERR:error{type:"attrs", weight:"H", fields:"value:any?", focus:"value", desc:"Concurrency / error state entry"}
-
-FCS:focus{type:"attrs", weight:"H", fields:"value:any?", focus:"value", desc:"Active attention anchor — what the project is focused on now"}
-
-IDN:identity{type:"attrs", weight:"B", fields:"value:any?", focus:"value", desc:"Agent identity descriptor"}
-
-KNW:knowledge{type:"attrs", weight:"B", fields:"name:any?|topic:any?|content:any?|status:any?", focus:"name", desc:"Workspace-level knowledge entry"}
-
-LNG:lesson{type:"attrs", weight:"M", fields:"value:any?", focus:"value", desc:"Learned lesson — behavioral or process"}
-
-OBJ:objective{type:"attrs", weight:"H", fields:"value:any?", focus:"value", desc:"Active goal — stable project-level objective"}
-
-RSK:risk{type:"attrs", weight:"M", fields:"value:any?", focus:"value", desc:"Risk entry — description, impact, mitigation"}
-
-SES:session{type:"attrs", weight:"B", fields:"value:any?", focus:"value", desc:"Session record — agent session context"}
-
-WRK:work{type:"attrs", weight:"M", fields:"value:any?", focus:"value", desc:"Work-in-progress entry — task or activity being executed"}
-
-$0:format{cortex:"0.1", encoding:"UTF-8"}
 
 
 $19: ARQUX METADATA
@@ -88,7 +63,7 @@ IDN:governor{level:"2", project:"ARQUX", path:"/home/vatrox/workspace/ARQUX", go
 
 $2: FOCUS
 
-FCS:current{what:"Blueprint BLP-027 listo para ejecutar", priority:"medium", status:"current", survive:"work", updated:"2026-10-28T14:40:37Z", event:"blueprint.ready", cycle:"CYCLE-14"}
+FCS:current{what:"Próximo BLP o cierre de ciclo", priority:"medium", status:"current", survive:"work", updated:"2026-10-28T14:43:19Z", event:"blueprint.complete", cycle:"CYCLE-14"}
 
 DEC:cp01_aprobado{date:"2026-10-10", by:"architect", scope:"CYCLE-13", cp01:"aprobado — matriz rc1/fallback, diseño de migración reversible, contratos Memory Core y recall, inicio de implementación autorizado", cp01a:"aprobado — orden BLP-005, BLP-001, BLP-002, BLP-003, BLP-004", basis:"mejor aprovechamiento y facilidad de acción; corregir el ejecutor antes de construir sobre él", qg09:"cerrado", next:"redactar BLP-005", next_cp:"CP-05 revisión de autenticidad"}
 
@@ -148,7 +123,9 @@ SES:SES014{date:"2026-10-23T20:19:54Z", state:"closed", agent:"Alfred", project:
 
 SES:SES015{date:"2026-10-28T13:37:44Z", state:"closed", agent:"Alfred", project:"ARQUX", execution:"exec-c646af62f5b54b159392ee96ae51f3ed", intent:"new", scope:"CYCLE-12", blp:"", timelog:"SES015_20261028_133744.cortex", intervals:"[2026-10-28T13:37:44Z/2026-10-28T14:32:23Z]", closed:"2026-10-28T14:32:23Z", input:"new:ARQUX/CYCLE-12", output:"Cierre administrativo: la ejecucion que abrio esta sesion termino con el reinicio del cliente. El trabajo continua en una sesion nueva de la ejecucion actual.", outcome:"closed", summary:"Cierre administrativo: la ejecucion que abrio esta sesion termino con el reinicio del cliente. El trabajo continua en una sesion nueva de la ejecucion actual.", blps:"", tasks:"", decisions:"", gaps:"", lng_count:"0", event:"E-2042", timelog_state:"created"}
 
-SES:SES016{date:"2026-10-28T14:32:28Z", state:"open", agent:"Alfred", project:"ARQUX", execution:"exec-7d5d7252ce614e3db7248ecfc7665d02", intent:"new", scope:"CYCLE-12", blp:"", timelog:"SES016_20261028_143228.cortex", intervals:"[2026-10-28T14:32:28Z/]", closed:"", input:"new:ARQUX/CYCLE-12", output:"in_progress", outcome:"open", summary:"", blps:"", tasks:"", decisions:"", gaps:"", lng_count:"0", event:"", timelog_state:"created"}
+SES:SES016{date:"2026-10-28T14:32:28Z", state:"closed", agent:"Alfred", project:"ARQUX", execution:"exec-7d5d7252ce614e3db7248ecfc7665d02", intent:"new", scope:"CYCLE-12", blp:"", timelog:"SES016_20261028_143228.cortex", intervals:"[2026-10-28T14:32:28Z/2026-10-28T14:45:10Z]", closed:"2026-10-28T14:45:10Z", input:"new:ARQUX/CYCLE-12", output:"Sesion de verificacion del reinicio y de la politica de compactacion (BLP-027). Cierre administrativo: la ejecucion que la abrio termino con el reinicio. El rastro de checkpoints queda sin consolidar a proposito.", outcome:"closed", summary:"Sesion de verificacion del reinicio y de la politica de compactacion (BLP-027). Cierre administrativo: la ejecucion que la abrio termino con el reinicio. El rastro de checkpoints queda sin consolidar a proposito.", blps:"", tasks:"", decisions:"", gaps:"", lng_count:"0", event:"E-2064", timelog_state:"created"}
+
+SES:SES017{date:"2026-10-28T14:45:28Z", state:"open", agent:"Alfred", project:"ARQUX", execution:"exec-884ceb21562b4d2c8f79e84f06a0b389", intent:"new", scope:"CYCLE-12", blp:"", timelog:"SES017_20261028_144528.cortex", intervals:"[2026-10-28T14:45:28Z/]", closed:"", input:"new:ARQUX/CYCLE-12", output:"in_progress", outcome:"open", summary:"", blps:"", tasks:"", decisions:"", gaps:"", lng_count:"0", event:"", timelog_state:"created"}
 
 
 $5: HANDOFFS
@@ -906,7 +883,7 @@ AUD:E_0677{date:"2026-09-18T21:13:54Z", event:"E-0677", task:"-", kind:"session"
 
 KNW:sync_run{name:"sync_run", value:"1", updated:"2026-10-15T14:04:33Z", topic:"metrics", content:"metric sync_run=1", status:"current"}
 
-KNW:blueprints_done{name:"blueprints_done", value:"1", updated:"2026-10-28T14:13:32Z", topic:"metrics", content:"metric blueprints_done=1", status:"current"}
+KNW:blueprints_done{name:"blueprints_done", value:"1", updated:"2026-10-28T14:43:19Z", topic:"metrics", content:"metric blueprints_done=1", status:"current"}
 
 KNW:tasks_active{name:"tasks_active", value:"1", updated:"2026-10-23T20:21:23Z", topic:"metrics", content:"metric tasks_active=1", status:"current"}
 
@@ -1844,6 +1821,30 @@ AUD:E_2052{date:"2026-10-28T14:33:46Z", event:"E-2052", task:"2026-10-28-session
 
 AUD:E_2053{date:"2026-10-28T14:33:52Z", event:"E-2053", task:"2026-10-28-session-in-use-tras-reinicio-el-mismo-dia-la-ses", kind:"issue", agent:"Alfred", result:"issue.update 2026-10-28-session-in-use-tras-reinicio-el-mismo-dia-la-ses.issue.md status=open->triaged note=Detectado en vivo al verificar el reinicio del 2026-10-28. Salida usada: session", evidence:"issue.update 2026-10-28-session-in-use-tras-reinicio-el-mismo-dia-la-ses.issue.md status=open->triaged note=Detectado en vivo al verificar el reinicio del 2026-10-28. Salida usada: session"}
 
+AUD:E_2054{date:"2026-10-28T14:43:07Z", event:"E-2054", task:"BLP-027", kind:"blueprint_lifecycle", agent:"Alfred", result:"[blueprint.ac] AC AC-01 verified — test_close_leaves_the_trail_untouched: sin LNG:session_SESxxx y sin campo compact.", evidence:"[blueprint.ac] AC AC-01 verified — test_close_leaves_the_trail_untouched: sin LNG:session_SESxxx y sin campo compact."}
+
+AUD:E_2055{date:"2026-10-28T14:43:07Z", event:"E-2055", task:"BLP-027", kind:"blueprint_lifecycle", agent:"Alfred", result:"[blueprint.ac] AC AC-02 verified — test_close_tells_how_to_consolidate y test_close_without_events_reports_zero.", evidence:"[blueprint.ac] AC AC-02 verified — test_close_tells_how_to_consolidate y test_close_without_events_reports_zero."}
+
+AUD:E_2056{date:"2026-10-28T14:43:07Z", event:"E-2056", task:"BLP-027", kind:"blueprint_lifecycle", agent:"Alfred", result:"[blueprint.ac] AC AC-03 verified — test_compaction_consolidates_and_is_idempotent: pruned>=6, LNG creada, segunda llamada skip.", evidence:"[blueprint.ac] AC AC-03 verified — test_compaction_consolidates_and_is_idempotent: pruned>=6, LNG creada, segunda llamada skip."}
+
+AUD:E_2057{date:"2026-10-28T14:43:08Z", event:"E-2057", task:"BLP-027", kind:"blueprint_lifecycle", agent:"Alfred", result:"[blueprint.ac] AC AC-04 verified — test_no_write_text_on_the_brain: con el glosario sin LNG, Path.write_text sobre brain.cortex lanza y el compactador no lo usa.", evidence:"[blueprint.ac] AC AC-04 verified — test_no_write_text_on_the_brain: con el glosario sin LNG, Path.write_text sobre brain.cortex lanza y el compactador no lo usa."}
+
+AUD:E_2058{date:"2026-10-28T14:43:13Z", event:"E-2058", task:"BLP-027", kind:"blueprint_lifecycle", agent:"Alfred", result:"[blueprint.ac] AC AC-05 verified — Suite completa: 2543 passed, 2 skipped. Dos tests que fijaban el contrato viejo se reescribieron.", evidence:"[blueprint.ac] AC AC-05 verified — Suite completa: 2543 passed, 2 skipped. Dos tests que fijaban el contrato viejo se reescribieron."}
+
+AUD:E_2059{date:"2026-10-28T14:43:13Z", event:"E-2059", task:"T-1.1", kind:"blueprint_lifecycle", agent:"Alfred", result:"[blueprint.task] task T-1.1 marked as completed — tests/test_t045_pulse_compaction_policy.py (5 casos) + reescritura de 2 tests del contrato viejo.", evidence:"[blueprint.task] task T-1.1 marked as completed — tests/test_t045_pulse_compaction_policy.py (5 casos) + reescritura de 2 tests del contrato viejo."}
+
+AUD:E_2060{date:"2026-10-28T14:43:14Z", event:"E-2060", task:"T-1.2", kind:"blueprint_lifecycle", agent:"Alfred", result:"[blueprint.task] task T-1.2 marked as completed — handlers/session.py: sin compact_session_pulse; pulse_events + hint.", evidence:"[blueprint.task] task T-1.2 marked as completed — handlers/session.py: sin compact_session_pulse; pulse_events + hint."}
+
+AUD:E_2061{date:"2026-10-28T14:43:14Z", event:"E-2061", task:"T-1.3", kind:"blueprint_lifecycle", agent:"Alfred", result:"[blueprint.task] task T-1.3 marked as completed — pulse.py: _declare_lesson_sigil usa cortex_write; sin write_text.", evidence:"[blueprint.task] task T-1.3 marked as completed — pulse.py: _declare_lesson_sigil usa cortex_write; sin write_text."}
+
+AUD:E_2062{date:"2026-10-28T14:43:18Z", event:"E-2062", task:"BLP-027", kind:"blueprint_lifecycle", agent:"Alfred", result:"[blueprint.complete] BLP BLP-027 completed — El cierre ya no compacta: devuelve pulse_events y el comando exacto de consolidacion. La compactacion explicita conserva umbral, seleccion por pertenencia e idempotencia. _compact_locked escribe el glosario por cortex_write, no por write_text. AC-01..AC-05 verified. Commit e089fa1. Suite: 2543 passed, 2 skipped.", evidence:"[blueprint.complete] BLP BLP-027 completed — El cierre ya no compacta: devuelve pulse_events y el comando exacto de consolidacion. La compactacion explicita conserva umbral, seleccion por pertenencia e idempotencia. _compact_locked escribe el glosario por cortex_write, no por write_text. AC-01..AC-05 verified. Commit e089fa1. Suite: 2543 passed, 2 skipped."}
+
+AUD:E_2063{date:"2026-10-28T14:43:26Z", event:"E-2063", task:"-", kind:"checkpoint", agent:"Alfred", result:"cortex.checkpoint ok fcs=BLP-027 done commit e089fa1 obj=reiniciar para activar la nueva politica", evidence:"cortex.checkpoint ok fcs=BLP-027 done commit e089fa1 obj=reiniciar para activar la nueva politica", ses_ref:"SES016"}
+
+AUD:E_2064{date:"2026-10-28T14:45:10Z", event:"E-2064", task:"-", kind:"session", agent:"Alfred", result:"SES:2026-10-28T14:45:10Z agent=Alfred summary=\"Sesion de verificacion del reinicio y de la politica de compactacion (BLP-027). Cierre administrativo: la ejecucion que la abrio termino con el reinicio. El rastro de checkpoints queda sin consolidar a proposito.\" blps=[-] tasks=[-] decisions=[-] gaps=[-] lng_count=0", evidence:"SES:2026-10-28T14:45:10Z agent=Alfred summary=\"Sesion de verificacion del reinicio y de la politica de compactacion (BLP-027). Cierre administrativo: la ejecucion que la abrio termino con el reinicio. El rastro de checkpoints queda sin consolidar a proposito.\" blps=[-] tasks=[-] decisions=[-] gaps=[-] lng_count=0", ses_ref:"SES016"}
+
+AUD:E_2065{date:"2026-10-28T14:45:33Z", event:"E-2065", task:"-", kind:"checkpoint", agent:"Alfred", result:"cortex.checkpoint ok fcs=politica de compactacion verificada en v obj=sin trabajo abierto", evidence:"cortex.checkpoint ok fcs=politica de compactacion verificada en v obj=sin trabajo abierto", ses_ref:"SES017"}
+
 
 $7: LESSONS
 
@@ -2264,7 +2265,7 @@ LNG:session_SES015{type:"session", entry_count:5, summary:"checkpoint:5", sessio
 
 $8: ACTIVE_CONTEXT
 
-WRK:current{phase:"current", current:"blueprint.ready: BLP-027 ready", blocked:"no", survive:"work", updated:"2026-10-28T14:40:37Z", event:"blueprint.ready", fcs:"servidor verificado y todo lo pendiente cerrado", obj:"sin trabajo abierto en esta sesion", tasks:"8 issues de hoy en verified", state:"doctor 7 de 7 y brains validos", last_turn:"2026-10-28T14:33:19Z"}
+WRK:current{phase:"current", current:"blueprint.complete: BLP BLP-027 completed and approved", blocked:"no", survive:"work", updated:"2026-10-28T14:43:19Z", event:"blueprint.complete", fcs:"politica de compactacion verificada en vivo", obj:"sin trabajo abierto", tasks:"BLP-027 done", state:"SES016 cerrada sin compactar y SES017 abierta", last_turn:"2026-10-28T14:45:32Z"}
 
 
 $9: RISKS

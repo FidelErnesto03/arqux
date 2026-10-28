@@ -31,7 +31,6 @@ import re
 import time
 from collections.abc import Iterator
 from contextlib import contextmanager
-from datetime import datetime
 from pathlib import Path
 from typing import Any
 
@@ -197,71 +196,20 @@ class ReentryAmbiguous(Exception):
         self.alternatives = alternatives
 
 
-def _compatible_open_sessions(
-    project_root: Path | str, *, agent: str, project: str, scope: str
-) -> list[dict[str, Any]]:
-    """Open sessions that describe the *same* working context.
+class SessionOpenExists(Exception):
+    """The project already has an open session, so a new one is not allowed.
 
-    Compatibility is the full ``(agent, project, scope)`` triple: a different
-    agent or a different scope is a different context — a legitimate candidate
-    for its own session — not an ambiguity.
+    Policy (Architect, 2026-10-28): an open session means the work is not
+    finished — a machine shut down without closing leaves it resumable. Opening
+    a *new* session on the same project therefore requires closing the open one
+    or resuming it, and the caller must present those alternatives.
     """
-    return [
-        s
-        for s in open_sessions(project_root)
-        if s.get("agent") == agent
-        and s.get("project") == project
-        and s.get("scope", "") == (scope or "")
-    ]
 
+    code = "SESSION_OPEN_EXISTS"
 
-# --- Day-boundary expiry (policy: Architect 2026-10-23) ----------------------
-#
-# An open session expires at each day's 00:00 unless it is active and in use
-# by the user at that moment — i.e. bound to the *current* execution. Open
-# sessions owned by foreign executions (zombie bindings left by client
-# restarts) are auto-closed on the next lifecycle touch.
-
-
-def _is_expired(session: dict[str, Any], execution: str, *,
-                now: datetime | None = None) -> bool:
-    """True when *session* crossed the day boundary under a foreign execution."""
-    if session.get("state") != "open":
-        return False
-    if (session.get("execution") or "") == execution:
-        return False
-    opened = session.get("date") or ""
-    try:
-        opened_dt = datetime.fromisoformat(opened.replace("Z", "+00:00")).astimezone()
-    except ValueError:
-        return False
-    midnight = (now or datetime.now()).astimezone().replace(
-        hour=0, minute=0, second=0, microsecond=0)
-    return opened_dt < midnight
-
-
-def expire_stale_sessions(project_root: Path | str, execution: str, *,
-                          agent: str) -> list[str]:
-    """Close open sessions that crossed 00:00 owned by other executions.
-
-    Caller MUST hold the brain lock. Returns the ids of expired sessions.
-    """
-    expired: list[str] = []
-    for session in list_sessions(project_root):
-        if not _is_expired(session, execution):
-            continue
-        _close_locked(
-            project_root, session["session_id"], agent=agent,
-            summary=(
-                "auto-expired at day boundary — session open since "
-                f"{session.get('date', '?')} under foreign execution "
-                f"{session.get('execution', '?')} (policy: sessions close at "
-                "00:00 unless active and in use)"
-            ),
-            gaps="auto-expired zombie session",
-        )
-        expired.append(session["session_id"])
-    return expired
+    def __init__(self, alternatives: list[dict[str, Any]]) -> None:
+        super().__init__(self.code)
+        self.alternatives = alternatives
 
 
 def open_session(
@@ -291,25 +239,14 @@ def open_session(
         if existing is None:
             raise ValueError("SESSION_NOT_FOUND")
         if existing.get("state") == "open":
-            owner = existing.get("execution") or ""
-            if owner and owner != execution:
-                if not _is_expired(existing, execution):
-                    # The session belongs to a live execution. Re-attaching it
-                    # would silently move another execution's work here; an
-                    # explicit instruction must name the session to close.
-                    raise PermissionError(
-                        f"session {session_ref} is open under execution {owner}"
-                    )
-                # Day-boundary expiry: the foreign session already crossed
-                # 00:00 — close it, then the normal reopen path applies.
-                with file_lock(lock_path(project_root)), brain_lock(project_root):
-                    expire_stale_sessions(project_root, execution, agent=agent)
-            else:
-                return _bind(project_root, existing, execution=execution,
-                             agent=agent, scope=scope, blp=blp)
-        else:
-            return _bind(project_root, existing, execution=execution, agent=agent,
-                         scope=scope, blp=blp)
+            # Policy (Architect, 2026-10-28): an open session means the work is
+            # unfinished. A machine shut down without closing leaves it
+            # resumable, so another execution holding it is not a reason to
+            # refuse: the caller named this session explicitly. Re-binding keeps
+            # the id, the original start and the timelog intervals; the
+            # activities inside carry their own dates.
+            return _bind(project_root, existing, execution=execution,
+                         agent=agent, scope=scope, blp=blp)
         return reopen_session(
             project_root,
             session_ref,
@@ -320,24 +257,16 @@ def open_session(
         )
 
     with file_lock(lock_path(project_root)), brain_lock(project_root):
-        expire_stale_sessions(project_root, execution, agent=agent)
         current = find_session_for_execution(project_root, execution)
         if current is not None:
             return current  # idempotent: same id, same original start
 
-        # Reentry contract (T-039): returning to a context that already has an
-        # open session for this exact (agent, project, scope) re-attaches it
-        # instead of silently stacking a new SES. Only genuine ambiguity — two
-        # or more open sessions for the same context — is handed back so the
-        # caller can decide.
-        compatible = _compatible_open_sessions(
-            project_root, agent=agent, project=project, scope=scope
-        )
-        if len(compatible) > 1:
-            raise ReentryAmbiguous(sorted(compatible, key=lambda s: s["session_id"]))
-        if len(compatible) == 1:
-            return _bind(project_root, compatible[0], execution=execution,
-                         agent=agent, scope=scope, blp=blp)
+        # Policy (Architect, 2026-10-28): one open session per project. A new
+        # session requires closing the open one or resuming it, and the caller
+        # must present those alternatives — never stack a second one silently.
+        open_now = open_sessions(project_root)
+        if open_now:
+            raise SessionOpenExists(sorted(open_now, key=lambda s: s["session_id"]))
 
         session_id = next_session_id(project_root)
         opened_at = now_utc()
