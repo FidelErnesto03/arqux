@@ -1,6 +1,6 @@
 # ArqUX Handlers
 
-Total: **101** handlers
+Total: **102** handlers
 
 ## blueprint
 
@@ -19,7 +19,7 @@ Total: **101** handlers
 | `blueprint.re_delegate` | Re-delegate after verification failure. Re-opens a done/blocked blueprint. |
 | `blueprint.read` | Read a full Blueprint (HCORTEX or CORTEX format). |
 | `blueprint.ready` | Architect declares Blueprint ready for execution. draft → ready. |
-| `blueprint.synthesize` | GUIDE MODE: creates or finds the BLP and returns the next pending section. Agent writes sections via blueprint.update(). Creates and persists the BLP file when it does not exist. |
+| `blueprint.synthesize` | GUIDE MODE: creates or finds the BLP and returns the next pending section. Agent writes sections via blueprint.update(). Creates and persists the BLP file when it does not exist. The write cycle is the explicit cycle= or the context cycle; a closed cycle is refused (BLP-022). |
 | `blueprint.task` | Update one task's checkbox in §14. Status: in_progress/completed. |
 | `blueprint.update` | Update Blueprint progress with a note or refine a single section. |
 
@@ -128,13 +128,13 @@ workspace. |
 | Handler | Description |
 |---------|-------------|
 | `session.bootstrap` | Bootstrap a session using the authenticated identity. An explicit agent_id must match the caller (BLP-002). Returns cortex_context (canal I) and hcortex_dashboard (canal E). |
-| `session.close` | Close the current session and write a portable SES entry to brain PULSE. |
+| `session.close` | Close the session bound to this execution (or the explicit session_ref) and write its portable summary to brain PULSE. Never closes the newest session of the project when it belongs to another execution. |
 | `session.context.get` | Read the current context pointer and return the formatted header. |
-| `session.context.set` | Set the current session context pointer (project + scope + optional BLP). Validates project exists and returns the formatted header. |
+| `session.context.set` | Set the current session context pointer (project + scope + optional BLP) and open or re-attach the real session bound to this execution. Validates project exists and returns the formatted header. |
 | `session.handoff` | Serialize the current session context as CORTEX and write a handoff PULSE for the target agent (BLP-010 meta-handler). Supports dry_run mode. |
-| `session.pulse.compact` | Compact pulse entries for a session. Prunes non-SES entries, writes consolidated LNG lesson. |
-| `session.resume` | Read the last SES entry from brain PULSE and restore the context. |
-| `session.status` | Read SES metadata without restoring full context. |
+| `session.pulse.compact` | Compact pulse entries for a session. With ses_ref, selection is by membership: only that session's pulses are pruned and concurrent or legacy pulses are never reassigned by position. Writes a consolidated LNG lesson. |
+| `session.resume` | Restore the context of a session. Read-only: selects by explicit session_ref, else the session bound to this execution, else rejects an ambiguous choice instead of taking the newest session. Brains without real session identity keep the legacy PULSE selection. |
+| `session.status` | Read session metadata without restoring full context. Read-only, same selection rules as session.resume. |
 
 ## setup
 
@@ -174,6 +174,16 @@ workspace. |
 | `task.read` | Read a task (CORTEX or HCORTEX format). |
 | `task.run` | Run a governed task: verify preconditions, execute procedure steps, mark complete or fail (BLP-010 meta-handler). Supports dry_run mode. |
 | `task.update` | Update task progress, optionally change status. |
+
+## timelog
+
+| Handler | Description |
+|---------|-------------|
+| `timelog.project` | Optional external projection of a timelog batch. preview is read-only; prepare persists the batch identity; send requires an authorization bound to that identity; reconcile records the remote outcome. A crash between send and receipt leaves the result unknown. Projecting never purges the local origin. |
+| `timelog.purge` | Authorized archive/summarize/delete of an exact selection. preview=true (default) mutates nothing. Deleting removes the canonical file and its auxiliaries and leaves a content-free tombstone; the deleted content is never recreated. |
+| `timelog.query` | Read-only view of a session's timelog: activity blocks with UTC durations, integrity flags and a union total. A multisession view keeps provenance and creates no joint file. |
+| `timelog.review` | Authorized correction of one activity block. Writes a revision with a reason and the user's authorization reference and marks previously projected receipts stale; it never edits a remote copy. |
+| `timelog.summary` | Read-only aggregate of the native record by period: day (blocks starting today), session (this session) or project (every canonical file). Totals use the union rule and are null while a block is open; open_elapsed_seconds is a window, not productive time. |
 
 ## workspace
 

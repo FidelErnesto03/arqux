@@ -19,6 +19,7 @@ Examples:
 
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -82,10 +83,16 @@ class CortexOUT:
     def _format_value(value: Any) -> str:
         if isinstance(value, bool):
             return "true" if value else "false"
-        if isinstance(value, (list, tuple)):
-            return ",".join(str(v) for v in value)
+        # Nested structures must be consumable by a machine. Rendering them with
+        # str() produced Python reprs (single quotes, True/None) that no JSON
+        # parser accepts — the multisession view was unusable that way (issue
+        # 2026-10-26). Flat lists of scalars keep the historical comma form.
         if isinstance(value, dict):
-            return ";".join(f"{k}:{v}" for k, v in value.items())
+            return json.dumps(value, ensure_ascii=False, sort_keys=True)
+        if isinstance(value, (list, tuple)):
+            if any(isinstance(item, (dict, list, tuple)) for item in value):
+                return json.dumps(list(value), ensure_ascii=False, sort_keys=True)
+            return ",".join(str(v) for v in value)
         return str(value)
 
 

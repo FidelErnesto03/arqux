@@ -14,9 +14,9 @@ from __future__ import annotations
 from arqux.handlers import REGISTRY, handler_count, list_handlers
 
 
-def test_handler_count_is_101() -> None:
-    """Total handler count is 101 (CYCLE-14/BLP-004+006 added 4 timelog handlers)."""
-    assert handler_count() == 101
+def test_handler_count_is_102() -> None:
+    """Total handler count is 102 (BLP-025 added timelog.summary)."""
+    assert handler_count() == 102
 
 
 def test_handler_list_accepts_mcp_context() -> None:

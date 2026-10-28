@@ -137,7 +137,7 @@ def test_entry_list_invalid_limit_offset(tmp_path: Path) -> None:
 
 def test_handler_list_full_default_cap_paginates() -> None:
     page1 = list_handlers("FULL")
-    assert page1["_total"] == 101
+    assert page1["_total"] == 102
     assert page1["_returned"] == 50
     assert page1["_offset"] == 0
     assert page1["_next_offset"] == 50
