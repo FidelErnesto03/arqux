@@ -334,10 +334,18 @@ class IdentityManager:
     def _update_context_agent(self, context_path: Path, agent: str) -> None:
         """Update the ``agent=`` field in an existing context.cortex file."""
         text = context_path.read_text(encoding="utf-8")
-        if re.search(r'\bagent="[^"]*"', text):
-            new_text = re.sub(r'\bagent="[^"]*"', f'agent="{agent}"', text)
+        if re.search(r'\bagent[=:]"[^"]*"', text):
+            new_text = re.sub(r'(\bagent[=:])"[^"]*"', rf'\1"{agent}"', text)
+        elif re.search(r"CTX:[^\s{]+\{", text):
+            # Canonical entry without an agent field — insert before the brace.
+            new_text = re.sub(
+                r"(CTX:[^\s{]+\{[^}]*)\}",
+                rf'\1,agent:"{agent}"}}',
+                text,
+                count=1,
+            )
         else:
-            # No agent field — append it to the CTX line.
+            # Legacy line without an agent field — append it to the CTX line.
             new_text = re.sub(
                 r"(CTX:\S+ [^\n]+)",
                 rf'\1 agent="{agent}"',

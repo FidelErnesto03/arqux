@@ -77,7 +77,7 @@ def _open_foreign_session(arqux_env) -> str:
 def test_session_unbound_rejects_with_remediation(arqux_env):
     """With session identity present and none bound, the gate rejects with a
     typed, actionable code."""
-    _open_foreign_session(arqux_env)
+    sid = _open_foreign_session(arqux_env)
     token = bind_execution_key(None)
     try:
         rejection = tc.require_bound_session(
@@ -88,7 +88,26 @@ def test_session_unbound_rejects_with_remediation(arqux_env):
 
     assert rejection is not None
     assert rejection["code"] == "SESSION_UNBOUND"
-    # The exact remediation command is present (T-1.2 / R-04).
+    # A foreign OPEN session upgrades remediation to the exact re-attach
+    # command (post-restart signature) instead of the generic bind hint.
+    assert "intent='resumed'" in rejection["message"]
+    assert f"session_ref='{sid}'" in rejection["remediation"]
+
+
+def test_session_unbound_without_open_foreign_uses_canonical_remediation(arqux_env):
+    """With only closed sessions, remediation stays the canonical bind command."""
+    sid = _open_foreign_session(arqux_env)
+    close_session(_arqux_dir(arqux_env), sid, agent="someone-else", summary="done")
+    token = bind_execution_key(None)
+    try:
+        rejection = tc.require_bound_session(
+            _arqux_dir(arqux_env), None, action="task.claim"
+        )
+    finally:
+        reset_execution_key(token)
+
+    assert rejection is not None
+    assert rejection["code"] == "SESSION_UNBOUND"
     assert "session.context_set(project, scope)" in rejection["message"]
     assert rejection["remediation"] == tc.SESSION_BIND_REMEDIATION
 

@@ -2,4 +2,4 @@ $0
 
 $1: HANDOFF
 
-HOF:handoff{from:"Alfred", to:"alfred", project:"ARQUX", summary:"identity switch from Alfred", blps:"", tasks:""}
+HOF:handoff{from:"Alfred", to:"alfred", project:"ARQUX", summary:"handoff Heimdall->Alfred tras re-auditoria HD-01 APPROVED; Arquitecto pide informe de sesiones no cerradas", blps:"", tasks:"""}

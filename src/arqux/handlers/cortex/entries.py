@@ -299,7 +299,7 @@ def entry_add_handler(
     requested_name = name
     numbered_name = name
     while _entry_exists(path, section, sigil, numbered_name):
-        numbered_name = f"{requested_name}{_next_number(path, section)}"
+        numbered_name = f"{requested_name}{_next_number(path, section, sigil, requested_name)}"
 
     try:
         result = crud_add(path, section, sigil, numbered_name, value, create_section=create_section, force=force)

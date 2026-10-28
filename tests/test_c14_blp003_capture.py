@@ -63,7 +63,8 @@ class TestAc01NaturalBoundaries:
 
     def test_task_boundaries_land_in_their_own_session(self, bound, arqux_env):
         other = open_session(arqux_env.proj_root, agent="test-governor",
-                             project="test-proj", execution=mint_execution_key())
+                             project="test-proj", execution=mint_execution_key(),
+                             scope="CYCLE-OTHER")
         capture(bound.proj_root, bound.ctx, event="open",
                 operation_ref="task:T-1.1", activity="task:T-1.1")
         mine = load(bound.proj_root, bound.session["session_id"],

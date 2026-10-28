@@ -16,11 +16,22 @@ from arqux.pulse import next_pulse_event_id, read_pulse_from_brain, record_pulse
 from arqux.session_identity import list_sessions, open_session
 
 
+def _context_scope(execution: str) -> str:
+    """A distinct scope per execution key.
+
+    Reentry (T-039) re-attaches a session when the same ``(agent, project,
+    scope)`` is already open, so two processes get two sessions only when their
+    context differs — a distinct scope is exactly that.
+    """
+    return f"SCOPE-{execution}"
+
+
 def _open_worker(project_root: str, executions: list[str], queue) -> None:  # pragma: no cover
     """Child process: open one session per execution key."""
     for execution in executions:
         session = open_session(project_root, agent="test-governor",
-                               project="test-proj", execution=execution)
+                               project="test-proj", execution=execution,
+                               scope=_context_scope(execution))
         queue.put(session["session_id"])
 
 
@@ -28,7 +39,8 @@ def _pulse_worker(project_root: str, executions: list[str], queue) -> None:  # p
     """Child process: open a session and record one pulse on it."""
     for execution in executions:
         session = open_session(project_root, agent="test-governor",
-                               project="test-proj", execution=execution)
+                               project="test-proj", execution=execution,
+                               scope=_context_scope(execution))
         queue.put(record_pulse(
             project_root, task_id="T-1.1", kind="note", agent="test-governor",
             payload=f"note for {execution}", ses_ref=session["session_id"],

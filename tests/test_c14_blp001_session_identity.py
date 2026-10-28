@@ -179,11 +179,24 @@ class TestAc03StandbyAndBindingRequired:
 
 
 class TestAc04Concurrency:
-    def test_two_executions_get_distinct_sessions(self, arqux_env):
+    def test_reentry_of_the_same_context_reuses_one_session(self, arqux_env):
+        """T-039: a new execution returning to the same context re-attaches."""
         a = open_session(arqux_env.proj_root, agent="test-governor",
-                         project="test-proj", execution=mint_execution_key())
+                         project="test-proj", execution=mint_execution_key(),
+                         scope="CYCLE-TEST")
         b = open_session(arqux_env.proj_root, agent="test-governor",
-                         project="test-proj", execution=mint_execution_key())
+                         project="test-proj", execution=mint_execution_key(),
+                         scope="CYCLE-TEST")
+        assert a["session_id"] == b["session_id"]
+        assert len(list_sessions(arqux_env.proj_root)) == 1
+
+    def test_distinct_contexts_get_distinct_sessions(self, arqux_env):
+        a = open_session(arqux_env.proj_root, agent="test-governor",
+                         project="test-proj", execution=mint_execution_key(),
+                         scope="CYCLE-A")
+        b = open_session(arqux_env.proj_root, agent="test-governor",
+                         project="test-proj", execution=mint_execution_key(),
+                         scope="CYCLE-B")
         assert a["session_id"] != b["session_id"]
 
     def test_concurrent_open_allocates_unique_ids(self, arqux_env):
@@ -191,16 +204,17 @@ class TestAc04Concurrency:
         errors: list[BaseException] = []
         barrier = threading.Barrier(4)
 
-        def worker() -> None:
+        def worker(index: int) -> None:
             try:
                 barrier.wait(timeout=5)
                 session = open_session(arqux_env.proj_root, agent="test-governor",
-                                       project="test-proj", execution=mint_execution_key())
+                                       project="test-proj", execution=mint_execution_key(),
+                                       scope=f"CYCLE-{index}")
                 results.append(session["session_id"])
             except BaseException as exc:  # noqa: BLE001
                 errors.append(exc)
 
-        threads = [threading.Thread(target=worker) for _ in range(4)]
+        threads = [threading.Thread(target=worker, args=(i,)) for i in range(4)]
         for t in threads:
             t.start()
         for t in threads:
@@ -231,11 +245,13 @@ class TestAc04Concurrency:
         assert len(list_sessions(arqux_env.proj_root)) == 1
 
     def test_no_redirect_through_the_global_pointer(self, arqux_env):
-        first = _bind("test-proj", key=mint_execution_key(), ws=arqux_env.ws_root)
-        second = _bind("test-proj", key=mint_execution_key(), ws=arqux_env.ws_root)
+        first = _bind("test-proj", key=mint_execution_key(), ws=arqux_env.ws_root,
+                      scope="CYCLE-A")
+        second = _bind("test-proj", key=mint_execution_key(), ws=arqux_env.ws_root,
+                       scope="CYCLE-B")
         assert first.fields["session_ref"] != second.fields["session_ref"]
         context = (arqux_env.ws_root / ".arqux" / "context.cortex").read_text()
-        assert f'ses="{second.fields["session_ref"]}"' in context
+        assert f'ses:"{second.fields["session_ref"]}"' in context
         assert get_session(arqux_env.proj_root, first.fields["session_ref"])["state"] == "open"
 
 

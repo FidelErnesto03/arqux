@@ -29,8 +29,10 @@ Design:
 
 from __future__ import annotations
 
+import calendar
 import hashlib
 import json
+import re
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -203,16 +205,70 @@ def _receipt_key(key: str) -> str:
     return f"proj_{key[5:]}"
 
 
+def _projection_key(key: str) -> str:
+    return f"prj_{key[5:]}"
+
+
+_TS_RE = re.compile(r"^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})Z$")
+
+
+def _epoch(ts: str) -> int | None:
+    m = _TS_RE.match((ts or "").strip())
+    if not m:
+        return None
+    try:
+        return calendar.timegm(tuple(int(g) for g in m.groups()) + (0, 0, 0))
+    except (ValueError, OverflowError):
+        return None
+
+
+def _marks(snap: dict[str, Any]) -> tuple[str, dict[str, str]]:
+    """The ``block_id@revision`` list and the projected span of a snapshot."""
+    entries = snap.get("entries", [])
+    blocks = ",".join(f'{e["block_id"]}@{e["revision"]}' for e in entries)
+    starts = [e["start"] for e in entries if e.get("start")]
+    ends = [e["end"] for e in entries if e.get("end")]
+    start = min(starts) if starts else ""
+    end = max(ends) if ends else ""
+    minutes = ""
+    if start and end:
+        first, last = _epoch(start), _epoch(end)
+        if first is not None and last is not None and last >= first:
+            minutes = str((last - first) // 60)
+    return blocks, {"start": start, "end": end, "minutes": minutes}
+
+
 def _record_receipt(project_root: Path | str, session_id: str, key: str,
                     *, destination: str, state: str, remote: str,
-                    opened_at: str | None) -> None:
+                    opened_at: str | None,
+                    blocks: str = "", interval: dict[str, str] | None = None,
+                    agent: str = "", projected_at: str = "") -> None:
+    interval = interval or {}
+    projected_at = projected_at or now_utc()
+
     def mutate(document: dict[str, Any]) -> bool:
+        status = "pending" if state in (STATE_PREPARED, STATE_SENT) else "settled"
         document["receipts"][_receipt_key(key)] = {
             "operation": "timelog.project",
-            "status": "pending" if state in (STATE_PREPARED, STATE_SENT) else "settled",
+            "status": status,
             "destination": destination,
             "state": state,
             "remote": remote,
+        }
+        # The provider-agnostic projection mark: remote ids are stored opaquely
+        # and the origin it covers is recoverable from the file alone (BLP-024).
+        document.setdefault("projections", {})[_projection_key(key)] = {
+            "operation": "timelog.project",
+            "status": status,
+            "destination": destination,
+            "state": state,
+            "remote": remote,
+            "blocks": blocks,
+            "start": interval.get("start", ""),
+            "end": interval.get("end", ""),
+            "minutes": interval.get("minutes", ""),
+            "agent": agent,
+            "projected_at": projected_at,
         }
         return True
 
@@ -244,6 +300,7 @@ def project(
     units: str = "seconds",
     timezone: str = "UTC",
     grouping: str = "none",
+    agent: str = "",
     opened_at: str | None = None,
 ) -> dict[str, Any]:
     """Preview, prepare, send or reconcile a projection batch.
@@ -273,6 +330,7 @@ def project(
     )
     batch = {"key": key, "destination": destination, "account": account,
              "target": target, "snapshot": snap, "transformed": transformed}
+    blocks, interval = _marks(snap)
 
     if action == "preview":
         return {"status": "preview", "batch_key": key, "destination": destination,
@@ -287,7 +345,8 @@ def project(
 
     if action == "prepare":
         _record_receipt(project_root, session_id, key, destination=destination,
-                        state=STATE_PREPARED, remote="", opened_at=opened_at)
+                        state=STATE_PREPARED, remote="", opened_at=opened_at,
+                        blocks=blocks, interval=interval, agent=agent)
         return {"status": "prepared", "batch_key": key, "destination": destination,
                 "authorization_ref": auth}
 
@@ -296,12 +355,14 @@ def project(
         if remote is None:
             state = STATE_UNKNOWN
             _record_receipt(project_root, session_id, key, destination=destination,
-                            state=state, remote="", opened_at=opened_at)
+                            state=state, remote="", opened_at=opened_at,
+                            blocks=blocks, interval=interval, agent=agent)
             return {"status": "unknown", "batch_key": key, "state": state,
                     "detail": "remote result is unknown; do not resend blindly"}
         _record_receipt(project_root, session_id, key, destination=destination,
                         state=remote.get("state", STATE_CONFIRMED),
-                        remote=remote.get("remote", ""), opened_at=opened_at)
+                        remote=remote.get("remote", ""), opened_at=opened_at,
+                        blocks=blocks, interval=interval, agent=agent)
         return {"status": "reconciled", "batch_key": key,
                 "state": remote.get("state", STATE_CONFIRMED),
                 "remote": remote.get("remote", "")}
@@ -330,20 +391,23 @@ def project(
 
     # Intent is persisted before the remote is touched.
     _record_receipt(project_root, session_id, key, destination=destination,
-                    state=STATE_SENT, remote="", opened_at=opened_at)
+                    state=STATE_SENT, remote="", opened_at=opened_at,
+                    blocks=blocks, interval=interval, agent=agent)
 
     # The network happens WITHOUT the lock held.
     try:
         result = adapter.send(batch, key)
     except Exception as exc:  # noqa: BLE001
         _record_receipt(project_root, session_id, key, destination=destination,
-                        state=STATE_UNKNOWN, remote="", opened_at=opened_at)
+                        state=STATE_UNKNOWN, remote="", opened_at=opened_at,
+                        blocks=blocks, interval=interval, agent=agent)
         return {"status": "unknown", "batch_key": key, "state": STATE_UNKNOWN,
                 "detail": f"dispatched but unconfirmed: {exc}. Reconcile before retrying."}
 
     _record_receipt(project_root, session_id, key, destination=destination,
                     state=result.get("state", STATE_CONFIRMED),
-                    remote=result.get("remote", ""), opened_at=opened_at)
+                    remote=result.get("remote", ""), opened_at=opened_at,
+                    blocks=blocks, interval=interval, agent=agent)
     return {"status": result.get("state", STATE_CONFIRMED), "batch_key": key,
             "remote": result.get("remote", ""), "duplicate": result.get("duplicate", False)}
 

@@ -138,6 +138,10 @@ def append_pulse_to_brain(
         raise ValueError(f"kind is required (got {kind!r})")
     ts = _now_iso()
     brain_path = _brain_cortex_path(project_root)
+    # AUD requires non-empty evidence/result (E034). An empty payload records
+    # nothing — synthesize the event's identity so the evidence field always
+    # says *something* (HD-01 audit finding).
+    payload = payload or f"{kind} on {task_id or '-'}"
     value = {"date": ts, "event": event_id, "task": task_id or "-", "kind": kind, "agent": agent, "result": payload, "evidence": payload}
     if cycle:
         value["cycle"] = cycle

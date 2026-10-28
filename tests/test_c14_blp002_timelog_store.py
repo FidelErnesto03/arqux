@@ -113,9 +113,11 @@ class TestAc02CanonicalFile:
 class TestAc03ConcurrencyAndExclusion:
     def test_two_sessions_have_distinct_files(self, arqux_env):
         a = open_session(arqux_env.proj_root, agent="test-governor",
-                         project="test-proj", execution=mint_execution_key())
+                         project="test-proj", execution=mint_execution_key(),
+                         scope="CYCLE-A")
         b = open_session(arqux_env.proj_root, agent="test-governor",
-                         project="test-proj", execution=mint_execution_key())
+                         project="test-proj", execution=mint_execution_key(),
+                         scope="CYCLE-B")
         assert a["timelog"] != b["timelog"]
         assert len(list_timelogs(arqux_env.proj_root)) == 2
 
@@ -343,4 +345,4 @@ def test_timelog_is_valid_cortex_with_glossary_first(session):
     doc = cortex_read(str(path))
     ids = [s["id"] for s in doc["sections"]]
     assert ids[0] == "$0", ids
-    assert ids == ["$0", "$1", "$2", "$3"], ids
+    assert ids == ["$0", "$1", "$2", "$3", "$4"], ids

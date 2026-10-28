@@ -39,6 +39,7 @@ from .session_identity import (
     find_session_for_execution,
     get_session,
     list_sessions,
+    open_sessions,
 )
 
 COVERAGE_FULL = "full"
@@ -106,6 +107,22 @@ def _session_ref_for(project_root: Path | str, ctx: PermissionContext | None,
     return session["session_id"] if session else ""
 
 
+def _open_foreign_sessions(project_root: Path | str,
+                           ctx: PermissionContext | None) -> list[str]:
+    """Ids of open sessions owned by *other* executions, oldest first.
+
+    Their presence is the post-restart signature: the client restarted, this
+    execution inherited nothing, and the work it does cannot be registered
+    until it re-attaches one of them.
+    """
+    execution = (ctx.execution_key if ctx else None) or authoritative_execution_key()
+    return [
+        s["session_id"]
+        for s in open_sessions(project_root)
+        if s.get("execution") != execution
+    ]
+
+
 def _require_file(project_root: Path | str, session_id: str, opened_at: str) -> Path:
     """Reject capture when the canonical file is gone (authorized suppression)."""
     path = timelog_store.canonical_path(project_root, session_id, opened_at)
@@ -140,8 +157,21 @@ def capture(
 
     session_id = _session_ref_for(project_root, ctx, session_ref)
     if not session_id:
-        return _result(STATUS_SKIPPED, coverage=COVERAGE_LIMITED,
-                       reason="no session bound to this execution; limits left unknown")
+        result = _result(STATUS_SKIPPED, coverage=COVERAGE_LIMITED,
+                         reason="no session bound to this execution; limits left unknown")
+        foreign = _open_foreign_sessions(project_root, ctx)
+        if foreign:
+            # Post-restart signature: open sessions exist but belong to
+            # executions this one did not inherit. Keep the canonical bind
+            # command and append the exact re-attach command.
+            result["remediation"] = (
+                f"bind a session via {SESSION_BIND_REMEDIATION}; "
+                "after a client restart re-attach instead: "
+                f"session.context_set(project, scope, intent='resumed', "
+                f"session_ref='{foreign[-1]}') "
+                f"(open under another execution: {', '.join(foreign)})"
+            )
+        return result
 
     session = get_session(project_root, session_id)
     if session is None:
@@ -210,9 +240,12 @@ def unbound_warning(lifecycle: dict[str, Any], *, action: str) -> str | None:
     if lifecycle.get("status") != "skipped":
         return None
     reason = lifecycle.get("reason", "")
+    remediation = lifecycle.get("remediation") or (
+        f"bind a session via {SESSION_BIND_REMEDIATION}"
+    )
     return (
         f"TIMELOG_UNBOUND: {action} wrote no native timelog block ({reason}). "
-        f"This work is NOT registered — bind a session via {SESSION_BIND_REMEDIATION}."
+        f"This work is NOT registered — {remediation}."
     )
 
 
@@ -262,14 +295,24 @@ def require_bound_session(
         return None
     if not list_sessions(project_root):
         return None
+    message = (
+        f"TIMELOG_UNBOUND: {action} rejected before writing — this project has "
+        "session identity but none is bound to this execution, so the work "
+        f"could not be registered. Bind a session via {SESSION_BIND_REMEDIATION}."
+    )
+    remediation = SESSION_BIND_REMEDIATION
+    foreign = _open_foreign_sessions(project_root, ctx)
+    if foreign:
+        remediation = (
+            f"session.context_set(project, scope, intent='resumed', "
+            f"session_ref='{foreign[-1]}') — open session(s) exist under "
+            f"other executions: {', '.join(foreign)}"
+        )
+        message += f" After a client restart, re-attach instead: {remediation}."
     return {
         "code": SESSION_UNBOUND,
-        "message": (
-            f"TIMELOG_UNBOUND: {action} rejected before writing — this project has "
-            "session identity but none is bound to this execution, so the work "
-            f"could not be registered. Bind a session via {SESSION_BIND_REMEDIATION}."
-        ),
-        "remediation": SESSION_BIND_REMEDIATION,
+        "message": message,
+        "remediation": remediation,
     }
 
 

@@ -24,6 +24,7 @@ from ..execution import authoritative_execution_key
 from ..permissions import PermissionContext
 from ..pulse import read_pulse_from_brain, record_pulse
 from ..session_identity import (
+    ReentryAmbiguous,
     close_session,
     current_session_ref,
     get_session,
@@ -109,7 +110,7 @@ def close(
 
     lifecycle = observe(root, ctx, event="close",
                         operation_ref=f"session:{ses_ref or 'legacy'}",
-                        activity="session")
+                        activity="session", session_ref=ses_ref or None)
 
     # Gate: a silent lifecycle skip means the session's work was never
     # registered in the native timelog. Surface it loudly — in the result
@@ -481,6 +482,43 @@ def _resolve_project_from_meta_brain(ws_root: Path, project_name: str) -> Path |
 CONTEXT_CORTEX = "context.cortex"
 CONTEXTS_DIR = "contexts"
 
+#: $0 glossary declaring the CTX sigil so context.cortex is machine-readable
+#: for CODEC-CORTEX (verify, gc, render). Previously written with an empty
+#: glossary and a non-canonical ``CTX:agent key="val"`` line that the codec
+#: could not parse (issue 2026-10-18-higiene-workspace-t-032-arqux-context-cortex-pun).
+_CONTEXT_GLOSSARY = (
+    "$0\n\n"
+    "# -- $0: SESSION CONTEXT GLOSSARY --\n"
+    "# Sigil | Name    | Type  | Risk | Cognitive Layer | Description\n"
+    "# CTX   | context | attrs | B    | Working         | "
+    "Session context pointer (execution->project/scope/session binding)\n"
+)
+
+
+def _context_document(
+    *,
+    agent: str,
+    project: str,
+    scope: str,
+    blp: str = "",
+    ses: str = "",
+    project_root: str = "",
+) -> str:
+    """Build a canonical context.cortex document: declared CTX sigil + attrs entry."""
+    fields = [
+        ("name", "context"),
+        ("project", project),
+        ("scope", scope),
+    ]
+    if blp:
+        fields.append(("blp", blp))
+    fields.append(("agent", agent))
+    if ses:
+        fields.append(("ses", ses))
+    fields.append(("project_root", project_root))
+    attrs = ",".join(f'{k}:"{_escape_ses_value(v)}"' for k, v in fields)
+    return f"{_CONTEXT_GLOSSARY}\n$1: CURRENT\nCTX:{agent}{{{attrs}}}\n"
+
 
 def context_set(
     project: str,
@@ -563,6 +601,19 @@ def context_set(
         )
     except PermissionError as exc:
         return CortexOUT.error(str(exc), code="SESSION_IN_USE")
+    except ReentryAmbiguous as exc:
+        alternatives = [
+            f'{s["session_id"]} ({s.get("state", "?")}, {s.get("agent", "?")}, '
+            f'scope {s.get("scope", "") or "-"}, opened {s.get("date", "?")})'
+            for s in exc.alternatives
+        ]
+        return CortexOUT.error(
+            "SESSION_REENTRY_AMBIGUOUS: more than one open session matches this "
+            "context (agent/project/scope). Decide explicitly — resume one, open "
+            "a new one, or close the previous one; no third session is stacked.",
+            code="SESSION_REENTRY_AMBIGUOUS",
+            alternatives=alternatives,
+        )
     except ValueError as exc:
         code = str(exc)
         message = {
@@ -579,15 +630,14 @@ def context_set(
     # Phase 5: write the context. The per-execution file is the real record —
     # two executions of the same agent in one workspace must not overwrite each
     # other. The single workspace slot is kept for callers that predate it.
-    blp_part = f' blp="{_escape_ses_value(blp)}"' if blp else ""
-    entry = (
-        f'CTX:{agent} project="{_escape_ses_value(project)}"'
-        f' scope="{_escape_ses_value(scope)}"{blp_part}'
-        f' agent="{_escape_ses_value(agent)}"'
-        f' ses="{session_id}"'
-        f' project_root="{_escape_ses_value(str(project_root))}"'
+    document = _context_document(
+        agent=agent,
+        project=project,
+        scope=scope,
+        blp=blp or "",
+        ses=session_id,
+        project_root=str(project_root),
     )
-    document = f"$0\n\n$1: CURRENT\n{entry}\n"
     _write_context(ws_root, execution, document)
     (ws_root / CONTEXT_CORTEX).write_text(document, encoding="utf-8")
 
@@ -685,13 +735,20 @@ def context_get(
     raw = context_path.read_text(encoding="utf-8")
     result: dict[str, str] = {}
 
-    # Parse CTX:{agent_id} key="val" pairs
-    m = re.search(r"CTX:(\S+)\s+(.+)", raw)
+    # Canonical CTX:{agent_id}{k:"v"} entry; fall back to the pre-canonical
+    # CTX:{agent_id} k="v" line still found in older context files.
+    m = re.search(r"CTX:([^\s{]+)\{([^}]*)\}", raw)
     if m:
         result["agent"] = m.group(1)
-        pairs = m.group(2)
-        for pair in re.findall(r'(\w+)="([^"]*)"', pairs):
-            result[pair[0]] = pair[1]
+        for key, val in re.findall(r'(\w+):"([^"]*)"', m.group(2)):
+            result[key] = val
+    else:
+        m = re.search(r"CTX:(\S+)\s+(.+)", raw)
+        if m:
+            result["agent"] = m.group(1)
+            pairs = m.group(2)
+            for pair in re.findall(r'(\w+)="([^"]*)"', pairs):
+                result[pair[0]] = pair[1]
 
     if not result:
         return CortexOUT.error("invalid context format", code="PARSE_ERROR")

@@ -179,7 +179,7 @@ def find_project_root(start: Path | str | None = None) -> Path | None:
         return None
 
     raw = ctx_path.read_text(encoding="utf-8")
-    m = re.search(r'project_root="([^"]*)"', raw)
+    m = re.search(r'project_root[=:]"([^"]*)"', raw)
     if not m:
         return None
 
