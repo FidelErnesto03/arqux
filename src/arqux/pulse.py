@@ -12,12 +12,18 @@ import os
 import re
 from pathlib import Path
 
+from .constants import ARQUX_DIR, BRAIN_CORTEX
 from .state import _now_iso, crud_add, crud_read, find_project_root
 
 
 def _brain_cortex_path(project_root: Path) -> Path:
     root = find_project_root(start=str(project_root))
     if root is None:
+        # Never nest: a path already inside .arqux must not get another .arqux
+        # (the fallback produced .arqux/.arqux/brain.cortex.lock — BLP-009).
+        base = Path(project_root)
+        if base.name == ARQUX_DIR:
+            return base / BRAIN_CORTEX
         return project_root / ".arqux" / "brain.cortex"
     return root / "brain.cortex"
 
