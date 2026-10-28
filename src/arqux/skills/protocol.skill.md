@@ -15,7 +15,10 @@ IDN:session_start{ purpose:"Protocol for starting a session in an already-govern
 
 AXM:session_context_first{ The FIRST response in a governed workspace MUST include context from brain.cortex. Never just a greeting. The Architect opens with a word, the agent responds with awareness. }
 
+AXM:brain_first{ Antes de intentar cualquier cosa — antes de leer un archivo y antes de explorar varios — la respuesta a la pregunta se busca PRIMERO en brain.cortex. El brain es la entrada al conocimiento del proyecto: foco, objetivos, lecciones, riesgos, decisiones, sesiones y eventos recientes. Solo si el brain no responde se leen codigo u otros archivos, y lo aprendido ahi se escribe de vuelta en el brain. Es un axioma TRANSVERSAL: aplica a todo proyecto, agente, tarea y sesion; ninguna skill, prompt ni costumbre lo anula. }
+
 STP:session_context{
+  0_brain_first:"BEFORE anything else — before any file read and before exploring multiple files — query brain.cortex through the MCP handlers and look for the answer there FIRST (focus, objectives, lessons, risks, decisions, sessions, recent events). Only if the brain does not answer, read code or other files, and write back what you learn.",
   0_handler_discovery:"After AGENTS.md determines tier: call handler.list(tier=NANO|LITE|FULL) to discover available handlers from the MCP registry. This replaces the old static mcp-handlers.skill.md.",
   0_usage_guide:"When unsure HOW to perform a task, call handler.how_to(intent) for the exact handler sequence + example (curated corpus packaged with ArqUX). No-match returns available topics and hints. To read any skill — including nested ones like workflows/w10-identity-handoff via relative path — use skill.get(name); skill.list only lists root skills.",
   0_session_resume:"Call session.resume() to check for a previous SES. If found, include in context: last agent, summary, active BLPs, pending tasks, decisions, gaps. The SES complements brain.cortex — it does not replace it.",

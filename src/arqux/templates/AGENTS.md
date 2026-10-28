@@ -13,7 +13,8 @@ $0
 
 $1: DETECT — WHERE ARE WE?
 
-AXM:context_first{ BEFORE reading any directory or file, read the governance brain. At workspace level: meta-brain.cortex. At project level: brain.cortex (inside .arqux/). If neither exists, enter adoption protocol ($5). ALL governance file reads MUST use MCP handlers (cortex.read, workspace.status, project.status). Never use direct file reads for .cortex files. }
+AXM:brain_first{ THE FIRST THING in any governed work is to read brain.cortex — before attempting anything, before reading any file and before exploring multiple files. The agent MUST look for the answer in the brain FIRST: focus, objectives, lessons, risks, decisions, sessions, recent events. Only when the brain does not answer may it read code or other files — and whatever it learns there MUST be written back to the brain. Project level: brain.cortex (inside .arqux/). Workspace level: meta-brain.cortex. This is a TRANSVERSAL AXIOM OF THE FRAMEWORK: it applies to every project, every agent, every task and every session, and no skill, prompt or habit overrides it. }
+AXM:context_first{ The brain is read through MCP handlers only (cortex.read, cortex.entry.list, workspace.status, project.status); never by opening a .cortex file directly. If neither brain exists, enter the adoption protocol ($5). }
 
 WRK:detect{
   1:"Check if .arqux/ exists in or above cwd. Walk UP the directory tree until you find .arqux/ or hit the filesystem root.",
