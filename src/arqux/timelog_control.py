@@ -58,8 +58,21 @@ def _parse_epoch(ts: str) -> tuple[int | None, bool]:
     return epoch - offset, True
 
 
+def _now_epoch() -> int:
+    return int(time.time())
+
+
+def _iso(epoch: int) -> str:
+    return time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(epoch))
+
+
 def describe_block(name: str, block: dict[str, Any]) -> dict[str, Any]:
-    """Duration and integrity flags for one activity block."""
+    """Duration and integrity flags for one activity block.
+
+    An open block has no duration yet, but it is not unknown either: the server
+    stamps ``last_activity`` and computes the elapsed window with its own clock,
+    declaring it as a window rather than productive time (issue 2026-10-26).
+    """
     start, start_tz = _parse_epoch(block.get("start", ""))
     end_raw = block.get("end", "")
     state = block.get("state", "open")
@@ -75,6 +88,14 @@ def describe_block(name: str, block: dict[str, Any]) -> dict[str, Any]:
     if not end_raw:
         described["flags"].append("open" if state != "unterminated" else "unterminated")
         described["duration_seconds"] = None
+        described["last_activity"] = block.get("last_activity", "")
+        if start is None:
+            described["elapsed_seconds"] = None
+            return described
+        now = _now_epoch()
+        described["elapsed_seconds"] = max(0, now - start)
+        described["elapsed_is_window"] = True
+        described["as_of"] = _iso(now)
         return described
     end, end_tz = _parse_epoch(end_raw)
     if not end_tz:
@@ -98,11 +119,18 @@ def union_seconds(blocks: list[dict[str, Any]]) -> dict[str, Any]:
     can explain the definition and preserve provenance (AC-03).
     """
     intervals: list[tuple[int, int]] = []
+    open_elapsed: list[int] = []
+    open_count = 0
     for block in blocks:
         if block.get("state") in ("archived", "suppressed"):
             continue
         described = describe_block(block.get("block_id", ""), block)
         if described.get("duration_seconds") is None:
+            if not block.get("end"):
+                open_count += 1
+                elapsed = described.get("elapsed_seconds")
+                if elapsed is not None:
+                    open_elapsed.append(elapsed)
             continue
         start, _ = _parse_epoch(block.get("start", ""))
         end, _ = _parse_epoch(block.get("end", ""))
@@ -118,10 +146,18 @@ def union_seconds(blocks: list[dict[str, Any]]) -> dict[str, Any]:
             merged.append([start, end])
     total = sum(end - start for start, end in merged)
     return {
-        "total_seconds": total,
+        # Zero and unknown are different answers. While a block is open the
+        # total cannot be known, so it is null — never 0 (issue 2026-10-26).
+        "total_seconds": None if open_count else total,
+        "closed_seconds": total,
+        "open_elapsed_seconds": sum(open_elapsed),
+        "open_block_count": open_count,
+        "as_of": _iso(_now_epoch()),
         "interval_count": len(intervals),
         "overlaps_merged": overlaps,
-        "definition": "union of closed intervals; overlapping time counted once",
+        "definition": "union of closed intervals; overlapping time counted once. "
+                      "total_seconds is null while any block is open; "
+                      "open_elapsed_seconds is a window, not productive time",
         "merged": [{"start_epoch": s, "end_epoch": e} for s, e in merged],
     }
 
@@ -220,6 +256,65 @@ def _describe_document(document: dict[str, Any], session_id: str, *, view: str) 
         "total": union_seconds([
             {**block, "block_id": name} for name, block in document["blocks"].items()
         ]),
+    }
+
+
+def summary(
+    project_root: Path | str,
+    session_id: str,
+    *,
+    period: str = "day",
+) -> dict[str, Any]:
+    """Aggregate the record by day, session or project.
+
+    ``day`` counts blocks that start on the current UTC day (a block that
+    crosses midnight is counted on its start day); ``session`` is the current
+    session; ``project`` is every canonical file. Totals follow the union rule
+    and stay ``null`` while any block is open.
+    """
+    if period not in ("day", "session", "project"):
+        return {"error": f"unknown period {period!r}", "code": "TIMELOG_INVALID_PERIOD"}
+
+    today = _iso(_now_epoch())[:10]
+    per_session: list[dict[str, Any]] = []
+    collected: list[dict[str, Any]] = []
+    directory = timelog_store.timelog_dir(project_root)
+    for name in timelog_store.list_timelogs(project_root):
+        ses = name.split("_", 1)[0]
+        if period == "session" and ses != session_id:
+            continue
+        document = timelog_store.load(project_root, ses, opened_at=None,
+                                      path=directory / name)
+        if document is None:
+            continue
+        blocks = [
+            {**block, "block_id": key}
+            for key, block in sorted(document["blocks"].items())
+        ]
+        if period == "day":
+            blocks = [b for b in blocks if b.get("start", "")[:10] == today]
+        if not blocks:
+            continue
+        per_session.append({
+            "session_ref": ses,
+            "file": name,
+            "opened": document.get("opened", ""),
+            "blocks": len(blocks),
+            "total": union_seconds(blocks),
+        })
+        collected.extend(blocks)
+
+    return {
+        "period": period,
+        "day": today if period == "day" else "",
+        "as_of": _iso(_now_epoch()),
+        "sessions": per_session,
+        "total": union_seconds(collected),
+        "definition": "per-session union of closed intervals, then union across sessions",
+        "window_vs_productive": (
+            "native blocks are work windows that include pauses between turns; "
+            "they are not productive hours"
+        ),
     }
 
 

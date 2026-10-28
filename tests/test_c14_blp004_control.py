@@ -122,13 +122,18 @@ class TestAc03UnionTotals:
         result = query(session.proj_root, session.sid, opened_at=session.opened)
         assert "union" in result["total"]["definition"]
 
-    def test_open_and_archived_blocks_are_excluded_from_the_total(self):
+    def test_open_blocks_make_the_total_unknown_not_zero(self):
+        # BLP-025: an open block makes the total unknowable. Returning 0 made a
+        # consumer report zero hours worked for a live session.
         blocks = [
             {"block_id": "a", "start": "2026-10-15T01:00:00Z", "end": "", "state": "open"},
             {"block_id": "b", "start": "2026-10-15T01:00:00Z",
              "end": "2026-10-15T02:00:00Z", "state": "archived"},
         ]
-        assert union_seconds(blocks)["total_seconds"] == 0
+        result = union_seconds(blocks)
+        assert result["total_seconds"] is None
+        assert result["closed_seconds"] == 0
+        assert result["open_block_count"] == 1
 
 
 class TestAc04Review:

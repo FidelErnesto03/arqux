@@ -140,6 +140,12 @@ HDL:timelog.purge{ signature:"timelog.purge(selection, authorization_ref, mode='
 
 HDL:timelog.project{ signature:"timelog.project(block_ids?, action='preview'|'prepare'|'send'|'reconcile', authorization_ref?, session_ref?, expected_revision?)", purpose:"Proyeccion externa opcional de un lote del timelog. preview es solo lectura; prepare persiste la identidad del lote; send requiere una autorizacion ligada a esa identidad; reconcile registra el resultado remoto.", implemented:"handlers/timelog.py", mutating:"condicional (preview no muta)" }
 
+AXM:timelog_open_block{ Un bloque abierto no tiene duracion, pero tampoco es desconocido: el servidor sella last_activity en cada frontera de gobierno y calcula elapsed_seconds con su propio reloj, declarandolo como ventana (elapsed_is_window=true). El cliente NUNCA aporta el reloj ni estima el transcurrido. }
+
+AXM:timelog_null_total{ Mientras exista un bloque abierto, total_seconds es null — nunca 0. closed_seconds acompana siempre al total y as_of declara el instante del calculo. Cero y desconocido son respuestas distintas y no se pueden confundir. }
+
+HDL:timelog.summary{ signature:"timelog.summary(period='day'|'session'|'project', session_ref?)", purpose:"Agregado SOLO LECTURA del registro nativo por periodo. day cuenta los bloques que empiezan hoy (UTC); project une todas las SES canonicas. Declara definition y window_vs_productive: los bloques son ventanas de trabajo con pausas, no horas productivas.", readonly:true }
+
 AXM:timelog_permissions{ La consulta es solo lectura y respeta el rol; el auditor puede consultar pero no revisar ni purgar (preview permitido, supresion no). El registrador de ciclo de vida tiene autoridad propia y no convierte una lectura en escritura. }
 
 LIM:timelog_no_new_skill{ No se crea AGENTS.md ni skill nueva para esta capacidad; este protocolo y guides.cortex son la matriz vigente. AGENTS.md es solo referencia y no se modifica. }

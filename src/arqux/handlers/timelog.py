@@ -70,6 +70,27 @@ def query_handler(
     return CortexOUT.work("timelog.query ok", **result)
 
 
+def summary_handler(
+    period: str = "day",
+    session_ref: str | None = None,
+    path: str | None = None,
+    ctx: PermissionContext | None = None,
+) -> CortexOUT:
+    """Aggregate the record by day, session or project (read-only)."""
+    root = _root(None, path)
+    if root is None:
+        return CortexOUT.error("no project initialized", code="NOT_FOUND")
+    session, error = _resolve_session(root, session_ref, ctx)
+    if error and period == "session":
+        return CortexOUT.error(error["message"], code=error["code"])
+    result = timelog_control.summary(
+        root, (session or {}).get("session_id", ""), period=period,
+    )
+    if result.get("error"):
+        return CortexOUT.error(result["error"], code=result.get("code", "TIMELOG_ERROR"))
+    return CortexOUT.work(f"timelog.summary {period}", **result)
+
+
 def review_handler(
     block_id: str,
     changes: dict[str, Any],
@@ -222,6 +243,24 @@ handler_schemas = [
         },
     },
     {
+        "name": "timelog.summary",
+        "fn": summary_handler,
+        "description": ("Read-only aggregate of the native record by period: day (blocks "
+                        "starting today), session (this session) or project (every canonical "
+                        "file). Totals use the union rule and are null while a block is open; "
+                        "open_elapsed_seconds is a window, not productive time."),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "period": {"type": "string", "enum": ["day", "session", "project"],
+                           "default": "day"},
+                "session_ref": {"type": "string"},
+                "path": {"type": "string"},
+            },
+            "required": [],
+        },
+    },
+    {
         "name": "timelog.review",
         "fn": review_handler,
         "description": ("Authorized correction of one activity block. Writes a revision "
@@ -267,5 +306,5 @@ handler_schemas = [
     },
 ]
 
-__all__ = ["handler_schemas", "query_handler", "review_handler", "purge_handler",
-           "project_handler"]
+__all__ = ["handler_schemas", "query_handler", "summary_handler", "review_handler",
+           "purge_handler", "project_handler"]

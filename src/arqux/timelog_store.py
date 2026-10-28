@@ -153,10 +153,12 @@ def _serialize(document: dict[str, Any]) -> str:
         if block.get("auth"):
             extra += f',auth:"{_clean_text(block["auth"])}"'
         block_revision = block.get("revision") or document["revision"]
+        last_activity = block.get("last_activity") or ""
+        activity = f',last_activity:"{last_activity}"' if last_activity else ""
         lines.append(
             f'{ACTIVITY_SIGIL}:{_entry_name(ref)}'
             f'{{start:"{block["start"]}",end:"{end}",state:"{block.get("state", "open")}"'
-            f'{extra},revision:"{block_revision}"}}\n'
+            f'{extra}{activity},revision:"{block_revision}"}}\n'
         )
     lines.append("")
     lines.append(f"{SECTION_RECEIPTS}: RECEIPTS")
@@ -230,6 +232,7 @@ def _parse(text: str) -> dict[str, Any]:
                 "state": _field(attrs, "state") or "open",
                 "note": _field(attrs, "note"),
                 "auth": _field(attrs, "auth"),
+                "last_activity": _field(attrs, "last_activity"),
                 "revision": _field(attrs, "revision"),
             }
         elif line.startswith(f"{RECEIPT_SIGIL}:"):
@@ -422,6 +425,7 @@ def open_block(
             return False
         document["blocks"][name] = {
             "start": start, "end": "", "state": "open",
+            "last_activity": start,
             "revision": str(int(document["revision"] or "0") + 1),
         }
         return True
@@ -455,6 +459,35 @@ def close_block(
 
     return update(project_root, session_id, operation_ref=operation_ref,
                   expected_revision=expected_revision, mutate=mutate)
+
+
+def touch(
+    project_root: Path | str,
+    session_id: str,
+    *,
+    at: str | None = None,
+    opened_at: str | None = None,
+    operation_ref: str = "boundary",
+) -> dict[str, Any]:
+    """Stamp ``last_activity`` on the open blocks (heartbeat).
+
+    The server owns the clock: without this mark the record cannot say when the
+    session was last worked, and no consumer can tell a live session from one
+    abandoned days ago (issue 2026-10-26). Returns the document unchanged when
+    there is no open block, so a closed timelog is never rewritten.
+    """
+    at = at or time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+
+    def mutate(document: dict[str, Any]) -> bool:
+        changed = False
+        for block in document["blocks"].values():
+            if block.get("state") == "open" and not block.get("end"):
+                block["last_activity"] = at
+                changed = True
+        return changed
+
+    return update(project_root, session_id, operation_ref=operation_ref,
+                  mutate=mutate, opened_at=opened_at)
 
 
 def parse_document(text: str) -> dict[str, Any]:

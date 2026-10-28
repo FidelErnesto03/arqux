@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import json
+
 # ---------------------------------------------------------------------------
 # CortexOUT profile factories
 # ---------------------------------------------------------------------------
@@ -77,12 +79,13 @@ def test_to_text_list_fields() -> None:
 
 
 def test_to_text_dict_fields() -> None:
-    """to_text formats dicts as semicolon-separated key:value."""
+    """to_text formats dicts as JSON so a machine can parse them."""
     from arqux.cortex_out import CortexOUT
 
     msg = CortexOUT.work(mapping={"x": "1", "y": "2"})
     text = msg.to_text()
-    assert "mapping=x:1;y:2" in text
+    assert 'mapping={"x": "1", "y": "2"}' in text
+    assert json.loads(text.split("mapping=", 1)[1]) == {"x": "1", "y": "2"}
 
 
 def test_custom_profile_apid() -> None:

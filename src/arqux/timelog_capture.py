@@ -206,11 +206,10 @@ def capture(
                     end=_now(),
                 )
             elif event in ("update", "boundary"):
-                # Same activity: refresh evidence without adding a block.
-                outcome = timelog_store.update(
-                    project_root, session_id, operation_ref=operation_ref,
-                    opened_at=opened_at,
-                    mutate=lambda document: False,
+                # Same activity: refresh the heartbeat without adding a block.
+                # The server clock is what makes an open session auditable.
+                outcome = timelog_store.touch(
+                    project_root, session_id, at=_now(), opened_at=opened_at,
                 )
             else:
                 return _result(STATUS_REJECTED, coverage=COVERAGE_LIMITED,
