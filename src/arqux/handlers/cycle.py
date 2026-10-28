@@ -385,12 +385,25 @@ def create_cycle(
 # draft → closed. Maturation is conversational, not a handler.
 
 
+def _cycle_status(cdir: Path) -> str:
+    """Lifecycle status of a cycle directory; legacy cycles count as open."""
+    manifest = _read_cycle_manifest(cdir)
+    if not manifest:
+        return CYCLE_OPEN
+    return str(manifest.get("status") or CYCLE_OPEN).strip().lower()
+
+
 def list_cycles(
     status: str | None = None,
     path: str | None = None,
     ctx: PermissionContext | None = None,
 ) -> CortexOUT:
-    """List cycles in the active project."""
+    """List cycles in the active project, optionally filtered by status.
+
+    The filter was accepted and ignored: ``status=open`` and ``status=closed``
+    returned the same list (issue 2026-10-28). A cycle is closed only when its
+    manifest says so; draft and legacy cycles without a manifest are open.
+    """
     root = _resolve_project_root(path)
     if root[0] is None:
         return CortexOUT.error(root[1], code="NOT_FOUND")
@@ -404,11 +417,16 @@ def list_cycles(
     for cdir in sorted(cycles_base.iterdir()):
         if not cdir.is_dir():
             continue
+        if status in ("open", "closed"):
+            is_closed = _cycle_status(cdir) == CYCLE_CLOSED
+            if is_closed != (status == "closed"):
+                continue
         cycles.append(cdir.name)
 
     return CortexOUT.work(
         f"cycles={len(cycles)}",
         cycles=cycles,
+        status=status or "all",
     )
 
 

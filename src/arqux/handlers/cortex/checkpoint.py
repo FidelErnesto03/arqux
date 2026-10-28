@@ -165,7 +165,8 @@ def checkpoint_handler(
     if glued:
         fields["hint"] = (
             f"unparsed key(s) {glued} — expected format "
-            "fcs:...,obj:...,tasks:...,state:... (separators: ',' ';' newline)"
+            "fcs:...,obj:...,tasks:...,state:... (separators: ',' or newline; "
+            "';' is kept inside the value, not treated as a separator)"
         )
     return CortexOUT.work("cortex.checkpoint ok", **fields)
 
