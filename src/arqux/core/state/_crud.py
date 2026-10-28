@@ -546,10 +546,11 @@ def crud_update(
     p = Path(path)
 
     def _update(doc):
-        resolved = _resolve_legacy_selector(doc, selector)
+        resolved = _resolve_legacy_selector(doc, selector, allow_deprecated=force)
         _ax_update_entry(
             doc, resolved,
             set_=set_, replace_body=replace_body, append=append,
+            allow_deprecated=force,
         )
         return doc
 
@@ -574,8 +575,8 @@ def crud_delete(
     p = Path(path)
 
     def _delete(doc):
-        resolved = _resolve_legacy_selector(doc, selector)
-        _ax_delete_entry(doc, resolved)
+        resolved = _resolve_legacy_selector(doc, selector, allow_deprecated=force)
+        _ax_delete_entry(doc, resolved, allow_deprecated=force)
         return doc
 
     return _read_and_mutate(p, _delete, force=force, dry_run=dry_run)
@@ -599,8 +600,8 @@ def crud_move(
     p = Path(path)
 
     def _move(doc):
-        resolved = _resolve_legacy_selector(doc, selector)
-        _ax_move_entry(doc, resolved, to_section)
+        resolved = _resolve_legacy_selector(doc, selector, allow_deprecated=force)
+        _ax_move_entry(doc, resolved, to_section, allow_deprecated=force)
         return doc
 
     return _read_and_mutate(p, _move, force=force, dry_run=dry_run)
@@ -635,7 +636,8 @@ def crud_list(
 # --- Helpers ----------------------------------------------------------------
 
 
-def _resolve_legacy_selector(doc: dict, selector: str) -> str:
+def _resolve_legacy_selector(doc: dict, selector: str, *,
+                             allow_deprecated: bool = False) -> str:
     """Convert a legacy CODEC selector (``SIGIL:name``) to ArqUX format.
 
     If *selector* is already in ``$N/SIGIL:name`` format, return as-is.
