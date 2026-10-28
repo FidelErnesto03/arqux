@@ -52,11 +52,11 @@ def _canonical_status(raw: str | None) -> str:
     return ((raw or "").split() or [""])[0].strip().lower()
 
 _ISSUE_TEMPLATE = """\
-# ISSUE: {desc}
+# ISSUE: {title}
 # Severity: {severity} | Status: open | Handler: {handler} | Date: {date}
 
 ## PROBLEM
-{desc}
+{body}
 
 ## CONTEXT
 reported_by: {agent}
@@ -76,6 +76,31 @@ def _issues_dir(root: Path) -> Path:
 def _slugify(desc: str) -> str:
     slug = re.sub(r"[^a-z0-9]+", "-", desc.lower()).strip("-")
     return slug[:48] or "issue"
+
+
+#: Longest header line accepted. The header is read by humans and by tools
+#: (issue.list, a future board); a 3.000-character title is unusable.
+TITLE_MAX = 120
+
+
+def _truncate_title(text: str) -> str:
+    text = " ".join(text.split())
+    return text if len(text) <= TITLE_MAX else text[: TITLE_MAX - 1].rstrip() + "…"
+
+
+def _split_title(desc: str, title: str | None) -> tuple[str, str]:
+    """Return ``(title_for_the_header, full_body)``.
+
+    ``desc`` keeps its line structure: the first line is the title when the
+    caller does not pass one, and the whole text is the body. Collapsing desc
+    into one line made it both the header and the body — a 3.000-character
+    ``# ISSUE:`` line repeated under ``## PROBLEM`` (issue 2026-10-26).
+    """
+    body = (desc or "").strip()
+    if title:
+        return _truncate_title(title), body
+    first = body.split("\n", 1)[0].strip()
+    return _truncate_title(first or body), body
 
 
 def _parse_header(text: str) -> dict[str, str] | None:
@@ -108,6 +133,7 @@ def create_issue(
     severity: str,
     desc: str,
     *,
+    title: str | None = None,
     handler: str = "",
     path: str | None = None,
     ctx: PermissionContext | None = None,
@@ -118,9 +144,10 @@ def create_issue(
             f"invalid severity {severity!r}; must be one of {list(VALID_SEVERITIES)}",
             code="INVALID_ARGS",
         )
-    desc = " ".join((desc or "").split())
-    if not desc:
+    body = (desc or "").strip()
+    if not body:
         return CortexOUT.error("desc is required", code="INVALID_ARGS")
+    header_title, body = _split_title(body, title)
     handler = " ".join((handler or "").split())
 
     root = find_project_root(start=path)
@@ -132,7 +159,7 @@ def create_issue(
 
     agent = (ctx or PermissionContext.from_env()).agent_id
     today = _dt.date.today().isoformat()
-    base = f"{today}-{_slugify(desc)}"
+    base = f"{today}-{_slugify(header_title)}"
     filename = f"{base}.issue.md"
     n = 2
     while (issues_dir / filename).exists():
@@ -149,7 +176,8 @@ def create_issue(
     )
 
     content = _ISSUE_TEMPLATE.format(
-        desc=desc,
+        title=header_title,
+        body=body,
         severity=severity,
         handler=handler or agent,
         date=today,
@@ -158,14 +186,23 @@ def create_issue(
     )
     (issues_dir / filename).write_text(content, encoding="utf-8")
 
-    return CortexOUT.work(
-        f"issue.create ok id={issue_id}",
-        issue_id=issue_id,
-        file=str(issues_dir / filename),
-        severity=severity,
-        status="open",
-        event_id=event_id,
-    )
+    fields = {
+        "issue_id": issue_id,
+        "file": str(issues_dir / filename),
+        "severity": severity,
+        "status": "open",
+        "event_id": event_id,
+        "title": header_title,
+    }
+    if title is None and len(" ".join(body.split())) > TITLE_MAX:
+        # The caller handed a long paragraph and no title: the header carries a
+        # truncated first line while the body keeps the whole text. Say so
+        # instead of accepting the ambiguity silently.
+        fields["warning"] = (
+            f"desc exceeds {TITLE_MAX} chars and no title was given; the header "
+            "shows the truncated first line — pass title= to control it"
+        )
+    return CortexOUT.work(f"issue.create ok id={issue_id}", **fields)
 
 
 def update_issue(
@@ -352,13 +389,18 @@ handler_schemas = [
         "fn": create_issue,
         "description": (
             "Report a new issue (status: open) in <project>/.arqux/issues/ "
-            "with a PULSE event. Severity: low|medium|high|blocking."
+            "with a PULSE event. Severity: low|medium|high|blocking. The header "
+            "uses title when given, else the first line of desc, truncated to "
+            f"{TITLE_MAX} chars; the full desc is the body under ## PROBLEM."
         ),
         "input_schema": {
             "type": "object",
             "properties": {
                 "severity": {"type": "string", "enum": list(VALID_SEVERITIES)},
-                "desc": {"type": "string", "description": "Problem description."},
+                "desc": {"type": "string", "description": "Problem description (full body)."},
+                "title": {"type": "string",
+                          "description": (f"Short header line (max {TITLE_MAX} chars). "
+                                          "Defaults to the first line of desc.")},
                 "handler": {"type": "string", "description": "Who detected it (defaults to caller)."},
                 "path": {"type": "string", "description": "Path to project root. Defaults to cwd."},
             },
