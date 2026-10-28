@@ -17,6 +17,8 @@ from . import _HAS_CODEC_CORTEX, _cc_parser
 
 #: Name of the session context file inside ``.arqux/``.
 CONTEXT_CORTEX: str = "context.cortex"
+#: Per-execution context pointers (``.arqux/contexts/<exec>.cortex``).
+CONTEXTS_DIR: str = "contexts"
 
 
 # --- CORTEX file parsing (legacy fallback) -----------------------------------
@@ -174,17 +176,37 @@ def find_project_root(start: Path | str | None = None) -> Path | None:
     if ws_root is None:
         return None
 
-    ctx_path = ws_root / CONTEXT_CORTEX
-    if not ctx_path.exists():
-        return None
-
-    raw = ctx_path.read_text(encoding="utf-8")
-    m = re.search(r'project_root[=:]"([^"]*)"', raw)
-    if not m:
-        return None
-
-    fallback_root = Path(m.group(1))
-    fallback_arqux = fallback_root / ARQUX_DIR / BRAIN_CORTEX
-    if fallback_root.exists() and fallback_arqux.exists():
-        return fallback_root / ARQUX_DIR
+    # The per-execution pointer wins over the global one. ``context.cortex`` is
+    # a single slot that any execution can overwrite: another client setting a
+    # different project made a checkpoint land in the wrong brain
+    # (2026-10-28, ARQUX -> Manhattan).
+    for ctx_path in _context_candidates(ws_root):
+        if not ctx_path.exists():
+            continue
+        raw = ctx_path.read_text(encoding="utf-8")
+        m = re.search(r'project_root[=:]"([^"]*)"', raw)
+        if not m:
+            continue
+        candidate = Path(m.group(1))
+        if candidate.exists() and (candidate / ARQUX_DIR / BRAIN_CORTEX).exists():
+            return candidate / ARQUX_DIR
     return None
+
+
+def _context_candidates(ws_root: Path) -> list[Path]:
+    """This execution's pointer first, the shared slot last."""
+    candidates: list[Path] = []
+    try:
+        import hashlib
+
+        from ...execution import authoritative_execution_key
+
+        execution = authoritative_execution_key()
+    except Exception:  # noqa: BLE001
+        execution = None
+    if execution:
+        readable = re.sub(r"[^A-Za-z0-9._-]", "_", execution).strip("._")[:64] or "exec"
+        digest = hashlib.sha256(execution.encode("utf-8")).hexdigest()[:12]
+        candidates.append(ws_root / CONTEXTS_DIR / f"{readable}-{digest}.cortex")
+    candidates.append(ws_root / CONTEXT_CORTEX)
+    return candidates

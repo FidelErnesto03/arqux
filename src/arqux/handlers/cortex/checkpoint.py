@@ -13,7 +13,7 @@ import re
 from pathlib import Path
 
 from ...constants import ARQUX_DIR, BRAIN_CORTEX
-from ...core.state import CONTEXT_CORTEX, find_workspace_root
+from ...core.state import find_workspace_root
 from ...cortex_out import CortexOUT
 from ...execution import authoritative_execution_key
 from ...permissions import PermissionContext
@@ -36,13 +36,20 @@ def _resolve_active_root(path: str | None) -> Path | None:
         return find_project_root(start=path)
     ws_root = find_workspace_root()
     if ws_root is not None:
-        ctx_path = ws_root / CONTEXT_CORTEX
-        if ctx_path.exists():
+        from ...core.state._project import _context_candidates
+
+        # The per-execution pointer wins: the shared context.cortex slot can be
+        # overwritten by another client, and this checkpoint would land in the
+        # wrong brain (2026-10-28, ARQUX -> Manhattan).
+        for ctx_path in _context_candidates(ws_root):
+            if not ctx_path.exists():
+                continue
             m = re.search(r'project_root[=:]"([^"]*)"', ctx_path.read_text(encoding="utf-8"))
-            if m:
-                cand = Path(m.group(1)) / ARQUX_DIR
-                if (cand / BRAIN_CORTEX).exists():
-                    return cand
+            if not m:
+                continue
+            cand = Path(m.group(1)) / ARQUX_DIR
+            if (cand / BRAIN_CORTEX).exists():
+                return cand
     return find_project_root(start=None)
 
 
