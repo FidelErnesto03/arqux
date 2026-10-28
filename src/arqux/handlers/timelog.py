@@ -158,6 +158,7 @@ def project_handler(
             block_ids=list(block_ids or []), action=action,
             authorization_ref=authorization_ref, expected_revision=expected_revision,
             rounding=rounding, units=units, account=account, target=target,
+            agent=(ctx.agent_id if ctx else ""),
             opened_at=session.get("date"),
         )
     except timelog_projection.InsufficientCapability as exc:

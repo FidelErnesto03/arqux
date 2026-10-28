@@ -27,7 +27,7 @@ from ...pulse import record_pulse
 from ...session_identity import current_session_ref, get_session
 from ...session_identity import open_session as rebind
 from ...state import find_project_root, find_workspace_root
-from ..session import CONTEXT_CORTEX, _escape_ses_value, _write_context, context_get, handoff
+from ..session import CONTEXT_CORTEX, _context_document, _write_context, context_get, handoff
 from .get import get_handler
 
 
@@ -164,19 +164,18 @@ def switch(
                 Path(owner_root) if owner_root else None, owner_ses, execution
             )
             blp = current.get("blp", "")
-            blp_part = f' blp="{_escape_ses_value(blp)}"' if blp else ""
             ses = current.get("ses", "")
             # CYCLE-14 / BLP-001: the session belongs to the execution, not to
             # the agent name. Switching identity preserves membership; only the
             # agent recorded inside the session entry changes.
-            ses_part = f' ses="{_escape_ses_value(ses)}"' if ses else ""
-            entry = (
-                f'CTX:{canonical} project="{_escape_ses_value(current.get("project", ""))}"'
-                f' scope="{_escape_ses_value(current.get("scope", ""))}"{blp_part}'
-                f' agent="{_escape_ses_value(canonical)}"{ses_part}'
-                f' project_root="{_escape_ses_value(current.get("project_root", ""))}"'
+            document = _context_document(
+                agent=canonical,
+                project=current.get("project", ""),
+                scope=current.get("scope", ""),
+                blp=blp,
+                ses=ses,
+                project_root=current.get("project_root", ""),
             )
-            document = f"$0\n\n$1: CURRENT\n{entry}\n"
             # Only an execution that owns the pointer may publish context. A
             # caller reading another execution's scope/session must not copy it
             # into its own record, and must not republish it as the workspace

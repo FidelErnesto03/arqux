@@ -43,11 +43,13 @@ VERSION = "1"
 IDENTITY_SIGIL = "TLG"
 ACTIVITY_SIGIL = "ACT"
 RECEIPT_SIGIL = "RCV"
+PROJECTION_SIGIL = "PRJ"
 
 SECTION_GLOSSARY = "$0"
 SECTION_IDENTITY = "$1"
 SECTION_ACTIVITIES = "$2"
 SECTION_RECEIPTS = "$3"
+SECTION_PROJECTIONS = "$4"
 
 _GLOSSARY = (
     # $0 must be a real section header, not just a comment: the CODEC-CORTEX
@@ -60,6 +62,7 @@ _GLOSSARY = (
     "# TLG   | timelog  | attrs | B    | Episodic        | Timelog identity and metadata\n"
     "# ACT   | activity | attrs | B    | Episodic        | One activity interval\n"
     "# RCV   | receipt  | attrs | B    | Episodic        | External projection receipt\n"
+    "# PRJ   | projection | attrs | B  | Episodic        | Per-provider projection mark\n"
 )
 
 
@@ -168,6 +171,25 @@ def _serialize(document: dict[str, Any]) -> str:
             f'remote:"{_clean_text(receipt.get("remote", ""))}",'
             f'revision:"{document["revision"]}"}}\n'
         )
+    lines.append("")
+    lines.append(f"{SECTION_PROJECTIONS}: PROJECTIONS")
+    for key in sorted(document.get("projections", {})):
+        mark = document["projections"][key]
+        lines.append(
+            f'{PROJECTION_SIGIL}:{_entry_name(key)}'
+            f'{{operation:"{_clean_text(mark.get("operation", ""))}",'
+            f'status:"{mark.get("status", "pending")}",'
+            f'destination:"{_clean_text(mark.get("destination", ""))}",'
+            f'state:"{mark.get("state", "unknown")}",'
+            f'remote:"{_clean_text(mark.get("remote", ""))}",'
+            f'blocks:"{_clean_text(mark.get("blocks", ""))}",'
+            f'start:"{mark.get("start", "")}",'
+            f'end:"{mark.get("end", "")}",'
+            f'minutes:"{mark.get("minutes", "")}",'
+            f'agent:"{_clean_text(mark.get("agent", ""))}",'
+            f'projected_at:"{mark.get("projected_at", "")}",'
+            f'revision:"{document["revision"]}"}}\n'
+        )
     return "\n".join(lines) + "\n"
 
 
@@ -189,6 +211,7 @@ def _parse(text: str) -> dict[str, Any]:
         "revision": "0",
         "blocks": {},
         "receipts": {},
+        "projections": {},
     }
     for raw in text.splitlines():
         line = raw.strip()
@@ -218,6 +241,22 @@ def _parse(text: str) -> dict[str, Any]:
                 "destination": _field(attrs, "destination"),
                 "state": _field(attrs, "state") or "unknown",
                 "remote": _field(attrs, "remote"),
+            }
+        elif line.startswith(f"{PROJECTION_SIGIL}:"):
+            name = line[len(PROJECTION_SIGIL) + 1: line.index("{")]
+            attrs = line[line.index("{") + 1: line.rindex("}")]
+            document["projections"][name] = {
+                "operation": _field(attrs, "operation"),
+                "status": _field(attrs, "status") or "pending",
+                "destination": _field(attrs, "destination"),
+                "state": _field(attrs, "state") or "unknown",
+                "remote": _field(attrs, "remote"),
+                "blocks": _field(attrs, "blocks"),
+                "start": _field(attrs, "start"),
+                "end": _field(attrs, "end"),
+                "minutes": _field(attrs, "minutes"),
+                "agent": _field(attrs, "agent"),
+                "projected_at": _field(attrs, "projected_at"),
             }
     return document
 
@@ -285,6 +324,7 @@ def ensure_timelog(
             "revision": "1",
             "blocks": {},
             "receipts": {},
+            "projections": {},
         }
         try:
             _write(path, _serialize(document))

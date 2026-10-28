@@ -165,11 +165,50 @@ def query(
     return result
 
 
+def _projection_block_ids(raw: str) -> list[str]:
+    """Block ids covered by a projection mark's ``block_id@revision`` list."""
+    return [part.split("@", 1)[0] for part in (raw or "").split(",") if part]
+
+
+def _describe_projections(marks: dict[str, Any]) -> list[dict[str, Any]]:
+    """Read the native projection registry: what was sent where, and as what."""
+    projections = []
+    for key in sorted(marks):
+        mark = marks[key]
+        projections.append({
+            "key": key,
+            "operation": mark.get("operation", ""),
+            "status": mark.get("status", "pending"),
+            "destination": mark.get("destination", ""),
+            "state": mark.get("state", "unknown"),
+            "remote": mark.get("remote", ""),
+            "blocks": mark.get("blocks", ""),
+            "block_ids": _projection_block_ids(mark.get("blocks", "")),
+            "interval": {"start": mark.get("start", ""), "end": mark.get("end", ""),
+                         "minutes": mark.get("minutes", "")},
+            "agent": mark.get("agent", ""),
+            "projected_at": mark.get("projected_at", ""),
+        })
+    return projections
+
+
 def _describe_document(document: dict[str, Any], session_id: str, *, view: str) -> dict[str, Any]:
+    projections = _describe_projections(document.get("projections", {}))
+    by_block: dict[str, list[dict[str, Any]]] = {}
+    for mark in projections:
+        for block_id in mark["block_ids"]:
+            by_block.setdefault(block_id, []).append({
+                "destination": mark["destination"],
+                "remote": mark["remote"],
+                "state": mark["state"],
+                "status": mark["status"],
+            })
     blocks = [
         describe_block(name, {**block, "block_id": name})
         for name, block in sorted(document["blocks"].items())
     ]
+    for block in blocks:
+        block["projections"] = by_block.get(block["block_id"], [])
     return {
         "view": view,
         "session_ref": session_id,
@@ -177,6 +216,7 @@ def _describe_document(document: dict[str, Any], session_id: str, *, view: str) 
         "opened_at": document.get("opened", ""),
         "revision": document.get("revision", ""),
         "blocks": blocks,
+        "projections": projections,
         "total": union_seconds([
             {**block, "block_id": name} for name, block in document["blocks"].items()
         ]),
@@ -218,6 +258,12 @@ def review(
         for receipt in document["receipts"].values():
             if receipt.get("status") == "pending":
                 receipt["status"] = "stale"
+        # The native projection marks that cover the corrected origin become
+        # stale too: a changed block is no longer what was sent.
+        for mark in document.get("projections", {}).values():
+            if (mark.get("status") != "stale"
+                    and block_id in _projection_block_ids(mark.get("blocks", ""))):
+                mark["status"] = "stale"
         return True
 
     try:
@@ -247,7 +293,13 @@ def purge(
     expected_revision: str | None = None,
     opened_at: str | None = None,
 ) -> dict[str, Any]:
-    """Archive, summarize or delete an exact selection. Preview mutates nothing."""
+    """Archive, summarize or delete an exact selection. Preview mutates nothing.
+
+    Projection marks live in the same file as the blocks they cover, so they are
+    never removed ahead of their origin: a partial delete leaves the remaining
+    marks intact, and a full delete removes them only under the same
+    authorization and tombstone that removes the blocks themselves.
+    """
     if mode not in ("archive", "summarize", "delete"):
         return {"error": f"unknown purge mode {mode!r}", "code": "TIMELOG_INVALID_MODE"}
     if not authorization_ref:

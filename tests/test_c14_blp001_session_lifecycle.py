@@ -5,6 +5,8 @@ Covers AC-02, AC-03, AC-05, AC-06 and AC-07.
 
 from __future__ import annotations
 
+import re
+
 import pytest
 
 from arqux.execution import bind_execution_key, mint_execution_key, reset_execution_key
@@ -73,9 +75,11 @@ class TestAc05ReadsStayReadOnlyAndUnambiguous:
         from arqux.handlers.session import resume
 
         a = open_session(arqux_env.proj_root, agent="test-governor",
-                         project="test-proj", execution=mint_execution_key())
+                         project="test-proj", execution=mint_execution_key(),
+                         scope="CYCLE-A")
         b = open_session(arqux_env.proj_root, agent="test-governor",
-                         project="test-proj", execution=mint_execution_key())
+                         project="test-proj", execution=mint_execution_key(),
+                         scope="CYCLE-B")
         result = resume(path=str(arqux_env.proj_root),
                         ctx=PermissionContext(agent_id="test-governor", role="governor",
                                               execution_key="exec-unbound"))
@@ -139,9 +143,9 @@ class TestAc07CloseAndProjectSwitch:
         token_a, token_b = bind_execution_key(key_a), bind_execution_key(key_b)
         try:
             a = open_session(arqux_env.proj_root, agent="test-governor",
-                             project="test-proj", execution=key_a)
+                             project="test-proj", execution=key_a, scope="CYCLE-A")
             b = open_session(arqux_env.proj_root, agent="test-governor",
-                             project="test-proj", execution=key_b)
+                             project="test-proj", execution=key_b, scope="CYCLE-B")
             result = close(summary="done by A", path=str(arqux_env.proj_root), ctx=_ctx(key_a))
             assert result.fields["session_ref"] == a["session_id"]
             assert get_session(arqux_env.proj_root, a["session_id"])["state"] == "closed"
@@ -193,7 +197,7 @@ class TestAc07CloseAndProjectSwitch:
                                                   execution_key=key))
             assert result.profile != "OUT-ERROR", result.fields
             context = (arqux_env.ws_root / ".arqux" / "context.cortex").read_text()
-            assert f'ses="{sid}"' in context
+            assert f'ses:"{sid}"' in context
             assert get_session(arqux_env.proj_root, sid)["agent"] == "alfred"
         finally:
             reset_execution_key(token)
@@ -222,9 +226,10 @@ class TestAc06MembershipAndCompaction:
         token = bind_execution_key(key)
         try:
             mine = open_session(arqux_env.proj_root, agent="test-governor",
-                                project="test-proj", execution=key)
+                                project="test-proj", execution=key, scope="CYCLE-A")
             theirs = open_session(arqux_env.proj_root, agent="test-governor",
-                                  project="test-proj", execution=mint_execution_key())
+                                  project="test-proj", execution=mint_execution_key(),
+                                  scope="CYCLE-B")
             _evidence(arqux_env.proj_root, mine["session_id"], n=6, tag="mine")
             _evidence(arqux_env.proj_root, theirs["session_id"], n=6, tag="theirs")
             _evidence(arqux_env.proj_root, None, n=6, tag="legacy")
@@ -310,9 +315,10 @@ class TestAuditFindings:
         token = bind_execution_key(owner)
         try:
             mine = open_session(arqux_env.proj_root, agent="test-governor",
-                                project="test-proj", execution=owner)
+                                project="test-proj", execution=owner, scope="CYCLE-A")
             theirs = open_session(arqux_env.proj_root, agent="test-governor",
-                                  project="test-proj", execution=mint_execution_key())
+                                  project="test-proj", execution=mint_execution_key(),
+                                  scope="CYCLE-B")
             _bind("test-proj", key=owner, ws=arqux_env.ws_root)
             switch("alfred", path=str(arqux_env.proj_root),
                    ctx=PermissionContext(agent_id="test-governor", role="governor",
@@ -346,10 +352,12 @@ class TestAuditFindings:
         from arqux.pulse import compact_session_pulse
 
         mine = open_session(arqux_env.proj_root, agent="test-governor",
-                            project="test-proj", execution=mint_execution_key())
+                            project="test-proj", execution=mint_execution_key(),
+                            scope="CYCLE-A")
         _evidence(arqux_env.proj_root, mine["session_id"], n=6, tag="mine")
         theirs = open_session(arqux_env.proj_root, agent="test-governor",
-                              project="test-proj", execution=mint_execution_key())
+                              project="test-proj", execution=mint_execution_key(),
+                              scope="CYCLE-B")
         event_id = next_pulse_event_id(arqux_env.proj_root)
         append_pulse_to_brain(arqux_env.proj_root, event_id=event_id, task_id="-",
                               kind="session", agent="test-governor", payload="SES:x",
@@ -488,6 +496,24 @@ class TestSecondAuditFindings:
         assert context_get(path=str(arqux_env.ws_root),
                            ctx=_ctx("exec-unrelated")).fields["scope"] == "CYCLE-01"
 
+    def test_context_document_is_canonical_and_self_describing(self, arqux_env):
+        """context_set writes a glossary-declared CTX entry the codec can parse."""
+        from arqux.handlers.session import CONTEXT_CORTEX, context_get
+
+        key = mint_execution_key()
+        _bind("test-proj", key=key, ws=arqux_env.ws_root, scope="CYCLE-CTX")
+        document = (arqux_env.ws_root / ".arqux" / CONTEXT_CORTEX).read_text(
+            encoding="utf-8")
+
+        assert "# CTX " in document.split("$1")[0]
+        entry_line = next(l for l in document.splitlines()
+                          if l.startswith("CTX:"))
+        assert re.fullmatch(r"CTX:[^\s{]+\{.*\}", entry_line)
+
+        out = context_get(path=str(arqux_env.ws_root), ctx=_ctx(key))
+        assert out.fields["scope"] == "CYCLE-CTX"
+        assert out.fields["project"] == "test-proj"
+
     def test_identity_switch_does_not_copy_a_foreign_context(self, arqux_env):
         """N-04: switch escribía el contexto ajeno en el fichero propio."""
         from arqux.handlers.identity.switch import switch
@@ -514,7 +540,7 @@ class TestSecondAuditFindings:
             own_file = arqux / CONTEXTS_DIR / f"{_execution_slug(stranger)}.cortex"
             assert not own_file.exists()
             a_file = arqux / CONTEXTS_DIR / f"{_execution_slug(owner)}.cortex"
-            assert 'scope="SCOPE-A"' in a_file.read_text()
+            assert 'scope:"SCOPE-A"' in a_file.read_text()
         finally:
             reset_execution_key(token)
 

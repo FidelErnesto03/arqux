@@ -139,6 +139,34 @@ def test_entry_add_reports_rename_on_collision(tmp_path: Path) -> None:
     )
 
 
+def test_entry_add_suffix_derives_from_file_not_process(tmp_path: Path) -> None:
+    """Regression (T-032): a collision on a *different* base name must produce
+    ``base_0001``, not the next counter value (``foo_0002`` with no
+    ``foo_0001`` desynced the workspace registries)."""
+    f = tmp_path / "test.cortex"
+    f.write_text(_SAMPLE, encoding="utf-8")
+    entry_add_handler(
+        str(f), "$1", "DOM", "alpha",
+        'name:"A", path:"/a", status:"current"', force=True,
+    )
+    entry_add_handler(
+        str(f), "$1", "DOM", "alpha",
+        'name:"A2", path:"/a2", status:"current"', force=True,
+    )
+    # "alpha" collided once; a new base colliding must still start at _0001.
+    entry_add_handler(
+        str(f), "$1", "DOM", "beta",
+        'name:"B", path:"/b", status:"current"', force=True,
+    )
+    second = entry_add_handler(
+        str(f), "$1", "DOM", "beta",
+        'name:"B2", path:"/b2", status:"current"', force=True,
+    )
+    assert second.fields.get("name") == "beta_0001", (
+        f"expected file-derived beta_0001, got {second.fields.get('name')}"
+    )
+
+
 def test_cortex_ref_is_readonly(workspace_root: Path, governor_ctx) -> None:
     """AC-04: ``cortex.ref`` must not mutate the target brain — byte-identical
     before/after (currently writes AUD:E_* into PULSE)."""

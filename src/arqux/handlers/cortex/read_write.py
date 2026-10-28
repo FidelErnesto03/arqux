@@ -3,24 +3,36 @@
 from __future__ import annotations
 
 import contextlib
+import re
 from pathlib import Path
 
 from ...cortex_out import CortexOUT
 from ...permissions import PermissionContext
-from ...state import cortex_read, cortex_render, cortex_verify, cortex_write
+from ...state import cortex_read, cortex_render, cortex_verify, cortex_write, crud_list
 from ...sync import sync_brain
 
-# ---------------------------------------------------------------------------
-# SectionCounter — in-memory sequential counter per (file, section)
-# ---------------------------------------------------------------------------
 
-_section_counter: dict[str, int] = {}
+def _next_number(path: str, section: str, sigil: str = "", base: str = "") -> str:
+    """Return the next free ``_XXXX`` suffix for *base* in *section* of *path*.
 
-def _next_number(path: str, section: str) -> str:
-    """Increment and return the next zero-padded 4-digit suffix for *section* in *path*."""
-    key = f"{path}:::{section}"
-    _section_counter[key] = _section_counter.get(key, 0) + 1
-    return f"_{_section_counter[key]:04d}"
+    The suffix is derived from the file's own entries (max ``{base}_NNNN``
+    + 1), not from process state — a per-process counter produced suffixes
+    unrelated to the file (``foo_0002`` with no ``foo_0001``) and was not
+    deterministic across restarts (issue
+    2026-10-18-higiene-workspace-t-032-cortex-entry-add-renombr).
+    """
+    top = 0
+    if base and sigil:
+        try:
+            found = crud_list(path, section=section or None, sigil=sigil)
+            pattern = re.compile(rf"^{re.escape(base)}_(\d+)$")
+            for entry in found.get("entries", []):
+                m = pattern.match(str(entry.get("name") or ""))
+                if m:
+                    top = max(top, int(m.group(1)))
+        except Exception:
+            top = 0
+    return f"_{top + 1:04d}"
 
 
 def read_handler(

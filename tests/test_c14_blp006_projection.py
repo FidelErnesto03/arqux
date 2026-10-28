@@ -263,7 +263,8 @@ class TestAc07RevisionAndReconciliation:
 
     def test_query_does_not_mix_sessions(self, session, arqux_env):
         other = open_session(arqux_env.proj_root, agent="test-governor",
-                             project="test-proj", execution=mint_execution_key())
+                             project="test-proj", execution=mint_execution_key(),
+                             scope="CYCLE-OTHER")
         snap = snapshot(session.proj_root, session.sid, [session.block],
                         opened_at=session.opened)
         assert snap["ses"] == session.sid != other["session_id"]

@@ -52,7 +52,7 @@ class TestAc01QueryReadOnly:
 
     def test_multisession_view_creates_no_joint_file(self, session, arqux_env):
         other = open_session(arqux_env.proj_root, agent="test-governor", project="test-proj",
-                             execution=mint_execution_key())
+                             execution=mint_execution_key(), scope="CYCLE-OTHER")
         files_before = list_timelogs(arqux_env.proj_root)
         result = query(arqux_env.proj_root, "", view="multisession")
         assert result["view"] == "multisession"
@@ -233,7 +233,7 @@ class TestAc06PurgeIntegration:
 
     def test_purge_does_not_touch_another_session(self, session, arqux_env):
         other = open_session(arqux_env.proj_root, agent="test-governor", project="test-proj",
-                             execution=mint_execution_key())
+                             execution=mint_execution_key(), scope="CYCLE-OTHER")
         open_block(arqux_env.proj_root, other["session_id"], operation_ref="T-9.9",
                    start="2026-10-15T01:00:00Z")
         _seed(session, "T-1.1", "2026-10-15T01:00:00Z", "2026-10-15T02:00:00Z")

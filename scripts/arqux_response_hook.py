@@ -32,8 +32,8 @@ def _get_project_scope() -> tuple[str, str]:
                 ctx = arqux / "context.cortex"
                 if ctx.exists():
                     text = ctx.read_text()
-                    pm = re.search(r"project[:\s]+(\w+)", text)
-                    sm = re.search(r"scope[:\s]+([\w-]+)", text)
+                    pm = re.search(r"project[=:\s]\s*\"?([\w.-]+)", text)
+                    sm = re.search(r"scope[=:\s]\s*\"?([\w.-]+)", text)
                     return (
                         pm.group(1) if pm else "ARQUX",
                         sm.group(1) if sm else "CYCLE-04",

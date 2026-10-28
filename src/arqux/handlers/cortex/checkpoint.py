@@ -38,7 +38,7 @@ def _resolve_active_root(path: str | None) -> Path | None:
     if ws_root is not None:
         ctx_path = ws_root / CONTEXT_CORTEX
         if ctx_path.exists():
-            m = re.search(r'project_root="([^"]*)"', ctx_path.read_text(encoding="utf-8"))
+            m = re.search(r'project_root[=:]"([^"]*)"', ctx_path.read_text(encoding="utf-8"))
             if m:
                 cand = Path(m.group(1)) / ARQUX_DIR
                 if (cand / BRAIN_CORTEX).exists():
