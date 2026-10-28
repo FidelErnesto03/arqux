@@ -129,6 +129,17 @@ def checkpoint_handler(
     except Exception:
         _write_wrk_entry(brain_path, value)
 
+    # Heartbeat: the checkpoint is the most frequent governed boundary, so it is
+    # where an open session's last_activity is stamped. Without it the record
+    # cannot say when the work was last alive (issue 2026-10-26, BLP-025).
+    try:
+        from ...timelog_capture import observe
+
+        observe(root, ctx, event="update", operation_ref="checkpoint",
+                activity="session")
+    except Exception:
+        pass
+
     # Record meta-event
     try:
         from ...session_identity import current_session_ref
