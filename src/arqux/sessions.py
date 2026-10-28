@@ -73,7 +73,8 @@ def remove_session_from_brain(
 ) -> str:
     """Mark an agent's session as released in the brain.
 
-    Returns the updated session line, or empty string if not found.
+    Returns the updated session line, or ``"not_found"`` if the agent has no
+    active session.
 
     The entry is updated where it lives (CYCLE-12 / BLP-024). Reading the
     brain as a legacy ``sections`` dict and rewriting the whole file
@@ -86,7 +87,12 @@ def remove_session_from_brain(
     updated_line = ""
     for entry in sessions:
         value = entry.get("value") or {}
-        if value.get("agent") != agent_id or value.get("status") != "active":
+        # Legacy entries name the entry after the agent and carry no agent
+        # attribute; canonical ones carry both.
+        owner = value.get("agent") or ""
+        if owner != agent_id and entry.get("name") != agent_id.replace("-", "_"):
+            continue
+        if value.get("status") != "active":
             continue
         ts = _now_iso()
         crud_update(
@@ -101,7 +107,7 @@ def remove_session_from_brain(
         )
         updated_line = f"- [{ts}] agent={agent_id} role={value.get('role', '')} status=released"
     if not updated_line:
-        return ""
+        return "not_found"
     _bump_brain_concurrency(brain_path, agent_id)
     return updated_line
 
