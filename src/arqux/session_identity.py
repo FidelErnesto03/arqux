@@ -36,6 +36,7 @@ from pathlib import Path
 from typing import Any
 
 from .concurrency import file_lock, reentrant_file_lock
+from .constants import ARQUX_DIR, BRAIN_CORTEX
 from .state import crud_add, crud_list, crud_update, find_project_root
 
 SESSION_SECTION = "$4"
@@ -53,11 +54,19 @@ TIMELOG_DIR = "timelog"
 
 
 def brain_path(project_root: Path | str) -> Path:
-    """Resolve ``<project>/.arqux/brain.cortex`` for *project_root*."""
+    """Resolve ``<project>/.arqux/brain.cortex`` for *project_root*.
+
+    A path that already points at a ``.arqux`` directory must not get a second
+    one: that fallback created ``.arqux/.arqux/brain.cortex.lock``, the nested
+    tree the doctor reports as FAIL (BLP-009 guard, residual path).
+    """
     root = find_project_root(start=str(project_root))
-    if root is None:
-        return Path(project_root) / ".arqux" / "brain.cortex"
-    return root / "brain.cortex"
+    if root is not None:
+        return root / "brain.cortex"
+    base = Path(project_root)
+    if base.name == ARQUX_DIR:
+        return base / BRAIN_CORTEX
+    return base / ".arqux" / "brain.cortex"
 
 
 def lock_path(project_root: Path | str) -> Path:
