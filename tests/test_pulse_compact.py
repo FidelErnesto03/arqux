@@ -300,64 +300,45 @@ def test_prune_actual(tmp_path) -> None:
 # ---------------------------------------------------------------------------
 
 
-def test_session_close_triggers_compact(tmp_path) -> None:
-    """session.close automatically calls pulse.compact after writing SES."""
+def test_session_close_does_not_trigger_compact(tmp_path) -> None:
+    """session.close no longer compacts: it reports what it leaves behind.
+
+    BLP-027: consolidating evidence is the Architect's decision. The close used
+    to prune the session's pulse trail into a census, erasing the per-turn
+    record (SES015, 2026-10-28).
+    """
     from arqux.handlers.session import close
     from arqux.pulse import read_pulse_from_brain
 
     proj = _bootstrap_project(tmp_path)
 
-    # Add enough pulses for compaction (need > 5 for this session)
     from arqux.pulse import append_pulse_to_brain
     for i in range(7):
-        eid = f"E-{i + 1:04d}"
         append_pulse_to_brain(
-            proj, event_id=eid, task_id=f"T-{i:03d}",
+            proj, event_id=f"E-{i + 1:04d}", task_id=f"T-{i:03d}",
             kind="note", agent="test", payload=f"pulse {i}",
         )
 
-    # Close session — should trigger compact after SES
-    result = close(
-        summary="Integration test session",
-        blps="BLP-013",
-        path=str(proj),
-    )
+    result = close(summary="Integration test session", blps="BLP-013",
+                   path=str(proj))
 
     assert "session.close ok" in result.message
-    compact = result.fields.get("compact", {})
-    # compact should have succeeded (7 entries > 5 threshold)
-    assert compact.get("compacted") or compact.get("skip")
+    assert "compact" not in result.fields
 
-    # Verify meta-event exists
     events = read_pulse_from_brain(proj, limit=100)
-    meta = [e for e in events if e.get("kind") == "pulse_compact"]
-    assert len(meta) == 1
+    assert [e for e in events if e.get("kind") == "pulse_compact"] == []
 
 
-def test_session_close_compact_skip_few(tmp_path) -> None:
-    """session.close compact skips when < 5 entries in session."""
+def test_session_close_reports_uncompacted_events(tmp_path) -> None:
+    """The close surfaces the count and the exact consolidation command."""
     from arqux.handlers.session import close
 
     proj = _bootstrap_project(tmp_path)
+    result = close(summary="Small session", path=str(proj))
 
-    # Only 2 pulses
-    from arqux.pulse import append_pulse_to_brain
-    append_pulse_to_brain(
-        proj, event_id="E-0001", task_id="T-001",
-        kind="note", agent="test", payload="pulse 1",
-    )
-    append_pulse_to_brain(
-        proj, event_id="E-0002", task_id="T-002",
-        kind="note", agent="test", payload="pulse 2",
-    )
-
-    result = close(
-        summary="Small session",
-        path=str(proj),
-    )
-
-    compact = result.fields.get("compact", {})
-    assert compact.get("skip") is True
+    assert "compact" not in result.fields
+    assert result.fields["pulse_events"] == 0
+    assert "hint" not in result.fields
 
 
 # ---------------------------------------------------------------------------
