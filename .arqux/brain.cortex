@@ -48,31 +48,6 @@ $0
 # cur=current pln=planned fut=future blk=blocked
 # min=minimum rec=recovery wrk=work full=full
 # ok=success fail=failure part=partial
-ARQX:artifact{type:"attrs", weight:"B", fields:"value:any?", focus:"value", desc:"ArqUX artifact metadata (level, name, usage, kind)"}
-
-AUD:audit{type:"attrs", weight:"M", fields:"value:any?", focus:"value", desc:"Audit event — append-only PULSE entry"}
-
-DEC:dec{type:"attrs", weight:"B", fields:"value:any?", focus:"value", desc:"ArqUX DEC entry"}
-
-ERR:error{type:"attrs", weight:"H", fields:"value:any?", focus:"value", desc:"Concurrency / error state entry"}
-
-FCS:focus{type:"attrs", weight:"H", fields:"value:any?", focus:"value", desc:"Active attention anchor — what the project is focused on now"}
-
-IDN:identity{type:"attrs", weight:"B", fields:"value:any?", focus:"value", desc:"Agent identity descriptor"}
-
-KNW:knowledge{type:"attrs", weight:"B", fields:"name:any?|topic:any?|content:any?|status:any?", focus:"name", desc:"Workspace-level knowledge entry"}
-
-LNG:lesson{type:"attrs", weight:"M", fields:"value:any?", focus:"value", desc:"Learned lesson — behavioral or process"}
-
-OBJ:objective{type:"attrs", weight:"H", fields:"value:any?", focus:"value", desc:"Active goal — stable project-level objective"}
-
-RSK:risk{type:"attrs", weight:"M", fields:"value:any?", focus:"value", desc:"Risk entry — description, impact, mitigation"}
-
-SES:session{type:"attrs", weight:"B", fields:"value:any?", focus:"value", desc:"Session record — agent session context"}
-
-WRK:work{type:"attrs", weight:"M", fields:"value:any?", focus:"value", desc:"Work-in-progress entry — task or activity being executed"}
-
-$0:format{cortex:"0.1", encoding:"UTF-8"}
 
 
 $19: ARQUX METADATA
@@ -87,7 +62,7 @@ IDN:governor{level:"2", project:"ARQUX", path:"/home/vatrox/workspace/ARQUX", go
 
 $2: FOCUS
 
-FCS:current{what:"Blueprint BLP-026 listo para ejecutar", priority:"medium", status:"current", survive:"work", updated:"2026-10-28T14:13:08Z", event:"blueprint.ready", cycle:"CYCLE-14"}
+FCS:current{what:"Próximo BLP o cierre de ciclo", priority:"medium", status:"current", survive:"work", updated:"2026-10-28T14:13:32Z", event:"blueprint.complete", cycle:"CYCLE-14"}
 
 DEC:cp01_aprobado{date:"2026-10-10", by:"architect", scope:"CYCLE-13", cp01:"aprobado — matriz rc1/fallback, diseño de migración reversible, contratos Memory Core y recall, inicio de implementación autorizado", cp01a:"aprobado — orden BLP-005, BLP-001, BLP-002, BLP-003, BLP-004", basis:"mejor aprovechamiento y facilidad de acción; corregir el ejecutor antes de construir sobre él", qg09:"cerrado", next:"redactar BLP-005", next_cp:"CP-05 revisión de autenticidad"}
 
@@ -903,7 +878,7 @@ AUD:E_0677{date:"2026-09-18T21:13:54Z", event:"E-0677", task:"-", kind:"session"
 
 KNW:sync_run{name:"sync_run", value:"1", updated:"2026-10-15T14:04:33Z", topic:"metrics", content:"metric sync_run=1", status:"current"}
 
-KNW:blueprints_done{name:"blueprints_done", value:"1", updated:"2026-10-28T13:54:59Z", topic:"metrics", content:"metric blueprints_done=1", status:"current"}
+KNW:blueprints_done{name:"blueprints_done", value:"1", updated:"2026-10-28T14:13:32Z", topic:"metrics", content:"metric blueprints_done=1", status:"current"}
 
 KNW:tasks_active{name:"tasks_active", value:"1", updated:"2026-10-23T20:21:23Z", topic:"metrics", content:"metric tasks_active=1", status:"current"}
 
@@ -1775,6 +1750,30 @@ AUD:E_2014{date:"2026-10-28T13:55:02Z", event:"E-2014", task:"2026-10-26-timelog
 
 AUD:E_2015{date:"2026-10-28T13:55:03Z", event:"E-2015", task:"-", kind:"checkpoint", agent:"Alfred", result:"cortex.checkpoint ok fcs=issues BRAIN y TIMELOG corregidos (BLP-0 obj=seguir con issue.create (medium) y halla", evidence:"cortex.checkpoint ok fcs=issues BRAIN y TIMELOG corregidos (BLP-0 obj=seguir con issue.create (medium) y halla", ses_ref:"SES015"}
 
+AUD:E_2016{date:"2026-10-28T14:13:20Z", event:"E-2016", task:"BLP-026", kind:"blueprint_lifecycle", agent:"Alfred", result:"[blueprint.ac] AC AC-01 verified — test_explicit_title_keeps_header_short_and_body_whole: cabecera corta, PROBLEM íntegro.", evidence:"[blueprint.ac] AC AC-01 verified — test_explicit_title_keeps_header_short_and_body_whole: cabecera corta, PROBLEM íntegro."}
+
+AUD:E_2017{date:"2026-10-28T14:13:21Z", event:"E-2017", task:"BLP-026", kind:"blueprint_lifecycle", agent:"Alfred", result:"[blueprint.ac] AC AC-02 verified — test_title_defaults_to_the_first_line.", evidence:"[blueprint.ac] AC AC-02 verified — test_title_defaults_to_the_first_line."}
+
+AUD:E_2018{date:"2026-10-28T14:13:21Z", event:"E-2018", task:"BLP-026", kind:"blueprint_lifecycle", agent:"Alfred", result:"[blueprint.ac] AC AC-03 verified — test_long_first_line_is_truncated_with_ellipsis y ..._without_a_title: elipsis + warning.", evidence:"[blueprint.ac] AC AC-03 verified — test_long_first_line_is_truncated_with_ellipsis y ..._without_a_title: elipsis + warning."}
+
+AUD:E_2019{date:"2026-10-28T14:13:21Z", event:"E-2019", task:"BLP-026", kind:"blueprint_lifecycle", agent:"Alfred", result:"[blueprint.ac] AC AC-04 verified — test_body_is_not_duplicated_in_the_header: el texto aparece exactamente dos veces (cabecera y cuerpo).", evidence:"[blueprint.ac] AC AC-04 verified — test_body_is_not_duplicated_in_the_header: el texto aparece exactamente dos veces (cabecera y cuerpo)."}
+
+AUD:E_2020{date:"2026-10-28T14:13:25Z", event:"E-2020", task:"BLP-026", kind:"blueprint_lifecycle", agent:"Alfred", result:"[blueprint.ac] AC AC-05 verified — test_slug_comes_from_the_title: issue_id termina en -timelog-bloque-abierto.", evidence:"[blueprint.ac] AC AC-05 verified — test_slug_comes_from_the_title: issue_id termina en -timelog-bloque-abierto."}
+
+AUD:E_2021{date:"2026-10-28T14:13:26Z", event:"E-2021", task:"BLP-026", kind:"blueprint_lifecycle", agent:"Alfred", result:"[blueprint.ac] AC AC-06 verified — Suite completa: 2521 passed, 2 skipped.", evidence:"[blueprint.ac] AC AC-06 verified — Suite completa: 2521 passed, 2 skipped."}
+
+AUD:E_2022{date:"2026-10-28T14:13:26Z", event:"E-2022", task:"T-1.1", kind:"blueprint_lifecycle", agent:"Alfred", result:"[blueprint.task] task T-1.1 marked as completed — tests/test_t041_issue_title.py: 7 casos.", evidence:"[blueprint.task] task T-1.1 marked as completed — tests/test_t041_issue_title.py: 7 casos."}
+
+AUD:E_2023{date:"2026-10-28T14:13:26Z", event:"E-2023", task:"T-1.2", kind:"blueprint_lifecycle", agent:"Alfred", result:"[blueprint.task] task T-1.2 marked as completed — handlers/issue.py: title + _split_title + _truncate_title + slug del título; schema actualizado.", evidence:"[blueprint.task] task T-1.2 marked as completed — handlers/issue.py: title + _split_title + _truncate_title + slug del título; schema actualizado."}
+
+AUD:E_2024{date:"2026-10-28T14:13:31Z", event:"E-2024", task:"T-1.3", kind:"blueprint_lifecycle", agent:"Alfred", result:"[blueprint.task] task T-1.3 marked as completed — skill arqux-issues: tabla parámetro → sección y regla de derivación/truncado.", evidence:"[blueprint.task] task T-1.3 marked as completed — skill arqux-issues: tabla parámetro → sección y regla de derivación/truncado."}
+
+AUD:E_2025{date:"2026-10-28T14:13:32Z", event:"E-2025", task:"BLP-026", kind:"blueprint_lifecycle", agent:"Alfred", result:"[blueprint.complete] BLP BLP-026 completed — issue.create separa título de cuerpo: title opcional, primera línea por defecto, truncado a 120 con elipsis, sin duplicación, slug del título y warning cuando desc excede sin title. Contrato documentado en la skill arqux-issues. AC-01..AC-06 verified. Commit 17cdb85. Suite: 2521 passed, 2 skipped.", evidence:"[blueprint.complete] BLP BLP-026 completed — issue.create separa título de cuerpo: title opcional, primera línea por defecto, truncado a 120 con elipsis, sin duplicación, slug del título y warning cuando desc excede sin title. Contrato documentado en la skill arqux-issues. AC-01..AC-06 verified. Commit 17cdb85. Suite: 2521 passed, 2 skipped."}
+
+AUD:E_2026{date:"2026-10-28T14:13:37Z", event:"E-2026", task:"2026-10-26-issue-create-el-par-metro-desc-se-usa-a-la-vez-c", kind:"issue", agent:"Alfred", result:"issue.update 2026-10-26-issue-create-el-par-metro-desc-se-usa-a-la-vez-c.issue.md status=open->fixed note=Corregido en BLP-026 (commit 17cdb85). issue.create acepta `title` opcional; sin", evidence:"issue.update 2026-10-26-issue-create-el-par-metro-desc-se-usa-a-la-vez-c.issue.md status=open->fixed note=Corregido en BLP-026 (commit 17cdb85). issue.create acepta `title` opcional; sin"}
+
+AUD:E_2027{date:"2026-10-28T14:13:38Z", event:"E-2027", task:"-", kind:"checkpoint", agent:"Alfred", result:"cortex.checkpoint ok fcs=3 issues de ARQUX corregidos (BLP-024 BR obj=verdicto de heimdall o triaje de hallazg", evidence:"cortex.checkpoint ok fcs=3 issues de ARQUX corregidos (BLP-024 BR obj=verdicto de heimdall o triaje de hallazg", ses_ref:"SES015"}
+
 
 $7: LESSONS
 
@@ -2193,7 +2192,7 @@ LNG:session_SES009{type:"session", entry_count:6, summary:"checkpoint:3,note:3",
 
 $8: ACTIVE_CONTEXT
 
-WRK:current{phase:"current", current:"blueprint.ready: BLP-026 ready", blocked:"no", survive:"work", updated:"2026-10-28T14:13:08Z", event:"blueprint.ready", fcs:"issues BRAIN y TIMELOG corregidos (BLP-024", obj:"seguir con issue.create (medium) y hallazgos nuevos", tasks:"2 BLPs done commits b4c8b1f y 1058718", state:"2 de 3 issues ARQUX en fixed", last_turn:"2026-10-28T13:55:03Z"}
+WRK:current{phase:"current", current:"blueprint.complete: BLP BLP-026 completed and approved", blocked:"no", survive:"work", updated:"2026-10-28T14:13:32Z", event:"blueprint.complete", fcs:"3 issues de ARQUX corregidos (BLP-024 BRAIN", obj:"verdicto de heimdall o triaje de hallazgos nuevos", tasks:"3 BLPs done commits b4c8b1f 1058718 17cdb85", state:"pendiente auditoria y reinicio del servidor MCP", last_turn:"2026-10-28T14:13:38Z"}
 
 
 $9: RISKS

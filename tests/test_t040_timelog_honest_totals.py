@@ -64,6 +64,20 @@ class TestHeartbeat:
                      opened_at=session.opened)["blocks"]["session"]
         assert block["last_activity"] and block["last_activity"] != "2026-10-15T01:00:00Z"
 
+    def test_checkpoint_stamps_the_heartbeat(self, session):
+        from arqux.handlers.cortex.checkpoint import checkpoint_handler
+        from arqux.permissions import PermissionContext
+
+        open_block(session.proj_root, session.sid, operation_ref="session",
+                   start="2026-10-15T01:00:00Z")
+        ctx = PermissionContext(agent_id="test-governor", role="governor",
+                                execution_key=session.key)
+        checkpoint_handler(content="fcs:seguir; obj:probar", path=str(session.proj_root),
+                           ctx=ctx)
+        block = load(session.proj_root, session.sid,
+                     opened_at=session.opened)["blocks"]["session"]
+        assert block["last_activity"] and block["last_activity"] != "2026-10-15T01:00:00Z"
+
 
 class TestHonestTotals:
     def test_open_block_exposes_server_elapsed_as_window(self):
