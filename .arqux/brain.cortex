@@ -62,7 +62,7 @@ IDN:governor{level:"2", project:"ARQUX", path:"/home/vatrox/workspace/ARQUX", go
 
 $2: FOCUS
 
-FCS:current{what:"Próximo BLP o cierre de ciclo", priority:"medium", status:"current", survive:"work", updated:"2026-10-18T19:05:01Z", event:"blueprint.complete", cycle:"CYCLE-14"}
+FCS:current{what:"Blueprint BLP-024 listo para ejecutar", priority:"medium", status:"current", survive:"work", updated:"2026-10-28T13:44:50Z", event:"blueprint.ready", cycle:"CYCLE-14"}
 
 DEC:cp01_aprobado{date:"2026-10-10", by:"architect", scope:"CYCLE-13", cp01:"aprobado — matriz rc1/fallback, diseño de migración reversible, contratos Memory Core y recall, inicio de implementación autorizado", cp01a:"aprobado — orden BLP-005, BLP-001, BLP-002, BLP-003, BLP-004", basis:"mejor aprovechamiento y facilidad de acción; corregir el ejecutor antes de construir sobre él", qg09:"cerrado", next:"redactar BLP-005", next_cp:"CP-05 revisión de autenticidad"}
 
@@ -1692,6 +1692,28 @@ AUD:E_1985{date:"2026-10-26T16:10:32Z", event:"E-1985", task:"2026-10-26-brain-e
 
 AUD:E_1986{date:"2026-10-26T16:13:47Z", event:"E-1986", task:"2026-10-26-brain-el-brain-del-proyecto-degrada-las-leccione", kind:"issue", agent:"Alfred", result:"issue.update 2026-10-26-brain-el-brain-del-proyecto-degrada-las-leccione.issue.md status=open->open note=Higiene ejecutada el mismo día, con resultado parcial. RESTAURADO: las 11 leccio", evidence:"issue.update 2026-10-26-brain-el-brain-del-proyecto-degrada-las-leccione.issue.md status=open->open note=Higiene ejecutada el mismo día, con resultado parcial. RESTAURADO: las 11 leccio"}
 
+AUD:E_1987{date:"2026-10-28T13:47:02Z", event:"E-1987", task:"BLP-024", kind:"blueprint_lifecycle", agent:"Alfred", result:"[blueprint.ac] AC AC-01 verified — 5 passed en tests/test_brain_roundtrip_integrity.py; el guard de write_brain_sections lanza ValueError sobre un brain con entradas canónicas.", evidence:"[blueprint.ac] AC AC-01 verified — 5 passed en tests/test_brain_roundtrip_integrity.py; el guard de write_brain_sections lanza ValueError sobre un brain con entradas canónicas."}
+
+AUD:E_1988{date:"2026-10-28T13:47:02Z", event:"E-1988", task:"BLP-024", kind:"blueprint_lifecycle", agent:"Alfred", result:"[blueprint.ac] AC AC-02 verified — remove_session_from_brain ahora usa crud_list/crud_update sobre la entrada SES; el test verifica que la lección y el riesgo conservan nombre, causa, prevención y mitigación.", evidence:"[blueprint.ac] AC AC-02 verified — remove_session_from_brain ahora usa crud_list/crud_update sobre la entrada SES; el test verifica que la lección y el riesgo conservan nombre, causa, prevención y mitigación."}
+
+AUD:E_1989{date:"2026-10-28T13:47:03Z", event:"E-1989", task:"BLP-024", kind:"blueprint_lifecycle", agent:"Alfred", result:"[blueprint.ac] AC AC-03 verified — El test del checkpoint pasa sin cambios en el handler: el checkpoint no era la causa, como quedó demostrado en la reproducción.", evidence:"[blueprint.ac] AC AC-03 verified — El test del checkpoint pasa sin cambios en el handler: el checkpoint no era la causa, como quedó demostrado en la reproducción."}
+
+AUD:E_1990{date:"2026-10-28T13:47:03Z", event:"E-1990", task:"BLP-024", kind:"blueprint_lifecycle", agent:"Alfred", result:"[blueprint.ac] AC AC-04 verified — cycle.close agrega LNG vía crud_add con type/cause/lesson/prevention/status y registra el cierre con record_pulse; el test confirma que las entradas previas sobreviven.", evidence:"[blueprint.ac] AC AC-04 verified — cycle.close agrega LNG vía crud_add con type/cause/lesson/prevention/status y registra el cierre con record_pulse; el test confirma que las entradas previas sobreviven."}
+
+AUD:E_1991{date:"2026-10-28T13:47:06Z", event:"E-1991", task:"BLP-024", kind:"blueprint_lifecycle", agent:"Alfred", result:"[blueprint.ac] AC AC-05 verified — _legacy_entry_name descarta líneas sin contenido y desambigua repetidas; el test verifica 2 LNG y 2 RSK únicos, sin nombres vacíos.", evidence:"[blueprint.ac] AC AC-05 verified — _legacy_entry_name descarta líneas sin contenido y desambigua repetidas; el test verifica 2 LNG y 2 RSK únicos, sin nombres vacíos."}
+
+AUD:E_1992{date:"2026-10-28T13:47:07Z", event:"E-1992", task:"BLP-024", kind:"blueprint_lifecycle", agent:"Alfred", result:"[blueprint.ac] AC AC-06 verified — `.venv/bin/python -m pytest -q` → 2500 passed, 2 skipped (deps de voz ausentes).", evidence:"[blueprint.ac] AC AC-06 verified — `.venv/bin/python -m pytest -q` → 2500 passed, 2 skipped (deps de voz ausentes)."}
+
+AUD:E_1993{date:"2026-10-28T13:47:07Z", event:"E-1993", task:"BLP-024", kind:"blueprint_lifecycle", agent:"Alfred", result:"[blueprint.ac] AC AC-07 verified — cortex.file.validate sobre ARQUX/.arqux/brain.cortex → 0 duplicados.", evidence:"[blueprint.ac] AC AC-07 verified — cortex.file.validate sobre ARQUX/.arqux/brain.cortex → 0 duplicados."}
+
+AUD:E_1994{date:"2026-10-28T13:47:18Z", event:"E-1994", task:"T-1.1", kind:"blueprint_lifecycle", agent:"Alfred", result:"[blueprint.task] task T-1.1 marked as completed — 5 casos; rojo antes de la corrección con la firma __operar_sobre_el_fl.", evidence:"[blueprint.task] task T-1.1 marked as completed — 5 casos; rojo antes de la corrección con la firma __operar_sobre_el_fl."}
+
+AUD:E_1995{date:"2026-10-28T13:47:18Z", event:"E-1995", task:"T-1.2", kind:"blueprint_lifecycle", agent:"Alfred", result:"[blueprint.task] task T-1.2 marked as completed — src/arqux/sessions.py: crud_list + crud_update sobre $4/SES; imports legacy eliminados.", evidence:"[blueprint.task] task T-1.2 marked as completed — src/arqux/sessions.py: crud_list + crud_update sobre $4/SES; imports legacy eliminados."}
+
+AUD:E_1996{date:"2026-10-28T13:47:19Z", event:"E-1996", task:"T-1.3", kind:"blueprint_lifecycle", agent:"Alfred", result:"[blueprint.task] task T-1.3 marked as completed — src/arqux/handlers/cycle.py: lesson_entries + crud_add + record_pulse; _lesson_section resuelve la sección existente.", evidence:"[blueprint.task] task T-1.3 marked as completed — src/arqux/handlers/cycle.py: lesson_entries + crud_add + record_pulse; _lesson_section resuelve la sección existente."}
+
+AUD:E_1997{date:"2026-10-28T13:47:19Z", event:"E-1997", task:"T-1.4", kind:"blueprint_lifecycle", agent:"Alfred", result:"[blueprint.task] task T-1.4 marked as completed — src/arqux/formats.py: _legacy_entry_name en LESSONS/RISKS de ambos builders; guard en write_brain_sections.", evidence:"[blueprint.task] task T-1.4 marked as completed — src/arqux/formats.py: _legacy_entry_name en LESSONS/RISKS de ambos builders; guard en write_brain_sections."}
+
 
 $7: LESSONS
 
@@ -2110,7 +2132,7 @@ LNG:session_SES009{type:"session", entry_count:6, summary:"checkpoint:3,note:3",
 
 $8: ACTIVE_CONTEXT
 
-WRK:current{phase:"current", current:"task.complete: task T-045 completed", blocked:"no", survive:"work", updated:"2026-10-23T20:23:45Z", event:"task.complete", fcs:"Politica de expiracion de sesiones", obj:"AXM:session_expiry implementada: sesiones foreign open pre-00:00 se autocierran en open_session/resumed; la bound a la ejecucion actual sobrevive", tasks:"T-045 done; 6 zombies cerrados previamente (SES001/002/005/007/009/011)", state:"suite 2492 verde; axioma en workspace AGENTS.md", last_turn:"2026-10-23T20:23:45Z"}
+WRK:current{phase:"current", current:"blueprint.ready: BLP-024 ready", blocked:"no", survive:"work", updated:"2026-10-28T13:44:50Z", event:"blueprint.ready", fcs:"Politica de expiracion de sesiones", obj:"AXM:session_expiry implementada: sesiones foreign open pre-00:00 se autocierran en open_session/resumed; la bound a la ejecucion actual sobrevive", tasks:"T-045 done; 6 zombies cerrados previamente (SES001/002/005/007/009/011)", state:"suite 2492 verde; axioma en workspace AGENTS.md", last_turn:"2026-10-23T20:23:45Z"}
 
 
 $9: RISKS
