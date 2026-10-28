@@ -63,11 +63,13 @@ AXM:context_pointer{ El agente mantiene un puntero de contexto activo durante to
 
 IDN:active_context{ name:"CONTEXTO ACTIVO", fields:["project_name: nombre del proyecto (ej: ARQUX)", "project_root: ruta absoluta (ej: /home/vatrox/workspace/ARQUX)", "scope: 'workspace' | 'project' | 'cycle'", "last_bp: BLP activo si existe", "set_at: timestamp de cuando se estableció"], scope:"Por sesión — se pierde al cerrar sesión, se restaura con session.resume()" }
 
-HDL:session.context.set{ signature:"context.set(project, scope, blp?, path?)", purpose:"Establece el contexto activo. Valida que el proyecto existe (resolviendo path desde meta-brain o desde path= explicito), escribe .arqux/context.cortex con project_root absoluto, devuelve header '⬡ Alfred | ARQUX | CYCLE-01'. DESPUES de esta llamada, los handlers sin path= (project.status, task.list, etc.) resuelven automaticamente desde workspace root usando project_root almacenado en context.cortex." }
+HDL:session.context.set{ signature:"context.set(project, scope, blp?, path?)", purpose:"Establece el contexto activo. Valida que el proyecto existe (resolviendo path desde meta-brain o desde path= explicito), escribe el puntero de ESTA ejecucion en .arqux/contexts/<exec>.cortex y la ranura compartida .arqux/context.cortex con project_root absoluto, devuelve header '⬡ Alfred | ARQUX | CYCLE-01'. DESPUES de esta llamada, los handlers sin path= resuelven primero el puntero de la ejecucion; la ranura compartida es solo respaldo." }
 
 HDL:session.context.get{ signature:"context.get(path?)", purpose:"Lee el contexto activo desde .arqux/context.cortex. Devuelve header + datos estructurados (project, scope, blp, agent, project_root). Read-only." }
 
-AXM:path_verification{ Toda llamada handler con path DEBE resolverse contra contexto activo. Path sin coincidencia con project_root → preguntar. Path omitido → find_project_root() usa fallback a context.cortex que contiene project_root. }
+AXM:session_room{ La sesion es del USUARIO, no del agente: una sala por proyecto. Una sesion NO cerrada significa que el trabajo no termino — si el cliente se apago sin cerrar, la sala sigue viva y es retomable desde cualquier ejecucion, conservando id, inicio y timelog. Abrir una sesion NUEVA exige cerrar la abierta o retomarla, y el handler presenta ambas alternativas (SESSION_OPEN_EXISTS). Los agentes son participantes, no duenos. }
+
+AXM:path_verification{ Toda llamada handler con path DEBE resolverse contra contexto activo. Path sin coincidencia con project_root → preguntar. Path omitido → find_project_root() lee PRIMERO el puntero de la ejecucion (.arqux/contexts/<exec>.cortex) y solo si falta usa la ranura compartida .arqux/context.cortex. La ranura global la escribe cualquier cliente: nunca es prueba de donde esta trabajando este. }
 
 STP:header_format{ Primera linea del mensaje debe ser el header de contexto definido en AGENTS.md $2 (AXM:visible_header). Formato: ⬡ <AGENTE> | <PROYECTO> | <SCOPE>. Si hay BLP activo: incluir | <BLP>. Si es workspace root: ⬡ <AGENTE> | WORKSPACE | meta-brain. }
 
