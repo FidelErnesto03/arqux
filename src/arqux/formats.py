@@ -473,6 +473,24 @@ def _parse_attrs(text: str) -> dict[str, Any]:
 # --- Public conversion API ---------------------------------------------------
 
 
+def _legacy_entry_name(line: str, fallback: str, seen: dict[str, int]) -> str:
+    """Derive a stable, non-empty entry name from a legacy free-text line.
+
+    Returns ``""`` when the line carries no content. A bare bullet used to
+    become the name ``_`` and an empty entry (issue 2026-10-26, BLP-024);
+    repeated lines used to collide under the same name, so the caller passes
+    the same ``seen`` dict to disambiguate them.
+    """
+    content = line.strip().lstrip("-*").strip()
+    if not content:
+        return ""
+    name = re.sub(r"[^a-z0-9]+", "_", content.split(":")[0].lower()).strip("_")[:20]
+    name = name or fallback
+    count = seen.get(name, 0) + 1
+    seen[name] = count
+    return name if count == 1 else f"{name}_{count}"
+
+
 def render_governance_cortex(stem: str, frontmatter: dict, body: str | dict) -> str:
     """Render governance file as CORTEX text.
 
@@ -662,15 +680,18 @@ def _build_brain_doc(doc, frontmatter, sections_input):
 
     # $7: LESSONS
     lng_entries = []
+    seen_lessons: dict[str, int] = {}
     for line in (sections or {}).get("LESSONS", "").splitlines():
         line = line.strip()
-        if line and not line.startswith("(") and not line.startswith("#"):
-            name = re.sub(r'[^a-z0-9]', '_',
-                          line.split(":")[0].lower())[:20] or "lesson"
-            lng_entries.append(
-                _entry("$7", "LNG", name, {
-                    "type": "contextual", "cause": "", "lesson": line,
-                }))
+        if not line or line.startswith("(") or line.startswith("#"):
+            continue
+        name = _legacy_entry_name(line, "lesson", seen_lessons)
+        if not name:
+            continue
+        lng_entries.append(
+            _entry("$7", "LNG", name, {
+                "type": "contextual", "cause": "", "lesson": line,
+            }))
     _add_section(doc, "$7", "LESSONS", lng_entries)
 
     # $8: ACTIVE_CONTEXT
@@ -685,13 +706,18 @@ def _build_brain_doc(doc, frontmatter, sections_input):
 
     # $9: RISKS
     rsk_entries = []
+    seen_risks: dict[str, int] = {}
     for line in (sections or {}).get("RISKS", "").splitlines():
-        if line.strip() and not line.strip().startswith("("):
-            rsk_entries.append(
-                _entry("$9", "RSK", "risk", {
-                    "description": line.strip(),
-                    "mitigation": "", "severity": "medium",
-                }))
+        if not line.strip() or line.strip().startswith("("):
+            continue
+        name = _legacy_entry_name(line, "risk", seen_risks)
+        if not name:
+            continue
+        rsk_entries.append(
+            _entry("$9", "RSK", name, {
+                "description": line.strip(),
+                "mitigation": "", "severity": "medium",
+            }))
     _add_section(doc, "$9", "RISKS", rsk_entries)
 
     # $10: KNOWLEDGE
@@ -971,20 +997,29 @@ def brain_from_model(frontmatter: dict, sections: dict[str, str]) -> str:
             }))
     parts.append(_fmt_section(6, "PULSE", pulse_lines))
     lng_lines = []
+    seen_lessons: dict[str, int] = {}
     for line in sections.get("LESSONS", "").splitlines():
         line = line.strip()
-        if line and not line.startswith("(") and not line.startswith("#"):
-            name = re.sub(r'[^a-z0-9]', '_', line.split(":")[0].lower())[:20] or "lesson"
-            lng_lines.append(_fmt_entry("LNG", name, {"type": "contextual", "cause": "", "lesson": line}))
+        if not line or line.startswith("(") or line.startswith("#"):
+            continue
+        name = _legacy_entry_name(line, "lesson", seen_lessons)
+        if not name:
+            continue
+        lng_lines.append(_fmt_entry("LNG", name, {"type": "contextual", "cause": "", "lesson": line}))
     parts.append(_fmt_section(7, "LESSONS", lng_lines))
     active = sections.get("ACTIVE_CONTEXT", "").strip()
     parts.append(_fmt_section(8, "ACTIVE_CONTEXT", [
         _fmt_entry("WRK", "current", {"phase": "active", "current": active if active and not active.startswith("(") else "", "blocked": "no", "survive": "work"})
     ]))
     rsk_lines = []
+    seen_risks: dict[str, int] = {}
     for line in sections.get("RISKS", "").splitlines():
-        if line.strip() and not line.strip().startswith("("):
-            rsk_lines.append(_fmt_entry("RSK", "risk", {"description": line.strip(), "mitigation": "", "severity": "medium"}))
+        if not line.strip() or line.strip().startswith("("):
+            continue
+        name = _legacy_entry_name(line, "risk", seen_risks)
+        if not name:
+            continue
+        rsk_lines.append(_fmt_entry("RSK", name, {"description": line.strip(), "mitigation": "", "severity": "medium"}))
     parts.append(_fmt_section(9, "RISKS", rsk_lines))
     # $10: KNOWLEDGE (matches _build_brain_doc section numbering)
     knw_lines_str = sections.get("KNOWLEDGE", "").strip()

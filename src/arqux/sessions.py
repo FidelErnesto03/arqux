@@ -8,15 +8,12 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from .constants import BRAIN_SECTION_SESSIONS
 from .state import (
-    _bump_concurrency,
     _now_iso,
     crud_add,
+    crud_list,
     crud_update,
     find_project_root,
-    read_brain,
-    write_brain_sections,
 )
 
 
@@ -77,28 +74,35 @@ def remove_session_from_brain(
     """Mark an agent's session as released in the brain.
 
     Returns the updated session line, or empty string if not found.
+
+    The entry is updated where it lives (CYCLE-12 / BLP-024). Reading the
+    brain as a legacy ``sections`` dict and rewriting the whole file
+    degraded every canonical entry the legacy model did not understand:
+    lessons lost their cause and prevention and risks collapsed into
+    identical placeholders.
     """
-    fm, sections, _ = read_brain(project_root)
-    raw = sections.get(BRAIN_SECTION_SESSIONS, "")
-    new_lines: list[str] = []
+    brain_path = _brain_cortex_path(project_root)
+    sessions = crud_list(brain_path, section="$4", sigil="SES").get("entries", [])
     updated_line = ""
-    for line in raw.splitlines():
-        if f"agent={agent_id}" in line and "status=active" in line:
-            ts = _now_iso()
-            # Replace timestamp and status while preserving format.
-            new_line = line.replace("status=active", "status=released")
-            if line.startswith("- ["):
-                old_ts_end = line.index("]")
-                new_line = "- [" + ts + "]" + new_line[old_ts_end + 1:]
-            updated_line = new_line
-            new_lines.append(new_line)
-        else:
-            new_lines.append(line)
+    for entry in sessions:
+        value = entry.get("value") or {}
+        if value.get("agent") != agent_id or value.get("status") != "active":
+            continue
+        ts = _now_iso()
+        crud_update(
+            brain_path, f"$4/SES:{entry['name']}",
+            set_={
+                "date": ts,
+                "status": "released",
+                "outcome": "released",
+                "output": "session released",
+            },
+            force=True,
+        )
+        updated_line = f"- [{ts}] agent={agent_id} role={value.get('role', '')} status=released"
     if not updated_line:
         return ""
-    sections[BRAIN_SECTION_SESSIONS] = "\n".join(new_lines)
-    _bump_concurrency(fm, agent_id)
-    write_brain_sections(project_root, fm, sections)
+    _bump_brain_concurrency(brain_path, agent_id)
     return updated_line
 
 

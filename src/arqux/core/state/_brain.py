@@ -207,13 +207,50 @@ def read_brain(project_root: Path) -> tuple[dict[str, Any], dict[str, str], str]
     return fm, sections, body
 
 
+def _canonical_entry_count(path: Path) -> int:
+    """Entries held by an existing brain, glossary excluded."""
+    try:
+        from ...cortex.reader import cortex_to_dict
+
+        doc = cortex_to_dict(path.read_text(encoding="utf-8"))
+    except Exception:  # noqa: BLE001
+        return 0
+    return sum(
+        len(section.get("entries", []))
+        for section in doc.get("sections", [])
+        if section.get("id") != "$0"
+    )
+
+
 def write_brain_sections(
     project_root: Path,
     frontmatter: dict[str, Any],
     sections: dict[str, str],
+    *,
+    legacy_migration: bool = False,
 ) -> tuple[Path, Path]:
-    """Write the project brain from frontmatter + sections dict."""
-    directory = _resolve_brain_path(project_root).parent
+    """Write the project brain from frontmatter + sections dict.
+
+    CYCLE-12 / BLP-024: this rebuilds the whole file from the legacy
+    free-text model, so every structured entry the model cannot represent is
+    re-derived — lessons renamed to a slug of their first words, cause and
+    prevention emptied, risks collapsed into identical placeholders. It is
+    therefore reserved for creating a brain from a legacy source: mutating an
+    existing canonical brain must go through the ``cortex.entry.*`` handlers.
+    """
+    brain_path = _resolve_brain_path(project_root)
+    if (
+        not legacy_migration
+        and brain_path.exists()
+        and _canonical_entry_count(brain_path) > 0
+    ):
+        raise ValueError(
+            "write_brain_sections() rebuilds the brain from the legacy sections "
+            "model and loses structured entries (CYCLE-12 / BLP-024). Mutate the "
+            "brain with cortex.entry.* instead; pass legacy_migration=True only "
+            "to import a brain that has no canonical entries yet."
+        )
+    directory = brain_path.parent
     return write_cortex_pair(directory, "brain", frontmatter, sections)
 
 
@@ -301,7 +338,9 @@ def write_brain(
 ) -> tuple[Path, Path]:
     """Write the project-level brain (initial creation form).
 
-    For updates, use `write_brain_sections` after reading with `read_brain`.
+    For updates use the ``cortex.entry.*`` handlers: ``write_brain_sections``
+    only rebuilds from the legacy model and refuses to touch a canonical brain
+    (CYCLE-12 / BLP-024).
     """
     directory = _resolve_brain_path(project_root).parent
     body = _initial_brain_body()

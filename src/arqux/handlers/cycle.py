@@ -37,6 +37,7 @@ from ..constants import (
 )
 from ..cortex_out import CortexOUT
 from ..permissions import PermissionContext, enforce_ctx
+from ..pulse import record_pulse
 from ..state import (
     cycle_dir,
     find_project_root,
@@ -258,6 +259,19 @@ def _manifest_body_has_placeholders(text: str) -> list[str]:
 def _now_iso() -> str:
     import time
     return time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+
+
+def _lesson_section(brain_path: Path) -> str:
+    """Section that already holds lessons, or the canonical $7."""
+    try:
+        from ..state import crud_list
+
+        entries = crud_list(brain_path, sigil="LNG").get("entries", [])
+    except Exception:  # noqa: BLE001
+        return "$7"
+    if not entries:
+        return "$7"
+    return entries[0].get("section") or "$7"
 
 
 def _read_cycle_manifest(cdir: Path) -> dict[str, Any] | None:
@@ -520,38 +534,51 @@ def close_cycle(
             hint="Provide a summary to force-close with open tasks.",
         )
 
-    lessons = []
+    lesson_entries: list[tuple[str, dict[str, str]]] = []
     if failed:
-        lessons.append(
-            f"LNG:{cycle_id.lower()}_blockers{{type:\"process\", "
-            f"cause:\"{len(failed)} task(s) blocked in {cycle_id}\", "
-            f"lesson:\"Identify blockers early to avoid cycle delays\"}}"
-        )
+        lesson_entries.append((
+            f"{cycle_id.lower()}_blockers".replace("-", "_"),
+            {
+                "type": "process",
+                "cause": f"{len(failed)} task(s) blocked in {cycle_id}",
+                "lesson": "Identify blockers early to avoid cycle delays",
+                "prevention": "Surface blockers in the cycle manifest before they age",
+                "status": "current",
+            },
+        ))
     if completed:
-        lessons.append(
-            f"LNG:{cycle_id.lower()}_completion{{type:\"process\", "
-            f"cause:\"{len(completed)} task(s) completed in {cycle_id}\", "
-            f"lesson:\"Completed tasks show effective cycle planning\"}}"
-        )
+        lesson_entries.append((
+            f"{cycle_id.lower()}_completion".replace("-", "_"),
+            {
+                "type": "process",
+                "cause": f"{len(completed)} task(s) completed in {cycle_id}",
+                "lesson": "Completed tasks show effective cycle planning",
+                "prevention": "Keep the completion criteria explicit in the manifest",
+                "status": "current",
+            },
+        ))
 
-    if lessons:
+    if lesson_entries:
+        # CYCLE-12 / BLP-024: lessons are added entry by entry. Writing them as
+        # free-text lines and rebuilding the brain from the legacy sections
+        # model renamed them to a slug of their first words and destroyed the
+        # structured entries already in the file.
         try:
-            from ..state import read_brain, write_brain_sections
+            from ..state import crud_add
+
             project_dir = root.parent
-            fm, sections, _ = read_brain(project_dir)
-            existing = sections.get("LESSONS", "").strip()
-            new_lessons = "\n".join(
-                f"- [{now}] {l}" for l in lessons
+            brain_path = project_dir / ".arqux" / "brain.cortex"
+            section = _lesson_section(brain_path)
+            for name, attrs in lesson_entries:
+                crud_add(brain_path, section, "LNG", name, attrs,
+                         create_section=True, force=True)
+            record_pulse(
+                project_dir, task_id="-", kind="cycle",
+                agent=(ctx.agent_id if ctx else "alfred"),
+                payload=f"{cycle_id} closed: {summary or 'no summary'} "
+                        f"({len(completed)} completed, {len(failed)} failed)",
+                cycle=cycle_id,
             )
-            sections["LESSONS"] = (existing + "\n" + new_lessons).strip() if existing else new_lessons
-            pulse = sections.get("PULSE", "").strip()
-            closure_entry = (
-                f"- [{now}] AUD:{cycle_id}_close{{kind:\"cycle\", "
-                f"summary:{summary or ''!r}, completed:{len(completed)}, "
-                f"failed:{len(failed)}, lessons:{len(lessons)}}}"
-            )
-            sections["PULSE"] = (pulse + "\n" + closure_entry).strip() if pulse else closure_entry
-            write_brain_sections(project_dir, fm, sections)
         except Exception:
             pass
 
@@ -599,7 +626,7 @@ def close_cycle(
         "tasks_completed": len(completed),
         "tasks_failed": len(failed),
         "tasks_open": len(open_tasks),
-        "lessons_generated": len(lessons),
+        "lessons_generated": len(lesson_entries),
         "learning_scan": learning_scan["status"],
         "learning_candidates": len(learning_scan.get("candidates", [])),
     }
@@ -610,7 +637,7 @@ def close_cycle(
         f"- Tasks completed: {len(completed)}\n"
         f"- Tasks failed: {len(failed)}\n"
         f"- Tasks open on close: {len(open_tasks)}\n"
-        f"- Lessons auto-generated: {len(lessons)}\n"
+        f"- Lessons auto-generated: {len(lesson_entries)}\n"
         f"- Learning scan: {learning_scan['status']}\n"
         f"- Elevation candidates proposed: {len(learning_scan.get('candidates', []))}\n"
     )
@@ -628,14 +655,14 @@ def close_cycle(
 
     return CortexOUT.work(
         f"cycle.close ok id={cycle_id} completed={len(completed)} "
-        f"failed={len(failed)} lessons={len(lessons)} "
+        f"failed={len(failed)} lessons={len(lesson_entries)} "
         f"learning_scan={learning_scan['status']} "
         f"candidates={len(learning_scan.get('candidates', []))}",
         cycle_id=cycle_id,
         status=CYCLE_CLOSED,
         tasks_completed=len(completed),
         tasks_failed=len(failed),
-        lessons_generated=len(lessons),
+        lessons_generated=len(lesson_entries),
         learning_scan=learning_scan["status"],
         learning_candidates=len(learning_scan.get("candidates", [])),
     instruction="Review cortex.learn candidates; apply elevations only with Architect approval.",
