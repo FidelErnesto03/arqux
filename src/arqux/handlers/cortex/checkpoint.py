@@ -96,7 +96,11 @@ def checkpoint_handler(
     # ';' is NOT a separator: values may legitimately contain it;
     # glued keys are caught by the hint below instead.
     parts: dict[str, str] = {}
-    for pair in _split_entries(body):
+    try:
+        entries = _split_entries(body)
+    except ValueError as exc:
+        return CortexOUT.error(str(exc), code="INVALID_ARGS")
+    for pair in entries:
         pair = pair.strip()
         if ":" not in pair:
             continue
@@ -119,6 +123,12 @@ def checkpoint_handler(
         "tasks": parts.get("tasks", ""),
         "state": parts.get("state", "active"),
         "last_turn": now,
+        # A checkpoint IS the current event. Leaving these three from the last
+        # lifecycle handler made one entry show two focuses and two dates
+        # (issue 2026-10-28, EXPERTA).
+        "event": "cortex.checkpoint",
+        "updated": now,
+        "current": _summary(parts.get("fcs", "")),
     }
 
     # Try crud_update first (if entry exists), fall back to crud_add-like write
@@ -127,7 +137,12 @@ def checkpoint_handler(
         if existing.get("entries"):
             crud_update(
                 brain_path, "$8/WRK:current",
-                set_={"fcs": value["fcs"], "obj": value["obj"], "tasks": value["tasks"], "state": value["state"], "last_turn": now},
+                set_={
+                    "fcs": value["fcs"], "obj": value["obj"],
+                    "tasks": value["tasks"], "state": value["state"],
+                    "last_turn": now, "event": value["event"],
+                    "updated": now, "current": value["current"],
+                },
                 force=True,
             )
         else:
@@ -179,19 +194,33 @@ def checkpoint_handler(
 
 
 def _split_entries(body: str) -> list[str]:
-    """Split checkpoint body on top-level ','/'\n', respecting [...] depth.
+    """Split checkpoint body on top-level ','/'\n', respecting quotes and [...].
 
-    A comma inside an unclosed '[' does not split; a closing ']' returns
-    to depth 0 and the next ``key:`` starts a new entry even without a
-    separator.
+    A comma inside an unclosed '[' does not split; a closing ']' returns to
+    depth 0 and the next ``key:`` starts a new entry even without a separator.
+    A comma inside a quoted string never splits either: ``state:"a,b,c"`` is one
+    value (issue 2026-10-28, EXPERTA — the field was silently truncated at the
+    first comma and the handler still answered ok).
+
+    Raises ``ValueError`` when a quoted string never closes: a truncated value
+    must be reported, not written.
     """
     parts: list[str] = []
     buf: list[str] = []
     depth = 0
+    in_str = False
     i = 0
     while i < len(body):
         c = body[i]
-        if c == "[":
+        if c in ('"', "'"):
+            if not _is_escaped(body, i):
+                in_str = not in_str
+            buf.append(c)
+            i += 1
+        elif in_str:
+            buf.append(c)
+            i += 1
+        elif c == "[":
             depth += 1
             buf.append(c)
             i += 1
@@ -214,9 +243,27 @@ def _split_entries(body: str) -> list[str]:
         else:
             buf.append(c)
             i += 1
+    if in_str:
+        raise ValueError("unterminated quoted value in checkpoint content")
     if buf:
         parts.append("".join(buf))
     return parts
+
+
+def _is_escaped(text: str, pos: int) -> bool:
+    """True when ``text[pos]`` is preceded by an odd number of backslashes."""
+    backslashes = 0
+    i = pos - 1
+    while i >= 0 and text[i] == "\\":
+        backslashes += 1
+        i -= 1
+    return backslashes % 2 == 1
+
+
+def _summary(fcs: str, limit: int = 120) -> str:
+    """The checkpoint's own one-line focus, derived from ``fcs``."""
+    text = " ".join((fcs or "").split())
+    return text if len(text) <= limit else text[: limit - 1].rstrip() + "…"
 
 
 def _write_wrk_entry(brain_path: Path, value: dict[str, str]) -> None:
@@ -229,7 +276,10 @@ def _write_wrk_entry(brain_path: Path, value: dict[str, str]) -> None:
     line = (
         f"WRK:current{{fcs:{_q(value['fcs'])},obj:{_q(value['obj'])},"
         f"tasks:{_q(value['tasks'])},state:{_q(value['state'])},"
-        f"last_turn:{_q(value['last_turn'])}}}\n"
+        f"last_turn:{_q(value['last_turn'])},"
+        f"event:{_q(value.get('event', 'cortex.checkpoint'))},"
+        f"updated:{_q(value.get('updated', value['last_turn']))},"
+        f"current:{_q(value.get('current', ''))}}}\n"
     )
     text = brain_path.read_text(encoding="utf-8")
 
