@@ -19,6 +19,7 @@ import os
 from pathlib import Path
 
 from ...constants import IDENTITIES_DIR, OUT_ERROR
+from ...core.state._project import _context_candidates
 from ...cortex.parse_content import parse_content_entry
 from ...cortex_out import CortexOUT
 from ...execution import authoritative_execution_key
@@ -94,7 +95,15 @@ def switch(
     if not agent_id:
         return CortexOUT.error("agent_id is required", code="INVALID_ARGS")
 
-    start = Path(path or os.getcwd()).resolve()
+    # E-2075: without an explicit path, start from the active context
+    # pointer of this execution before falling back to the process cwd —
+    # a server launched outside the workspace must still resolve the
+    # project the session is bound to.
+    start = (
+        Path(path).resolve()
+        if path
+        else _context_start() or Path(os.getcwd()).resolve()
+    )
     available = _available_identities(start)
     canonical = agent_id.casefold()
 
@@ -270,6 +279,29 @@ def switch(
         lifecycle=lifecycle,
         dry_run=False,
     )
+
+
+def _context_start() -> Path | None:
+    """Project root from this execution's context pointer (E-2075).
+
+    Mirrors ``checkpoint._resolve_active_root``: the per-execution pointer
+    wins over the shared workspace pointer; both beat the process cwd.
+    """
+    import re
+
+    ws_root = find_workspace_root()
+    if ws_root is None:
+        return None
+    for ctx_path in _context_candidates(ws_root):
+        if not ctx_path.exists():
+            continue
+        m = re.search(
+            r'project_root[=:]"([^"]*)"',
+            ctx_path.read_text(encoding="utf-8"),
+        )
+        if m and Path(m.group(1)).exists():
+            return Path(m.group(1))
+    return None
 
 
 def _pointer_owned_by(project_root: Path | None, ses_ref: str, execution: str) -> bool:

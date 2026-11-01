@@ -49,3 +49,8 @@ coverage.xml
 .arqux/.brain.lock
 .arqux/contexts/
 *.cortex.lock
+
+# ArqUX governance residue (locks, atomic backups)
+.arqux/**/*.lock
+*.bak.*
+*.bck

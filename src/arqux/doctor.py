@@ -378,6 +378,55 @@ def check_residue(arqux_dir: Path) -> CheckResult:
     )
 
 
+_GITIGNORE_RESIDUE_PATTERNS = (
+    ".arqux/**/*.lock",
+    "*.cortex.lock",
+    "*.bak",
+    "*.bak-*",
+    "*.bak.*",
+    "*.bck",
+)
+
+
+def check_gitignore(arqux_dir: Path) -> CheckResult:
+    """Governance residue patterns must live in the project .gitignore.
+
+    Locks and atomic backups are transient by contract; when they are not
+    ignored they surface as permanent untracked noise in ``git status``
+    (issue 2026-11-01, E-2078).
+    """
+    gitignore = arqux_dir.parent / ".gitignore"
+    if not gitignore.exists():
+        return CheckResult(
+            name=".gitignore residue patterns",
+            status="warn",
+            message="no .gitignore in project root",
+            detail="run with fix to create it with the residue patterns",
+            fixable=True,
+            context="both",
+        )
+    lines = {
+        ln.strip()
+        for ln in gitignore.read_text(encoding="utf-8").splitlines()
+    }
+    missing = [p for p in _GITIGNORE_RESIDUE_PATTERNS if p not in lines]
+    if missing:
+        return CheckResult(
+            name=".gitignore residue patterns",
+            status="warn",
+            message=f"{len(missing)} residue pattern(s) missing",
+            detail=", ".join(missing),
+            fixable=True,
+            context="both",
+        )
+    return CheckResult(
+        name=".gitignore residue patterns",
+        status="pass",
+        message="all governance residue patterns ignored",
+        context="both",
+    )
+
+
 def check_arqux_dir_structure(arqux_dir: Path, ctx: str = "both") -> CheckResult:
     """Verify .arqux/ has the subdirectories its context expects.
 
@@ -436,6 +485,25 @@ def fix_bak_files(arqux_dir: Path) -> str:
         return f"Removed {len(bak_files)} .bak file(s) from git"
     except Exception as exc:
         return f"Fix failed: {exc}"
+
+
+def fix_gitignore(arqux_dir: Path) -> str:
+    """Append the missing governance residue patterns to .gitignore."""
+    gitignore = arqux_dir.parent / ".gitignore"
+    lines: set[str] = set()
+    if gitignore.exists():
+        lines = {
+            ln.strip()
+            for ln in gitignore.read_text(encoding="utf-8").splitlines()
+        }
+    missing = [p for p in _GITIGNORE_RESIDUE_PATTERNS if p not in lines]
+    if not missing:
+        return ".gitignore already covers governance residue"
+    with gitignore.open("a", encoding="utf-8") as fh:
+        fh.write("\n# ArqUX governance residue (locks, atomic backups)\n")
+        for pattern in missing:
+            fh.write(pattern + "\n")
+    return f"added {len(missing)} residue pattern(s) to .gitignore"
 
 
 def fix_readme_badge(arqux_dir: Path) -> str:
@@ -498,6 +566,8 @@ def run_all(path: str | None = None, fix: bool = False) -> CortexOUT:
     checks.append(check_arqux_dir_structure(arqux_dir, ctx))
     checks.append(check_orphan_dirs(arqux_dir, ctx))
     checks.append(check_residue(arqux_dir))
+    checks.append(check_gitignore(arqux_dir))
+    fixes["fix_gitignore"] = fix_gitignore
     checks.append(check_metadata_section(arqux_dir))
 
     if ctx == "workspace":
