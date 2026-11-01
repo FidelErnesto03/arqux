@@ -90,6 +90,15 @@ def checkpoint_handler(
             body = body[:-1]
     body = body.strip()
 
+    # E-2072: an empty checkpoint overwrote WRK:current with blank
+    # fcs/obj/tasks/state and silently erased the working memory
+    # (six events on 2026-11-01, E_0108-E_0113).
+    if not body:
+        return CortexOUT.error(
+            "checkpoint content is empty — refusing to overwrite WRK:current",
+            code="INVALID_ARGS",
+        )
+
     # Parse key:value pairs — ',' or newline separators only, ignoring
     # separators inside [...] list values (a closing ']' also ends the
     # value: the next key: starts a new entry).
@@ -110,25 +119,60 @@ def checkpoint_handler(
             v = v[1:-1].replace('\\"', '"').replace("\\\\", "\\")
         parts[k.strip()] = v.strip()
 
-    # Detect glued known keys left inside values (e.g. wrong separator)
+    # Detect glued known keys left inside values (e.g. wrong separator).
+    # E-2072: unparsed keys are a hard error now — writing them would
+    # either drop real state or corrupt values.
     glued = [
         k for k in ("fcs", "obj", "tasks", "state", "last_turn")
         if k not in parts and re.search(rf"\b{k}\s*:", body)
     ]
+    if glued:
+        return CortexOUT.error(
+            f"unparsed key(s) {glued} — expected format "
+            "fcs:...,obj:...,tasks:...,state:... (separators: ',' or newline; "
+            "';' is kept inside the value, not treated as a separator)",
+            code="INVALID_ARGS",
+        )
+
+    # E-2072: merge with the existing WRK:current — keys absent from the
+    # input keep their current values instead of being wiped.
+    existing_values: dict = {}
+    try:
+        existing = crud_read(brain_path, "$8/WRK:current")
+        if existing.get("entries"):
+            ev = existing["entries"][0].get("value")
+            if isinstance(ev, dict):
+                existing_values = ev
+    except Exception:
+        existing_values = {}
+
+    fcs = parts.get("fcs") or str(existing_values.get("fcs", ""))
+    obj = parts.get("obj") or str(existing_values.get("obj", ""))
+    tasks = parts.get("tasks") or str(existing_values.get("tasks", ""))
+    state = parts.get("state") or str(existing_values.get("state", "")) or "active"
+
+    # A checkpoint must leave a usable working memory behind: without a
+    # focus and an objective the next bootstrap resumes from nothing.
+    if not fcs.strip() or not obj.strip():
+        return CortexOUT.error(
+            "checkpoint requires non-empty fcs and obj — an empty WRK:current "
+            "erases the agent's working memory",
+            code="INVALID_ARGS",
+        )
 
     now = _now_iso()
     value = {
-        "fcs": parts.get("fcs", ""),
-        "obj": parts.get("obj", ""),
-        "tasks": parts.get("tasks", ""),
-        "state": parts.get("state", "active"),
+        "fcs": fcs,
+        "obj": obj,
+        "tasks": tasks,
+        "state": state,
         "last_turn": now,
         # A checkpoint IS the current event. Leaving these three from the last
         # lifecycle handler made one entry show two focuses and two dates
         # (issue 2026-10-28, EXPERTA).
         "event": "cortex.checkpoint",
         "updated": now,
-        "current": _summary(parts.get("fcs", "")),
+        "current": _summary(fcs),
     }
 
     # Try crud_update first (if entry exists), fall back to crud_add-like write
@@ -184,12 +228,6 @@ def checkpoint_handler(
         "state": value["state"],
         "brain": str(brain_path),
     }
-    if glued:
-        fields["hint"] = (
-            f"unparsed key(s) {glued} — expected format "
-            "fcs:...,obj:...,tasks:...,state:... (separators: ',' or newline; "
-            "';' is kept inside the value, not treated as a separator)"
-        )
     return CortexOUT.work("cortex.checkpoint ok", **fields)
 
 

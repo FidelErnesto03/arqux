@@ -39,7 +39,7 @@ class TestQuotedValues:
         assert value["tasks"] == "[DONE a,DONE b]"
 
     def test_a_simple_quoted_comma_survives(self, arqux_env):
-        checkpoint_handler(content='fcs:"x",state:"a,b,c"',
+        checkpoint_handler(content='fcs:"x",obj:"y",state:"a,b,c"',
                            path=str(arqux_env.proj_root))
         assert _wrk(arqux_env)["state"] == "a,b,c"
 
@@ -62,20 +62,22 @@ class TestCurrentEvent:
         assert value["updated"] == value["last_turn"]
 
     def test_a_stale_lifecycle_event_is_replaced(self, arqux_env):
-        from arqux.state import crud_add
+        from arqux.state import crud_update
 
         brain = arqux_env.proj_root / ".arqux" / "brain.cortex"
-        crud_add(str(brain), "$8", "WRK", "current", {
+        crud_update(brain, "$8/WRK:current", set_={
             "fcs": "viejo", "obj": "viejo", "tasks": "viejo", "state": "viejo",
             "last_turn": "2026-10-20T00:00:00Z",
             "event": "blueprint.complete",
             "updated": "2026-10-27T16:47:08Z",
             "current": "blueprint.complete: BLP BLP-002 completed",
-        }, create_section=True, force=True)
+        }, force=True)
 
         checkpoint_handler(content='fcs:"foco nuevo"', path=str(arqux_env.proj_root))
 
         value = _wrk(arqux_env)
         assert value["event"] == "cortex.checkpoint"
         assert value["current"] == "foco nuevo"
+        # E-2072: las claves ausentes se fusionan, no se borran
+        assert value["obj"] == "viejo"
         assert value["updated"] != "2026-10-27T16:47:08Z"
