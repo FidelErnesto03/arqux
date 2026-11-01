@@ -76,14 +76,17 @@ class TestCycleListFilter:
 
 
 class TestCheckpointHint:
-    def test_semicolon_is_not_advertised_as_a_separator(self, arqux_env):
+    def test_semicolon_glued_keys_fail_fast(self, arqux_env):
+        # E-2072: unparsed keys are a hard error, not a hint — writing them
+        # would silently drop obj/tasks/state from WRK:current.
         out = checkpoint_handler(
             content="fcs:seguir; obj:probar; tasks:none",
             path=str(arqux_env.proj_root),
         )
-        assert "hint" in out.fields
-        assert "';' is kept inside the value" in out.fields["hint"]
-        assert "',' ';' newline" not in out.fields["hint"]
+        assert out.profile == "OUT-ERROR", out
+        assert out.fields["code"] == "INVALID_ARGS"
+        assert "';' is kept inside the value" in out.message
+        assert "',' ';' newline" not in out.message
 
     def test_comma_separated_content_parses_without_hint(self, arqux_env):
         out = checkpoint_handler(

@@ -166,17 +166,16 @@ def test_sequencer_still_detects_real_placeholders():
 # ---------------------------------------------------------------------------
 
 
-def test_checkpoint_semicolon_warns_instead_of_silent_truncation(arqux_env):
-    """';' is not a separator (values may contain it) — glued keys must hint."""
+def test_checkpoint_semicolon_fails_instead_of_silent_truncation(arqux_env):
+    """';' is not a separator — glued keys are a hard error (E-2072)."""
     out = checkpoint_handler(
         "fcs:alpha;obj:beta;tasks:gamma",
         path=str(arqux_env.proj_root),
     )
-    assert not _out_is_error(out), out
-    # fcs keeps the raw glued value — the hint is what makes the loss loud
-    assert "hint" in out.fields
-    assert "obj" in out.fields["hint"]
-    assert "tasks" in out.fields["hint"]
+    assert _out_is_error(out), out
+    assert out.fields["code"] == "INVALID_ARGS"
+    assert "obj" in out.message
+    assert "tasks" in out.message
 
 
 def test_checkpoint_newline_separator(arqux_env):
@@ -189,15 +188,15 @@ def test_checkpoint_newline_separator(arqux_env):
     assert out.fields["tasks"] == "gamma"
 
 
-def test_checkpoint_glued_keys_produce_hint(arqux_env):
+def test_checkpoint_glued_keys_fail_fast(arqux_env):
     out = checkpoint_handler(
         "fcs:alpha|obj:beta|tasks:gamma",
         path=str(arqux_env.proj_root),
     )
-    assert not _out_is_error(out), out
-    assert "hint" in out.fields
-    assert "obj" in out.fields["hint"]
-    assert "tasks" in out.fields["hint"]
+    assert _out_is_error(out), out
+    assert out.fields["code"] == "INVALID_ARGS"
+    assert "obj" in out.message
+    assert "tasks" in out.message
 
 
 def test_checkpoint_list_value_round_trips(arqux_env):
