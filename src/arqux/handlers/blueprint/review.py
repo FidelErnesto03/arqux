@@ -5,6 +5,8 @@ complete, ac, re_delegate, block_for_architect, fail, cancel
 
 from __future__ import annotations
 
+import re
+
 from ...cortex_out import CortexOUT
 from ...permissions import PermissionContext
 from ...sync import _read_gate_table, reconcile_cycle, sync_brain
@@ -375,6 +377,33 @@ def certify_criterion(
     )
 
 
+_NOTE_LINE_RE = re.compile(r"^\s*>")
+
+
+def _supersede_fail_notes(body: str, ac_line: str, ts: str) -> str:
+    """Stamp the FAIL notes under an AC line as superseded (E-2074).
+
+    The history is kept verbatim — every ``> [ts] FAIL:`` note stays on
+    disk — but a later verification marks each one ``(superseded —
+    verified at <ts>)`` so a reader no longer sees a live failure under
+    a certified criterion.
+    """
+    lines = body.split("\n")
+    first = ac_line.split("\n", 1)[0]
+    try:
+        i = lines.index(first)
+    except ValueError:
+        return body
+    changed = False
+    j = i + 1
+    while j < len(lines) and _NOTE_LINE_RE.match(lines[j]):
+        if "FAIL:" in lines[j] and "superseded" not in lines[j]:
+            lines[j] = f"{lines[j]} (superseded — verified at {ts})"
+            changed = True
+        j += 1
+    return "\n".join(lines) if changed else body
+
+
 def ac_blueprint(
     bp_id: str,
     ac_id: str,
@@ -439,6 +468,11 @@ def ac_blueprint(
         else:
             new_line += f"\n  > [{ts}] FAIL: {reason_text}"
         body = body.replace(old_line, new_line, 1)
+
+    # E-2074: a verified AC must not keep live FAIL notes beneath it —
+    # they are kept in history but stamped as superseded.
+    if status == "verified":
+        body = _supersede_fail_notes(body, new_line, ts)
 
     fm["updated_at"] = ts
     _write_blueprint(bp_path, fm, body)
