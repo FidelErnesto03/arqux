@@ -37,6 +37,55 @@ from ._helpers import (
     scan_markers,
 )
 
+
+def _sync_session_blp(root: Path, bp_id: str, fm: dict,
+                      ctx: PermissionContext | None) -> dict:
+    """Keep this execution's context pointer aligned with the BLP just
+    activated (E-2076).
+
+    ``session.context.set`` binds a BLP once; a later ``blueprint.ready``/
+    ``blueprint.claim`` changed the active blueprint but left the pointer
+    behind, so subsequent work was attributed to a stale scope. The fix
+    updates the per-execution context file — never another execution's —
+    and reports whether the previous pointer was stale.
+    """
+    from ...core.state import find_workspace_root
+    from ...execution import authoritative_execution_key
+    from ..session import _context_document, _write_context, context_get
+
+    out = context_get(path=str(root), ctx=ctx)
+    if out.profile == OUT_ERROR:
+        return {"context_blp_synced": False}
+    current = out.fields
+    prev_blp = current.get("blp", "")
+    prev_scope = current.get("scope", "")
+    new_scope = fm.get("cycle", "") or prev_scope
+    if prev_blp == bp_id and prev_scope == new_scope:
+        return {"context_blp_synced": False, "stale_scope": False}
+
+    ws_root = find_workspace_root(start=root)
+    if ws_root is None:
+        return {"context_blp_synced": False}
+    execution = (ctx.execution_key if ctx else None) or authoritative_execution_key()
+    document = _context_document(
+        agent=current.get("agent", ""),
+        project=current.get("project", ""),
+        scope=new_scope,
+        blp=bp_id,
+        ses=current.get("ses", ""),
+        project_root=current.get("project_root", ""),
+    )
+    _write_context(ws_root, execution, document)
+    stale = bool(prev_blp and prev_blp != bp_id) or bool(
+        prev_scope and prev_scope != new_scope
+    )
+    return {
+        "context_blp_synced": True,
+        "stale_scope": stale,
+        "previous_blp": prev_blp,
+    }
+
+
 # ---------------------------------------------------------------------------
 # blueprint.create
 # ---------------------------------------------------------------------------
@@ -248,11 +297,14 @@ def ready_blueprint(
     if cycle_id:
         reconcile_cycle(root, cycle_id)
 
+    scope_sync = _sync_session_blp(root, bp_id, fm, ctx)
+
     return CortexOUT.work(
         f"blueprint.ready ok id={bp_id}",
         blueprint_id=bp_id,
         status=BP_READY,
         instruction="Blueprint is ready for execution. Call blueprint.claim() to start.",
+        **scope_sync,
     )
 
 
@@ -349,9 +401,12 @@ def claim_blueprint(
     if cycle_id:
         reconcile_cycle(root, cycle_id)
 
+    scope_sync = _sync_session_blp(root, bp_id, fm, ctx)
+
     return CortexOUT.work(
         f"blueprint.claim ok id={bp_id} executor={caller}",
         blueprint_id=bp_id,
         status=BP_IN_PROGRESS,
         executor=caller,
+        **scope_sync,
     )
