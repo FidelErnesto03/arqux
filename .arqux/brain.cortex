@@ -1859,6 +1859,20 @@ AUD:E_2070{date:"2026-10-28T19:49:30Z", event:"E-2070", task:"2026-10-28-el-punt
 
 AUD:E_2071{date:"2026-10-28T19:52:09Z", event:"E-2071", task:"-", kind:"checkpoint", agent:"Alfred", result:"cortex.checkpoint ok fcs=axioma AXM:session_open aplicado en AGEN obj=sin trabajo abierto", evidence:"cortex.checkpoint ok fcs=axioma AXM:session_open aplicado en AGEN obj=sin trabajo abierto", ses_ref:"SES017"}
 
+AUD:E_2072{date:"2026-11-01T20:09:37Z", event:"E-2072", task:"2026-11-01-cortex-checkpoint-acepta-contenido-vacio-o-parci", kind:"issue", agent:"Alfred", result:"issue.create 2026-11-01-cortex-checkpoint-acepta-contenido-vacio-o-parci.issue.md severity=blocking status=open by=Alfred", evidence:"issue.create 2026-11-01-cortex-checkpoint-acepta-contenido-vacio-o-parci.issue.md severity=blocking status=open by=Alfred"}
+
+AUD:E_2073{date:"2026-11-01T20:09:47Z", event:"E-2073", task:"2026-11-01-blueprint-acepta-contenido-en-secciones-incorrec", kind:"issue", agent:"Alfred", result:"issue.create 2026-11-01-blueprint-acepta-contenido-en-secciones-incorrec.issue.md severity=high status=open by=Alfred", evidence:"issue.create 2026-11-01-blueprint-acepta-contenido-en-secciones-incorrec.issue.md severity=high status=open by=Alfred"}
+
+AUD:E_2074{date:"2026-11-01T20:09:54Z", event:"E-2074", task:"2026-11-01-blueprint-ac-acumula-notas-fail-bajo-criterios-y", kind:"issue", agent:"Alfred", result:"issue.create 2026-11-01-blueprint-ac-acumula-notas-fail-bajo-criterios-y.issue.md severity=medium status=open by=Alfred", evidence:"issue.create 2026-11-01-blueprint-ac-acumula-notas-fail-bajo-criterios-y.issue.md severity=medium status=open by=Alfred"}
+
+AUD:E_2075{date:"2026-11-01T20:10:00Z", event:"E-2075", task:"2026-11-01-identity-switch-exige-path-explicito-aunque-exis", kind:"issue", agent:"Alfred", result:"issue.create 2026-11-01-identity-switch-exige-path-explicito-aunque-exis.issue.md severity=medium status=open by=Alfred", evidence:"issue.create 2026-11-01-identity-switch-exige-path-explicito-aunque-exis.issue.md severity=medium status=open by=Alfred"}
+
+AUD:E_2076{date:"2026-11-01T20:10:07Z", event:"E-2076", task:"2026-11-01-el-scope-de-la-sesion-no-sigue-al-blp-activo-tra", kind:"issue", agent:"Alfred", result:"issue.create 2026-11-01-el-scope-de-la-sesion-no-sigue-al-blp-activo-tra.issue.md severity=medium status=open by=Alfred", evidence:"issue.create 2026-11-01-el-scope-de-la-sesion-no-sigue-al-blp-activo-tra.issue.md severity=medium status=open by=Alfred"}
+
+AUD:E_2077{date:"2026-11-01T20:10:14Z", event:"E-2077", task:"2026-11-01-nombres-de-parametros-y-errores-inconsistentes-e", kind:"issue", agent:"Alfred", result:"issue.create 2026-11-01-nombres-de-parametros-y-errores-inconsistentes-e.issue.md severity=low status=open by=Alfred", evidence:"issue.create 2026-11-01-nombres-de-parametros-y-errores-inconsistentes-e.issue.md severity=low status=open by=Alfred"}
+
+AUD:E_2078{date:"2026-11-01T20:10:20Z", event:"E-2078", task:"2026-11-01-residuos-lock-y-bak-sin-trackear-dejan-el-arbol-", kind:"issue", agent:"Alfred", result:"issue.create 2026-11-01-residuos-lock-y-bak-sin-trackear-dejan-el-arbol-.issue.md severity=low status=open by=Alfred", evidence:"issue.create 2026-11-01-residuos-lock-y-bak-sin-trackear-dejan-el-arbol-.issue.md severity=low status=open by=Alfred"}
+
 
 $7: LESSONS
 
