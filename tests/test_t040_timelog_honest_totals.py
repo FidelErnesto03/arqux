@@ -72,7 +72,7 @@ class TestHeartbeat:
                    start="2026-10-15T01:00:00Z")
         ctx = PermissionContext(agent_id="test-governor", role="governor",
                                 execution_key=session.key)
-        checkpoint_handler(content="fcs:seguir; obj:probar", path=str(session.proj_root),
+        checkpoint_handler(content="fcs:seguir,obj:probar", path=str(session.proj_root),
                            ctx=ctx)
         block = load(session.proj_root, session.sid,
                      opened_at=session.opened)["blocks"]["session"]

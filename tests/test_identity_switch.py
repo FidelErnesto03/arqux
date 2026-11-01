@@ -143,6 +143,17 @@ def test_switch_happy_path(tmp_path: Path) -> None:
 # ---------------------------------------------------------------------------
 
 
+def test_switch_without_path_uses_context_pointer(tmp_path: Path, monkeypatch) -> None:
+    """E-2075: path is optional — the execution's context pointer resolves."""
+    ws_root, _ = _bootstrap(tmp_path)
+    monkeypatch.chdir(ws_root)
+    result = switch("jarvis", ctx=_ALFRED)
+
+    assert result.profile == "OUT-WORK", result.to_text()
+    assert result.fields["agent_id"] == "jarvis"
+    assert result.fields["header"] == "⬡ jarvis | test-proj | CYCLE-01"
+
+
 def test_switch_not_found_lists_identities(tmp_path: Path) -> None:
     _, proj_root = _bootstrap(tmp_path)
     result = switch("noexiste", path=str(proj_root), ctx=_ALFRED)
