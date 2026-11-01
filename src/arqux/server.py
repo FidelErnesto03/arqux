@@ -43,11 +43,71 @@ def _safe_name(name: str) -> str:
     return name.replace(".", "_")
 
 
+_SESSION_PARAM_KEYS = ("session_ref", "session_id", "ses_ref", "session")
+_PATH_PARAM_KEYS = ("project_dir", "project_root", "root", "project_path")
+
+
+def _resolve_kwargs(handler: Any, kwargs: dict[str, Any]) -> tuple[dict[str, Any], list[str]]:
+    """Normalise alias params onto the names *handler* declares (E-2077).
+
+    Session-family spellings (``session``, ``session_ref``, ``session_id``,
+    ``ses_ref``), ``blueprint_id`` for ``bp_id`` and the path-family
+    spellings map onto whichever name the signature accepts. Params that
+    match nothing are returned as *unknown* so the caller gets
+    INVALID_ARGS naming the expected signature instead of a cryptic
+    TypeError or, worse, a silently ignored argument.
+    """
+    import inspect
+
+    try:
+        params = inspect.signature(handler).parameters
+    except (TypeError, ValueError):
+        return dict(kwargs), []
+    if any(p.kind is inspect.Parameter.VAR_KEYWORD for p in params.values()):
+        return dict(kwargs), []
+
+    declared = set(params) - {"ctx"}
+    resolved = dict(kwargs)
+    unknown: list[str] = []
+
+    def _declared_of(family: tuple[str, ...]) -> str | None:
+        return next((k for k in family if k in declared), None)
+
+    for key in list(resolved):
+        if key in declared:
+            continue
+        target: str | None = None
+        if key in _SESSION_PARAM_KEYS:
+            target = _declared_of(_SESSION_PARAM_KEYS[:-1])
+        elif key == "blueprint_id":
+            target = _declared_of(("bp_id",))
+        elif key in _PATH_PARAM_KEYS:
+            target = _declared_of(("path",))
+        if target and target not in resolved:
+            resolved[target] = resolved.pop(key)
+        else:
+            unknown.append(key)
+    return resolved, unknown
+
+
 def _wrap_handler(name: str, handler: Any) -> Any:
     """Wrap a handler with permission checks and CORTEX-OUT formatting."""
 
     async def wrapped(**kwargs: Any) -> str:
         ctx = PermissionContext.from_env()
+        # E-2077: alias normalisation + loud unknown-param reporting.
+        kwargs, unknown = _resolve_kwargs(handler, kwargs)
+        if unknown:
+            import inspect as _i
+
+            expected = [
+                p for p in _i.signature(handler).parameters if p != "ctx"
+            ]
+            return CortexOUT.profile(
+                OUT_ERROR,
+                f"ERROR code=INVALID_ARGS handler={name} "
+                f"unknown={unknown} expected={expected}",
+            ).to_text()
         # F6: the effective role follows the ACTIVE identity (context pointer),
         # not the static transport default. Without it a server started as
         # governor lets a switched-to auditor mutate state.
@@ -64,7 +124,21 @@ def _wrap_handler(name: str, handler: Any) -> Any:
             ).to_text()
 
         try:
-            result = await handler(**kwargs, ctx=ctx) if _is_coro(handler) else handler(**kwargs, ctx=ctx)
+            try:
+                result = await handler(**kwargs, ctx=ctx) if _is_coro(handler) else handler(**kwargs, ctx=ctx)
+            except TypeError as exc:
+                # Signature mismatch the alias pass could not resolve —
+                # report the expected contract, not an internal error.
+                import inspect as _i
+
+                expected = [
+                    p for p in _i.signature(handler).parameters if p != "ctx"
+                ]
+                return CortexOUT.profile(
+                    OUT_ERROR,
+                    f"ERROR code=INVALID_ARGS handler={name} "
+                    f"reason={exc} expected={expected}",
+                ).to_text()
             # Convert to plain string — MCP expects text output
             if hasattr(result, "to_text"):
                 return str(result.to_text())
