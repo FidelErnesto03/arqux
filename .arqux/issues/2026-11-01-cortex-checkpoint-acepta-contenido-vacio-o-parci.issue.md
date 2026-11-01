@@ -1,5 +1,5 @@
 # ISSUE: cortex.checkpoint acepta contenido vacio o parcial y borra WRK:current sin error
-# Severity: blocking | Status: open | Handler: Alfred (hallazgo en CODEC-CORTEX, sesiones SES001/SES002) | Date: 2026-11-01
+# Severity: blocking | Status: verified | Handler: Alfred (hallazgo en CODEC-CORTEX, sesiones SES001/SES002) | Date: 2026-11-01
 
 ## PROBLEM
 ## Sintoma
@@ -48,3 +48,7 @@ reported_at: 2026-11-01T20:09:38Z
 cause:      pending triage
 fix:        pending triage
 prevention: pending triage
+
+## UPDATE 2026-11-01
+
+Heimdall SIGNED-PASS audit 2.0: empty/partial checkpoint rejected, missing keys merged, glued keys INVALID_ARGS (50342cc)

@@ -1,5 +1,5 @@
 # ISSUE: Residuos .lock y .bak sin trackear dejan el arbol sucio y health WARN
-# Severity: low | Status: open | Handler: Alfred (hallazgo en CODEC-CORTEX, sesiones SES001/SES002) | Date: 2026-11-01
+# Severity: low | Status: verified | Handler: Alfred (hallazgo en CODEC-CORTEX, sesiones SES001/SES002) | Date: 2026-11-01
 
 ## PROBLEM
 ## Sintoma
@@ -45,3 +45,7 @@ reported_at: 2026-11-01T20:10:21Z
 cause:      pending triage
 fix:        pending triage
 prevention: pending triage
+
+## UPDATE 2026-11-01
+
+Heimdall SIGNED-PASS audit 2.0: fixable .gitignore residue check in doctor, applied to ARQUX+CODEC-CORTEX (168ea65, 92b2ad4)

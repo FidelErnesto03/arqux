@@ -1,5 +1,5 @@
 # ISSUE: El scope de la sesion no sigue al BLP activo tras blueprint.ready/claim
-# Severity: medium | Status: open | Handler: Alfred (hallazgo en CODEC-CORTEX, sesiones SES001/SES002) | Date: 2026-11-01
+# Severity: medium | Status: verified | Handler: Alfred (hallazgo en CODEC-CORTEX, sesiones SES001/SES002) | Date: 2026-11-01
 
 ## PROBLEM
 ## Sintoma
@@ -44,3 +44,7 @@ reported_at: 2026-11-01T20:10:07Z
 cause:      pending triage
 fix:        pending triage
 prevention: pending triage
+
+## UPDATE 2026-11-01
+
+Heimdall SIGNED-PASS audit 2.0: ready/claim sync session context blp, stale_scope reported (09ef86e)

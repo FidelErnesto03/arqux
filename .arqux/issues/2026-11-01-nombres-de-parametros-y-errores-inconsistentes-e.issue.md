@@ -1,5 +1,5 @@
 # ISSUE: Nombres de parametros y errores inconsistentes entre handlers
-# Severity: low | Status: open | Handler: Alfred (hallazgo en CODEC-CORTEX, sesiones SES001/SES002) | Date: 2026-11-01
+# Severity: low | Status: verified | Handler: Alfred (hallazgo en CODEC-CORTEX, sesiones SES001/SES002) | Date: 2026-11-01
 
 ## PROBLEM
 ## Sintoma
@@ -43,3 +43,7 @@ reported_at: 2026-11-01T20:10:14Z
 cause:      pending triage
 fix:        pending triage
 prevention: pending triage
+
+## UPDATE 2026-11-01
+
+Heimdall SIGNED-PASS audit 2.0: alias normalization + loud INVALID_ARGS in dispatch (d6e1189)

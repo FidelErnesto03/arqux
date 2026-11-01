@@ -1,5 +1,5 @@
 # ISSUE: blueprint.ac acumula notas FAIL bajo criterios ya verificados
-# Severity: medium | Status: open | Handler: Alfred (hallazgo en CODEC-CORTEX, sesiones SES001/SES002) | Date: 2026-11-01
+# Severity: medium | Status: verified | Handler: Alfred (hallazgo en CODEC-CORTEX, sesiones SES001/SES002) | Date: 2026-11-01
 
 ## PROBLEM
 ## Sintoma
@@ -43,3 +43,7 @@ reported_at: 2026-11-01T20:09:54Z
 cause:      pending triage
 fix:        pending triage
 prevention: pending triage
+
+## UPDATE 2026-11-01
+
+Heimdall SIGNED-PASS audit 2.0: prior FAIL notes stamped superseded on verification (2623ea6)

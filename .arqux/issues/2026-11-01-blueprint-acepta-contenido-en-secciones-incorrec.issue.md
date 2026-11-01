@@ -1,5 +1,5 @@
 # ISSUE: Blueprint acepta contenido en secciones incorrectas y blueprint.task no encuentra las tareas
-# Severity: high | Status: open | Handler: Alfred (hallazgo en CODEC-CORTEX, sesiones SES001/SES002) | Date: 2026-11-01
+# Severity: high | Status: verified | Handler: Alfred (hallazgo en CODEC-CORTEX, sesiones SES001/SES002) | Date: 2026-11-01
 
 ## PROBLEM
 ## Sintoma
@@ -47,3 +47,7 @@ reported_at: 2026-11-01T20:09:47Z
 cause:      pending triage
 fix:        pending triage
 prevention: pending triage
+
+## UPDATE 2026-11-01
+
+Heimdall SIGNED-PASS audit 2.0: section-shape guards + task origin reporting (3c03357)
