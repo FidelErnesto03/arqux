@@ -37,6 +37,22 @@ def _markers_balanced(body: str) -> bool:
 _BLP_MARKER_RE = re.compile(r"<!-+\s*/?\s*BLP\s*:", re.IGNORECASE)
 # Opener markers only, for the marker-set invariant.
 _BLP_OPEN_RE = re.compile(r"<!--\s*BLP:[\w.]+\s*-->")
+
+# E-2073: semantic shape guards — task checklists live in §14 (Tareas) and
+# acceptance-criteria rows in §12 (Criterios de Aceptación).
+_TASK_LINE_RE = re.compile(r"^\s*[-*+]\s+\[[ ~x]\]\s+\*{0,2}T-\d+\.\d+", re.MULTILINE)
+_AC_ROW_RE = re.compile(r"(^\s*\|[^\n|]*\bAC-\d+|^\s*[-*+]\s+AC-\d+)", re.MULTILINE)
+
+
+def _section_of_offset(body: str, pos: int) -> str:
+    """Number of the ``<!-- BLP:N -->`` section enclosing *pos* (E-2073)."""
+    sec = "?"
+    for m in re.finditer(r"<!--\s*BLP:([\w.]+)\s*-->", body):
+        if m.start() <= pos:
+            sec = m.group(1)
+        else:
+            break
+    return sec
 # Any markdown header carrying a § section marker (`##§`, `#  §`, ZWSP, ...).
 _MD_SECTION_RE = re.compile(r"#{1,6}[^\S\n]*[\u200b-\u200f\u2060\ufeff]*[^\S\n]*§")
 
@@ -111,6 +127,20 @@ def update_blueprint(
                     "whose N matches the target section",
                     code="INVALID_ARGS",
                 )
+
+        # E-2073: reject content whose shape belongs to a different section.
+        # Writing tasks into §7, risks into §9 or ACs into §10 left a
+        # structurally invalid blueprint that the handlers could not serve.
+        if sec_num != "14" and _TASK_LINE_RE.search(section_content):
+            return CortexOUT.error(
+                f"task checklist lines (T-N.N) belong to §14, not §{sec_num}",
+                code="INVALID_ARGS",
+            )
+        if sec_num != "12" and _AC_ROW_RE.search(section_content):
+            return CortexOUT.error(
+                f"acceptance-criteria rows (AC-N) belong to §12, not §{sec_num}",
+                code="INVALID_ARGS",
+            )
 
         # Validate marker against frontmatter map if available
         blp_markers_raw = fm.get("blp_markers@", "")
@@ -221,6 +251,17 @@ def task_blueprint(
     old_marker_pattern = r"^(- \[[ ~x]\] \*\*" + re.escape(task_id) + r":\*\* .+)$"
     match = re.search(old_marker_pattern, body, re.MULTILINE)
     if not match:
+        # E-2073: the task may exist but live in the wrong section or in a
+        # non-canonical shape — search globally and say where it is.
+        loose = re.search(rf"\b{re.escape(task_id)}\b", body)
+        if loose:
+            sec = _section_of_offset(body, loose.start())
+            return CortexOUT.error(
+                f"task {task_id} found in §{sec}, not as a §14 checklist item "
+                "(- [ ] **T-N.N:**) — fix the blueprint structure first",
+                code="NOT_FOUND",
+                found_in_section=sec,
+            )
         return CortexOUT.error(f"task {task_id} not found in §14", code="NOT_FOUND")
 
     old_line = match.group(1)
