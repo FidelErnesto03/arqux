@@ -82,3 +82,26 @@ Extra verificado: fix del path REF en `test_cortex_invalid_column_conformance.py
 4. La elección de adopción codec-cortex 1.0 (opción A/B/C/D) requiere decisión del Arquitecto.
 
 **Sin commits, sin push, sin publicación** — working tree contiene los cambios sin versionar, según lo autorizado.
+
+---
+
+# ADDENDUM — Auditoría retroactiva de 9 issues en `fixed` (misma sesión)
+
+**Alcance:** issues `fixed` pendientes de verificación al inicio de SES018.
+**Método:** verificación independiente — probes en vivo + diff/code review + re-ejecución de tests.
+
+| # | Issue | Veredicto | Evidencia del auditor |
+|---|---|---|---|
+| 1 | context.cortex puntero CTX | CUMPLE | Archivo vivo canónico: `$0` declara `CTX/context/attrs`; entrada `CTX:heimdall{project,scope,agent,ses,project_root}` attrs; contenido actual refleja SES018/Heimdall (escrito por la propia sesión auditada) |
+| 2 | doctor falso positivo cycles | CUMPLE | `arqux doctor` en workspace root: `context=workspace`, 8 checks, SIN exigencia de `cycles` (estructura espera 4 dirs workspace); en proyecto: `context=project`, 9 checks. Checks warnings residuales = hallazgos reales documentados (residue .lock) |
+| 3 | barrido 497 errores brains | CUMPLE PARCIAL | `cortex.verify` live sobre CODEC-CORTEX brain: `valid=true`, 183 entries, 13 sections — E008 dedupe confirmado. E032/E034 pendientes de criterio humano por proyecto = estado honesto declarado, no defecto del fix (requiere BLP por proyecto, decisión del Arquitecto) |
+| 4 | entry.add renombre silencioso | CUMPLE | `_next_number` deriva sufijo del contenido del archivo (max `{base}_NNNN`+1 vía crud_list), no de contador de proceso; campos `renamed`/`requested` explícitos en OUT-WORK; test de regresión presente |
+| 5 | timelog unbound tras reinicio | CUMPLE (alcance honesto) | `session.close` pasa `session_ref` a `observe()`; `unbound_warning()` emite el comando exacto de re-vinculación; items fuera de alcance (tw_log ledger, adaptador Teamwork) documentados como otro repo |
+| 6 | puntero global → checkpoint | CUMPLE | commit `1b679a7` existe; `_project.py` define `CONTEXTS_DIR="contexts"` (punteros por ejecución); `tests/test_t046_context_pointer_precedence.py` pasa |
+| 7 | SESSION_IN_USE re-adherir | CUMPLE | `open_session(intent='resumed')` re-liga vía `_bind` (política 2026-10-28); `test_t039_session_reentry.py` pasa; la re-adhesión SES017→SES018 es mecanismo vivo |
+| 8 | lecciones conductuales identidad | CUMPLE | Los 7 puntos BLP-020 verificados en código comiteado: `entry_kind` + exención en `require_writable_destination`, routing por kind en `learning.py`, `drop_identity_lesson_e023` con regex de título BEHAVIORAL LESSONS, fix reader GSIG/GCON round-trip, `GSIG:LNG` declarada en identidad, skills actualizadas, evento `pending_loop` en context_set. `test_blp020_identity_lessons.py` pasa |
+| 9 | skills learning/protocol desactualizadas | CUMPLE | `learning.skill.md` refleja routing real (conductual→identidad BEHAVIORAL LESSONS curada; resto→brain $7; `AXM:identity_is_curated`); paridad workspace==packaged confirmada byte-idéntica por el hook de homologación |
+
+**Veredicto global: 9/9 CUMPLE** (8 completos + 1 parcial honestamente declarado con pendiente explícito del Arquitecto).
+
+**Observación nueva (no bloqueante):** las entradas `LOOP:*` del registro de loops autónomos (BLP-023, brain §18) producen warnings `E017_UNPARSED_LINE` bajo `cortex.verify` del codec legacy — `valid=true` se mantiene pero hay ruido en el validador. Candidato: declarar el sigilo LOOP en el glosario del brain o evaluar en la decisión codec-cortex 1.0.
