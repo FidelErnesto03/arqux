@@ -566,3 +566,127 @@ class TestWriterIntegration:
         text = write_cortex_from_json(doc)
         assert "Non-negotiable principle" in text
         assert "Second line" in text
+
+
+# ---------------------------------------------------------------------------
+# T-004: CRUD over the $0 glossary pseudo-section
+# ---------------------------------------------------------------------------
+
+
+def _doc_with_glossary() -> dict:
+    doc = _sample_doc()
+    doc["glossary"]["symbols"] = [
+        {
+            "sigil": "GSIG",
+            "name": "IDN",
+            "attrs": {"name": "identity", "type": "attrs", "risk": "B", "layer": "Semantic"},
+        },
+        {
+            "sigil": "GSIG",
+            "name": "LNG",
+            "attrs": {"name": "lesson", "type": "attrs", "risk": "M", "layer": "Working"},
+        },
+        {
+            "sigil": "GCON",
+            "name": "BASE",
+            "body": "glossary convention body",
+        },
+    ]
+    return doc
+
+
+class TestGlossaryCrud:
+    def test_select_all_glossary_symbols(self) -> None:
+        doc = _doc_with_glossary()
+        results = select_entries(doc, "$0")
+        assert len(results) == 3
+        assert all(e["section"] == "$0" for e in results)
+
+    def test_select_glossary_sigil_wildcard(self) -> None:
+        doc = _doc_with_glossary()
+        results = select_entries(doc, "$0/GSIG:*")
+        assert {e["name"] for e in results} == {"IDN", "LNG"}
+        assert all(e["section"] == "$0" for e in results)
+
+    def test_select_glossary_exact_name(self) -> None:
+        doc = _doc_with_glossary()
+        results = select_entries(doc, "$0/GSIG:IDN")
+        assert len(results) == 1
+        assert results[0]["attrs"]["layer"] == "Semantic"
+
+    def test_add_glossary_entry_lands_in_symbols(self) -> None:
+        doc = _doc_with_glossary()
+        add_entry(doc, "$0", "GSIG", "AXM", {"name": "axiom", "type": "attrs", "risk": "H"})
+        symbols = doc["glossary"]["symbols"]
+        assert any(s["sigil"] == "GSIG" and s["name"] == "AXM" for s in symbols)
+        # No fake numbered section was created for $0.
+        assert all(s.get("id") != "$0" for s in doc["sections"])
+
+    def test_add_glossary_materialises_missing_glossary(self) -> None:
+        doc = _sample_doc()
+        del doc["glossary"]
+        add_entry(doc, "$0", "GSIG", "NEW", {"name": "new", "type": "attrs"})
+        assert doc["glossary"]["symbols"][0]["name"] == "NEW"
+        assert doc["glossary"]["header"] == "$0"
+
+    def test_update_glossary_entry_merges_attrs(self) -> None:
+        doc = _doc_with_glossary()
+        update_entry(doc, "$0/GSIG:IDN", set_={"risk": "H"})
+        entry = select_entries(doc, "$0/GSIG:IDN")[0]
+        assert entry["attrs"]["risk"] == "H"
+        assert entry["attrs"]["layer"] == "Semantic"  # merge preserved
+
+    def test_update_glossary_cuerpo_entry(self) -> None:
+        doc = _doc_with_glossary()
+        update_entry(doc, "$0/GCON:BASE", replace_body="updated convention")
+        entry = select_entries(doc, "$0/GCON:BASE")[0]
+        assert entry["body"] == "updated convention"
+
+    def test_delete_glossary_entry(self) -> None:
+        doc = _doc_with_glossary()
+        delete_entry(doc, "$0/GSIG:LNG")
+        names = {e["name"] for e in select_entries(doc, "$0/GSIG:*")}
+        assert names == {"IDN"}
+        assert len(doc["glossary"]["symbols"]) == 2
+
+    def test_move_entry_into_glossary(self) -> None:
+        doc = _doc_with_glossary()
+        move_entry(doc, "$7/LNG:lesson1", "$0")
+        assert any(
+            s["sigil"] == "LNG" and s["name"] == "lesson1"
+            for s in doc["glossary"]["symbols"]
+        )
+        assert select_entries(doc, "$7/LNG:lesson1") == []
+
+    def test_list_entries_section_zero(self) -> None:
+        doc = _doc_with_glossary()
+        results = list_entries(doc, section="$0")
+        assert len(results) == 3
+        assert all(e["section"] == "$0" for e in results)
+
+    def test_list_entries_section_zero_sigil_filter(self) -> None:
+        doc = _doc_with_glossary()
+        results = list_entries(doc, section="$0", sigil="GSIG")
+        assert len(results) == 2
+
+    def test_glossary_round_trip_through_writer(self) -> None:
+        doc = _doc_with_glossary()
+        add_entry(doc, "$0", "GSIG", "TST", {"name": "test", "type": "attrs", "risk": "B"})
+        text = write_cortex_from_json(doc)
+        # Symbols serialize inside the $0 block, before numbered sections.
+        assert "GSIG:TST{" in text
+        assert "GSIG:IDN{" in text
+        # Exactly one $0 header — no fake "$0:" section header was minted
+        # (a real section header would sit at the start of a line).
+        assert "\n$0:" not in text
+        # Re-parse round-trips into glossary.symbols again.
+        from arqux.cortex.reader import cortex_to_dict
+
+        reparsed = cortex_to_dict(text)
+        names = {s["name"] for s in reparsed["glossary"]["symbols"] if s["sigil"] == "GSIG"}
+        assert {"IDN", "LNG", "TST"} <= names
+
+    def test_deprecated_underscore_still_rejected_in_glossary(self) -> None:
+        doc = _doc_with_glossary()
+        with pytest.raises(ValueError):
+            select_entries(doc, "$0/GSIG:_")

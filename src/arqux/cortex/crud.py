@@ -109,13 +109,46 @@ def parse_selector(selector: str, *, allow_deprecated: bool = False) -> dict:
 # Internal helpers
 # ---------------------------------------------------------------------------
 
+#: Section id that addresses the glossary pseudo-section (the ``$0`` block).
+#: The glossary is not a numbered section: its entries live under
+#: ``doc["glossary"]["symbols"]`` while numbered sections use ``"entries"``.
+_GLOSSARY_ID = "$0"
+
 
 def _find_section(doc: dict, section_id: str) -> dict | None:
-    """Return the section dict with *section_id*, or ``None``."""
+    """Return the section dict with *section_id*, or ``None``.
+
+    ``"$0"`` resolves to the glossary pseudo-section (``doc["glossary"]``),
+    whose entry list is ``symbols`` rather than ``entries``.
+    """
+    if section_id == _GLOSSARY_ID:
+        glossary = doc.get("glossary")
+        if not isinstance(glossary, dict):
+            return None
+        glossary.setdefault("symbols", [])
+        return glossary
     for section in doc.get("sections", []):
         if section.get("id") == section_id:
             return section
     return None
+
+
+def _section_entries(section: dict) -> list:
+    """Live entry list of *section*: ``symbols`` for glossary, ``entries`` else."""
+    if "symbols" in section:
+        return section["symbols"]
+    return section.setdefault("entries", [])
+
+
+def _set_section_entries(section: dict, entries: list) -> None:
+    """Write back the entry list, preserving the glossary ``symbols`` key."""
+    key = "symbols" if "symbols" in section else "entries"
+    section[key] = entries
+
+
+def _section_id(section: dict) -> str:
+    """Section identifier: ``id`` for sections, ``header`` for the glossary."""
+    return str(section.get("id") or section.get("header") or "")
 
 
 def _entry_matches(entry: dict, sigil: str | None, name: str | None) -> bool:
@@ -174,13 +207,13 @@ def select_entries(doc: dict, selector: str) -> list[dict]:
 
     # Section-only selector → all entries.
     if sigil is None and name is None:
-        return [_project_entry(e, section["id"]) for e in section.get("entries", [])]
+        return [_project_entry(e, _section_id(section)) for e in _section_entries(section)]
 
     results: list[dict] = []
-    for entry in section.get("entries", []):
+    for entry in _section_entries(section):
         if not _entry_matches(entry, sigil, name):
             continue
-        results.append(_project_entry(entry, section["id"]))
+        results.append(_project_entry(entry, _section_id(section)))
     return results
 
 
@@ -221,16 +254,24 @@ def add_entry(
 
     section = _find_section(doc, section_id)
     if section is None:
-        if not create_section:
+        if section_id == _GLOSSARY_ID:
+            # The glossary is structural, not a numbered section: materialise
+            # it instead of letting create_section mint a duplicate $0 block.
+            if doc.get("glossary") is not None:
+                raise ValueError("doc['glossary'] exists but is not a dict")
+            doc["glossary"] = {"header": _GLOSSARY_ID, "comments": [], "symbols": []}
+            section = doc["glossary"]
+        elif not create_section:
             raise ValueError(f"Section {section_id!r} not found in doc")
-        section = {"id": section_id, "title": None, "comments": [], "entries": []}
-        doc.setdefault("sections", []).append(section)
+        else:
+            section = {"id": section_id, "title": None, "comments": [], "entries": []}
+            doc.setdefault("sections", []).append(section)
 
     if isinstance(value, dict):
         entry: dict[str, Any] = {"sigil": sigil, "name": name, "attrs": value}
     else:
         entry = {"sigil": sigil, "name": name, "body": value}
-    section.setdefault("entries", []).append(entry)
+    _section_entries(section).append(entry)
     return doc
 
 
@@ -268,7 +309,7 @@ def update_entry(
 
     sigil, name = parts["sigil"], parts["name"]
     matched = False
-    for entry in section.get("entries", []):
+    for entry in _section_entries(section):
         if not _entry_matches(entry, sigil, name):
             continue
         matched = True
@@ -314,13 +355,13 @@ def delete_entry(doc: dict, selector: str, *,
         raise ValueError(f"Section {parts['section']!r} not found in doc")
 
     sigil, name = parts["sigil"], parts["name"]
-    entries = section.get("entries", [])
+    entries = _section_entries(section)
 
     # Delete every match (``*`` or specific name).
     kept = [e for e in entries if not _entry_matches(e, sigil, name)]
     if len(kept) == len(entries):
         raise ValueError(f"No entries match selector {selector!r}")
-    section["entries"] = kept
+    _set_section_entries(section, kept)
     return doc
 
 
@@ -347,7 +388,7 @@ def move_entry(doc: dict, selector: str, to_section: str, *,
         raise ValueError(f"Section {parts['section']!r} not found in doc")
 
     sigil, name = parts["sigil"], parts["name"]
-    entries = src.get("entries", [])
+    entries = _section_entries(src)
     moved: list[dict] = []
     kept: list[dict] = []
 
@@ -358,9 +399,9 @@ def move_entry(doc: dict, selector: str, to_section: str, *,
             kept.append(entry)
     if not moved:
         raise ValueError(f"No entries match selector {selector!r}")
-    src["entries"] = kept
+    _set_section_entries(src, kept)
 
-    dest.setdefault("entries", []).extend(moved)
+    _section_entries(dest).extend(moved)
     return doc
 
 
@@ -380,6 +421,14 @@ def list_entries(
     Returns a list of entry dicts annotated with ``section`` info.
     """
     results: list[dict] = []
+    if section == _GLOSSARY_ID:
+        glossary = doc.get("glossary")
+        if isinstance(glossary, dict):
+            for entry in glossary.get("symbols", []):
+                if sigil is not None and entry.get("sigil") != sigil:
+                    continue
+                results.append(_project_entry(entry, _GLOSSARY_ID))
+        return results
     for sec in doc.get("sections", []):
         if section is not None and sec.get("id") != section:
             continue

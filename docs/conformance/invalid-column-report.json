@@ -1242,8 +1242,8 @@
       "label": "candidate 1.0.0-rc.1",
       "summary": {
         "total": 57,
-        "required_codes_fully_matched": 19,
-        "invalid_fixtures_accepted": 30
+        "required_codes_fully_matched": 22,
+        "invalid_fixtures_accepted": 25
       },
       "per_case": [
         {
@@ -1513,8 +1513,10 @@
           "required": [
             "G027_UNKNOWN_FIELD_TYPE"
           ],
-          "outcome": "ACCEPTED",
-          "codes": [],
+          "outcome": "REJECTED",
+          "codes": [
+            "I023_UNKNOWN_FIELD_TYPE"
+          ],
           "matched": []
         },
         {
@@ -1589,9 +1591,13 @@
           "required": [
             "I002_DUPLICATE_IDEA_ADDRESS"
           ],
-          "outcome": "ACCEPTED",
-          "codes": [],
-          "matched": []
+          "outcome": "REJECTED",
+          "codes": [
+            "I002_DUPLICATE_IDEA_ADDRESS"
+          ],
+          "matched": [
+            "I002_DUPLICATE_IDEA_ADDRESS"
+          ]
         },
         {
           "id": "I032_unknown_field",
@@ -1678,26 +1684,36 @@
           "required": [
             "I012_POSITIONAL_ARITY"
           ],
-          "outcome": "ACCEPTED",
-          "codes": [],
-          "matched": []
+          "outcome": "REJECTED",
+          "codes": [
+            "I012_POSITIONAL_ARITY"
+          ],
+          "matched": [
+            "I012_POSITIONAL_ARITY"
+          ]
         },
         {
           "id": "I041_pos_long",
           "required": [
             "I012_POSITIONAL_ARITY"
           ],
-          "outcome": "ACCEPTED",
-          "codes": [],
-          "matched": []
+          "outcome": "REJECTED",
+          "codes": [
+            "I012_POSITIONAL_ARITY"
+          ],
+          "matched": [
+            "I012_POSITIONAL_ARITY"
+          ]
         },
         {
           "id": "I042_relation_arity",
           "required": [
             "I013_RELATION_ARITY"
           ],
-          "outcome": "ACCEPTED",
-          "codes": [],
+          "outcome": "REJECTED",
+          "codes": [
+            "I012_POSITIONAL_ARITY"
+          ],
           "matched": []
         },
         {

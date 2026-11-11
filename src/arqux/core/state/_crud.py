@@ -6,6 +6,7 @@ own reader, CRUD, and atomic writer modules.
 
 from __future__ import annotations
 
+import re
 from pathlib import Path
 
 from ...cortex.atomic import atomic_write_json
@@ -173,7 +174,7 @@ def filter_dialect_false_positives(doc: object, diagnostics: list[dict]) -> list
     if not zero_sections:
         # No $0 means no glossary declarations, but session records may still
         # live in $5/$6 and must be exempted.
-        return _drop_for(doc, diagnostics)
+        return drop_identity_lesson_e023(doc, _drop_for(doc, diagnostics))
 
     declarations = {
         (getattr(e, "sigil", ""), getattr(e, "name", ""))
@@ -182,9 +183,70 @@ def filter_dialect_false_positives(doc: object, diagnostics: list[dict]) -> list
         if _is_glossary_declaration(e)
     }
     if not declarations:
-        return _drop_for(doc, diagnostics)
+        return drop_identity_lesson_e023(doc, _drop_for(doc, diagnostics))
 
-    return _drop_for(doc, diagnostics, declarations)
+    return drop_identity_lesson_e023(
+        doc, _drop_for(doc, diagnostics, declarations)
+    )
+
+
+#: Section titles that identify an identity contract's curated behavioral-
+#: lessons section (same resolution rule as handlers/cortex/learning.py).
+_IDENTITY_LESSONS_TITLE = re.compile(r"^(BEHAVIORAL\s+)?LESSONS$", re.IGNORECASE)
+
+
+def _declares_identity_usage_doc(doc: object) -> bool:
+    """True when the parsed artifact declares ``usage:"identity"``."""
+    for s in getattr(doc, "sections", []):
+        for e in getattr(s, "entries", []):
+            if getattr(e, "sigil", "") != "ARQX":
+                continue
+            value = getattr(e, "value", None)
+            if isinstance(value, dict) and str(value.get("usage", "")).casefold() == "identity":
+                return True
+    return False
+
+
+def drop_identity_lesson_e023(doc: object, diagnostics: list[dict]) -> list[dict]:
+    """Drop E023 raised against curated behavioral lessons in an identity.
+
+    BLP-020 (Architect policy 2026-11-02): an ``LNG`` entry typed
+    ``behavioral`` inside the section titled ``(BEHAVIORAL )?LESSONS`` of a
+    ``usage:"identity"`` artifact is contract content, not live state — the
+    codec's level-kind validator cannot see the section's declared role, so
+    the exemption travels with ArqUX. E023 is scoped exactly: the diag must
+    name sigil ``LNG`` and a lessons section; an LNG anywhere else in the
+    contract, and any other live-state sigil, is still reported.
+    """
+    if not diagnostics or not _declares_identity_usage_doc(doc):
+        return diagnostics
+    lesson_sections = {
+        getattr(s, "id", "")
+        for s in getattr(doc, "sections", [])
+        if _IDENTITY_LESSONS_TITLE.match(str(getattr(s, "title", "") or "").strip())
+    }
+    if not lesson_sections:
+        return diagnostics
+    behavioral_names = {
+        getattr(e, "name", "")
+        for s in getattr(doc, "sections", [])
+        if getattr(s, "id", "") in lesson_sections
+        for e in getattr(s, "entries", [])
+        if getattr(e, "sigil", "") == "LNG"
+        and isinstance(getattr(e, "value", None), dict)
+        and str(e.value.get("type", "")).casefold() == "behavioral"
+    }
+    if not behavioral_names:
+        return diagnostics
+    return [
+        d for d in diagnostics
+        if not (
+            d.get("code") == "E023_LEVEL1_LIVE_STATE"
+            and d.get("sigil") == "LNG"
+            and d.get("section") in lesson_sections
+            and d.get("entry") in behavioral_names
+        )
+    ]
 
 
 def requires_capability(capability: str) -> None:
@@ -671,6 +733,16 @@ def _resolve_legacy_selector(doc: dict, selector: str, *,
             f"Use the exact entry name or 'SIGIL:*'."
         )
 
+    # The glossary pseudo-section ($0) holds sigil declarations such as
+    # GSIG:* — they are not numbered sections but are valid targets.
+    glossary = doc.get("glossary")
+    if isinstance(glossary, dict):
+        for entry in glossary.get("symbols", []):
+            if entry.get("sigil") != sigil:
+                continue
+            if name == "*" or entry.get("name") == name:
+                return f"$0/{sigil}:{name}"
+
     for sec in doc.get("sections", []):
         for entry in sec.get("entries", []):
             if entry.get("sigil") != sigil:
@@ -708,6 +780,19 @@ def _select_all_sections(doc: dict, selector: str) -> list[dict]:
         )
 
     results: list[dict] = []
+    glossary = doc.get("glossary")
+    if isinstance(glossary, dict):
+        for entry in glossary.get("symbols", []):
+            if entry.get("sigil") != sigil:
+                continue
+            if name == "*" or name.endswith("*") and str(entry.get("name", "")).startswith(name[:-1]) or entry.get("name") == name:
+                results.append({
+                    "sigil": entry.get("sigil"),
+                    "name": entry.get("name"),
+                    "section": "$0",
+                    "attrs": entry.get("attrs"),
+                    "body": entry.get("body"),
+                })
     for sec in doc.get("sections", []):
         sec_id = sec.get("id", "")
         for entry in sec.get("entries", []):

@@ -162,6 +162,48 @@ def _is_coro(fn: Any) -> bool:
     return inspect.iscoroutinefunction(fn)
 
 
+def _schema_invalid_args(handler: str, exc: Any) -> str:
+    """Compact INVALID_ARGS for a jsonschema.ValidationError.
+
+    The SDK's own rejection (``validate_input=True``) returns an ``isError``
+    result that leads MCP clients to dump the whole tool catalog — thousands
+    of tokens per schema mistake, critical at tier LITE. Validating here and
+    answering with a plain-text ``OUT-ERROR`` keeps the contract: code +
+    field + expected value (valid enum or type) + example.
+    """
+    field = ".".join(str(p) for p in exc.absolute_path) or "(root)"
+    if exc.validator == "enum":
+        valid = list(exc.validator_value or [])
+        example = f"{field}={valid[0]}" if valid else ""
+        return (
+            f"ERROR code=INVALID_ARGS handler={handler} field={field} "
+            f"value={exc.instance!r} valid={valid} example={example}"
+        )
+    if exc.validator == "type":
+        return (
+            f"ERROR code=INVALID_ARGS handler={handler} field={field} "
+            f"value={exc.instance!r} expected={exc.validator_value}"
+        )
+    return (
+        f"ERROR code=INVALID_ARGS handler={handler} field={field} "
+        f"reason={exc.message}"
+    )
+
+
+def _validate_arguments(handler: str, schema: dict[str, Any], arguments: dict[str, Any]) -> str | None:
+    """Validate *arguments* against the handler's inputSchema.
+
+    Returns a compact INVALID_ARGS string on failure, ``None`` when valid.
+    """
+    import jsonschema
+
+    try:
+        jsonschema.validate(instance=arguments, schema=schema)
+    except jsonschema.ValidationError as exc:
+        return _schema_invalid_args(handler, exc)
+    return None
+
+
 def build_server() -> Any:
     """Build the MCP server with all handlers registered."""
     try:
@@ -206,7 +248,7 @@ def build_server() -> Any:
     async def list_tools() -> list[Tool]:
         return tools
 
-    @server.call_tool()
+    @server.call_tool(validate_input=False)
     async def call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent]:
         resolved = name
         if resolved not in handlers:
@@ -226,6 +268,17 @@ def build_server() -> Any:
                     ).to_text(),
                 )
             ]
+        # Schema validation lives here (not in the SDK) so a bad call gets a
+        # compact INVALID_ARGS text instead of an isError that makes clients
+        # re-dump the full tool catalog (issue 2026-11-02).
+        dotted = safe_to_dotted.get(resolved, resolved)
+        spec = REGISTRY.get(dotted)
+        if spec is not None and spec.input_schema:
+            invalid = _validate_arguments(
+                dotted, spec.input_schema, arguments or {}
+            )
+            if invalid is not None:
+                return [TextContent(type="text", text=invalid)]
         text = await handlers[resolved](**arguments)
         return [TextContent(type="text", text=text)]
 

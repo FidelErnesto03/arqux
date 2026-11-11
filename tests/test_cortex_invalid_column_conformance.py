@@ -59,6 +59,10 @@ CODEC_ROOT = _resolve("CODEC_ROOT", "/home/vatrox/workspace/CODEC-CORTEX")
 CORPUS = CODEC_ROOT / "conformance" / "corpus"
 MANIFEST = CORPUS / "manifest.json"
 TOOLS_PATH = CODEC_ROOT / "tools"
+# codec-cortex 1.0 archived the legacy tools tree; the reference validator
+# now lives under archive/<date>/tools-legacy. Resolve either location.
+if not (TOOLS_PATH / "cortex01_validator.py").exists():
+    TOOLS_PATH = CODEC_ROOT / "archive" / "2026-11" / "tools-legacy"
 
 COLUMN_A_PATH = _resolve(
     "CODEC_062_PATH",
