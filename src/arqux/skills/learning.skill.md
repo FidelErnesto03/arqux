@@ -20,21 +20,23 @@ IDN:learning_framework{
 $1: ARCHITECTURE — 3-level learning
 
 STP:levels{
-  1_conductual:"identity.record → crea LNG en identidad del agente. Automatico al cerrar BLP o tarea.",
-  2_contextual:"cortex.entry.add → agrega KNW en brain.cortex. Manual, para conocimiento estable del proyecto.",
+  1_conductual:"identity.record(kind=behavioral) → archiva LNG en la sección BEHAVIORAL LESSONS del contrato de identidad (usage:identity, nivel 1) — contenido curado del contrato per BLP-020 (política del Arquitecto 2026-11-02). Registro explícito y curado, NUNCA automático ni indiscriminado.",
+  2_contextual:"identity.record(kind!=behavioral) archiva LNG en $7 del brain.cortex del proyecto; cortex.entry.add agrega KNW en $10. Conocimiento estable del proyecto — permanece project-local salvo elevación al meta-brain.",
   3_procedimental:"skill.edit → actualiza SKILL en .arqux/skills/. Para procedimientos repetibles que guian al agente.",
 }
 HDL:levels{identity.record, cortex.entry.add, skill.edit}
 
 AXM:elevation_compounds{ Los 3 niveles se alimentan entre sí: (1) conductual repetido se eleva a contextual, (2) contextual validado por el Arquitecto se eleva a procedimental. }
 
+AXM:identity_is_curated{ El espacio de identidad solo recibe lecciones CONDUCTUALES duraderas sobre la interacción agente-Arquitecto. Lo que se establece en un proyecto NO va a la identidad — permanece en el brain del proyecto. La guarda de destino y el filtro E023 están exentos ÚNICAMENTE para LNG kind=behavioral en la sección titulada BEHAVIORAL LESSONS de artefactos usage:identity (BLP-020). }
+
 
 $2: CLASSIFICATION — Inmediato
 
 STP:classify_inmediato{
   1:"Al encontrar un patron o error: clasificar INMEDIATAMENTE en el nivel correcto:",
-  "   CONDUCTUAL → identity.record (comportamiento del agente)",
-  "   CONTEXTUAL → cortex.entry.add (conocimiento del proyecto)",
+  "   CONDUCTUAL → identity.record(kind=behavioral) → identidad, sección BEHAVIORAL LESSONS (BLP-020)",
+  "   CONTEXTUAL → cortex.entry.add → brain.cortex del proyecto (LNG $7 / KNW $10); identity.record(kind!=behavioral) también archiva en brain $7",
   "   PROCEDIMENTAL → skill.edit (workflow o procedimiento)",
   2:"NO esperar a tener los 3 niveles. Guardar donde corresponda ahora.",
   3:"La elevación (SES→LNG→KNW→SKILL) es POSTERIOR — no detener el trabajo actual para elevacion.",

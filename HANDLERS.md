@@ -1,6 +1,6 @@
 # ArqUX Handlers
 
-Total: **102** handlers
+Total: **111** handlers
 
 ## blueprint
 

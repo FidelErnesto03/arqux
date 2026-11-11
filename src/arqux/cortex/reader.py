@@ -172,10 +172,9 @@ def _parse_fallback(text: str) -> dict:
             i += 1
             continue
 
-        # GSIG/GCON declarations — skip in fallback
-        if _GSIG_RE.match(stripped):
-            i += 1
-            continue
+        # GSIG/GCON declarations — parse as ordinary entries so they round-trip
+        # (BLP-020: skipping them silently destroyed the glossary on every
+        # rewrite, the same corruption vector as T-032).
 
         # Single-line attrs entry:  SIGIL:name{...}
         # Quote-parity guard: a match whose quotes are unbalanced is really

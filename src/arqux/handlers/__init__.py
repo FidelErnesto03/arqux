@@ -32,6 +32,7 @@ from . import (
     evidence,
     handler,
     issue,
+    loops,
     project,
     protocol,
     session,
@@ -64,7 +65,7 @@ def _register(spec: HandlerSpec) -> None:
 
 # --- Register all handlers from each module ---------------------------------
 
-for mod in (workspace, project, cycle, task, evidence, issue, protocol, session, cortex, skill, blueprint, sync, timelog, context_pkg, identity_pkg, handler):
+for mod in (workspace, project, cycle, task, evidence, issue, protocol, session, cortex, skill, blueprint, sync, timelog, context_pkg, identity_pkg, loops, handler):
     for info in mod.handler_schemas:
         _register(HandlerSpec(**info))
 

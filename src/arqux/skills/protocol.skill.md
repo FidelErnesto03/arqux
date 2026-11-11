@@ -90,10 +90,10 @@ FCS:bug_vs_blp{ when:"Hay que decidir si algo requiere BLP o se arregla directo"
 ]}
 
 FCS:lesson_level{ when:"Hay que clasificar una lección aprendida", steps:[
-  "1. ¿Aplica solo a mi conducta? → CONDUCTUAL → identity.record(kind='behavioral')",
-  "2. ¿Aplica solo a este proyecto? → CONTEXTUAL → cortex.entry.add(section='$5', sigil='LNG')",
+  "1. ¿Aplica solo a mi conducta? → CONDUCTUAL → identity.record(kind='behavioral') → sección BEHAVIORAL LESSONS del contrato de identidad (BLP-020)",
+  "2. ¿Aplica solo a este proyecto? → CONTEXTUAL → cortex.entry.add(section='$7', sigil='LNG') en brain.cortex; o identity.record(kind!='behavioral') que archiva en brain $7",
   "3. ¿Aplica a cualquier proyecto/agente? → PROCEDIMENTAL → skill.edit(name, content)",
-], note:"Toda lección debe caber en algún nivel. Si no, revisar la clasificación." }
+], note:"Toda lección debe caber en algún nivel. Si no, revisar la clasificación. El espacio de identidad SOLO recibe behavioral — el conocimiento de proyecto nunca va a la identidad (política del Arquitecto 2026-11-02)." }
 
 
 $5: BLOCKERS & PERMISSIONS
@@ -158,3 +158,28 @@ LIM:timelog_no_new_skill{ No se crea AGENTS.md ni skill nueva para esta capacida
 AXM:timelog_language{ El idioma de la sesion gobierna los entregables; las reglas priorizan el trabajo conjunto sin rankings ni atribucion de culpa. }
 
 AXM:timelog_external_optional{ La adopcion del nucleo no requiere credenciales ni conexion externa; un proveedor externo es un puente opcional que se activa solo por instruccion del Arquitecto via timelog.project. }
+
+
+$9: AUTONOMOUS LOOPS (BLP-023)
+
+AXM:loop_registry{ Los loops autonomos son ciclos de trabajo recurrentes DECLARADOS en brain.cortex §18 (LOOPS). Cada entrada LOOP:<name> lleva fases, index, state (armed/active/paused/stalled/done), recurrence, checkpoint, last_activity y retries. El brain solo guarda el REGISTRO; el rastro de avance vive en el timelog de sesion (axioma: el timelog nativo es el registro autoritativo del trabajo). }
+
+AXM:loop_separation{ Dominio separado: brain.cortex §18 = registro declarativo (que existe, en que fase, desde cuando); .arqux/timelog/SES*.cortex = rastro de avance (que paso, cuando, por quien); .arqux/loops/*.wake = transporte de senal de resurreccion. Nunca mezclar progreso en el brain ni declaracion en el timelog. }
+
+HDL:loop.register{ signature:"loop.register(name, phases, recurrence?, max_stall?, expected_duration?, next?, checkpoint?, owner?, path?, session?)", purpose:"Incluir un loop en el registro (state=armed). phases es lista ordenada de fases; recurrence: on_bootstrap|every_bootstrap|cooldown:Nh|on_heartbeat. Mutating.", mutating:true }
+HDL:loop.list{ signature:"loop.list(state?, path?)", purpose:"Listar loops del registro con fase actual y estado. Read-only.", readonly:true }
+HDL:loop.activate{ signature:"loop.activate(name, path?, session?)", purpose:"Armar el disparo: state=active, index=0, sella last_activity. Mutating + evento timelog.", mutating:true }
+HDL:loop.deactivate{ signature:"loop.deactivate(name, reason?, path?, session?)", purpose:"Silenciar la senal (state=paused). Mutating + evento timelog.", mutating:true }
+HDL:loop.advance{ signature:"loop.advance(name, checkpoint?, next?, path?, session?)", purpose:"Avanzar fase: escribe checkpoint+last_run en §18 y evento LOOP:advance en el timelog. Las fases no se saltan. Mutating.", mutating:true }
+HDL:loop.complete{ signature:"loop.complete(name, summary?, path?, session?)", purpose:"Cerrar el loop (state=done). Mutating + evento timelog.", mutating:true }
+HDL:loop.remove{ signature:"loop.remove(name, path?, session?)", purpose:"Eliminar la entrada del registro. Exige deactivate previo si esta active; usa tombstone (single-writer). Mutating.", mutating:true }
+HDL:loop.suggest{ signature:"loop.suggest(path?)", purpose:"Sugerir recurrencia observando la historia del registro/timelog. Read-only.", readonly:true }
+HDL:loop.wake{ signature:"loop.wake(name, reason?, path?, session?)", purpose:"Despertar manualmente un loop: escribe un WAKE en el buzon para que el despachador lo entregue. Mutating.", mutating:true }
+
+AXM:loop_dispatcher{ El despachador dispatch_pending_loops() corre en los puntos de entrada gobernados (context_set, heartbeat, identity-switch): drena el buzon WAKE, escanea loops active/paused, aplica deteccion de stall por tiempo y devuelve pending_loop{loop,phase,next,reason,checkpoint}. Es FAIL-SILENT: cualquier error interno devuelve None y NUNCA rompe ni enmascara la respuesta del handler anfitrion (V-01). }
+
+AXM:loop_watch{ arqux loop-watch es el demonio vigilante: proceso OS propio que detecta stall (now - last_activity > presupuesto de fase, con max_stall como techo absoluto; expected_duration por fase y heartbeat explicito evitan stalls falsos en fases largas — V-05), escribe WAKE atomicamente (tmp+rename — V-03) y sella watch_last_tick. Si el vigilante muere, el sistema degrada al disparo por bootstrap; el despachador reporta watch muerto cuando last_tick envejezca (V-02). }
+
+AXM:loop_wake_atomic{ El buzon WAKE (.arqux/loops/*.wake) es el transporte agnostico de la senal de resurreccion: cualquier cliente, identidad o sesion que llame un punto gobernado recibe el pending_loop. Escritura SIEMPRE atomica (tmp+rename); entrada corrupta → cuarentena + continuar, nunca abortar el drenado (V-03). }
+
+AXM:loop_hardening{ Restricciones duras: (1) checkpoint/next son instrucciones dirigidas a un agente futuro — validar esquema, max 500 chars, sin control chars (V-04); (2) anti-ping-pong: reintentos con backoff, retries agotados → state=stalled + reporte, nunca resurreccion infinita; (3) single-writer por entrada + tombstone en remove: un advance en vuelo no resucita un loop eliminado (V-06); (4) compatibilidad legacy: WRK:current{loop,...} sigue funcionando cuando §LOOPS esta vacia. }

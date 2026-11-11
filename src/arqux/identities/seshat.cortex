@@ -18,6 +18,7 @@ GSIG:AXM{name:"axiom", type:"attrs", risk:"H", layer:"Prefrontal", description:"
 GSIG:LIM{name:"limit", type:"attrs", risk:"M", layer:"Prefrontal", description:"Hard limits and boundaries", fields:"name,limit,scope,severity,status"}
 GSIG:KNW{name:"knowledge", type:"attrs", risk:"B", layer:"Semantic", description:"Expertise domains", fields:"name,topic,content,status,dominio"}
 GSIG:DESC{name:"description", type:"attrs", risk:"B", layer:"Semantic", description:"Agent description", fields:"name,body,status"}
+GSIG:LNG{name:"learning", type:"attrs", risk:"M", layer:"Working", description:"Curated behavioral lesson — identity contract content (BLP-020)", fields:"type,cause,lesson,prevention,status"}
 # status: current, blocked, deprecated, planned
 
 # NOTE: Level-1 file (identity contract). No live-state sigils (FCS, WRK, runtime-LNG) per E023.

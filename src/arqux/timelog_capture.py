@@ -355,11 +355,27 @@ def _declares_axioms(path: Path | str) -> bool:
     return re.search(r"(?m)^AXM:", text) is not None
 
 
+def _declares_identity_usage(path: Path | str) -> bool:
+    """True when the artifact declares ``usage:"identity"`` in ARQX:artifact.
+
+    Identity contracts are the single Level-1 family allowed to hold a curated
+    behavioral lesson (BLP-020 / Architect policy 2026-11-02). The usage value
+    is read from the declaration, never inferred from the filename.
+    """
+    p = Path(path)
+    try:
+        text = p.read_text(encoding="utf-8")
+    except OSError:
+        return False
+    return re.search(r'ARQX:artifact\{[^}]*?\busage:\s*"identity"', text) is not None
+
+
 def require_writable_destination(
     path: Path | str,
     sigil: str,
     *,
     action: str,
+    entry_kind: str | None = None,
 ) -> dict[str, Any] | None:
     """Rejection dict when *path*'s level cannot hold a *sigil* entry, else ``None``.
 
@@ -367,12 +383,23 @@ def require_writable_destination(
     admits no live-state sigil (E023). Returns ``None`` when the destination
     admits the entry, when no level is declared, or when the level-1 artifact is
     not a contract.
+
+    BLP-020 exemption: a Level-1 artifact that declares ``usage:"identity"``
+    admits an ``LNG`` entry whose *entry_kind* is ``"behavioral"`` — curated
+    behavioral lessons are contract content, not runtime state. Every other
+    live-state sigil and every other lesson kind is still rejected.
     """
     if _declared_level(path) != _LEVEL_BEHAVIORAL:
         return None
     if sigil.upper() not in _LIVE_STATE_SIGILS:
         return None
     if not _declares_axioms(path):
+        return None
+    if (
+        sigil.upper() == "LNG"
+        and (entry_kind or "").casefold() == "behavioral"
+        and _declares_identity_usage(path)
+    ):
         return None
     return {
         "code": DESTINATION_NOT_ALLOWED,

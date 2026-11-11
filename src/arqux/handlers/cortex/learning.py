@@ -180,10 +180,13 @@ def record_lesson_handler_legacy(
     # live-state sigil. When the identity declares level 1 the lesson is filed
     # in an apt destination (the project brain) instead of corrupting the
     # contract; if no apt destination exists the write is rejected.
+    # BLP-020 exemption (Architect policy 2026-11-02): kind="behavioral" is
+    # contract content of a usage:"identity" artifact — it is filed in the
+    # identity's BEHAVIORAL LESSONS section, never in the project brain.
     from ...timelog_capture import require_writable_destination
 
     destination_rejection = require_writable_destination(
-        identity_file, "LNG", action="identity.record",
+        identity_file, "LNG", action="identity.record", entry_kind=kind,
     )
     filed_in_identity = destination_rejection is None
     if filed_in_identity:
@@ -212,7 +215,9 @@ def record_lesson_handler_legacy(
         if root is not None:
             project_dir = root.parent
             brain_path = project_dir / ".arqux" / "brain.cortex"
-            if brain_path.exists():
+            # BLP-020: a lesson filed in the identity (kind=behavioral) does
+            # NOT duplicate into the project brain — contextual lessons only.
+            if brain_path.exists() and not filed_in_identity:
                 brain_result = crud_add(
                     brain_path,
                     "$7", "LNG", entry_name,

@@ -21,6 +21,7 @@ from typing import Any
 from ..constants import ARQUX_DIR, BRAIN_CORTEX, is_name_component
 from ..cortex_out import CortexOUT
 from ..execution import authoritative_execution_key
+from ..loops import dispatch_pending_loops
 from ..permissions import PermissionContext
 from ..pulse import read_pulse_from_brain, record_pulse
 from ..session_identity import (
@@ -695,8 +696,24 @@ def context_set(
         timelog_path=str(timelog_path(project_root, session_id, session.get("date", ""))),
         execution=execution,
         lifecycle=lifecycle,
+        pending_loop=dispatch_pending_loops(project_brain, claimant=execution),
         warnings=[w for w in (unbound_warning(lifecycle, action="session.context_set"),) if w],
     )
+
+
+def _pending_autonomous_loop(brain_path: Path) -> dict[str, str] | None:
+    """Surface an unfinished autonomous loop declared in ``WRK:current``.
+
+    Kept for backward compatibility (BLP-020 tests); the live dispatcher is
+    :func:`arqux.loops.dispatch_pending_loops` (BLP-023).
+    """
+    from ..loops import _legacy_pending_loop
+
+    found = _legacy_pending_loop(Path(brain_path))
+    if not found:
+        return None
+    return {"loop": found["loop"], "phase": found["phase"],
+            "next": found.get("next", "")}
 
 
 def _execution_slug(execution: str | None) -> str:

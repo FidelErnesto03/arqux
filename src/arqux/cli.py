@@ -176,6 +176,16 @@ def cmd_serve(verbose: bool):
     run_server(verbose=verbose)
 
 
+@main.command("loop-watch")
+@click.option("--path", default=".", help="Project root to watch.")
+@click.option("--interval", default=60.0, type=float, help="Seconds between ticks.")
+@click.option("--once", is_flag=True, help="Single tick (tests/manual check).")
+def cmd_loop_watch(path: str, interval: float, once: bool):
+    """Watch autonomous loops: detect stalls, queue WAKEs, mark stalled."""
+    from .loop_watch import run
+    sys.exit(run(path, interval=interval, once=once))
+
+
 @main.command("voice-serve")
 def cmd_voice_serve():
     """Start the arqux-voice MCP server on stdio (requires arqux[voice])."""

@@ -16,6 +16,7 @@ GSIG:IDN{name:"identity", type:"attrs", risk:"B", layer:"Semantic", description:
 GSIG:AXM{name:"axiom", type:"attrs", risk:"H", layer:"Prefrontal", description:"Non-negotiable principles", fields:"name,body,status"}
 GSIG:LIM{name:"limit", type:"attrs", risk:"M", layer:"Prefrontal", description:"Hard limits and boundaries", fields:"name,limit,scope,severity,status"}
 GSIG:DESC{name:"description", type:"attrs", risk:"B", layer:"Semantic", description:"Agent description and style", fields:"name,body,status"}
+GSIG:LNG{name:"learning", type:"attrs", risk:"M", layer:"Working", description:"Curated behavioral lesson — identity contract content (BLP-020)", fields:"type,cause,lesson,prevention,status"}
 # status: current, blocked, deprecated, planned
 
 # NOTE: This is a Level-1 file (identity contract). It MUST NOT contain
