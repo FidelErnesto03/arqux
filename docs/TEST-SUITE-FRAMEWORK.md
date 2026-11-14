@@ -99,7 +99,8 @@ y verifican que añadir a la misma sección no trunca la prosa.
 PATH="$PWD/.venv/bin:$PATH" ./.venv/bin/python -m pytest tests/ -q
 ```
 
-**Línea base vigente (medida 2026-11-13):** `2737 passed · 2 skipped · 3 xfailed · 0 fallos reales`.
+**Línea base vigente (medida al preparar 0.9.0):** `2708 passed · 2 skipped · 3 xfailed · 0 fallos reales`.
+El total varía con el corpus local de `.cortex`: `tests/test_cortex_migration.py` parametriza sobre cada archivo del árbol de gobernanza.
 Desglose de la suite derivada: `tests/e2e` 46 passed + 3 xfailed · `tests/test_cortex_write_transaction.py`
 18 passed. El único fallo observado sin el venv en `PATH` es ambiental (`test_packaging` invoca el CLI).
 

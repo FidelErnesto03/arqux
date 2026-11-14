@@ -2,7 +2,10 @@
 
 All notable changes to ArqUX are documented here.
 
-## [Unreleased]
+## [0.9.0] — estable (integridad transaccional y superficies)
+
+> Primera versión **no pre-release** de la línea 0.9: `pip install arqux`
+> la instala sin `--pre`. No declara v1.0; la compuerta G1 sigue vigente.
 
 ### Fixed — integrity
 

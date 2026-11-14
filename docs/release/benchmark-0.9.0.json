@@ -1,5 +1,5 @@
 {
-  "version": "0.9.0rc3",
+  "version": "0.9.0",
   "corpus": {
     "file": "synthetic.cortex",
     "records": 200,
@@ -7,9 +7,9 @@
     "contains_secrets": false
   },
   "environment": {
-    "python": "3.11.8",
+    "python": "3.12.11",
     "system": "Linux",
-    "release": "7.0.0-38-generic",
+    "release": "7.0.0-43-generic",
     "machine": "x86_64",
     "libc": "glibc2.43",
     "probe": "python -m pytest tests/benchmarks --publish-benchmark -q"
@@ -18,15 +18,15 @@
     "python -m pytest tests/benchmarks --publish-benchmark -q"
   ],
   "results": {
-    "cold_start_ms": 8.132,
-    "rebuild_ms": 11.913,
-    "rebuild_again_ms": 11.728,
-    "recall_total_ms": 26.52,
+    "cold_start_ms": 5.531,
+    "rebuild_ms": 9.068,
+    "rebuild_again_ms": 7.712,
+    "recall_total_ms": 8.342,
     "recall_queries": 3,
     "records_projected": 200,
     "source_bytes": 19679,
-    "index_bytes": 187862,
-    "content_hash": "fa55a1f9cf9d40b4890789f42e84c399dae38650cf751e9dcca9dcdc4ea94065"
+    "index_bytes": 187261,
+    "content_hash": "0d3c0022e36d2c43dbf40514ee65895e852c60a1d1f5659bd67a26f8fa54c227"
   },
   "limitations": [
     "Timings are indicative on this host; they are not a claim about other hardware.",
