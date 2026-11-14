@@ -57,3 +57,18 @@ coverage.xml
 
 # Migration backups written by scripts/migrate_dialect.py
 *.pre-migracion
+
+# ── Governance is private (corporate secret) ────────────────────────────────
+# The .arqux/ tree holds decisions, cycles, issues and lessons. It belongs in
+# the private repo `arqux-governance` (framework/ and platform/), never here.
+#
+# This exclusion used to live only in .git/info/exclude, which is local and
+# untracked: it does not travel with the repository. 219 governance files were
+# already committed before it was added, so the public repo carried governance
+# while new files were silently ignored. The rule lives here now, where it is
+# versioned and reviewable.
+#
+# Do not re-add governance to this repository and do not weaken these patterns.
+.arqux/
+archive/
+
