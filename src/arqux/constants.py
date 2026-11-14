@@ -238,10 +238,9 @@ def env(var: str, default: str | None = None) -> str | None:
     return os.environ.get(f"{ARQUX_ENV_PREFIX}{var}", default)
 
 
-# === BLP-041: ARQX:artifact sigil in $0.1 ====================================
+# === BLP-041: ARQX:artifact sigil ===========================================
 #
-# ARQX:artifact is an attrs entry in section $0.1 of every .cortex file,
-# declaring:
+# ARQX:artifact is an attrs entry declaring:
 #   level  → architectural level (0=PACKAGE, 1=BEHAVIORAL, 2=SKILL, 3=BRAIN)
 #   name   → canonical artifact name (e.g. "brain", "jarvis", "owasp-top10")
 #   usage  → semantic role (state|skill|identity|lesson|config)
@@ -250,7 +249,19 @@ def env(var: str, default: str | None = None) -> str | None:
 # It is declared (not inferred): every .cortex file MUST carry an ARQX:artifact
 # entry. Files without it degrade to NIVEL 0 + Warning W001.
 # The ARQX sigil is registered in the $0 pipe-table so CODEC-CORTEX recognizes
-# it as a valid attrs sigil. Section $0.1 (not $0) avoids E033.
+# it as a valid attrs sigil.
+#
+# LOCATION (BLP-001 T-1.19, 2026-11-14):
+#   - Legacy:  ``$0.1: ARQUX METADATA`` — a sub-section of the glossary, chosen so
+#              the metadata entry is not part of ``$0`` itself (avoids E033).
+#   - CORTEX 1.0: the canonical identity section (``$1``). The 1.0 grammar rejects
+#              a sub-section of the glossary (G004_GLOSSARY_DECLARATION_MUST_BE_ATTRS),
+#              so migrated artifacts cannot keep ``$0.1``.
+#
+# Both locations are read by ``arqux.formats.read_arqux_metadata`` — see
+# ``_ARQUX_META_SECTION`` / ``_ARQUX_META_SECTION_V1``. Emitting metadata into a
+# section the reader does not check degrades the artifact to NIVEL 0 without any
+# visible error, which is why the pair is documented here.
 
 
 class CortexLevel(Enum):
@@ -353,7 +364,8 @@ class BrainSection(Enum):
     """Canonical 13 sections of a Level-3 Brain artifact (BLP-036).
 
     Maps to niveles-cortex-arqux.md v3.0: $0 through $12 ISSUES.
-    ArqUX metadata lives in $0.1 (BLP-041), not $0.
+    ArqUX metadata lives in $0.1 (BLP-041) or, from CORTEX 1.0, in the
+    canonical identity section $1 (BLP-001 T-1.19).
     The enum value is the section identifier used in the .cortex file
     (with the leading ``$``).
     """

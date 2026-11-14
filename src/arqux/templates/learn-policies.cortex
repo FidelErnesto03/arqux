@@ -1,5 +1,8 @@
 $0
 
+ARQX:arqx_contract{type:"attrs", weight:"M", focus:"value", fields:"value:any?", desc:"ArqUX ARQX entry", open:true}
+$0:format{cortex:1.0, encoding:UTF-8}
+
 # -- $0: GLOSSARY --
 # Sigil | Name | Type | Risk | Description
 # ARQX   | artifact   | attrs      | B | Semantic       | ArqUX artifact metadata
@@ -11,12 +14,12 @@ $0
 # KNW   | knowledge  | attrs      | B | Knowledge entry
 
 # Canonical sigil declarations (codec-cortex 0.5.0+ compliance)
-GSIG:IDN{name:"identity", type:"attrs", risk:"B", layer:"Semantic", description:"Identity descriptor"}
-GSIG:THR{name:"threshold", type:"attrs", risk:"M", layer:"Working", description:"Learning thresholds"}
-GSIG:POL{name:"policy", type:"attrs", risk:"M", layer:"Working", description:"Learning policy"}
-GSIG:PRT{name:"protected", type:"attrs", risk:"H", layer:"Prefrontal", description:"Protected targets"}
-GSIG:GTE{name:"gate", type:"attrs", risk:"H", layer:"Prefrontal", description:"Mutation gate"}
-GSIG:KNW{name:"knowledge", type:"attrs", risk:"B", layer:"Semantic", description:"Knowledge entry", fields:"name,topic,content,status"}
+IDN:idn_contract{type:"attrs", weight:"B", focus:"value", fields:"value:any?", desc:"Identity descriptor", layer:"Semantic", open:true}
+THR:thr_contract{type:"attrs", weight:"M", focus:"value", fields:"value:any?", desc:"Learning thresholds", layer:"Working", open:true}
+POL:pol_contract{type:"attrs", weight:"M", focus:"value", fields:"value:any?", desc:"Learning policy", layer:"Working", open:true}
+PRT:prt_contract{type:"attrs", weight:"H", focus:"value", fields:"value:any?", desc:"Protected targets", layer:"Prefrontal", open:true}
+GTE:gte_contract{type:"attrs", weight:"H", focus:"value", fields:"value:any?", desc:"Mutation gate", layer:"Prefrontal", open:true}
+KNW:knw_contract{type:"attrs", weight:"B", focus:"name", fields:"name:text|topic:text|content:text|status:text", desc:"Knowledge entry", layer:"Semantic", open:true}
 # status: candidate, elevated, cooled, feedback, current, deprecated, planned
 
 

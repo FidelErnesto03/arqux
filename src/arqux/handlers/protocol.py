@@ -15,6 +15,7 @@ sessions live in the project brain (see `project.bind`).
 from __future__ import annotations
 
 import os
+from pathlib import Path
 
 from ..constants import (
     PRODUCT_NAME_UPPER,
@@ -22,6 +23,83 @@ from ..constants import (
 from ..cortex_out import CortexOUT
 from ..permissions import PermissionContext
 from ..state import find_workspace_root
+
+
+def _agents_section_id(doc: dict) -> str | None:
+    """Return the section that holds agent entries, preferring ``$1``."""
+    ids = {str(s.get("id", "")) for s in doc.get("sections", []) if isinstance(s, dict)}
+    for candidate in ("$1", "$19"):
+        if candidate in ids:
+            return candidate
+    for section in doc.get("sections", []):
+        if isinstance(section, dict):
+            for entry in section.get("entries", []):
+                if isinstance(entry, dict) and entry.get("sigil") == "IDN":
+                    return str(section.get("id", ""))
+    return next((str(s.get("id", "")) for s in doc.get("sections", [])
+                 if isinstance(s, dict)), None)
+
+
+def _register_agent(agents_path: Path, agent_id: str, role: str) -> None:
+    """Record an agent in ``agents.cortex`` as a CORTEX entry (upsert).
+
+    The registry is a governed artifact, so it is written through the CORTEX
+    model — never as appended plain text. Appending ``- agent=X role=Y`` produced
+    a file that no longer parsed (S003_INVALID_IDEA_HEAD) and grew one junk line
+    per ``identity.switch``: 85 accumulated in a single session (T-001).
+
+    Idempotent: re-adopting the same agent updates its ``role`` instead of
+    adding a second entry.
+    """
+    from ..cortex import crud
+    from ..cortex.atomic import atomic_write_json
+    from ..cortex.reader import cortex_to_dict
+
+    if agents_path.exists():
+        doc = cortex_to_dict(agents_path.read_text(encoding="utf-8"))
+    else:
+        doc = {"glossary": {"header": "$0", "comments": [], "symbols": []}, "sections": []}
+
+    section_id = _agents_section_id(doc)
+    if section_id is None:
+        raise ValueError("agents.cortex has no section to hold the registry")
+
+    try:
+        crud.update_entry(doc, f"{section_id}/IDN:{agent_id}",
+                          set_={"role": role, "status": "current", "adopted": _now_iso()})
+    except ValueError:
+        crud.add_entry(doc, section_id, "IDN", agent_id,
+                       {"role": role, "status": "current", "adopted": _now_iso()},
+                       create_section=False)
+
+    atomic_write_json(doc, str(agents_path), strict=False)
+
+
+def _unregister_agent(agents_path: Path, agent_id: str) -> None:
+    """Remove an agent's entry from ``agents.cortex``, preserving the rest.
+
+    The previous implementation filtered lines containing ``agent=<id>``, a shape
+    that does not exist in a CORTEX registry — so ``release`` silently matched
+    nothing while the registry kept accumulating plain-text lines.
+    """
+    from ..cortex import crud
+    from ..cortex.atomic import atomic_write_json
+    from ..cortex.reader import cortex_to_dict
+
+    if not agents_path.exists():
+        return
+
+    doc = cortex_to_dict(agents_path.read_text(encoding="utf-8"))
+    section_id = _agents_section_id(doc)
+    if section_id is None:
+        return
+
+    try:
+        crud.delete_entry(doc, f"{section_id}/IDN:{agent_id}")
+    except ValueError:
+        return  # nothing to remove: release is idempotent
+
+    atomic_write_json(doc, str(agents_path), strict=False)
 
 
 def adopt(
@@ -51,10 +129,7 @@ def adopt(
 
     root = find_workspace_root(start=path)
     if root is not None:
-        agents_path = root / "agents.cortex"
-        existing = agents_path.read_text(encoding="utf-8") if agents_path.exists() else ""
-        entry = f"- agent={agent_id} role={role} adopted={_now_iso()}\n"
-        agents_path.write_text(existing + entry, encoding="utf-8")
+        _register_agent(root / "agents.cortex", agent_id, role)
 
     return CortexOUT.work(
         f"protocol.adopt ok agent={agent_id} role={role}",
@@ -86,9 +161,7 @@ def release(agent_id: str, path: str | None = None, ctx: PermissionContext | Non
 
     agents_path = root / "agents.cortex"
     if agents_path.exists():
-        lines = agents_path.read_text(encoding="utf-8").splitlines()
-        kept = [ln for ln in lines if f"agent={agent_id}" not in ln]
-        agents_path.write_text("\n".join(kept) + "\n", encoding="utf-8")
+        _unregister_agent(agents_path, agent_id)
 
     return CortexOUT.work(
         f"protocol.release ok agent={agent_id}",

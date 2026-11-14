@@ -98,6 +98,8 @@ def _parse_fallback(text: str) -> dict:
     glossary_comments: list[str] = []
     glossary_symbols: list[dict[str, Any]] = []
     glossary_header = "$0"
+    glossary_format_decl: str | None = None
+    glossary_declarations: list[dict[str, Any]] = []
     sections: list[dict[str, Any]] = []
     current_section: dict[str, Any] | None = None
     current_comments: list[str] = []
@@ -120,7 +122,15 @@ def _parse_fallback(text: str) -> dict:
 
         # CODEC-CORTEX's format declaration belongs to the existing glossary
         # and must not reopen $0 as a regular section in the ArqUX fallback.
-        if _FORMAT_DECL_RE.match(stripped) and current_section is not None and current_section.get("id") == "$0":
+        #
+        # It must not be DISCARDED either (BLP-001 T-1.22): the writer regenerates
+        # the document from this model, so dropping the line meant every
+        # governance write silently reverted a migrated artifact from
+        # ``$0:format{cortex:1.0}`` to a bare ``$0`` and the file fell back to
+        # G010_FORMAT_REQUIRED. The declaration is preserved as glossary
+        # metadata and re-emitted verbatim.
+        if _FORMAT_DECL_RE.match(stripped):
+            glossary_format_decl = stripped
             i += 1
             continue
 
@@ -188,12 +198,19 @@ def _parse_fallback(text: str) -> dict:
             attrs = _parse_attrs_fallback(body)
             if attrs is not None:
                 # Strict CODEC-CORTEX symbol declarations are executable
-                # glossary metadata.  ArqUX keeps its legacy raw symbols in
-                # the model, but does not expose generated declarations as
-                # ordinary glossary entries on a read-back.
+                # glossary metadata. They MUST round-trip (BLP-001 T-1.22/B):
+                # the writer regenerates the document from this model, so
+                # dropping them meant every governance write erased the
+                # declarations and the artifact fell back to I001
+                # UNDECLARED_SYMBOL. They are kept in a dedicated list, not as
+                # ordinary glossary entries, so callers that iterate entries do
+                # not see them as data.
                 if current_section.get("id") == "$0" and {
                     "type", "weight", "focus", "desc"
                 }.issubset(attrs):
+                    glossary_declarations.append({
+                        "sigil": sigil, "name": name, "attrs": attrs,
+                    })
                     i += 1
                     continue
                 current_section["entries"].append({
@@ -270,6 +287,8 @@ def _parse_fallback(text: str) -> dict:
             "header": glossary_header,
             "comments": glossary_comments,
             "symbols": glossary_symbols,
+            "format_decl": glossary_format_decl,
+            "declarations": glossary_declarations,
         },
         "sections": sections,
     }

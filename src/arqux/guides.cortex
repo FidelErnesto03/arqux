@@ -1,5 +1,9 @@
 $0
 
+ARQX:arqx_contract{type:"attrs", weight:"M", focus:"value", fields:"value:any?", desc:"ArqUX ARQX entry", open:true}
+GDE:gde_contract{type:"attrs", weight:"M", focus:"value", fields:"value:any?", desc:"ArqUX GDE entry", open:true}
+$0:format{cortex:1.0, encoding:UTF-8}
+
 # -- $0: GUIDES GLOSSARY --
 # Sigil | Name  | Type  | Risk | Cognitive Layer | Description
 # GDE   | guide | attrs | B    | Semantic        | Curated how-to guide for an intent

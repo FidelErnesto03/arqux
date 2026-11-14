@@ -54,3 +54,6 @@ coverage.xml
 .arqux/**/*.lock
 *.bak.*
 *.bck
+
+# Migration backups written by scripts/migrate_dialect.py
+*.pre-migracion

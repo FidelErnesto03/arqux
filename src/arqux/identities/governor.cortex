@@ -1,5 +1,8 @@
 $0
 
+ARQX:arqx_contract{type:"attrs", weight:"M", focus:"value", fields:"value:any?", desc:"ArqUX ARQX entry", open:true}
+$0:format{cortex:1.0, encoding:UTF-8}
+
 # -- $0: ARQUX ROLE IDENTITY GLOSSARY --
 # Sigil | Name | Type | Risk | Cognitive Layer | Description
 # ARQX   | artifact   | attrs      | B | Semantic       | ArqUX artifact metadata
@@ -12,25 +15,20 @@ $0
 # attrs = canonical type
 
 # Canonical sigil declarations (codec-cortex 0.5.0+ compliance)
-GSIG:IDN{name:"identity", type:"attrs", risk:"B", layer:"Semantic", description:"Role identity descriptor"}
-GSIG:AXM{name:"axiom", type:"attrs", risk:"H", layer:"Prefrontal", description:"Role principles", fields:"name,body,status"}
-GSIG:LIM{name:"limit", type:"attrs", risk:"M", layer:"Prefrontal", description:"Role boundaries", fields:"name,limit,scope,severity,status"}
-GSIG:DESC{name:"description", type:"attrs", risk:"B", layer:"Semantic", description:"Role description", fields:"name,body,status"}
-GSIG:LNG{name:"learning", type:"attrs", risk:"M", layer:"Working", description:"Curated behavioral lesson — identity contract content (BLP-020)", fields:"type,cause,lesson,prevention,status"}
+IDN:idn_contract{type:"attrs", weight:"B", focus:"value", fields:"value:any?", desc:"Role identity descriptor", layer:"Semantic", open:true}
+AXM:axm_contract{type:"attrs", weight:"H", focus:"name", fields:"name:text|body:text|status:text", desc:"Role principles", layer:"Prefrontal", open:true}
+LIM:lim_contract{type:"attrs", weight:"M", focus:"name", fields:"name:text|limit:text|scope:text|severity:text|status:text", desc:"Role boundaries", layer:"Prefrontal", open:true}
+DESC:desc_contract{type:"attrs", weight:"B", focus:"name", fields:"name:text|body:text|status:text", desc:"Role description", layer:"Semantic", open:true}
 # status: current, blocked, deprecated, planned
 
 # NOTE: Level-1 file (identity contract). No live-state sigils (E023).
 
 
-$0.1: ARQUX METADATA
-
-ARQX:artifact{level:1, name:"governor", usage:"identity", kind:"native"}
 $1: IDENTITY
 
-IDN:governor{name:"Governor Role", role:"governor",
-             purpose:"One per workspace. Decides, assigns, approves, closes.",
-             version:"1.0.0",
-             status:"current"}
+
+ARQX:artifact{level:1, name:"governor", usage:"identity", kind:"native"}
+IDN:governor{name:"Governor Role", role:"governor", purpose:"One per workspace. Decides, assigns, approves, closes.", version:"1.0.0", status:"current"}
 
 
 $2: AXIOMS

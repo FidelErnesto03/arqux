@@ -233,9 +233,41 @@ def write_cortex_from_json(doc: dict, *, strict: bool = False) -> str:
     sections = doc.get("sections", [])
 
     lines.append(header)
+
+    # Re-emit the dialect declaration verbatim (BLP-001 T-1.22). The reader keeps
+    # it as ``format_decl`` on the ``$0`` section; without this the line is lost
+    # on every write and a migrated artifact silently reverts to a bare ``$0``
+    # (G010_FORMAT_REQUIRED). Placed as metadata of the glossary, not of the
+    # entries, so it survives any mutation of ``$0`` contents.
+    format_decl = glossary.get("format_decl")
+    if not format_decl:
+        for section in sections:
+            # Validation of malformed sections happens further down; this lookup
+            # must not raise first (test_section_none_raises_value_error).
+            if isinstance(section, dict) and str(section.get("id", "")) == "$0":
+                format_decl = section.get("format_decl")
+                break
+    if format_decl:
+        if not str(format_decl).lstrip().startswith("$0:format"):
+            format_decl = f"$0:format{{{format_decl}}}"
+        lines.append(str(format_decl))
+        lines.append("")
     lines.append("")  # blank line after header
     for comment in comments:
         lines.append(comment)
+
+    # Re-emit the sigil declarations kept by the reader (BLP-001 T-1.22/B). They
+    # are executable glossary metadata, not entries: dropping them on write left
+    # every artifact undeclared (I001_UNDECLARED_SYMBOL).
+    for declaration in glossary.get("declarations") or []:
+        if not isinstance(declaration, dict):
+            continue
+        sigil = declaration.get("sigil")
+        name = declaration.get("name")
+        attrs = declaration.get("attrs")
+        if sigil and name and isinstance(attrs, dict):
+            lines.append(_format_entry({"sigil": sigil, "name": name, "attrs": attrs}))
+            lines.append("")
 
     # CODEC-CORTEX 1.0.0rc1 requires executable declarations such as
     # ``LNG:lesson{type:attrs,...}``. Older ArqUX documents stored these as
@@ -271,6 +303,12 @@ def write_cortex_from_json(doc: dict, *, strict: bool = False) -> str:
     # CODEC-CORTEX validates that every sigil used outside the glossary has a
     # strict declaration. Legacy GSIG declarations were normalized above.
     declared: set[str] = set()
+    # Declarations re-emitted above are already in the glossary. Recording them
+    # here stops the strict pass from generating a second copy for the same sigil
+    # (E008_DUPLICATE_ENTRY).
+    for declaration in glossary.get("declarations") or []:
+        if isinstance(declaration, dict) and declaration.get("sigil"):
+            declared.add(str(declaration["sigil"]))
     for entry in strict_symbols:
         if not isinstance(entry, dict) or not isinstance(entry.get("attrs"), dict):
             continue
@@ -348,7 +386,7 @@ def write_cortex_from_json(doc: dict, *, strict: bool = False) -> str:
     # ``$0`` of documents that never asked for it, which the pinned validator
     # then reported as E033/E032 (BUG-1). The declaration is therefore emitted
     # only on the explicit strict path used by the migration handlers.
-    if strict and not header.startswith("$0:format"):
+    if strict and not header.startswith("$0:format") and not format_decl:
         lines.append('$0:format{cortex:"0.1", encoding:"UTF-8"}')
         lines.append("")
 

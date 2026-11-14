@@ -1,5 +1,14 @@
 $0
 
+ARQX:arqx_contract{type:"attrs", weight:"M", focus:"value", fields:"value:any?", desc:"ArqUX ARQX entry", open:true}
+DOM:dom_contract{type:"attrs", weight:"M", focus:"value", fields:"value:any?", desc:"ArqUX DOM entry", open:true}
+ERR:err_contract{type:"attrs", weight:"M", focus:"value", fields:"value:any?", desc:"ArqUX ERR entry", open:true}
+FCS:fcs_contract{type:"attrs", weight:"M", focus:"value", fields:"value:any?", desc:"ArqUX FCS entry", open:true}
+IDN:idn_contract{type:"attrs", weight:"M", focus:"value", fields:"value:any?", desc:"ArqUX IDN entry", open:true}
+OBJ:obj_contract{type:"attrs", weight:"M", focus:"value", fields:"value:any?", desc:"ArqUX OBJ entry", open:true}
+WRK:wrk_contract{type:"attrs", weight:"M", focus:"value", fields:"value:any?", desc:"ArqUX WRK entry", open:true}
+$0:format{cortex:1.0, encoding:UTF-8}
+
 # -- $0: MINIMAL LOCAL GLOSSARY --
 # Sigil | Name | Type | Risk | Cognitive Layer | Description
 # IDN   | identity   | attrs      | B | Semantic       | Actor identity

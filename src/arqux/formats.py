@@ -87,7 +87,14 @@ _LEGACY_METADATA_RE = re.compile(
 _REQUIRED_METADATA_FIELDS: tuple[str, ...] = ("level", "name", "usage", "kind")
 
 #: Section name for ArqUX metadata.
+#:
+#: ``$0.1`` is the BLP-041 location: a sub-section of the glossary, chosen so the
+#: metadata entry is not part of ``$0`` itself (E033). CORTEX 1.0 forbids that
+#: shape (G004 — the glossary may contain only declarations), so migrated
+#: artifacts declare the metadata in the canonical identity section instead.
+#: Both are accepted; see ``_read_arqux_from_ast`` and BLP-001 T-1.17.
 _ARQUX_META_SECTION = "$0.1"
+_ARQUX_META_SECTION_V1 = "$1"
 _ARQUX_META_TITLE = "ARQUX METADATA"
 _ARQUX_META_SIGIL = "ARQX"
 _ARQUX_META_ENTRY = "artifact"
@@ -122,22 +129,34 @@ class CortexArtifact:
 def _read_arqux_from_ast(text: str) -> dict[str, Any] | None:
     """Parse ``text`` with CODEC-CORTEX and extract ARQX:artifact attrs.
 
-    Returns the parsed attrs dict, or None if no ARQX:artifact entry found
-    in ``$0.1`` (or if CODEC-CORTEX parser is unavailable).
+    The metadata is looked up in ``_ARQUX_META_SECTION`` (``$0.1``, the BLP-041
+    location) and, since CORTEX 1.0, also in the canonical identity section: the
+    1.0 grammar rejects a sub-section of the glossary (G004), so migrated
+    artifacts carry ``ARQX:artifact`` in ``$1``.
+
+    Both locations are accepted, and the legacy one is tried first so an
+    artifact that was not migrated keeps resolving its level. Returning None
+    degrades the artifact to NIVEL 0 (W001_NO_METADATA), so a silent miss here
+    is a governance failure: BLP-001 T-1.17.
     """
     try:
         from cortex.core.parser import parse_cortex
         doc = parse_cortex(text)
-        for sec in doc.sections:
-            if sec.id == _ARQUX_META_SECTION:
-                for entry in sec.entries:
-                    if entry.sigil == _ARQUX_META_SIGIL and entry.name == _ARQUX_META_ENTRY:
-                        if isinstance(entry.value, dict):
-                            return entry.value
-                        return None
-        return None
+        sections = {sec.id: sec for sec in doc.sections}
+        for section_id in (_ARQUX_META_SECTION, _ARQUX_META_SECTION_V1):
+            sec = sections.get(section_id)
+            if sec is None:
+                continue
+            for entry in sec.entries:
+                if (
+                    entry.sigil == _ARQUX_META_SIGIL
+                    and entry.name == _ARQUX_META_ENTRY
+                    and isinstance(entry.value, dict)
+                ):
+                    return entry.value
     except Exception:
         return None
+    return None
 
 
 def _read_legacy_metadata(text: str) -> dict[str, Any] | None:
