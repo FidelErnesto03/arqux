@@ -143,6 +143,10 @@ def switch(
         )
 
     # Step 3 — handoff record + PULSE audit (composed, not copied).
+    # E-2075 follow-up: when the switch starts from the workspace root the
+    # context pointer already names the project root; handing off to the
+    # workspace root fails with a bare NOT_FOUND (friction 2.5).
+    handoff_root = current.get("project_root") or str(start)
     handoff_out = handoff(
         target_agent=canonical,
         content=(
@@ -150,11 +154,21 @@ def switch(
             f'blps:"{blps}",tasks:"{tasks}"'
         ),
         dry_run=False,
-        path=str(start),
+        path=str(handoff_root),
         ctx=ctx,
     )
     if handoff_out.profile == OUT_ERROR:
-        return handoff_out
+        return CortexOUT.error(
+            f"identity.switch could not record the handoff to "
+            f"{handoff_root!r}: {handoff_out.to_text()}",
+            code=handoff_out.fields.get("code", "HANDOFF_ERROR"),
+            target_agent=canonical,
+            handoff_root=str(handoff_root),
+            remediation=(
+                "pass path=<project root> or bind a session context "
+                "(session.context_set) before switching identity"
+            ),
+        )
 
     # Step 4 — update active context (same store/format as context.set).
     context_updated = False

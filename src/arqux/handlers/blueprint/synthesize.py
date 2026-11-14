@@ -24,7 +24,7 @@ logger = logging.getLogger(__name__)
 
 from ...blueprint.template import parse_blp_template
 from ...constants import BLUEPRINTS_DIR, CYCLES_DIR
-from ...cortex_out import CortexOUT
+from ...cortex_out import OUT_ERROR, CortexOUT
 from ...permissions import PermissionContext
 from ...pulse import record_pulse
 from ...state import find_project_root
@@ -132,6 +132,38 @@ def synthesize_blueprint(
         root, bp_id, ctx, path_hint=path, cycle=target_cycle,
     )
 
+    # HD-03 (audit 2026-11-13, decision: expose content): a payload that is
+    # validated but never written makes the parameter a lie. Apply each
+    # section through blueprint.update — the marker-safe write path — and
+    # report what was written.
+    written: list[str] = []
+    if content is not None:
+        from ._synthesize_common import parse_content_sections
+        from .manage import update_blueprint
+
+        sections_to_write = parse_content_sections(content)
+        for sid in sorted(sections_to_write, key=lambda value: (len(value), value)):
+            result = update_blueprint(
+                bp_id, section=sid, content=sections_to_write[sid],
+                cycle=target_cycle, path=str(root), ctx=ctx,
+            )
+            if result.profile == OUT_ERROR:
+                return CortexOUT.error(
+                    f"blueprint.synthesize could not write section {sid}: "
+                    f"{result.to_text()}",
+                    code=result.fields.get("code", "SECTION_WRITE_ERROR"),
+                    blueprint_id=bp_id,
+                    section=sid,
+                    sections_written=written,
+                )
+            written.append(sid)
+        # Re-read so GUIDE MODE sees the applied content. Keep the original
+        # `created` flag: the re-read always reports False and would make the
+        # response claim an existing file was reused.
+        bp_path, fm, body, _ = _find_or_create_blueprint(
+            root, bp_id, ctx, path_hint=path, cycle=target_cycle,
+        )
+
     # GUIDE MODE: scan BLP with Sequencer and return next pending section.
     from ...core.sequencer import Sequencer
     seq = Sequencer("BLP")
@@ -144,6 +176,7 @@ def synthesize_blueprint(
         f"blueprint.synthesize guide id={bp_id}",
         blueprint_id=bp_id,
         path=str(bp_path),
+        sections_written=written,
         next_section={
             "section_id": next_seg.id,
             "template": next_seg.template,

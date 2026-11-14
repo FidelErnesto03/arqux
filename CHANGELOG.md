@@ -2,6 +2,38 @@
 
 All notable changes to ArqUX are documented here.
 
+## [Unreleased]
+
+### Fixed — integrity
+
+- `cortex.entry.add/update/delete/move` are transactional: the parser only
+  classifies a body as attrs when the **whole** body is a valid attrs map, and
+  a post-write guard rejects and rolls back any write that alters a section
+  outside the target resolved **before** the mutation (including same-named
+  entries in other sections). Incident: kernel truncation 2026-11-13.
+- `cortex.patch` dry-run resolves every selector instead of approving it
+  blindly.
+- `identity.switch` from the workspace root hands off to the project root
+  recorded in the session context and reports an actionable error.
+- `blueprint.synthesize` exposes `content` in its MCP schema and **applies**
+  it through the marker-safe update path, reporting `sections_written`.
+- `blueprint.create` writes `blp_markers@` as valid YAML.
+
+### Added — verification
+
+- Evidence-derived suites under `tests/e2e/` (integrity, signal quality,
+  identity/session walls, gates, concurrency, CLI/transport, security
+  controls) with declared xfail gaps.
+- `tests/test_cortex_write_transaction.py`: transactional-write contract and
+  the permanent kernel-incident regression.
+
+### Changed
+
+- Version fallback reads `pyproject.toml` instead of a stale hardcoded value.
+- Docs corrected against executed state: `AGENTS.md` lives at the workspace
+  root, PULSE lives inside `brain.cortex`, and `--pre` is required while the
+  release candidate is not promoted to stable.
+
 ## [0.9.0rc3] — pre-release (corrección de superficie y del escritor)
 
 > Estado de madurez: **pre-release / candidata**. **No estable.**

@@ -34,11 +34,35 @@ PRODUCT_NAME_TITLE: str = "Arqux"
 #: Version string — resolved from installed package metadata (pyproject.toml
 #: is the single source of truth); the literal fallback covers src-tree runs
 #: without an installed distribution.
+def _fallback_version() -> str:
+    """Version from pyproject.toml when package metadata is unavailable.
+
+    The previous fallback was a hardcoded historical version (0.7.8), so a
+    source checkout without installed metadata reported a stale number. The
+    pyproject file is the single source of truth; an unknown version is
+    reported honestly as 0.0.0 instead of a plausible lie.
+    """
+    try:
+        import re
+        from pathlib import Path
+
+        pyproject = Path(__file__).resolve().parents[2] / "pyproject.toml"
+        match = re.search(
+            r'^version\s*=\s*"([^"]+)"', pyproject.read_text(encoding="utf-8"),
+            re.MULTILINE,
+        )
+        if match:
+            return match.group(1)
+    except Exception:  # noqa: BLE001 - version resolution must never crash
+        pass
+    return "0.0.0"
+
+
 def _resolve_version() -> str:
     try:
         return _pkg_version(PRODUCT_NAME)
     except PackageNotFoundError:
-        return "0.7.8"
+        return _fallback_version()
 
 
 ARQUX_VERSION: str = _resolve_version()

@@ -154,7 +154,7 @@ The following are known limitations of ArqUX in pilot mode:
 - [ ] Rotate agent secrets (manual: `generate_secret()` + `save_agent_secret()`)
 - [ ] Review `cycle.list` for cycles that should be closed
 - [ ] Run `arqux doctor --fix` to clean up any new `.bak` files
-- [ ] Audit `.arqux/cycles/*/pulse.jsonl` sizes — rotate if > 10MB
+- [ ] Audit `brain.cortex` size and compact PULSE when it grows — `cortex.learn` + `session.pulse_compact`
 
 ### 4.4 Metrics to collect
 

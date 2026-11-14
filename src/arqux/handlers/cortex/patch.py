@@ -15,7 +15,7 @@ from pathlib import Path
 from ...cortex_out import CortexOUT
 from ...permissions import PermissionContext
 from ...pulse import record_pulse
-from ...state import crud_update, find_project_root
+from ...state import crud_read, crud_update, find_project_root
 
 
 def patch_handler(
@@ -65,7 +65,20 @@ def patch_handler(
 
     for selector, new_body in patches.items():
         if dry_run:
-            patched.append(selector)
+            # 2.2: dry-run must exercise the same resolution the apply path
+            # does. Approving a selector that matches no entries was the
+            # "dry-run lies" defect (2026-11 review, friction 2.2).
+            try:
+                found = crud_read(path, selector)
+                if found.get("entries"):
+                    patched.append(selector)
+                else:
+                    failed.append({
+                        "selector": selector,
+                        "reason": "selector matches no entries",
+                    })
+            except Exception as exc:  # noqa: BLE001
+                failed.append({"selector": selector, "reason": str(exc)})
             continue
         try:
             result = crud_update(

@@ -93,7 +93,7 @@ This is what happens when an agent joins an ArqUX workspace.
 arqux init
 ```
 
-A `.arqux/` directory appears. Inside it: `AGENTS.md` (every agent reads this first), `brain.cortex` (persistent memory), `identities/` (agent contracts), `cycles/` (work organized in cycles), `evidence/pulse.jsonl` (every action, timestamped). No server. No API key. A directory.
+A workspace appears: `AGENTS.md` at the root — the entry point every agent reads first — and `.arqux/` with `meta-brain.cortex` (workspace memory), `projects.cortex` (project registry), `identities/` (7 role contracts), `skills/`, `templates/` and `learn-policies.cortex`. Each project you register gets its own `.arqux/brain.cortex` and `cycles/`. No server. No API key. A directory.
 
 ### 2. The agent discovers governance
 
@@ -316,7 +316,7 @@ Level 2 (structured):  Agent calls MCP handlers for full lifecycle
 Install ArqUX:
 
 ```bash
-pip install arqux
+pip install --pre arqux
 ```
 
 Initialize a workspace:
@@ -329,7 +329,7 @@ Any agent can now join. Point your agent to the workspace:
 
 ```bash
 # Example: OpenCode agent joining an ArqUX workspace
-opencode --instructions "$(cat .arqux/AGENTS.md)"
+opencode --instructions "$(cat AGENTS.md)"
 ```
 
 The agent reads the governance contract. It discovers its identity, the active cycle, and the rules. It reads `brain.cortex` for context. It's ready to work under governance — without installing any ArqUX SDK.

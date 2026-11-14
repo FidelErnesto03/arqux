@@ -178,8 +178,15 @@ def main(argv: list[str] | None = None) -> int:
         if not found:
             problems.append(f"{desc}: no version found")
             continue
-        if found[0] != version:
-            problems.append(f"{desc}: expected {version}, found {found[0]}")
+        if desc == "CHANGELOG first entry":
+            # Standard convention: an [Unreleased] section may lead the file.
+            # The contract is that the first VERSIONED entry equals pyproject.
+            versioned = [v for v in found if v.strip().lower() != "unreleased"]
+            candidate = versioned[0] if versioned else None
+        else:
+            candidate = found[0]
+        if candidate != version:
+            problems.append(f"{desc}: expected {version}, found {candidate}")
 
     for rel, pattern, desc in CORTEX_VERSION_SURFACES:
         found = _scan(rel, pattern)

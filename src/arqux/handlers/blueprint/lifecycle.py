@@ -168,10 +168,15 @@ def create_blueprint(
     # Scan markers and store map in frontmatter
     markers = scan_markers(body)
     if markers:
-        markers_json = ", ".join(f'"{m}"' for m in markers)
+        # HD-04 (audit 2026-11-13): the previous form embedded unescaped
+        # double quotes inside a quoted scalar — invalid YAML that external
+        # parsers reject and the lenient internal reader silently tolerated.
+        # A plain comma-separated string is valid YAML and is what
+        # blueprint.update parses (strip("[]"), split(","), strip quotes).
+        markers_csv = ", ".join(markers)
         body = body.replace(
             "_template_ref:",
-            f"blp_markers@: [{markers_json}]\n_template_ref:",
+            f'blp_markers@: "{markers_csv}"\n_template_ref:',
             1,
         )
 

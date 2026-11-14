@@ -15,8 +15,11 @@ ArqUX (Architectural User Experience) is a governance framework for AI agent tea
 ### 1. Install ArqUX
 
 ```bash
-pip install arqux
+pip install --pre arqux
 ```
+
+> ArqUX is currently a pre-release. `--pre` is required while the release
+> candidate is not promoted to stable.
 
 ### 2. Initialize a Workspace
 

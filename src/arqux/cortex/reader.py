@@ -275,33 +275,78 @@ def _parse_fallback(text: str) -> dict:
     }
 
 
-# Attrs pattern:  key:"value"  or  key:value  or  key:value,
-_ATTR_PAIR_RE = re.compile(
-    r'(?P<key>[A-Za-z_][A-Za-z0-9_]*)\s*:\s*'
-    r'(?P<val>"(?:[^"\\]|\\.)*"|true|false|'
-    r'-?\d+\.?\d*|[A-Za-z_][A-Za-z0-9_]*)'
+# Full-body attrs pair: the WHOLE comma-delimited segment must be `key: value`.
+# A body that merely contains a `word: value` fragment inside prose is NOT an
+# attrs map — classifying it as one silently truncates the prose on the next
+# write (kernel incident 2026-11-13: AXM:brain_first lost ~700 bytes).
+_ATTR_PAIR_FULL_RE = re.compile(
+    r"^\s*(?P<key>[A-Za-z_][A-Za-z0-9_]*)\s*:\s*"
+    r'(?P<val>"(?:[^"\\]|\\.)*"'
+    r"|true|false|null|-?\d+\.?\d*|[A-Za-z0-9_.\-]+)\s*$",
+    re.DOTALL,
 )
 
 
-def _parse_attrs_fallback(body: str) -> dict | None:
-    """Best-effort attrs parsing for the fallback path.
+def _split_top_level_commas(body: str) -> list[str]:
+    """Split *body* on commas outside quotes and ``[]{}()`` nesting."""
+    parts: list[str] = []
+    buf: list[str] = []
+    depth = 0
+    quote: str | None = None
+    i = 0
+    while i < len(body):
+        c = body[i]
+        if quote:
+            buf.append(c)
+            if c == "\\" and i + 1 < len(body):
+                buf.append(body[i + 1])
+                i += 2
+                continue
+            if c == quote:
+                quote = None
+            i += 1
+            continue
+        if c in "\"'":
+            quote = c
+            buf.append(c)
+            i += 1
+            continue
+        if c in "[{(":
+            depth += 1
+        elif c in "]})":
+            depth = max(0, depth - 1)
+        if c == "," and depth == 0:
+            parts.append("".join(buf))
+            buf = []
+        else:
+            buf.append(c)
+        i += 1
+    parts.append("".join(buf))
+    return parts
 
-    Returns a dict of attrs, or ``None`` if the body doesn't look like attrs.
+
+def _parse_attrs_fallback(body: str) -> dict | None:
+    """Parse *body* as attrs only when the WHOLE body is a valid attrs map.
+
+    Returns a dict of attrs, or ``None`` when the body is cuerpo/prose.
+    Every top-level comma-delimited segment must match ``key: value`` in
+    full; a single prose segment disqualifies the entry. This is the
+    invariant that prevents a cuerpo from being re-interpreted (and
+    truncated) as attrs on a later read-modify-write.
     """
     if not body.strip():
         return {}
 
-    # Heuristic: if the body contains lines without key:value patterns,
-    # it's probably cuerpo text, not attrs.
-    attrs: dict[str, Any] = {}
-    matches = list(_ATTR_PAIR_RE.finditer(body))
-    if not matches:
+    parts = [part for part in _split_top_level_commas(body) if part.strip()]
+    if not parts:
         return None
 
-    for m in matches:
-        key = m.group("key")
-        raw_val = m.group("val")
-        attrs[key] = _coerce_attr_value(raw_val)
+    attrs: dict[str, Any] = {}
+    for part in parts:
+        m = _ATTR_PAIR_FULL_RE.match(part)
+        if not m:
+            return None
+        attrs[m.group("key")] = _coerce_attr_value(m.group("val"))
 
     return attrs
 

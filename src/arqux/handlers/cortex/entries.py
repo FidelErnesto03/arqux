@@ -12,6 +12,7 @@ from typing import Any
 from ...cortex.atomic import atomic_write_json
 from ...cortex.parse_content import parse_content_entry
 from ...cortex.reader import cortex_to_dict
+from ...cortex.transaction import guard_write
 from ...cortex_out import CortexOUT
 from ...permissions import PermissionContext
 from ...state import (
@@ -228,6 +229,60 @@ def _crud_error(result: dict[str, Any], code: str) -> CortexOUT:
     )
 
 
+def _snapshot(path: str) -> str | None:
+    """Pre-write text of *path* (best effort; None when unreadable)."""
+    try:
+        target = Path(path)
+        return target.read_text(encoding="utf-8") if target.exists() else None
+    except OSError:
+        return None
+
+
+def _guard_after_write(
+    path: str,
+    before_text: str | None,
+    *,
+    allowed_sections: set[str],
+) -> CortexOUT | None:
+    """Post-write transaction guard (A-01). None when the write is clean.
+
+    *allowed_sections* is resolved by the caller BEFORE the mutation from the
+    selector semantics (HD-01: never widen it by entry name — a same-named
+    entry in another section must not authorise writing there).
+    """
+    if before_text is None:
+        return None
+    violation = guard_write(
+        path, before_text, allowed_sections=allowed_sections,
+    )
+    if violation is None:
+        return None
+    return CortexOUT.error(
+        violation["error"],
+        code="VALIDATION",
+        sections=violation.get("sections"),
+        rolled_back=violation.get("rolled_back"),
+    )
+
+
+def _target_sections(path: str, selector: str) -> set[str]:
+    """Sections the selector resolves to RIGHT NOW (before the mutation).
+
+    Uses the same read path the mutator resolves selectors with; a failed or
+    empty read yields an empty set, which makes the guard strict (any change
+    is collateral).
+    """
+    try:
+        found = crud_read(path, selector)
+    except Exception:
+        return set()
+    return {
+        str(entry.get("section"))
+        for entry in found.get("entries", [])
+        if entry.get("section")
+    }
+
+
 def entry_add_handler(
     path: str,
     section: str = "",
@@ -301,6 +356,7 @@ def entry_add_handler(
     while _entry_exists(path, section, sigil, numbered_name):
         numbered_name = f"{requested_name}{_next_number(path, section, sigil, requested_name)}"
 
+    before_text = _snapshot(path)
     try:
         result = crud_add(path, section, sigil, numbered_name, value, create_section=create_section, force=force)
     except FileNotFoundError:
@@ -310,6 +366,13 @@ def entry_add_handler(
 
     if "error" in result:
         return _crud_error(result, "CRUD_ERROR")
+
+    guard_error = _guard_after_write(
+        path, before_text,
+        allowed_sections={section} if section else set(),
+    )
+    if guard_error is not None:
+        return guard_error
 
     renamed = numbered_name != requested_name
     message = f"entry.add ok path={path} {sigil}:{numbered_name} in {section}"
@@ -395,6 +458,8 @@ def entry_update_handler(
                 prev_bytes = p.read_bytes()
         except Exception:
             prev_bytes = None
+    before_text = _snapshot(path)
+    allowed_sections = _target_sections(path, selector)
 
     try:
         result = crud_update(path, selector, set_=set_dict, replace_body=replace_body, append=append, force=force)
@@ -433,6 +498,12 @@ def entry_update_handler(
                 rolled_back=rolled_back,
             )
 
+    guard_error = _guard_after_write(
+        path, before_text, allowed_sections=allowed_sections,
+    )
+    if guard_error is not None:
+        return guard_error
+
     return CortexOUT.work(
         f"entry.update ok path={path} selector={selector}",
         path=path, selector=selector,
@@ -455,6 +526,8 @@ def entry_delete_handler(
     size after the rewrite (unlike ``entry.add``, where ``bytes_written``
     is the serialized entry size).
     """
+    before_text = _snapshot(path)
+    allowed_sections = _target_sections(path, selector)
     try:
         result = crud_delete(path, selector, force=force)
     except FileNotFoundError:
@@ -464,6 +537,13 @@ def entry_delete_handler(
 
     if "error" in result:
         return _crud_error(result, "CRUD_ERROR")
+
+    guard_error = _guard_after_write(
+        path, before_text, allowed_sections=allowed_sections,
+    )
+    if guard_error is not None:
+        return guard_error
+
     return CortexOUT.work(
         f"entry.delete ok path={path} selector={selector}",
         path=path, selector=selector,
@@ -487,6 +567,8 @@ def entry_move_handler(
     size after the rewrite (unlike ``entry.add``, where ``bytes_written``
     is the serialized entry size).
     """
+    before_text = _snapshot(path)
+    allowed_sections = _target_sections(path, selector) | {to_section}
     try:
         result = crud_move(path, selector, to_section, force=force)
     except FileNotFoundError:
@@ -496,6 +578,13 @@ def entry_move_handler(
 
     if "error" in result:
         return _crud_error(result, "CRUD_ERROR")
+
+    guard_error = _guard_after_write(
+        path, before_text, allowed_sections=allowed_sections,
+    )
+    if guard_error is not None:
+        return guard_error
+
     return CortexOUT.work(
         f"entry.move ok path={path} selector={selector} to={to_section}",
         path=path, selector=selector, to_section=to_section,
