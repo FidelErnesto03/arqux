@@ -34,6 +34,17 @@ def write_cortex_pair(
 
     cortex_path = directory / f"{stem}.cortex"
 
+    # Preserve an existing document's glossary (BLP-001 / T-002).
+    #
+    # ``_render_governance_cortex`` builds the file from frontmatter + body and
+    # knows nothing about the glossary, so writing its output straight over an
+    # existing artifact erased ``$0:format{cortex:1.0}`` and every sigil
+    # declaration — every ``task.claim``, ``identity.switch`` or ``context_set``
+    # sent the artifact back to G010_FORMAT_REQUIRED. When the file already
+    # exists and carries a glossary, keep it and only replace the content
+    # sections.
+    preserved_glossary = _existing_glossary(cortex_path)
+
     # BLP-042: ALL .cortex files use the canonical CORTEX writer.
     # ``render_governance_cortex`` is self-sufficient: it uses CODEC-CORTEX
     # when present and ArqUX's own string builders otherwise. Gating it on
@@ -42,8 +53,83 @@ def write_cortex_pair(
     # test_writer_roundtrip).
     cortex_content = _render_governance_cortex(stem, frontmatter, body)
 
+    if preserved_glossary is not None:
+        cortex_content = _restore_glossary(cortex_content, preserved_glossary)
+
     cortex_path.write_text(cortex_content, encoding="utf-8")
     return cortex_path, cortex_path  # Backward compat: returns (cortex, cortex)
+
+
+def _existing_glossary(cortex_path: Path) -> dict[str, Any] | None:
+    """Return the current glossary (dialect + declarations) of *cortex_path*.
+
+    ``None`` when the file does not exist, is not parseable, or has nothing worth
+    preserving — in that case the rendered content is written as-is.
+    """
+    if not cortex_path.exists():
+        return None
+    try:
+        from ...cortex.reader import cortex_to_dict
+
+        doc = cortex_to_dict(cortex_path.read_text(encoding="utf-8"))
+    except Exception:  # noqa: BLE001 - a broken file must not block the write
+        return None
+
+    glossary = doc.get("glossary") or {}
+    preserved = {
+        "format_decl": glossary.get("format_decl"),
+        "declarations": glossary.get("declarations") or [],
+    }
+    if not preserved["format_decl"] and not preserved["declarations"]:
+        return None
+    return preserved
+
+
+def _restore_glossary(content: str, preserved: dict[str, Any]) -> str:
+    """Re-insert the preserved dialect declaration and sigil declarations.
+
+    They go immediately after the ``$0`` line, before the rendered comments, so
+    the document keeps the shape ``reader`` expects.
+    """
+    lines = content.split("\n")
+    try:
+        zero_index = next(i for i, ln in enumerate(lines) if ln.strip() == "$0")
+    except StopIteration:
+        return content
+
+    block: list[str] = []
+    format_decl = preserved.get("format_decl")
+    if format_decl:
+        block.append(str(format_decl))
+    for declaration in preserved.get("declarations") or []:
+        if not isinstance(declaration, dict):
+            continue
+        sigil = declaration.get("sigil")
+        name = declaration.get("name")
+        attrs = declaration.get("attrs")
+        if not (sigil and name and isinstance(attrs, dict)):
+            continue
+        pairs = ", ".join(f'{k}:{json.dumps(v, ensure_ascii=False)}' for k, v in attrs.items())
+        block.append(f"{sigil}:{name}{{{pairs}}}")
+
+    if not block:
+        return content
+
+    # Skip only a declaration the renderer actually emitted. Comparing against the
+    # whole rendered text matched a sigil mentioned in a COMMENT (the glossary
+    # header lists every sigil), which silently dropped that declaration.
+    rendered_decls = {
+        ln.split("{")[0]
+        for ln in lines[zero_index + 1:]
+        if not ln.lstrip().startswith("#")
+        and ln.strip().split("{")[0] and "type:" in ln
+    }
+    block = [ln for ln in block if ln.split("{")[0] not in rendered_decls]
+    if not block:
+        return content
+
+    rest = lines[zero_index + 1:]
+    return "\n".join(lines[: zero_index + 1] + block + rest)
 
 
 def _render_governance_cortex(
