@@ -8,10 +8,28 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
+
 PACKAGE = Path(__file__).resolve().parents[1]
 SRC_MATRIX = PACKAGE / "src" / "arqux" / "skills" / "protocol.skill.md"
 SRC_GUIDES = PACKAGE / "src" / "arqux" / "guides.cortex"
 EFFECTIVE_MATRIX = PACKAGE.parent / ".arqux" / "skills" / "protocol.skill.md"
+
+
+def _effective_matrix() -> Path:
+    """The deployed workspace copy, when the developer tree is present.
+
+    CI checks out the package alone (`<runner>/work/arqux/arqux`), so the
+    sibling workspace `.arqux/` does not exist there. These assertions verify
+    a local deployment surface, not the packaged artifact; skipping keeps the
+    packaged checks running everywhere and documents why.
+    """
+    if not EFFECTIVE_MATRIX.exists():
+        pytest.skip(
+            "workspace deployment tree not present (CI checkout has no "
+            "parent .arqux/skills); packaged-copy checks still run"
+        )
+    return EFFECTIVE_MATRIX
 
 REQUIREMENTS = ("ses_real", "ruta_acordada", "inicio_conservado", "independencia",
                 "limites_naturales", "consulta_control", "conjunto_cobertura")
@@ -19,11 +37,14 @@ REQUIREMENTS = ("ses_real", "ruta_acordada", "inicio_conservado", "independencia
 
 class TestAc01MatrixIdentity:
     def test_distributed_and_effective_carry_the_section(self):
-        assert SRC_MATRIX.exists() and EFFECTIVE_MATRIX.exists()
-        for path in (SRC_MATRIX, EFFECTIVE_MATRIX):
-            text = path.read_text(encoding="utf-8")
-            assert "timelog_native" in text, path
-            assert "$8: ACTIVIDAD & TIEMPO (CYCLE-14)" in text, path
+        assert SRC_MATRIX.exists()
+        source = SRC_MATRIX.read_text(encoding="utf-8")
+        assert "timelog_native" in source
+        assert "$8: ACTIVIDAD & TIEMPO (CYCLE-14)" in source
+
+        effective = _effective_matrix().read_text(encoding="utf-8")
+        assert "timelog_native" in effective
+        assert "$8: ACTIVIDAD & TIEMPO (CYCLE-14)" in effective
 
     def test_no_new_skill_or_agents_file_was_created(self):
         assert not (PACKAGE / "src" / "arqux" / "skills" / "timelog.skill.md").exists()
@@ -70,7 +91,7 @@ class TestAc03IsolatedInstallation:
     def test_effective_copy_preserved_its_customizations(self):
         # The workspace copy carries local personalizations (the usage guide and
         # the timelog-compliance gate); the update must not have dropped them.
-        text = EFFECTIVE_MATRIX.read_text(encoding="utf-8")
+        text = _effective_matrix().read_text(encoding="utf-8")
         assert "0_usage_guide" in text
         assert "timelog_gate" in text
         assert "timelog_native" in text
