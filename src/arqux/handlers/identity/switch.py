@@ -27,7 +27,7 @@ from ...permissions import PermissionContext
 from ...pulse import record_pulse
 from ...session_identity import current_session_ref, get_session
 from ...session_identity import open_session as rebind
-from ...state import find_project_root, find_workspace_root
+from ...state import find_workspace_root, find_write_project_root
 from ..session import CONTEXT_CORTEX, _context_document, _write_context, context_get, handoff
 from .get import get_handler
 
@@ -41,7 +41,7 @@ def _available_identities(start: Path) -> list[str]:
     found: set[str] = set()
     candidates: list[Path] = []
 
-    project_arqux = find_project_root(start=start)
+    project_arqux = find_write_project_root(start=start)
     if project_arqux is not None:
         candidates.append(project_arqux / "identities")
 
@@ -246,7 +246,7 @@ def switch(
 
     # PULSE: switch-specific audit event (handoff already logged its own).
     try:
-        pulse_root = find_project_root(start=start)
+        pulse_root = find_write_project_root(start=start)
         if pulse_root is not None:
             record_pulse(
                 pulse_root,
@@ -271,7 +271,7 @@ def switch(
     from ...timelog_capture import observe
 
     lifecycle = observe(
-        find_project_root(start=start) or start, ctx,
+        find_write_project_root(start=start) or start, ctx,
         event="boundary",
         operation_ref=f"identity-switch:{from_agent}->{canonical}",
         activity="identity-switch",

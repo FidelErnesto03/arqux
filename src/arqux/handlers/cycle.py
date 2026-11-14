@@ -40,8 +40,8 @@ from ..permissions import PermissionContext, enforce_ctx
 from ..pulse import record_pulse
 from ..state import (
     cycle_dir,
-    find_project_root,
     find_workspace_root,
+    find_write_project_root,
     next_cycle_id,
     write_cortex_pair,
 )
@@ -693,7 +693,7 @@ def _resolve_project_root(path: str | None = None) -> tuple[Path | None, str]:
 
     Returns (root, error_msg) where error_msg is empty-string on success.
     """
-    root = find_project_root(start=path)
+    root = find_write_project_root(start=path)
     if root is not None:
         return root, ""
 
@@ -723,7 +723,7 @@ def _resolve_cycle_root(cycle_id: str, path: str | None = None) -> tuple[Path | 
 
     Returns (root, error_msg) where error_msg is empty-string on success.
     """
-    root = find_project_root(start=path)
+    root = find_write_project_root(start=path)
     if root is not None:
         return root, ""
 

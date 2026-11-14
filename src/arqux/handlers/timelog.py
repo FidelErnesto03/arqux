@@ -19,7 +19,7 @@ from ..cortex_out import CortexOUT
 from ..execution import authoritative_execution_key
 from ..permissions import PermissionContext
 from ..session_identity import find_session_for_execution, get_session
-from ..state import find_project_root
+from ..state import find_write_project_root
 
 
 def _resolve_session(root: Path, session_ref: str | None,
@@ -42,7 +42,7 @@ def _resolve_session(root: Path, session_ref: str | None,
 
 
 def _root(project: str | None, path: str | None) -> Path | None:
-    return find_project_root(start=path)
+    return find_write_project_root(start=path)
 
 
 def query_handler(

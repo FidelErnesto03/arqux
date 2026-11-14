@@ -19,7 +19,7 @@ from ...constants import (
 )
 from ...permissions import PermissionContext
 from ...pulse import record_pulse
-from ...state import find_project_root, read_brain
+from ...state import find_write_project_root, read_brain
 
 # ---------------------------------------------------------------------------
 # Constants
@@ -107,8 +107,12 @@ def _now_iso() -> str:
 
 
 def _resolve_root(path: str | None = None) -> Path | None:
-    """Find the .arqux/ root. Returns .arqux/ path."""
-    return find_project_root(start=path)
+    """Find the .arqux/ root for a WRITE. Returns the .arqux/ path.
+
+    Uses the write-safe resolver: a stale workspace pointer must never send a
+    blueprint write into another project (T-003; the CYCLE-14 incident).
+    """
+    return find_write_project_root(start=path)
 
 
 def _blueprints_dir(root: Path, cycle_id: str) -> Path:

@@ -35,7 +35,7 @@ from pathlib import Path
 from ..cortex_out import CortexOUT
 from ..permissions import PermissionContext
 from ..pulse import read_pulse_from_brain, record_pulse
-from ..state import find_project_root
+from ..state import find_write_project_root
 
 VALID_SEVERITIES = ("low", "medium", "high", "blocking")
 VALID_STATUSES = ("open", "triaged", "fixed", "verified", "wontfix", "duplicate")
@@ -150,7 +150,7 @@ def create_issue(
     header_title, body = _split_title(body, title)
     handler = " ".join((handler or "").split())
 
-    root = find_project_root(start=path)
+    root = find_write_project_root(start=path)
     if root is None:
         return CortexOUT.error("no project initialized", code="NOT_FOUND")
 
@@ -244,7 +244,7 @@ def update_issue(
             code="INVALID_ARGS",
         )
 
-    root = find_project_root(start=path)
+    root = find_write_project_root(start=path)
     if root is None:
         return CortexOUT.error("no project initialized", code="NOT_FOUND")
 
@@ -331,7 +331,7 @@ def list_issues(
             f"invalid status {status!r}; must be one of {list(VALID_STATUSES)}",
             code="INVALID_ARGS",
         )
-    root = find_project_root(start=path)
+    root = find_write_project_root(start=path)
     if root is None:
         return CortexOUT.error("no project initialized", code="NOT_FOUND")
 
@@ -367,7 +367,7 @@ def read_issue(
     ctx: PermissionContext | None = None,
 ) -> CortexOUT:
     """Read one issue file verbatim."""
-    root = find_project_root(start=path)
+    root = find_write_project_root(start=path)
     if root is None:
         return CortexOUT.error("no project initialized", code="NOT_FOUND")
 

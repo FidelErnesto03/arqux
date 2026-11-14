@@ -193,6 +193,59 @@ def find_project_root(start: Path | str | None = None) -> Path | None:
     return None
 
 
+def find_write_project_root(start: Path | str | None = None) -> Path | None:
+    """Resolve the project a WRITE may target — never from the shared pointer.
+
+    ``find_project_root`` falls back to ``.arqux/context.cortex``, the workspace
+    slot any execution can overwrite. That is acceptable for reading (a stale
+    answer is merely stale), but not for writing: a concurrent client left the
+    slot pointing at another project and the write landed there, twice.
+
+      * 2026-10-28: a checkpoint reached Manhattan instead of ARQUX.
+      * 2026-11-14: 14 ``blueprint.update`` calls with cycle=CYCLE-16 wrote into
+        CYCLE-14, and ``task.create`` wrote T-009 into CODEC-CORTEX/CYCLE-03.
+        Both returned ``ok``.
+
+    A write resolves only from unambiguous sources: an explicit ``start`` that
+    contains a project brain, this execution's own pointer, or the cwd walk-up.
+    The global slot is never consulted. Callers get ``None`` and must fail with
+    an actionable error rather than guess (BLP task T-003).
+    """
+    cursor = Path(start or os.getcwd()).resolve()
+
+    # Explicit path already inside a project.
+    if cursor.name == ARQUX_DIR and (cursor / BRAIN_CORTEX).exists():
+        return cursor
+
+    # Walk up from the start path.
+    probe = cursor
+    while True:
+        candidate = probe / ARQUX_DIR / BRAIN_CORTEX
+        if candidate.exists():
+            return probe / ARQUX_DIR
+        if probe.parent == probe:
+            break
+        probe = probe.parent
+
+    # This execution's own pointer only — never the shared workspace slot.
+    ws_root = find_workspace_root()
+    if ws_root is None:
+        return None
+    for ctx_path in _context_candidates(ws_root):
+        if ctx_path == ws_root / CONTEXT_CORTEX:
+            continue  # the shared slot is not a valid source for writes
+        if not ctx_path.exists():
+            continue
+        raw = ctx_path.read_text(encoding="utf-8")
+        m = re.search(r'project_root[=:]"([^"]*)"', raw)
+        if not m:
+            continue
+        candidate = Path(m.group(1))
+        if candidate.exists() and (candidate / ARQUX_DIR / BRAIN_CORTEX).exists():
+            return candidate / ARQUX_DIR
+    return None
+
+
 def _context_candidates(ws_root: Path) -> list[Path]:
     """This execution's pointer first, the shared slot last."""
     candidates: list[Path] = []

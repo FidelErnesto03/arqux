@@ -27,7 +27,7 @@ from ...constants import BLUEPRINTS_DIR, CYCLES_DIR
 from ...cortex_out import OUT_ERROR, CortexOUT
 from ...permissions import PermissionContext
 from ...pulse import record_pulse
-from ...state import find_project_root
+from ...state import find_write_project_root
 
 
 def _set_frontmatter_line(text: str, key: str, value: str) -> str:
@@ -86,7 +86,7 @@ def synthesize_blueprint(
     if content is not None and not isinstance(content, str):
         return CortexOUT.error("invalid content type", code="INVALID_ARGS")
 
-    root = find_project_root(start=path)
+    root = find_write_project_root(start=path)
     if root is None:
         return CortexOUT.error("no project initialized", code="NOT_FOUND")
 

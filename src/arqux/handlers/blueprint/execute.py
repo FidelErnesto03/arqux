@@ -28,7 +28,7 @@ from ...cortex.parse_content import parse_content_entry
 from ...cortex_out import CortexOUT
 from ...permissions import PermissionContext
 from ...pulse import record_pulse
-from ...state import find_project_root
+from ...state import find_write_project_root
 from ..execution import ExecutionError, execute_action
 from ._helpers import (
     BP_BLOCKED,
@@ -148,7 +148,7 @@ def execute_blueprint(
     if not bp_id:
         return CortexOUT.error("bp_id is required", code="INVALID_ARGS")
 
-    root = find_project_root(start=path)
+    root = find_write_project_root(start=path)
     if root is None:
         return CortexOUT.error("no project initialized", code="NOT_FOUND")
     # find_project_root returns the ``.arqux/`` directory, which blueprint

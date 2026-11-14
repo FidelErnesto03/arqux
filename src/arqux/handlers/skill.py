@@ -21,7 +21,7 @@ from typing import Any
 
 from ..cortex_out import CortexOUT
 from ..permissions import PermissionContext
-from ..state import cortex_write, crud_add, find_project_root, find_workspace_root
+from ..state import cortex_write, crud_add, find_workspace_root, find_write_project_root
 from ..sync import sync_brain
 
 SKILL_DIR = "skills"
@@ -33,7 +33,7 @@ def _resolve_arqux_root(path: str | None = None) -> Path | None:
     ws = find_workspace_root(start=path)
     if ws:
         return ws  # find_workspace_root already returns .arqux/ path
-    pr = find_project_root(start=path)
+    pr = find_write_project_root(start=path)
     if pr:
         return pr  # find_project_root already returns .arqux/ path
     return None
@@ -837,8 +837,8 @@ def install_skill(
         # Append SKL entry to brain.cortex $6 (LESSONS section in legacy,
         # or a SKILLS section if present).
         try:
-            from ..state import find_project_root
-            project_arqux = find_project_root(start=path)
+            from ..state import find_write_project_root
+            project_arqux = find_write_project_root(start=path)
             if project_arqux is not None:
                 brain_path = project_arqux / "brain.cortex"
                 if brain_path.exists():

@@ -29,7 +29,7 @@ from ..cortex_out import CortexOUT
 from ..permissions import PermissionContext
 from ..state import (
     cycle_dir,
-    find_project_root,
+    find_write_project_root,
     next_task_id,
     write_cortex_pair,
 )
@@ -64,9 +64,14 @@ def create_task(
 
     Retrocompatibility: all callers without ``content`` work identically.
     """
-    root = find_project_root(start=path)
+    root = find_write_project_root(start=path)
     if root is None:
-        return CortexOUT.error("no project initialized", code="NOT_FOUND")
+        return CortexOUT.error(
+            "no project could be resolved for writing: pass path= explicitly or bind a "
+            "session with session.context_set. The workspace pointer is not a valid "
+            "source for writes.",
+            code="NOT_FOUND",
+        )
 
     # BLP-009: merge content CORTEX over individual params.
     content_ignored: list[str] = []
@@ -193,9 +198,14 @@ def create_task(
 
 def claim_task(task_id: str, path: str | None = None, ctx: PermissionContext | None = None) -> CortexOUT:
     """An executor claims a task → status: in_progress."""
-    root = find_project_root(start=path)
+    root = find_write_project_root(start=path)
     if root is None:
-        return CortexOUT.error("no project initialized", code="NOT_FOUND")
+        return CortexOUT.error(
+            "no project could be resolved for writing: pass path= explicitly or bind a "
+            "session with session.context_set. The workspace pointer is not a valid "
+            "source for writes.",
+            code="NOT_FOUND",
+        )
 
     path, fm, body = _load_task(root, task_id, cycle=_cycle_from_path(path), path=path)
     if path is None:
@@ -251,9 +261,14 @@ def update_task(
     ctx: PermissionContext | None = None,
 ) -> CortexOUT:
     """Update task progress, optionally change status."""
-    root = find_project_root(start=path)
+    root = find_write_project_root(start=path)
     if root is None:
-        return CortexOUT.error("no project initialized", code="NOT_FOUND")
+        return CortexOUT.error(
+            "no project could be resolved for writing: pass path= explicitly or bind a "
+            "session with session.context_set. The workspace pointer is not a valid "
+            "source for writes.",
+            code="NOT_FOUND",
+        )
 
     path, fm, body = _load_task(root, task_id, cycle=_cycle_from_path(path), path=path)
     if path is None:
@@ -290,9 +305,14 @@ def complete_task(
     ctx: PermissionContext | None = None,
 ) -> CortexOUT:
     """Mark a task done and record evidence in the brain's PULSE section."""
-    root = find_project_root(start=path)
+    root = find_write_project_root(start=path)
     if root is None:
-        return CortexOUT.error("no project initialized", code="NOT_FOUND")
+        return CortexOUT.error(
+            "no project could be resolved for writing: pass path= explicitly or bind a "
+            "session with session.context_set. The workspace pointer is not a valid "
+            "source for writes.",
+            code="NOT_FOUND",
+        )
 
     path, fm, body = _load_task(root, task_id, cycle=_cycle_from_path(path), path=path)
     if path is None:
@@ -361,9 +381,14 @@ def fail_task(
     ctx: PermissionContext | None = None,
 ) -> CortexOUT:
     """Mark a task blocked and record the cause in the brain's PULSE section."""
-    root = find_project_root(start=path)
+    root = find_write_project_root(start=path)
     if root is None:
-        return CortexOUT.error("no project initialized", code="NOT_FOUND")
+        return CortexOUT.error(
+            "no project could be resolved for writing: pass path= explicitly or bind a "
+            "session with session.context_set. The workspace pointer is not a valid "
+            "source for writes.",
+            code="NOT_FOUND",
+        )
 
     path, fm, body = _load_task(root, task_id, cycle=_cycle_from_path(path), path=path)
     if path is None:
@@ -411,9 +436,14 @@ def read_task(
     ctx: PermissionContext | None = None,
 ) -> CortexOUT:
     """Read a task (CORTEX or HCORTEX format)."""
-    root = find_project_root(start=path)
+    root = find_write_project_root(start=path)
     if root is None:
-        return CortexOUT.error("no project initialized", code="NOT_FOUND")
+        return CortexOUT.error(
+            "no project could be resolved for writing: pass path= explicitly or bind a "
+            "session with session.context_set. The workspace pointer is not a valid "
+            "source for writes.",
+            code="NOT_FOUND",
+        )
 
     cycles_base = root / CYCLES_DIR
     if not cycles_base.exists():
@@ -468,9 +498,14 @@ def list_tasks(
     Paginated when ``limit`` is given: fields total, returned, offset
     and next_offset report the pagination state.
     """
-    root = find_project_root(start=path)
+    root = find_write_project_root(start=path)
     if root is None:
-        return CortexOUT.error("no project initialized", code="NOT_FOUND")
+        return CortexOUT.error(
+            "no project could be resolved for writing: pass path= explicitly or bind a "
+            "session with session.context_set. The workspace pointer is not a valid "
+            "source for writes.",
+            code="NOT_FOUND",
+        )
 
     cycles_base = root / CYCLES_DIR
     if not cycles_base.exists():
@@ -724,9 +759,14 @@ def run_task(
     if not task_id:
         return CortexOUT.error("task_id is required", code="INVALID_ARGS")
 
-    arqux_root = find_project_root(start=path)
+    arqux_root = find_write_project_root(start=path)
     if arqux_root is None:
-        return CortexOUT.error("no project initialized", code="NOT_FOUND")
+        return CortexOUT.error(
+            "no project could be resolved for writing: pass path= explicitly or bind a "
+            "session with session.context_set. The workspace pointer is not a valid "
+            "source for writes.",
+            code="NOT_FOUND",
+        )
 
     # find_project_root returns the ``.arqux/`` directory, which the rest of
     # this handler expects (it searches cycles/ beneath it). Execution is
