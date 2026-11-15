@@ -26,26 +26,21 @@ from ...cortex.sigils import get_sigil, list_sigils
 from ...cortex_out import CortexOUT
 from ...permissions import PermissionContext
 
-#: Standard brain.cortex section map (canon:
-#: docs/reference/cortex-brain-section-canon.md, $0..$15):
+#: Standard brain.cortex section map (canon: GRADIENT-12,
+#: docs/cortex/brain-canon.md, $0..$10):
 #: section id → title → sigils that live in it.
 BRAIN_SECTION_MAP: dict[str, dict[str, Any]] = {
     "$0": {"title": "GLOSSARY", "sigils": []},
-    "$1": {"title": "IDENTITY", "sigils": ["IDN"]},
+    "$1": {"title": "IDENTITY", "sigils": ["ARQX", "IDN"]},
     "$2": {"title": "AXIOMS", "sigils": ["AXM"]},
-    "$3": {"title": "FOCUS", "sigils": ["FCS"]},
-    "$4": {"title": "OBJECTIVES", "sigils": ["OBJ"]},
-    "$5": {"title": "SESSIONS", "sigils": ["SES"]},
-    "$6": {"title": "HANDOFFS", "sigils": ["HDL"]},
-    "$7": {"title": "PULSE", "sigils": ["AUD"]},
+    "$3": {"title": "KNOWLEDGE", "sigils": ["KNW"]},
+    "$4": {"title": "RISKS", "sigils": ["RSK", "LIM", "CNST", "PFL"]},
+    "$5": {"title": "FOCUS", "sigils": ["FCS"]},
+    "$6": {"title": "OBJECTIVES", "sigils": ["OBJ"]},
+    "$7": {"title": "ACTIVE_CONTEXT", "sigils": ["WRK", "HND"]},
     "$8": {"title": "LESSONS", "sigils": ["LNG"]},
-    "$9": {"title": "ACTIVE_CONTEXT", "sigils": ["WRK"]},
-    "$10": {"title": "RISKS", "sigils": ["RSK", "LIM", "CNST", "PFL"]},
-    "$11": {"title": "KNOWLEDGE", "sigils": ["KNW"]},
-    "$12": {"title": "CONCURRENCY", "sigils": ["ERR"]},
-    "$13": {"title": "ISSUES", "sigils": []},
-    "$14": {"title": "LOOPS", "sigils": ["LOOP"]},
-    "$15": {"title": "ARQUX_METADATA", "sigils": ["ARQX"]},
+    "$9": {"title": "LOOPS", "sigils": ["LOOP"]},
+    "$10": {"title": "SESSIONS", "sigils": ["SES"]},
 }
 
 

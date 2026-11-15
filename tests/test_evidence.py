@@ -9,7 +9,8 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
-from arqux.constants import ARQUX_DIR, BRAIN_CORTEX
+from arqux import pulse
+from arqux.constants import ARQUX_DIR
 from arqux.handlers import cycle, evidence, project, task, workspace
 
 
@@ -36,11 +37,10 @@ def test_evidence_record_writes_to_brain_pulse(workspace_root: Path, governor_ct
             task_id="T-001", kind="note", payload="halfway done", ctx=executor_ctx,
         )
         assert "evidence.record ok" in result.to_text()
-        # The pulse entry should be in brain.cortex, NOT in pulse.jsonl.
-        brain_path = project_dir / ARQUX_DIR / BRAIN_CORTEX
-        brain_text = brain_path.read_text(encoding="utf-8")
-        assert "$7: PULSE" in brain_text
-        assert "halfway done" in brain_text
+        # Events live in session timelog $5 EVENTS (canonical) or the brain
+        # PULSE fallback — never in pulse.jsonl.
+        events = pulse.read_pulse_from_brain(project_dir)
+        assert any("halfway done" in (e.get("payload") or "") for e in events), events
         # No pulse.jsonl file should exist anymore.
         assert not (project_dir / ARQUX_DIR / "cycles" / "CYCLE-01" / "pulse.jsonl").exists()
     finally:

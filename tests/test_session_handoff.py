@@ -16,9 +16,12 @@ from arqux.permissions import ROLE_EXECUTOR, ROLE_GOVERNOR, PermissionContext
 
 
 def _handoff_text(project_dir: Path, target_agent: str) -> str:
-    """Read the serialized handoff file written by session.handoff."""
-    p = project_dir / ".arqux" / "handoffs" / f"{target_agent}.cortex"
-    return p.read_text(encoding="utf-8") if p.exists() else ""
+    """Read the serialized HND:<target> entry in brain ACTIVE_CONTEXT."""
+    brain = project_dir / ".arqux" / "brain.cortex"
+    text = brain.read_text(encoding="utf-8") if brain.exists() else ""
+    return "\n".join(
+        ln for ln in text.splitlines() if ln.startswith(f"HND:{target_agent}")
+    )
 
 
 def _setup_project(workspace_root: Path, ctx) -> Path:
@@ -128,9 +131,8 @@ def test_handoff_rejects_malformed_target_agent(workspace_root: Path, governor_c
         )
         assert result.fields.get("code") == "INVALID_ARGS", (bad, result.fields)
 
-    handoffs = project_dir / ".arqux" / "handoffs"
-    written = [p.name for p in handoffs.glob("*.cortex")] if handoffs.is_dir() else []
-    assert all("\n" not in n and "/" not in n for n in written)
+    # The handoffs/ directory is retired — nothing may be written there.
+    assert not (project_dir / ".arqux" / "handoffs").exists()
 
 
 def test_handoff_accepts_canonical_agent_id(workspace_root: Path, governor_ctx) -> None:
@@ -145,4 +147,4 @@ def test_handoff_accepts_canonical_agent_id(workspace_root: Path, governor_ctx) 
         ctx=_ctx("heimdall"),
     )
     assert result.profile == "OUT-WORK", result.fields
-    assert "HOF:handoff" in _handoff_text(project_dir, "jarvis")
+    assert 'HND:jarvis' in _handoff_text(project_dir, "jarvis")

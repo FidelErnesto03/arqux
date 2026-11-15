@@ -345,12 +345,12 @@ def cortex_write(
     # T-027: brain-level validation applies to BRAINS only (see
     # _read_and_mutate below for rationale).
     from ...constants import BRAIN_CORTEX, META_BRAIN_CORTEX
-    from ...state import _HAS_CODEC_CORTEX as _cc_available
-    if (
-        Path(path).name in (BRAIN_CORTEX, META_BRAIN_CORTEX)
-        and _cc_available
-        and _cc_validator is not None
-    ):
+    if Path(path).name in (BRAIN_CORTEX, META_BRAIN_CORTEX):
+        # codec-cortex is a core dependency since 1.0.0 — a missing codec on
+        # a brain write is a broken install, not a degradable case: fail
+        # closed instead of writing an unvalidated brain.
+        requires_codec_cortex()
+        requires_capability("validate")
         try:
             ast_doc = _cc_parser.parse_cortex(content, path=path)
         except Exception as exc:
@@ -378,6 +378,31 @@ def cortex_write(
                 # The validator itself is best-effort — proceed with write.
                 pass
 
+        # REQ-04: loss-report gate — a brain write must round-trip through
+        # our own serializer with loss_count == 0 (no entry dropped when
+        # re-parsed). Same brains-only scope as the strict-parse gate.
+        loss = _roundtrip_loss_count(content)
+        if loss and not force:
+            return {
+                "path": path,
+                "error": f"Round-trip loss detected ({loss} entries would be dropped). Use force=True to override.",
+                "diagnostics": [f"[E_LOSS] loss_count={loss}"],
+            }
+
+    # REQ-10: CODE-enforced policy hooks on governed writes. Rules whose
+    # `on:` glob matches this operation run pre-write; violations block.
+    from ..policy_engine import _project_root_for, evaluate_hooks
+
+    proj_root = _project_root_for(Path(path))
+    if proj_root is not None:
+        violations = evaluate_hooks("cortex.write", content, proj_root, when="pre")
+        if violations and not force:
+            return {
+                "path": path,
+                "error": f"Policy hook blocked the write ({len(violations)} violation(s)). Use force=True to override.",
+                "diagnostics": violations,
+            }
+
     result = atomic_write_json(doc, path)
     return {
         "path": result.path,
@@ -386,6 +411,42 @@ def cortex_write(
         "diagnostics": [],
         "dry_run": result.dry_run,
     }
+
+
+def _roundtrip_loss_count(text: str) -> int | None:
+    """Count entries lost across the codec's own C14N round-trip.
+
+    REQ-04 ``loss-report``: parse *text* with ``codec_cortex.dispatcher``,
+    canonicalize (C14N-1.0), re-parse, and compare ``(section, symbol,
+    name)`` keys. Returns the number of source ideas absent after the
+    round-trip, or ``None`` when the source cannot be measured (the
+    strict-parse gate reports that case). Raises ``RuntimeError`` when the
+    codec is unavailable — it is a core dependency since 1.0.0, so absence
+    means a broken install, not a degradable case.
+    """
+    try:
+        from codec_cortex import dispatcher as _disp
+    except ImportError as exc:
+        raise RuntimeError(
+            "CODEC-CORTEX is required. Install with: pip install codec-cortex>=1.0,<1.1"
+        ) from exc
+    try:
+        doc1 = _disp.parse_cortex(text)
+        keys1 = {
+            (s.id, i.symbol, i.name)
+            for s in doc1.sections
+            for i in s.ideas
+        }
+        canon = _disp.canonicalize(doc1)
+        doc2 = _disp.parse_cortex(canon)
+        keys2 = {
+            (s.id, i.symbol, i.name)
+            for s in doc2.sections
+            for i in s.ideas
+        }
+    except Exception:
+        return None
+    return len(keys1 - keys2)
 
 
 #: Placeholder markers left in entry values by templates (``<timestamp>``,
@@ -486,13 +547,61 @@ def cortex_verify(path: str | Path) -> dict:
         for d in diags
     ]
     diagnostics.extend(_info_diagnostics(doc))
+    hash_errors = _seal_hash_errors(path) if path.name == "seal.cortex" else []
+    diagnostics.extend(hash_errors)
+    # REQ-10: learn-policies.cortex rule entries must declare enforce levels.
+    policy_errors: list[str] = []
+    if path.name == "learn-policies.cortex":
+        from ..policy_engine import validate_policy_text
+
+        policy_errors = validate_policy_text(text)
+        diagnostics.extend(e for e in policy_errors if not e.startswith("[PARSE]"))
+    # REQ-04: report the round-trip loss_count alongside the structural
+    # diagnostics; a positive count is an integrity error on brains.
+    loss_count = _roundtrip_loss_count(text)
+    if loss_count:
+        diagnostics.append(f"[E_LOSS] loss_count={loss_count} (line ?)")
     return {
         "path": str(path),
-        "valid": len(errors) == 0,
+        "valid": len(errors) == 0 and not hash_errors and not policy_errors and not loss_count,
         "diagnostics": diagnostics,
         "sections": len(doc.sections),
         "entries": sum(len(s.entries) for s in doc.sections),
+        "loss_count": loss_count,
     }
+
+
+def _seal_hash_errors(seal_path: Path) -> list[str]:
+    """Recompute the SHA-256 of every artifact listed in a ``seal.cortex``.
+
+    REQ-03: ``cycle.close`` seals each cycle artifact; drift is reported
+    as ``ERR_HASH_MISMATCH`` (severity error) when a file changed or the
+    seal references a missing artifact.
+    """
+    import hashlib
+    import re
+
+    errors: list[str] = []
+    text = seal_path.read_text(encoding="utf-8")
+    for match in re.finditer(
+        r'^HSH:[A-Za-z0-9_]+\{file:"([^"]+)",\s*sha256:"([0-9a-f]{64})"\}',
+        text,
+        re.MULTILINE,
+    ):
+        rel, recorded = match.group(1), match.group(2)
+        artifact = seal_path.parent / rel
+        if not artifact.exists():
+            errors.append(
+                f"[ERR_HASH_MISMATCH] seal artifact missing: {rel} (line ?)"
+            )
+            continue
+        actual = hashlib.sha256(artifact.read_bytes()).hexdigest()
+        if actual != recorded:
+            errors.append(
+                f"[ERR_HASH_MISMATCH] {rel}: recorded={recorded[:12]}… "
+                f"actual={actual[:12]}… (line ?)"
+            )
+    return errors
 
 
 def cortex_render(path: str | Path) -> str:
@@ -605,6 +714,37 @@ def _write_mutated(path: Path, doc: dict, *, force: bool, dry_run: bool) -> dict
     }
 
 
+def crud_section_id_for_title(
+    path: str | Path,
+    title: str,
+    *,
+    fallback: str | None = None,
+) -> str | None:
+    """Resolve a section id by its *title* in the target .cortex file.
+
+    Title-based resolution (vigente): writers must target the section that
+    exists under its canonical title, not a hard-coded ``$N`` — section
+    numbering legitimately drifts between layouts (legacy vs GRADIENT-12).
+    Returns *fallback* when the file or the titled section is missing.
+    """
+    p = Path(path)
+    want = str(title or "").strip().upper()
+    if not p.exists() or not want:
+        return fallback
+    try:
+        doc = cortex_to_dict(p.read_text(encoding="utf-8"))
+    except Exception:
+        return fallback
+    for sec in doc.get("sections") or []:
+        if not isinstance(sec, dict):
+            continue
+        if str(sec.get("title") or "").strip().upper() == want:
+            sid = str(sec.get("id") or "").strip()
+            if sid:
+                return sid if sid.startswith("$") else f"${sid}"
+    return fallback
+
+
 def crud_read(path: str | Path, selector: str) -> dict:
     """Read entries matching *selector* from a .cortex file.
 
@@ -658,6 +798,7 @@ def crud_add(
     value: str | dict,
     *,
     create_section: bool = False,
+    section_title: str | None = None,
     force: bool = False,
     dry_run: bool = False,
 ) -> dict:
@@ -676,6 +817,7 @@ def crud_add(
         _ax_add_entry(
             doc, section, sigil, name, parsed_value,
             create_section=create_section,
+            section_title=section_title,
         )
         return doc
 

@@ -79,15 +79,14 @@ def test_cortex_ref_sections_matches_brain_template(tmp_path: Path) -> None:
     assert "IDN" in sections["$1"]["sigils"]
     assert sections["$2"]["title"] == "AXIOMS"
     assert sections["$2"]["sigils"] == ["AXM"]
-    assert sections["$9"]["title"] == "ACTIVE_CONTEXT"
-    assert sections["$9"]["sigils"] == ["WRK"]
-    assert sections["$7"]["title"] == "PULSE"
+    assert sections["$7"]["title"] == "ACTIVE_CONTEXT"
+    assert sections["$7"]["sigils"] == ["WRK", "HND"]
     assert sections["$8"]["sigils"] == ["LNG"]
-    assert sections["$15"]["title"] == "ARQUX_METADATA"
-    assert sections["$15"]["sigils"] == ["ARQX"]
-    assert sections["$3"]["sigils"] == ["FCS"]
-    assert sections["$11"]["sigils"] == ["KNW"]
-    assert sections["$12"]["sigils"] == ["ERR"]
+    assert sections["$10"]["title"] == "SESSIONS"
+    assert sections["$10"]["sigils"] == ["SES"]
+    assert sections["$5"]["sigils"] == ["FCS"]
+    assert sections["$3"]["sigils"] == ["KNW"]
+    assert sections["$1"]["sigils"] == ["ARQX", "IDN"]
 
     # sigil lookup still works with sections param present
     out2 = ref_handler("WRK", sections=False, ctx=_CONTEXT)

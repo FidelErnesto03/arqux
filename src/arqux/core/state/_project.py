@@ -100,6 +100,12 @@ def parse_cortex_file(path: Path) -> tuple[dict[str, Any], str]:
             return fm, "\n".join(body_parts)
         except Exception:  # noqa: BLE001
             pass
+    elif text.startswith("$") and "$0" in text[:40]:
+        # Sigil-format file but no codec: broken install — fail closed
+        # instead of feeding sigil text to the legacy YAML parser.
+        raise RuntimeError(
+            "CODEC-CORTEX is required. Install with: pip install codec-cortex>=1.0,<1.1"
+        )
 
     # Legacy YAML frontmatter parser.
     if not text.startswith("---"):
@@ -232,7 +238,7 @@ def find_write_project_root(start: Path | str | None = None) -> Path | None:
     if ws_root is None:
         return None
     for ctx_path in _context_candidates(ws_root):
-        if ctx_path == ws_root / CONTEXT_CORTEX:
+        if ctx_path in (ws_root / CONTEXT_CORTEX, ws_root / META_BRAIN_CORTEX):
             continue  # the shared slot is not a valid source for writes
         if not ctx_path.exists():
             continue
@@ -247,7 +253,14 @@ def find_write_project_root(start: Path | str | None = None) -> Path | None:
 
 
 def _context_candidates(ws_root: Path) -> list[Path]:
-    """This execution's pointer first, the shared slot last."""
+    """This execution's pointer first, then the canonical shared pointer.
+
+    GRADIENT-12: the shared context pointer is ``WRK:current`` inside
+    meta-brain ACTIVE_CONTEXT — the regex ``project_root[=:]"..."`` matches
+    its attrs the same way it matched the retired context.cortex entry.
+    The retired ``context.cortex`` stays last as a compat read for
+    workspaces that predate the meta-brain pointer.
+    """
     candidates: list[Path] = []
     try:
         import hashlib
@@ -261,5 +274,6 @@ def _context_candidates(ws_root: Path) -> list[Path]:
         readable = re.sub(r"[^A-Za-z0-9._-]", "_", execution).strip("._")[:64] or "exec"
         digest = hashlib.sha256(execution.encode("utf-8")).hexdigest()[:12]
         candidates.append(ws_root / CONTEXTS_DIR / f"{readable}-{digest}.cortex")
+    candidates.append(ws_root / META_BRAIN_CORTEX)
     candidates.append(ws_root / CONTEXT_CORTEX)
     return candidates

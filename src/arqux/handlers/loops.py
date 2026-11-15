@@ -41,8 +41,11 @@ def loop_register(path: str, name: str, phases: list | None = None,
         return CortexOUT.error("name is required", code="INVALID_ARGS")
     if _find(path, name):
         return CortexOUT.error(f"loop {name!r} already registered", code="ALREADY_EXISTS")
+    from ..core.state._crud import crud_section_id_for_title
+    brain_path = _brain(path)
+    loops_sec = crud_section_id_for_title(brain_path, "LOOPS", fallback="$9")
     res = crud_add(
-        _brain(path), "$14", "LOOP", name,
+        brain_path, loops_sec, "LOOP", name,
         {"state": "armed", "index": "0", "retries": "0",
          "phases": phases or [], "recurrence": recurrence,
          "max_stall": str(max_stall or "60"),
@@ -51,7 +54,7 @@ def loop_register(path: str, name: str, phases: list | None = None,
          "owner": owner, "session": session,
          "claimed_by": "", "claim_ts": "0",
          "created": f"{time.time():.0f}", "last_run": "0", "last_activity": "0"},
-        create_section=True, force=True,
+        create_section=True, section_title="LOOPS", force=True,
     )
     if "error" in res:
         return CortexOUT.error(str(res["error"]), code="WRITE_FAILED")

@@ -775,6 +775,19 @@ def run_task(
     root = arqux_root
     exec_root = arqux_root.parent
 
+    # REQ-02 / BLP-022 invariante A: reject before executing when this project
+    # has session identity but none is bound to this execution (E-1805).
+    # dry_run reports the plan without mutating state, so it stays ungated.
+    from ..timelog_capture import require_bound_session
+
+    if not dry_run:
+        rejection = require_bound_session(root, ctx, action="task.run")
+        if rejection:
+            return CortexOUT.error(
+                rejection["message"], code=rejection["code"],
+                remediation=rejection["remediation"],
+            )
+
     # Find the task file (BLP-006: same deterministic resolution as
     # _load_task/read_task — no arbitrary first-match across cycles).
     task_path, matches = _resolve_task_file(

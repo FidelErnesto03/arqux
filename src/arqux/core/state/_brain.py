@@ -136,7 +136,14 @@ def read_brain(project_root: Path) -> tuple[dict[str, Any], dict[str, str], str]
                 if mapped is None:
                     # Extract metadata from identity and concurrency sections.
                     for e in (sec.entries or []):
-                        if sec_name == "IDENTITY" and e.sigil == "IDN":
+                        if e.sigil == "ARQX" and sec_name in (
+                            "IDENTITY", "METADATA", "ARQUX_METADATA", "ARQUX METADATA",
+                        ):
+                            # GRADIENT-12: concurrency folded into ARQX:artifact.
+                            fm["brain_version"] = e.value.get("version", fm["brain_version"])
+                            fm["brain_last_writer"] = e.value.get("last_writer", "")
+                            fm["brain_updated"] = e.value.get("updated", "")
+                        elif sec_name == "IDENTITY" and e.sigil == "IDN":
                             fm["governor"] = e.value.get("governor", e.value.get("agent", ""))
                             fm["level"] = e.value.get("level", "2")
                             fm["project"] = e.value.get("project", "")
@@ -203,6 +210,12 @@ def read_brain(project_root: Path) -> tuple[dict[str, Any], dict[str, str], str]
 
         except Exception:  # noqa: BLE001
             pass
+    elif "$0" in text[:80]:
+        # Sigil-format brain but no codec: broken install — fail closed
+        # instead of feeding sigil text to the legacy YAML parser.
+        raise RuntimeError(
+            "CODEC-CORTEX is required. Install with: pip install codec-cortex>=1.0,<1.1"
+        )
 
     # Fallback to legacy YAML parser.
     fm, body = parse_cortex_file(brain_path)

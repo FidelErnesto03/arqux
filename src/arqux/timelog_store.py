@@ -50,6 +50,11 @@ SECTION_IDENTITY = "$1"
 SECTION_ACTIVITIES = "$2"
 SECTION_RECEIPTS = "$3"
 SECTION_PROJECTIONS = "$4"
+SECTION_EVENTS = "$5"
+
+#: Sigils admitted in the timelog EVENTS section (session event stream —
+#: the canonical home of pulse AUD/DEC/ERR under GRADIENT-12).
+EVENT_SIGILS = ("AUD", "DEC", "ERR", "LOOP")
 
 _GLOSSARY = (
     # $0 must be a real section header, not just a comment: the CODEC-CORTEX
@@ -76,6 +81,14 @@ _GLOSSARY = (
     'PRJ:projection{type:"attrs", weight:"B", fields:"value:any?", focus:"value", desc:"Per-provider projection mark", open:true}\n'
     "\n"
     'ARQX:arqx_contract{type:"attrs", weight:"B", fields:"value:any?", focus:"value", desc:"ArqUX artifact metadata", open:true}\n'
+    "\n"
+    'AUD:audit{type:"attrs", weight:"B", fields:"value:any?", focus:"value", desc:"Session event record", open:true}\n'
+    "\n"
+    'DEC:decision{type:"attrs", weight:"B", fields:"value:any?", focus:"value", desc:"Session decision record", open:true}\n'
+    "\n"
+    'ERR:error{type:"attrs", weight:"B", fields:"value:any?", focus:"value", desc:"Session error record", open:true}\n'
+    "\n"
+    'LOOP:loop_event{type:"attrs", weight:"B", fields:"value:any?", focus:"value", desc:"Autonomous loop progress event", open:true}\n'
 )
 
 
@@ -211,6 +224,14 @@ def _serialize(document: dict[str, Any]) -> str:
             f'projected_at:"{mark.get("projected_at", "")}",'
             f'revision:"{document["revision"]}"}}\n'
         )
+    # GRADIENT-12: $5 EVENTS — the session event stream (AUD/DEC/ERR) that
+    # used to live in the brain's PULSE section.
+    if document.get("events"):
+        lines.append("")
+        lines.append(f"{SECTION_EVENTS}: EVENTS")
+        for key in sorted(document["events"]):
+            ev = document["events"][key]
+            lines.append(f'{ev["sigil"]}:{_entry_name(ev["name"])}{{{ev["attrs"]}}}\n')
     return "\n".join(lines) + "\n"
 
 
@@ -233,6 +254,7 @@ def _parse(text: str) -> dict[str, Any]:
         "blocks": {},
         "receipts": {},
         "projections": {},
+        "events": {},
     }
     in_glossary = False
     for raw in text.splitlines():
@@ -289,6 +311,18 @@ def _parse(text: str) -> dict[str, Any]:
                 "agent": _field(attrs, "agent"),
                 "projected_at": _field(attrs, "projected_at"),
             }
+        else:
+            ev_sigil = next(
+                (s for s in EVENT_SIGILS if line.startswith(f"{s}:")), None
+            )
+            if ev_sigil and "{" in line and line.rstrip().endswith("}"):
+                name = line[len(ev_sigil) + 1: line.index("{")]
+                attrs = line[line.index("{") + 1: line.rindex("}")]
+                document["events"][f"{ev_sigil}:{name}"] = {
+                    "sigil": ev_sigil,
+                    "name": name,
+                    "attrs": attrs,
+                }
     return document
 
 
@@ -436,6 +470,46 @@ def update(
         return {**document, "applied": True}
 
 
+def append_event(
+    project_root: Path | str,
+    session_id: str,
+    sigil: str,
+    name: str,
+    attrs: dict[str, Any],
+    *,
+    operation_ref: str | None = None,
+    opened_at: str | None = None,
+) -> dict[str, Any]:
+    """Append an event record (AUD/DEC/ERR/LOOP) to the session's ``$5 EVENTS``.
+
+    Canon (GRADIENT-12): session events live in the session timelog, not in
+    brain.cortex. Idempotent on ``sigil:name`` — a repeat returns the document
+    unchanged (``applied: False``).
+    """
+    sigil = str(sigil or "").upper()
+    if sigil not in EVENT_SIGILS:
+        raise ValueError(f"sigil {sigil!r} not admitted in timelog EVENTS")
+    key = f"{sigil}:{name}"
+
+    def _mutate(document: dict[str, Any]) -> bool:
+        events = document.setdefault("events", {})
+        if key in events:
+            return False
+        attr_str = ",".join(
+            f'{k}:"{_clean_text(v)}"' for k, v in attrs.items() if v is not None
+        )
+        events[key] = {"sigil": sigil, "name": name, "attrs": attr_str}
+        return True
+
+    return update(
+        project_root,
+        session_id,
+        operation_ref=operation_ref or f"event.{key}",
+        mutate=_mutate,
+        opened_at=opened_at,
+    )
+
+
 def open_block(
     project_root: Path | str,
     session_id: str,
@@ -549,6 +623,7 @@ def invalidate_pending(project_root: Path | str, session_id: str) -> dict[str, A
 
 __all__ = [
     "TimelogError",
+    "append_event",
     "RevisionConflict",
     "MembershipError",
     "UnknownOperation",

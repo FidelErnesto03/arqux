@@ -62,7 +62,8 @@ def _should_publish(config: pytest.Config) -> bool:
 
 
 ROOT = Path(__file__).resolve().parents[2]
-REPORT = ROOT / "docs" / "release" / "benchmark-0.9.0.json"
+# Release evidence is internal since the 1.0 docs split — sibling tree.
+REPORT = ROOT.parent / "ARQUX-internal" / "ops" / "release" / "benchmark-0.9.0.json"
 
 TOPICS = 50
 

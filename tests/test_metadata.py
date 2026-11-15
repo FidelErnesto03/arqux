@@ -180,8 +180,18 @@ class TestMigrator:
         assert migrated is True
         content = p.read_text(encoding="utf-8")
         assert "ARQX:artifact" in content
+        # GRADIENT-12: the entry lands inside the IDENTITY section.
+        assert "$19:" not in content
+        assert "$1: IDENTITY\n\nARQX:artifact" in content
+
+    def test_migrate_file_without_identity_uses_out_of_band(self, tmp_path: Path) -> None:
+        p = tmp_path / "cycle.cortex"
+        p.write_text("$0\n# Sigil | Name\n$1: CYCLE\n", encoding="utf-8")
+        migrated = migrate_file(p, level=2, name="cycle", usage="state", kind="native")
+        assert migrated is True
+        content = p.read_text(encoding="utf-8")
+        assert "ARQX:artifact" in content
         assert "$19:" in content
-        assert "$1: IDENTITY" in content
 
     def test_migrate_file_idempotent(self, tmp_path: Path) -> None:
         p = tmp_path / "brain.cortex"
@@ -196,7 +206,8 @@ class TestMigrator:
         assert migrated is True
         content = p.read_text(encoding="utf-8")
         assert "ARQX:artifact" in content
-        assert "$19:" in content
+        # Canon slot is IDENTITY — no out-of-band $19 for brains.
+        assert "$19:" not in content
         assert "§0 METADATA" not in content
 
     def test_migrate_file_preserves_content_below_section(self, tmp_path: Path) -> None:

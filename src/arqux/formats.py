@@ -6,18 +6,23 @@ BLP-005: All .cortex output uses ArqUX's own string-based builders
 single-line attrs, body preservation, valid $0 glossary.
 No dependency on CODEC-CORTEX writer.
 
-Design (sigil mapping):
-  ArqUX metadata       → $19 ARQX:artifact{level, name, usage, kind}
-                         (legacy $0.1 / $1 / $15 slots still resolve on read)
-  FOCUS                 → $2 FCS:current{...}
-  OBJECTIVES            → $3 OBJ:<name>{...}
-  SESSIONS              → $4 SES:<agent>{...}
-  HANDOFFS              → $5 HDL:<n>{...}
-  PULSE                 → $6 AUD:<id>{...}
-  LESSONS               → $7 LNG:<name>{...}
-  ACTIVE_CONTEXT        → $8 WRK:current{...}
-  RISKS                 → $9 RSK:<name>{...}
-  CONCURRENCY           → $10 ERR:concurrency{...}
+Design (sigil mapping, GRADIENT-12 brain canon):
+  ArqUX metadata       → $1 IDENTITY ARQX:artifact{level, name, usage, kind,
+                         version, last_writer, updated} for brains; the
+                         out-of-band ``$19 ARQUX METADATA`` slot is still
+                         emitted for non-brain artifacts (tasks, cycles,
+                         manifest). Legacy $0.1 / $15 / $19 slots resolve
+                         on read.
+  KNOWLEDGE             → $3 KNW:<name>{...}
+  RISKS                 → $4 RSK:<name>{...}
+  FOCUS                 → $5 FCS:current{...}
+  OBJECTIVES            → $6 OBJ:<name>{...}
+  ACTIVE_CONTEXT        → $7 WRK:current{...} + HND:<target>{...}
+  LESSONS               → $8 LNG:<name>{...}
+  LOOPS                 → $9 LOOP:<name>{...}
+  SESSIONS              → $10 SES:<agent>{...}
+  (legacy HANDOFFS/PULSE/ISSUES sections resolve by title on read; AUD
+  events now live in the session timelog ``$5 EVENTS``)
 
   Task frontmatter      → $1 WRK:task{...}
   Task # OBJ            → $2 OBJ:objective{...}
@@ -379,6 +384,10 @@ _SIGIL_DEFS: list[dict[str, str]] = [
     {"sigil": "WRK", "name": "work",         "type": "attrs",     "risk": "B", "layer": "Working",      "desc": "Current execution state"},
     {"sigil": "SES", "name": "session",      "type": "attrs",     "risk": "M", "layer": "Episodic",     "desc": "Compressed I/O/R episode"},
     {"sigil": "HDL", "name": "handler",      "type": "attrs-pos", "risk": "M", "layer": "Semantic",     "desc": "Handoff descriptor"},
+    {"sigil": "HND", "name": "handoff",      "type": "attrs",     "risk": "M", "layer": "Episodic",     "desc": "Pending handoff to another agent"},
+    {"sigil": "DEC", "name": "decision",     "type": "attrs",     "risk": "M", "layer": "Episodic",     "desc": "Session decision record"},
+    {"sigil": "LOOP","name": "loop",         "type": "attrs",     "risk": "B", "layer": "Working",      "desc": "Autonomous loop declaration"},
+    {"sigil": "ISS", "name": "issue",        "type": "attrs",     "risk": "M", "layer": "Episodic",     "desc": "Tracked issue entry"},
     {"sigil": "AUD", "name": "audit",        "type": "attrs",     "risk": "M", "layer": "Prefrontal",   "desc": "Verification/audit record"},
     {"sigil": "LNG", "name": "lesson",       "type": "attrs",     "risk": "M", "layer": "Episodic",     "desc": "Learned lesson or pattern"},
     {"sigil": "STP", "name": "step",         "type": "attrs",     "risk": "M", "layer": "Working",      "desc": "Task procedure step"},
@@ -402,6 +411,10 @@ _ARQUX_GLOSSARY_TEXT = """# -- $0: ARQUX GOVERNANCE GLOSSARY --
 # WRK   | work       | attrs      | B | Working        | Current execution state
 # SES   | session    | attrs      | M | Episodic       | Compressed I/O/R episode
 # HDL   | handler    | attrs-pos  | M | Semantic       | Handoff descriptor
+# HND   | handoff    | attrs      | M | Episodic       | Pending handoff (state, not file)
+# DEC   | decision   | attrs      | M | Episodic       | Session decision (lives in timelog)
+# LOOP  | loop       | attrs      | B | Working        | Autonomous loop declaration
+# ISS   | issue      | attrs      | M | Episodic       | Tracked issue entry
 # AUD   | audit      | attrs      | M | Prefrontal     | Verification/audit record
 # LNG   | lesson     | attrs      | M | Episodic       | Learned lesson or pattern
 # STP   | step       | attrs      | M | Working        | Task procedure step
@@ -677,6 +690,15 @@ def _add_arqux_meta_section(parts: list[str], frontmatter: dict, default_name: s
 
 
 def brain_from_model(frontmatter: dict, sections: dict[str, str]) -> str:
+    """Build a brain.cortex in GRADIENT-12 layout from the legacy model.
+
+    Canonical order ($0..$10): IDENTITY carries ``ARQX:artifact`` with the
+    concurrency fields (version/last_writer/updated) folded in — no
+    ``$15 ARQUX_METADATA`` and no ``$12 CONCURRENCY``. Sections that exist
+    only in the legacy model (HANDOFFS, PULSE, ISSUES) are appended after
+    ``$10`` under their own titles when they carry content, so a legacy
+    import loses nothing and title-based readers still resolve them.
+    """
     now = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
     parts = ["$0", "", _build_glossary(), ""]
     id_attrs = {
@@ -686,7 +708,20 @@ def brain_from_model(frontmatter: dict, sections: dict[str, str]) -> str:
         "governor": frontmatter.get("governor", frontmatter.get("brain_last_writer", "anonymous")),
         "created": frontmatter.get("brain_updated", now),
     }
-    parts.append(_fmt_section(1, "IDENTITY", [_fmt_entry("IDN", "governor", id_attrs)]))
+    version = frontmatter.get("brain_version", "0")
+    meta_vals = [
+        f"level:{frontmatter.get('level', 2)}",
+        f'name:"{frontmatter.get("name", "brain")}"',
+        f'usage:"{frontmatter.get("usage", "state")}"',
+        f'kind:"{frontmatter.get("kind", "native")}"',
+        f'version:"{version}"',
+        f'last_writer:"{frontmatter.get("brain_last_writer", "")}"',
+        f'updated:"{frontmatter.get("brain_updated", now)}"',
+    ]
+    parts.append(_fmt_section(1, "IDENTITY", [
+        f"ARQX:artifact{{{', '.join(meta_vals)}}}",
+        _fmt_entry("IDN", "governor", id_attrs),
+    ]))
     # $2: AXIOMS — project behavioral axioms (canon
     # docs/reference/cortex-brain-section-canon.md).
     axm_lines = []
@@ -702,16 +737,63 @@ def brain_from_model(frontmatter: dict, sections: dict[str, str]) -> str:
             "rule": line, "severity": "blocking", "survive": "min",
         }))
     parts.append(_fmt_section(2, "AXIOMS", axm_lines))
+    # $3: KNOWLEDGE
+    knw_lines_str = sections.get("KNOWLEDGE", "").strip()
+    knw_entries = []
+    if knw_lines_str:
+        knw_entries.append(_fmt_entry("KNW", "knowledge", {"topic": "project_knowledge", "content": knw_lines_str, "status": "active"}))
+    parts.append(_fmt_section(3, "KNOWLEDGE", knw_entries))
+    # $4: RISKS
+    rsk_lines = []
+    seen_risks: dict[str, int] = {}
+    for line in sections.get("RISKS", "").splitlines():
+        if not line.strip() or line.strip().startswith("("):
+            continue
+        name = _legacy_entry_name(line, "risk", seen_risks)
+        if not name:
+            continue
+        rsk_lines.append(_fmt_entry("RSK", name, {"description": line.strip(), "mitigation": "", "severity": "medium"}))
+    parts.append(_fmt_section(4, "RISKS", rsk_lines))
+    # $5: FOCUS
     focus = sections.get("FOCUS", "").strip()
     focus_val = focus if focus and focus != "(one-sentence current focus of the project)" else ""
-    parts.append(_fmt_section(3, "FOCUS", [_fmt_entry("FCS", "current", {"what": focus_val, "priority": "medium", "status": "current", "survive": "min"})]))
+    parts.append(_fmt_section(5, "FOCUS", [_fmt_entry("FCS", "current", {"what": focus_val, "priority": "medium", "status": "current", "survive": "min"})]))
+    # $6: OBJECTIVES
     obj_lines = []
     for line in sections.get("OBJECTIVES", "").splitlines():
         line = line.strip()
         if line and not line.startswith("(") and not line.startswith("#"):
             name = re.sub(r'[^a-z0-9]', '_', line.split(":")[0].split(" ")[0].lower())[:20] or "obj"
             obj_lines.append(_fmt_entry("OBJ", name, {"goal": line, "status": "current", "success": "", "survive": "work"}))
-    parts.append(_fmt_section(4, "OBJECTIVES", obj_lines))
+    parts.append(_fmt_section(6, "OBJECTIVES", obj_lines))
+    # $7: ACTIVE_CONTEXT — WRK:current plus HND handoffs (canon destination).
+    active = sections.get("ACTIVE_CONTEXT", "").strip()
+    ctx_entries = [
+        _fmt_entry("WRK", "current", {"phase": "active", "current": active if active and not active.startswith("(") else "", "blocked": "no", "survive": "work"})
+    ]
+    for line in sections.get("HANDOFFS", "").splitlines():
+        m = re.match(r"^-\s*\[([^\]]+)\]\s*(\S+)\s*->\s*(\S+)\s*task=(\S+)\s*::\s*(.*)", line)
+        if m:
+            ctx_entries.append(_fmt_entry("HND", m.group(3), {
+                "from": m.group(2), "to": m.group(3), "task": m.group(4),
+                "note": m.group(5), "ts": m.group(1),
+            }))
+    parts.append(_fmt_section(7, "ACTIVE_CONTEXT", ctx_entries))
+    # $8: LESSONS
+    lng_lines = []
+    seen_lessons: dict[str, int] = {}
+    for line in sections.get("LESSONS", "").splitlines():
+        line = line.strip()
+        if not line or line.startswith("(") or line.startswith("#"):
+            continue
+        name = _legacy_entry_name(line, "lesson", seen_lessons)
+        if not name:
+            continue
+        lng_lines.append(_fmt_entry("LNG", name, {"type": "contextual", "cause": "", "lesson": line}))
+    parts.append(_fmt_section(8, "LESSONS", lng_lines))
+    # $9: LOOPS
+    parts.append(_fmt_section(9, "LOOPS", []))
+    # $10: SESSIONS
     ses_lines = []
     for line in sections.get("SESSIONS", "").splitlines():
         m = re.match(r"^-\s*\[([^\]]+)\]\s*agent=(\S+)\s+role=(\S+)(.*)", line)
@@ -725,14 +807,9 @@ def brain_from_model(frontmatter: dict, sections: dict[str, str]) -> str:
             "outcome": "active" if "released" not in line else "released",
             "date": date_val,
         }))
-    parts.append(_fmt_section(5, "SESSIONS", ses_lines))
-    hdl_lines = []
-    for i, line in enumerate(sections.get("HANDOFFS", "").splitlines()):
-        m = re.match(r"^-\s*\[([^\]]+)\]\s*(\S+)\s*->\s*(\S+)\s*task=(\S+)\s*::\s*(.*)", line)
-        if m:
-            parts_val = [m.group(2), m.group(3), m.group(4), m.group(5), m.group(1)]
-            hdl_lines.append(f"HDL:h{i+1:03d}{{{' | '.join(parts_val)}}}")
-    parts.append(_fmt_section(6, "HANDOFFS", hdl_lines))
+    parts.append(_fmt_section(10, "SESSIONS", ses_lines))
+    # Legacy-only sections survive as titled appendixes when they carry
+    # content — title-based readers resolve them regardless of position.
     pulse_lines = []
     for line in sections.get("PULSE", "").splitlines():
         m = re.match(r"^-\s*\[([^\]]+)\]\s*id=(\S+)\s*task=(\S+)\s*kind=(\S+)(?:\s*cycle=(\S+))?\s*agent=(\S+)\s*::\s*(.*)", line)
@@ -742,60 +819,14 @@ def brain_from_model(frontmatter: dict, sections: dict[str, str]) -> str:
                 "kind": m.group(4), "agent": m.group(6), "result": m.group(7),
                 "date": m.group(1).split("T")[0] if "T" in m.group(1) else m.group(1),
             }))
-    parts.append(_fmt_section(7, "PULSE", pulse_lines))
-    lng_lines = []
-    seen_lessons: dict[str, int] = {}
-    for line in sections.get("LESSONS", "").splitlines():
-        line = line.strip()
-        if not line or line.startswith("(") or line.startswith("#"):
-            continue
-        name = _legacy_entry_name(line, "lesson", seen_lessons)
-        if not name:
-            continue
-        lng_lines.append(_fmt_entry("LNG", name, {"type": "contextual", "cause": "", "lesson": line}))
-    parts.append(_fmt_section(8, "LESSONS", lng_lines))
-    active = sections.get("ACTIVE_CONTEXT", "").strip()
-    parts.append(_fmt_section(9, "ACTIVE_CONTEXT", [
-        _fmt_entry("WRK", "current", {"phase": "active", "current": active if active and not active.startswith("(") else "", "blocked": "no", "survive": "work"})
-    ]))
-    rsk_lines = []
-    seen_risks: dict[str, int] = {}
-    for line in sections.get("RISKS", "").splitlines():
-        if not line.strip() or line.strip().startswith("("):
-            continue
-        name = _legacy_entry_name(line, "risk", seen_risks)
-        if not name:
-            continue
-        rsk_lines.append(_fmt_entry("RSK", name, {"description": line.strip(), "mitigation": "", "severity": "medium"}))
-    parts.append(_fmt_section(10, "RISKS", rsk_lines))
-    # $11: KNOWLEDGE (matches _build_brain_doc section numbering)
-    knw_lines_str = sections.get("KNOWLEDGE", "").strip()
-    knw_entries = []
-    if knw_lines_str:
-        knw_entries.append(_fmt_entry("KNW", "knowledge", {"topic": "project_knowledge", "content": knw_lines_str, "status": "active"}))
-    parts.append(_fmt_section(11, "KNOWLEDGE", knw_entries))
-    # $12: CONCURRENCY (matches _build_brain_doc section numbering)
-    version = frontmatter.get("brain_version", "0")
-    parts.append(_fmt_section(12, "CONCURRENCY", [
-        _fmt_entry("ERR", "concurrency", {"version": str(version), "last_writer": frontmatter.get("brain_last_writer", ""), "updated": frontmatter.get("brain_updated", now)})
-    ]))
-    # $13: ISSUES / $14: LOOPS — canon slots kept gap-free even when empty.
-    parts.append(_fmt_section(13, "ISSUES", []))
-    parts.append(_fmt_section(14, "LOOPS", []))
-    # $15: ARQUX_METADATA — canon metadata slot, always LAST.
-    level = frontmatter.get("level", 2)
-    meta_name = frontmatter.get("name", "brain")
-    meta_vals = [
-        f"level:{level}",
-        f'name:"{meta_name}"',
-        f'usage:"{frontmatter.get("usage", "state")}"',
-        f'kind:"{frontmatter.get("kind", "native")}"',
-    ]
-    parts.append("")
-    parts.append("$15: ARQUX_METADATA")
-    parts.append("")
-    parts.append(f"ARQX:artifact{{{', '.join(meta_vals)}}}")
-    parts.append("")
+    if pulse_lines:
+        parts.append(_fmt_section(11, "PULSE", pulse_lines))
+    issues = sections.get("ISSUES", "").strip()
+    if issues and not issues.startswith("("):
+        parts.append(_fmt_section(12, "ISSUES", [
+            _fmt_entry("ISS", f"i{i+1}", {"description": ln.strip()})
+            for i, ln in enumerate(issues.splitlines()) if ln.strip()
+        ]))
     return "\n".join(parts) + "\n"
 
 

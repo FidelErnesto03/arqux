@@ -86,16 +86,16 @@ def test_deactivate_silences(registered, proj):
 
 
 def test_advance_persists_checkpoint_and_timelog(registered, proj):
-    (proj / ".arqux" / "timelog").mkdir()
-    (proj / ".arqux" / "timelog" / "SES001_x.cortex").write_text("$1: PULSE\n")
+    from arqux.timelog_store import ensure_timelog, timelog_dir
+    ensure_timelog(proj, {"session_id": "SES001", "date": "2026-11-15T00:00:00Z"})
     loop_activate(path=str(proj), name="demo")
     out = loop_advance(path=str(proj), name="demo",
                        checkpoint="phase a done", next_="run b")
     assert "index=1" in _text(out)
     loop = _find(proj, "demo")
     assert loop["index"] == "1" and loop["checkpoint"] == "phase a done"
-    tl = (proj / ".arqux" / "timelog" / "SES001_x.cortex").read_text()
-    assert 'LOOP:demo{event:"advance"' in tl
+    tl = next(timelog_dir(proj).glob("SES001_*.cortex")).read_text()
+    assert "$5: EVENTS" in tl and 'event:"advance"' in tl and "LOOP:demo_advance_" in tl
 
 
 # --- CA-4 complete / CA-9 remove ---------------------------------------------

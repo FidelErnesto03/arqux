@@ -162,9 +162,10 @@ def _entry_matches(entry: dict, sigil: str | None, name: str | None) -> bool:
         return False
     if name is None or name == "*":
         return True
-    if name.endswith("*"):
-        return str(entry.get("name", "")).startswith(name[:-1])
-    return entry.get("name") == name
+    norm = re.sub(r"[^A-Za-z0-9_*]", "_", name)
+    if norm.endswith("*"):
+        return str(entry.get("name", "")).startswith(norm[:-1])
+    return entry.get("name") == norm
 
 
 def _project_entry(entry: dict, section_id: str) -> dict:
@@ -230,6 +231,7 @@ def add_entry(
     value: dict | str,
     *,
     create_section: bool = False,
+    section_title: str | None = None,
 ) -> dict:
     """Add an entry to a JSON doc.  Modifies *doc* in-place.  Returns *doc*.
 
@@ -246,6 +248,7 @@ def add_entry(
         raise ValueError(
             f"value must be dict (attrs) or str (cuerpo), got {type(value).__name__}"
         )
+    name = re.sub(r"[^A-Za-z0-9_]", "_", name)
     if name in ("*", "_"):
         raise ValueError(
             f"Entry name {name!r} is reserved (wildcard/deprecated) and "
@@ -264,7 +267,7 @@ def add_entry(
         elif not create_section:
             raise ValueError(f"Section {section_id!r} not found in doc")
         else:
-            section = {"id": section_id, "title": None, "comments": [], "entries": []}
+            section = {"id": section_id, "title": section_title, "comments": [], "entries": []}
             doc.setdefault("sections", []).append(section)
 
     if isinstance(value, dict):

@@ -106,10 +106,30 @@ def format_status(workspace_root: Any, profile: str = DEFAULT_OUT_PROFILE) -> st
         return f"OUT-MIN workspace={root.name} projects=? cycles=? tasks=?"
 
     if profile == OUT_WORK:
+        # GRADIENT-12: the project registry lives in meta-brain REGISTRY
+        # (DOM:* entries) — the standalone projects.cortex is retired.
+        # Tolerate the legacy PROJECTS/DOMAINS titles on read.
+        projects_flag = "no"
+        meta_brain = root / "meta-brain.cortex"
+        if meta_brain.exists():
+            try:
+                from .core.state._crud import crud_section_id_for_title
+                from .state import crud_list
+
+                reg_sec = crud_section_id_for_title(
+                    meta_brain, "REGISTRY",
+                    fallback=crud_section_id_for_title(
+                        meta_brain, "PROJECTS",
+                        fallback=crud_section_id_for_title(
+                            meta_brain, "DOMAINS", fallback="$10")))
+                if crud_list(str(meta_brain), sigil="DOM", section=reg_sec).get("entries"):
+                    projects_flag = "yes"
+            except Exception:  # noqa: BLE001 - status must never crash
+                projects_flag = "unknown"
         return (
             f"OUT-WORK workspace={root.name} "
             f"manifest={'yes' if (root / 'manifest.cortex').exists() else 'no'} "
-            f"projects={'yes' if (root / 'projects.cortex').exists() else 'no'}"
+            f"projects={projects_flag}"
         )
 
     if profile == OUT_AUDIT:

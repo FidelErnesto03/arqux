@@ -261,7 +261,8 @@ class TestAc04Concurrency:
                        session_ref=first.fields["session_ref"])
 
         assert second.fields["session_ref"] == first.fields["session_ref"]
-        context = (arqux_env.ws_root / ".arqux" / "context.cortex").read_text()
+        # GRADIENT-12: the ws pointer is WRK:current in meta-brain ACTIVE_CONTEXT.
+        context = (arqux_env.ws_root / ".arqux" / "meta-brain.cortex").read_text()
         assert f'ses:"{first.fields["session_ref"]}"' in context
         assert get_session(arqux_env.proj_root,
                            first.fields["session_ref"])["state"] == "open"

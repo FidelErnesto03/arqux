@@ -7,9 +7,10 @@ Handlers:
     protocol.resume   — resume governance after a pause
 
 Per the architecture decision (gap 6 fix), agent onboarding records are
-written via handlers — no direct file editing. The agents index lives
-alongside the manifest, not as a separate `agents.cortex` file. Project
-sessions live in the project brain (see `project.bind`).
+written via handlers — no direct file editing. The agents index lives in
+the workspace meta-brain ``REGISTRY`` (GRADIENT-12); the standalone
+`agents.cortex` file is retired. Project sessions live in the project
+brain (see `project.bind`).
 """
 
 from __future__ import annotations
@@ -25,148 +26,55 @@ from ..permissions import PermissionContext
 from ..state import find_workspace_root
 
 
-def _agents_section_id(doc: dict) -> str | None:
-    """Return the section that holds agent entries, preferring ``$1``."""
-    ids = {str(s.get("id", "")) for s in doc.get("sections", []) if isinstance(s, dict)}
-    for candidate in ("$1", "$19"):
-        if candidate in ids:
-            return candidate
-    for section in doc.get("sections", []):
-        if isinstance(section, dict):
-            for entry in section.get("entries", []):
-                if isinstance(entry, dict) and entry.get("sigil") == "IDN":
-                    return str(section.get("id", ""))
-    return next((str(s.get("id", "")) for s in doc.get("sections", [])
-                 if isinstance(s, dict)), None)
+def _meta_registry_sec(meta_brain_path: Path) -> str:
+    """Resolve the meta-brain section holding agent/project records."""
+    from ..core.state._crud import crud_section_id_for_title
+    for title in ("REGISTRY", "AGENTS", "PROJECTS"):
+        sec = crud_section_id_for_title(meta_brain_path, title)
+        if sec:
+            return sec
+    return "$10"
 
 
-def _register_agent(agents_path: Path, agent_id: str, role: str) -> None:
-    """Record an agent in ``agents.cortex`` as a CORTEX entry (upsert).
+def _register_agent(meta_brain_path: Path, agent_id: str, role: str) -> None:
+    """Record an agent in the meta-brain REGISTRY as an ``IDN:`` entry.
 
-    The registry is a governed artifact, so it is written through the CORTEX
-    model — never as appended plain text. Appending ``- agent=X role=Y`` produced
-    a file that no longer parsed (S003_INVALID_IDEA_HEAD) and grew one junk line
-    per ``identity.switch``: 85 accumulated in a single session (T-001).
-
-    Idempotent: re-adopting the same agent updates its ``role`` instead of
-    adding a second entry.
+    Canon (GRADIENT-12 / G-8): the workspace agent registry lives in
+    ``meta-brain.cortex`` ``$10 REGISTRY`` — the standalone
+    ``agents.cortex`` index is retired and must never be recreated.
+    Idempotent: re-adopting the same agent updates its ``role``.
     """
-    from ..cortex import crud
-    from ..cortex.atomic import atomic_write_json
-    from ..cortex.reader import cortex_to_dict
+    from ..state import crud_add, crud_read, crud_update
 
-    if agents_path.exists():
-        doc = cortex_to_dict(agents_path.read_text(encoding="utf-8"))
+    if not meta_brain_path.exists():
+        return
+
+    reg_sec = _meta_registry_sec(meta_brain_path)
+    attrs = {"name": agent_id, "role": role, "status": "current",
+             "adopted": _now_iso()}
+    try:
+        existing = crud_read(meta_brain_path, f"{reg_sec}/IDN:{agent_id}")
+    except Exception:
+        existing = {"entries": []}
+    if existing.get("entries"):
+        crud_update(meta_brain_path, f"{reg_sec}/IDN:{agent_id}",
+                    set_=attrs, force=True)
     else:
-        doc = {"glossary": {"header": "$0", "comments": [], "symbols": []}, "sections": []}
-
-    section_id = _agents_section_id(doc)
-    if section_id is None:
-        # Fresh agents.cortex (file absent or sectionless): seed the registry
-        # section so the upsert below has somewhere to land.
-        doc.setdefault("sections", []).append(
-            {"id": "$1", "title": "AGENTS", "comments": [], "entries": []}
-        )
-        section_id = "$1"
-
-    try:
-        crud.update_entry(doc, f"{section_id}/IDN:{agent_id}",
-                          set_={"role": role, "status": "current", "adopted": _now_iso()})
-    except ValueError:
-        crud.add_entry(doc, section_id, "IDN", agent_id,
-                       {"role": role, "status": "current", "adopted": _now_iso()},
-                       create_section=False)
-
-    # Every governed artifact declares its metadata: ensure the registry
-    # carries ARQX:artifact in the canonical $19 slot (W001 otherwise).
-    # Legacy ``$0.1`` sections are coalesced into ``$19`` in the model
-    # first — the writer performs the same merge at emit time, and doing
-    # it here keeps the upsert single-addressed (a ``$0.1`` ARQX:artifact
-    # plus a fresh ``$19`` one would serialize as a duplicate
-    # ``$19:ARQX:artifact`` — I006_DUPLICATE_IDEA_ADDRESS).
-    meta = [
-        sec for sec in doc.get("sections", [])
-        if isinstance(sec, dict) and sec.get("id") in ("$0.1", "$19")
-    ]
-    if meta:
-        first = meta[0]
-        first["id"] = "$19"
-        if not first.get("title"):
-            first["title"] = "ARQUX METADATA"
-        extra_ids = {id(sec) for sec in meta[1:]}
-        for extra in meta[1:]:
-            first.setdefault("entries", []).extend(extra.get("entries", []))
-        doc["sections"] = [
-            sec for sec in doc["sections"] if id(sec) not in extra_ids
-        ]
-    try:
-        crud.update_entry(doc, "$19/ARQX:artifact",
-                          set_={"level": 0, "name": "agents",
-                                "usage": "state", "kind": "native"})
-    except ValueError:
-        crud.add_entry(doc, "$19", "ARQX", "artifact",
-                       {"level": 0, "name": "agents",
-                        "usage": "state", "kind": "native"},
-                       create_section=True)
-        for sec in doc.get("sections", []):
-            if sec.get("id") == "$19" and not sec.get("title"):
-                sec["title"] = "ARQUX METADATA"
-
-    # The ARQX sigil must carry an executable contract in ``$0`` (I001).
-    # Seed it under the canonical ``arqx_contract`` name: leaving it to the
-    # writer's auto-generator would mint ``ARQX:artifact{...}``, an address
-    # that collides with the metadata entry itself.
-    glossary = doc.setdefault(
-        "glossary", {"header": "$0", "comments": [], "symbols": []})
-    if isinstance(glossary, dict):
-        declared = {
-            str(d.get("sigil"))
-            for d in (glossary.get("declarations") or [])
-            if isinstance(d, dict)
-        } | {
-            str(s.get("sigil"))
-            for s in (glossary.get("symbols") or [])
-            if isinstance(s, dict)
-        }
-        if "ARQX" not in declared:
-            glossary.setdefault("declarations", []).append({
-                "sigil": "ARQX",
-                "name": "arqx_contract",
-                "attrs": {
-                    "type": "attrs", "weight": "M", "focus": "value",
-                    "fields": "value:any?", "desc": "ArqUX ARQX entry",
-                    "open": True,
-                },
-            })
-
-    atomic_write_json(doc, str(agents_path), strict=False)
+        crud_add(meta_brain_path, reg_sec, "IDN", agent_id, attrs,
+                 create_section=False, force=True)
 
 
-def _unregister_agent(agents_path: Path, agent_id: str) -> None:
-    """Remove an agent's entry from ``agents.cortex``, preserving the rest.
+def _unregister_agent(meta_brain_path: Path, agent_id: str) -> None:
+    """Remove an agent's ``IDN:`` entry from the meta-brain REGISTRY."""
+    from ..state import crud_delete
 
-    The previous implementation filtered lines containing ``agent=<id>``, a shape
-    that does not exist in a CORTEX registry — so ``release`` silently matched
-    nothing while the registry kept accumulating plain-text lines.
-    """
-    from ..cortex import crud
-    from ..cortex.atomic import atomic_write_json
-    from ..cortex.reader import cortex_to_dict
-
-    if not agents_path.exists():
+    if not meta_brain_path.exists():
         return
-
-    doc = cortex_to_dict(agents_path.read_text(encoding="utf-8"))
-    section_id = _agents_section_id(doc)
-    if section_id is None:
-        return
-
+    reg_sec = _meta_registry_sec(meta_brain_path)
     try:
-        crud.delete_entry(doc, f"{section_id}/IDN:{agent_id}")
-    except ValueError:
+        crud_delete(meta_brain_path, f"{reg_sec}/IDN:{agent_id}", force=True)
+    except Exception:
         return  # nothing to remove: release is idempotent
-
-    atomic_write_json(doc, str(agents_path), strict=False)
 
 
 def adopt(
@@ -182,8 +90,8 @@ def adopt(
         ARQUX_AGENT_ROLE=<role>
 
     And records the onboarding via the handlers (no direct file editing).
-    The agents registry is appended to the workspace's `agents.cortex`
-    through the state helper — handlers are the only interface.
+    The agents registry lives in the workspace meta-brain ``REGISTRY``
+    (GRADIENT-12); entries are upserted through the state helpers.
     """
     if role not in ("governor", "executor", "auditor"):
         return CortexOUT.error(
@@ -196,7 +104,7 @@ def adopt(
 
     root = find_workspace_root(start=path)
     if root is not None:
-        _register_agent(root / "agents.cortex", agent_id, role)
+        _register_agent(root / "meta-brain.cortex", agent_id, role)
 
     return CortexOUT.work(
         f"protocol.adopt ok agent={agent_id} role={role}",
@@ -226,9 +134,9 @@ def release(agent_id: str, path: str | None = None, ctx: PermissionContext | Non
         # Still allow release if the workspace was never initialized.
         return CortexOUT.work(f"protocol.release ok agent={agent_id} (no workspace)", agent_id=agent_id)
 
-    agents_path = root / "agents.cortex"
-    if agents_path.exists():
-        _unregister_agent(agents_path, agent_id)
+    meta_brain_path = root / "meta-brain.cortex"
+    if meta_brain_path.exists():
+        _unregister_agent(meta_brain_path, agent_id)
 
     return CortexOUT.work(
         f"protocol.release ok agent={agent_id}",

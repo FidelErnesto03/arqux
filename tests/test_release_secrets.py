@@ -27,6 +27,8 @@ import re
 import subprocess
 from pathlib import Path
 
+import pytest
+
 ROOT = Path(__file__).resolve().parent.parent
 
 # High-confidence shapes: unambiguous credential material wherever it appears.
@@ -263,10 +265,19 @@ def test_the_scanner_actually_catches_a_planted_secret() -> None:
         )
 
 
+_INTERNAL_RELEASE = ROOT.parent / "ARQUX-internal" / "ops" / "release"
+
+requires_internal_release = pytest.mark.skipif(
+    not _INTERNAL_RELEASE.is_dir(),
+    reason="ARQUX-internal tree not present (internal evidence is not published)",
+)
+
+
+@requires_internal_release
 def test_release_artifacts_carry_no_secrets() -> None:
     """The original, narrower check, kept so the declared artifacts are
     explicitly covered even if the tree walk is ever narrowed again."""
-    release_dir = ROOT / "docs" / "release"
+    release_dir = _INTERNAL_RELEASE
     assert release_dir.is_dir(), "no release artifacts found to scan"
     files = [p for p in release_dir.rglob("*") if p.suffix in {".json", ".md", ".txt"}]
     assert files, "no release artifacts found to scan"
@@ -315,8 +326,9 @@ def test_benchmark_report_describes_the_corpus_it_measured() -> None:
     """The report must agree with the corpus the benchmark actually builds."""
     from tests.benchmarks.test_memory_benchmark import _synthetic_cortex
 
-    report_path = ROOT / "docs" / "release" / "benchmark-0.9.0.json"
-    assert report_path.is_file(), "benchmark report missing"
+    report_path = _INTERNAL_RELEASE / "benchmark-0.9.0.json"
+    if not report_path.is_file():
+        pytest.skip("ARQUX-internal tree not present")
     data = json.loads(report_path.read_text(encoding="utf-8"))
     corpus_meta = data["corpus"]
 

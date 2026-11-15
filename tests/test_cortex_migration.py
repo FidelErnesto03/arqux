@@ -182,13 +182,13 @@ class TestCRUDOnCopy:
         original_count = sum(len(s.get("entries", [])) for s in doc["sections"])
 
         # Add entry
-        add_entry(doc, "$7", "LNG", "test_migration_entry", {"type": "process", "lesson": "test"})
+        add_entry(doc, "$8", "LNG", "test_migration_entry", {"type": "process", "lesson": "test"})
         after_add = sum(len(s.get("entries", [])) for s in doc["sections"])
         assert after_add == original_count + 1
 
         # Update entry (OBS-001: add → update → delete cycle)
-        update_entry(doc, "$7/LNG:test_migration_entry", set_={"type": "updated_test"})
-        updated = select_entries(doc, "$7/LNG:test_migration_entry")
+        update_entry(doc, "$8/LNG:test_migration_entry", set_={"type": "updated_test"})
+        updated = select_entries(doc, "$8/LNG:test_migration_entry")
         assert len(updated) == 1
         assert updated[0].get("attrs", {}).get("type") == "updated_test"
 
@@ -203,14 +203,14 @@ class TestCRUDOnCopy:
         assert after_write == after_add
 
         # Verify update persisted
-        persisted = select_entries(doc2, "$7/LNG:test_migration_entry")
+        persisted = select_entries(doc2, "$8/LNG:test_migration_entry")
         assert len(persisted) == 1
         assert persisted[0].get("attrs", {}).get("type") == "updated_test"
 
         # Find and delete the test entry
-        entries = select_entries(doc2, "$7/LNG:test_migration_entry")
+        entries = select_entries(doc2, "$8/LNG:test_migration_entry")
         assert len(entries) == 1
-        delete_entry(doc2, "$7/LNG:test_migration_entry")
+        delete_entry(doc2, "$8/LNG:test_migration_entry")
         after_delete = sum(len(s.get("entries", [])) for s in doc2["sections"])
         assert after_delete == original_count
 
@@ -226,13 +226,13 @@ class TestCRUDOnCopy:
         doc = cortex_to_dict(text)
 
         # Find an existing LNG entry to update
-        entries = select_entries(doc, "$7/LNG:*")
+        entries = select_entries(doc, "$8/LNG:*")
         assert len(entries) > 0
         first_entry = entries[0]
         entry_name = first_entry["name"]
 
         # Update it
-        update_entry(doc, f"$7/LNG:{entry_name}", set_={"type": "updated_test"})
+        update_entry(doc, f"$8/LNG:{entry_name}", set_={"type": "updated_test"})
 
         # Write
         atomic_write_json(doc, str(temp_file))
@@ -240,7 +240,7 @@ class TestCRUDOnCopy:
         # Re-read and verify
         text2 = temp_file.read_text(encoding="utf-8")
         doc2 = cortex_to_dict(text2)
-        updated = select_entries(doc2, f"$7/LNG:{entry_name}")
+        updated = select_entries(doc2, f"$8/LNG:{entry_name}")
         assert len(updated) == 1
         assert updated[0].get("attrs", {}).get("type") == "updated_test"
 
@@ -267,9 +267,13 @@ class TestMigrationExecution:
         doc = cortex_to_dict(text)
         assert len(doc["sections"]) > 0
 
-        # Verify backup was created
+        # GRADIENT-12: a file already in canonical layout is migrated by
+        # definition — the migrator is idempotent and leaves it untouched.
         backup = tmp_path / "brain_copy.cortex.bck"
-        assert backup.exists()
+        if result is False:
+            assert not backup.exists(), "idempotent migrate must not touch a canonical file"
+        else:
+            assert backup.exists()
 
         # Verify round-trip still works after migration
         text2 = write_cortex_from_json(doc)

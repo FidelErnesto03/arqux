@@ -378,10 +378,12 @@ def project(
         raise InsufficientCapability("send")
 
     with brain_lock(project_root):
+        from .core.state._crud import crud_section_id_for_title
         from .state import crud_read
 
-        current = crud_read(timelog_store.brain_path(project_root),
-                            f"$5/SES:{session_id}")
+        bp = timelog_store.brain_path(project_root)
+        ses_sec = crud_section_id_for_title(bp, "SESSIONS", fallback="$10")
+        current = crud_read(bp, f"{ses_sec}/SES:{session_id}")
         entries = current.get("entries", [])
         if entries and str((entries[0].get("value") or {}).get("suppressed", "")).lower() in (
             "true", "1", "yes"

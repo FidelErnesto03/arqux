@@ -25,7 +25,6 @@ from ..state import (
     cortex_write,
     find_workspace_root,
     write_meta_brain,
-    write_projects_index,
 )
 
 
@@ -85,7 +84,9 @@ def init_workspace(
             }
             write_meta_brain(gov_dir, meta_brain)
 
-    write_projects_index(gov_dir, [])
+    # GRADIENT-12/G-8: the project index lives in meta-brain REGISTRY —
+    # the standalone projects.cortex pair is retired (write_projects_index
+    # kept importable for legacy tooling, never invoked on init).
 
     # Copy identity templates to .arqux/identities/ for behavioral evolution.
     identities_src = Path(__file__).resolve().parent.parent / "identities"

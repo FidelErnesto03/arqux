@@ -50,10 +50,18 @@
           {
             "language": "cortex",
             "scopes": {
-              "type": ["entity.name.type"],
-              "enumMember": ["variable.other.enummember"],
-              "namespace": ["entity.name.namespace"],
-              "macro": ["keyword.other.directive"]
+              "type": [
+                "entity.name.type"
+              ],
+              "enumMember": [
+                "variable.other.enummember"
+              ],
+              "namespace": [
+                "entity.name.namespace"
+              ],
+              "macro": [
+                "keyword.other.directive"
+              ]
             }
           }
         ]
@@ -175,7 +183,10 @@
     "lint": "tsc -p ./ --noEmit"
   },
   "dependencies": {
-    "markdown-it": "^14.1.0"
+    "markdown-it": "^14.1.0",
+    "vscode-languageclient": "^9.0.1",
+    "vscode-languageserver": "^9.0.1",
+    "vscode-languageserver-textdocument": "^1.0.12"
   },
   "devDependencies": {
     "@types/markdown-it": "^14.1.2",

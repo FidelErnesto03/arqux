@@ -79,11 +79,14 @@ def test_init_registers_dom_entry(workspace_root: Path, governor_ctx) -> None:
     assert result.profile == "OUT-WORK", str(result.fields)
     assert result.fields.get("registered_in_workspace") is True
 
-    projects_cortex = workspace_root / ARQUX_DIR / "projects.cortex"
-    assert projects_cortex.exists(), "projects.cortex must exist after registration"
-    read = crud_read(projects_cortex, "DOM:mi_app")
+    # Canon (GRADIENT-12): the project registry lives in meta-brain REGISTRY;
+    # the standalone projects.cortex index is retired.
+    meta_brain = workspace_root / ARQUX_DIR / "meta-brain.cortex"
+    assert meta_brain.exists()
+    read = crud_read(meta_brain, "DOM:mi_app")
     names = [e["name"] for e in read["entries"] if e["sigil"] == "DOM"]
     assert "mi_app" in names, f"DOM entry missing; found {names}"
+    assert not (workspace_root / ARQUX_DIR / "projects.cortex").exists()
 
 
 def test_init_reports_unregistered_honestly(tmp_path: Path, governor_ctx) -> None:

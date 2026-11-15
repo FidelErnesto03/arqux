@@ -757,13 +757,13 @@ def install_skill(
     path: str | None = None,
     ctx: PermissionContext | None = None,
 ) -> CortexOUT:
-    """Install a skill: import + validate + register in brain.cortex $6/SKL.
+    """Install a skill: import + validate + register in brain.cortex SKILLS/SKL.
 
     BLP-010 meta-handler. Wraps:
 
     1. ``skill.import`` — stores the raw skill content in ``originals/``.
     2. Validation — checks the skill has a ``$0`` header (CORTEX form).
-    3. Registration — appends an ``SKL`` entry to brain.cortex $6/SKL.
+    3. Registration — appends an ``SKL`` entry to the brain SKILLS section.
 
     Args:
         source: Skill source (URL, marketplace, etc.).
@@ -830,27 +830,31 @@ def install_skill(
     else:
         steps_report.append({"step": "validate", "status": "skipped"})
 
-    # Step 3: register in brain.cortex $6/SKL.
+    # Step 3: register in brain.cortex SKILLS/SKL.
     if dry_run:
         steps_report.append({"step": "register", "status": "simulated"})
     else:
-        # Append SKL entry to brain.cortex $6 (LESSONS section in legacy,
-        # or a SKILLS section if present).
+        # Append SKL entry to the SKILLS-titled brain section (GRADIENT-12:
+        # title resolution, never positional — $6 is canon OBJECTIVES).
         try:
+            from ...core.state._crud import crud_section_id_for_title
             from ..state import find_write_project_root
             project_arqux = find_write_project_root(start=path)
             if project_arqux is not None:
                 brain_path = project_arqux / "brain.cortex"
                 if brain_path.exists():
-                    # Register the skill as an SKL entry in brain.cortex $6
-                    # via CODEC-CORTEX (creates $6 if missing).
+                    skl_sec = crud_section_id_for_title(
+                        brain_path, "SKILLS",
+                        fallback=crud_section_id_for_title(
+                            brain_path, "KNOWLEDGE", fallback="$3"),
+                    )
                     result = crud_add(
                         brain_path,
-                        "$6",
+                        skl_sec,
                         "SKL",
                         name,
                         f'source:"{source}", status:"installed"',
-                        create_section=True,
+                        create_section=True, section_title="SKILLS",
                     )
                     if "error" in result:
                         raise RuntimeError(f"skill.register rejected: {result['error']}")
@@ -919,5 +923,5 @@ handler_schemas = [
     {"name": "skill.edit", "fn": edit_skill, "description": "Edit (read, write, or section-edit) a skill file in .arqux/skills/. Without content: returns the skill content. With content but no section: atomically replaces the entire skill file. With content and section: replaces only that CORTEX section (e.g. $0, $1, $2.1). Accepts content as CORTEX with keys name, body, section (BLP-009).", "input_schema": {"type": "object", "properties": {"name": {"type": "string", "description": "Skill name (e.g. handlers)"}, "content": {"type": "string", "description": "New content, or CORTEX entry 'name:...,body:...,section:...' (BLP-009). Omit to read current content."}, "section": {"type": "string", "description": "Section ID to replace (e.g. $0, $1, $2.1). Only valid with content."}, "path": {"type": "string", "description": "Path to workspace/project root"}}, "required": ["name"]}},
     {"name": "skill.list", "fn": list_skills, "description": "List all available skills in .arqux/skills/.", "input_schema": {"type": "object", "properties": {"path": {"type": "string"}}}},
     {"name": "skill.get", "fn": get_skill, "description": "Read a skill file via the universal resolver (BLP-012) — read-only counterpart of skill.edit. Accepts root names, relative subpaths ('workflows/w10-x') or unique nested names. NOT_FOUND/AMBIGUOUS return actionable guidance. Accepts content CORTEX with key name.", "input_schema": {"type": "object", "properties": {"name": {"type": "string", "description": "Skill name or relative subpath (e.g. protocol, workflows/w10-identity-handoff)"}, "content": {"type": "string", "description": "CORTEX content with key name (BLP-010)."}, "path": {"type": "string", "description": "Path to workspace/project root"}}, "required": ["name"]}},
-    {"name": "skill.install", "fn": install_skill, "description": "Install a skill: import + validate + register in brain.cortex $6/SKL (BLP-010 meta-handler). Supports dry_run mode.", "input_schema": {"type": "object", "properties": {"source": {"type": "string", "description": "Skill source."}, "name": {"type": "string", "description": "Skill name."}, "content": {"type": "string", "description": "CORTEX content with keys source, name, body."}, "dry_run": {"type": "boolean", "default": False, "description": "If true, report what would happen without modifying state."}, "path": {"type": "string"}}, "required": ["source", "name"]}},
+    {"name": "skill.install", "fn": install_skill, "description": "Install a skill: import + validate + register in brain.cortex SKILLS/SKL (BLP-010 meta-handler). Supports dry_run mode.", "input_schema": {"type": "object", "properties": {"source": {"type": "string", "description": "Skill source."}, "name": {"type": "string", "description": "Skill name."}, "content": {"type": "string", "description": "CORTEX content with keys source, name, body."}, "dry_run": {"type": "boolean", "default": False, "description": "If true, report what would happen without modifying state."}, "path": {"type": "string"}}, "required": ["source", "name"]}},
 ]

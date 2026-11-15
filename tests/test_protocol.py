@@ -5,15 +5,13 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
-import pytest
-
 from arqux.constants import PRODUCT_NAME_UPPER
 from arqux.handlers import protocol, workspace
 
 
 def test_protocol_adopt_sets_env_vars(workspace_root: Path, governor_ctx) -> None:
     workspace.init_workspace(path=str(workspace_root), ctx=governor_ctx)
-    result = protocol.adopt(agent_id="new-agent", role="executor")
+    result = protocol.adopt(agent_id="new-agent", role="executor", path=str(workspace_root))
     assert os.environ.get(f"{PRODUCT_NAME_UPPER}_AGENT_ID") == "new-agent"
     assert os.environ.get(f"{PRODUCT_NAME_UPPER}_AGENT_ROLE") == "executor"
     assert "protocol.adopt ok" in result.to_text()
@@ -21,8 +19,8 @@ def test_protocol_adopt_sets_env_vars(workspace_root: Path, governor_ctx) -> Non
 
 def test_protocol_release_clears_env_vars(workspace_root: Path, governor_ctx) -> None:
     workspace.init_workspace(path=str(workspace_root), ctx=governor_ctx)
-    protocol.adopt(agent_id="tmp", role="executor")
-    protocol.release(agent_id="tmp")
+    protocol.adopt(agent_id="tmp", role="executor", path=str(workspace_root))
+    protocol.release(agent_id="tmp", path=str(workspace_root))
     assert os.environ.get(f"{PRODUCT_NAME_UPPER}_AGENT_ID") is None
     assert os.environ.get(f"{PRODUCT_NAME_UPPER}_AGENT_ROLE") is None
 
@@ -46,45 +44,56 @@ def test_protocol_adopt_rejects_invalid_role() -> None:
     assert "INVALID_ARGUMENT" in result.to_text()
 
 
-def test_register_agent_writes_canonical_metadata(tmp_path: Path) -> None:
-    """agents.cortex carries $19 ARQX:artifact + arqx_contract declaration.
-
-    The auto-generated glossary declaration must be named ``arqx_contract``
-    (canon) — never ``ARQX:artifact``, which would collide with the metadata
-    entry's own address.
-    """
-    from arqux.handlers.protocol import _register_agent
-
-    agents = tmp_path / "agents.cortex"
-    _register_agent(agents, "jarvis", "executor")
-    _register_agent(agents, "heimdall", "auditor")
-    content = agents.read_text(encoding="utf-8")
-    assert "$19: ARQUX METADATA" in content
-    assert "ARQX:arqx_contract{" in content
-    # The only ARQX:artifact is the metadata entry in $19 — no glossary
-    # declaration minted under the colliding ``artifact`` name.
-    assert content.count("ARQX:artifact{") == 1
-
-
-def test_register_agent_coalesces_legacy_01_metadata(tmp_path: Path) -> None:
-    """A pre-existing ``$0.1`` metadata section must not duplicate.
-
-    The writer merges ``$0.1`` into ``$19`` at emit time; the upsert must
-    coalesce in the model first or the emitted doc carries two
-    ``$19:ARQX:artifact`` addresses (I006_DUPLICATE_IDEA_ADDRESS).
-    """
-    pytest.importorskip("codec_cortex.dispatcher")
-    from arqux.cortex.model import parse_native
-    from arqux.handlers.protocol import _register_agent
-
-    agents = tmp_path / "agents.cortex"
-    agents.write_text(
-        "$0\n\n$0.1: ARQUX METADATA\n\n"
-        'ARQX:artifact{level:0, name:"agents", usage:"state", kind:"native"}\n\n'
-        "$1: AGENTS\n\nIDN:old{role:\"x\"}\n",
+def _meta_brain(tmp_path: Path) -> Path:
+    """Minimal canonical meta-brain with a REGISTRY section."""
+    meta = tmp_path / "meta-brain.cortex"
+    meta.write_text(
+        "$0\n\n$0:format{cortex:1.0, encoding:UTF-8}\n\n"
+        "IDN:idn_contract{type:\"attrs\", weight:\"B\", focus:\"value\", "
+        "fields:\"value:any?\", desc:\"id\", open:true}\n\n"
+        "$1: IDENTITY\n\n"
+        'ARQX:artifact{level:3, name:"meta-brain", usage:"brain", '
+        'kind:"native", version:"0"}\n\n'
+        "$10: REGISTRY\n",
         encoding="utf-8",
     )
-    _register_agent(agents, "jarvis", "executor")
-    content = agents.read_text(encoding="utf-8")
-    assert content.count("ARQX:artifact{") == 1
-    parse_native(content)  # must not raise (strict v1 grammar)
+    return meta
+
+
+def test_register_agent_writes_to_meta_brain_registry(tmp_path: Path) -> None:
+    """Agent registration lands in meta-brain $10 REGISTRY — never in a
+    resurrected agents.cortex file."""
+    from arqux.handlers.protocol import _register_agent
+
+    meta = _meta_brain(tmp_path)
+    _register_agent(meta, "jarvis", "executor")
+    _register_agent(meta, "heimdall", "auditor")
+    content = meta.read_text(encoding="utf-8")
+    assert 'IDN:jarvis{' in content and 'role:"executor"' in content
+    assert 'IDN:heimdall{' in content and 'role:"auditor"' in content
+    registry = content.split("$10: REGISTRY", 1)[1]
+    assert "IDN:jarvis" in registry
+    assert not (tmp_path / "agents.cortex").exists()
+
+
+def test_register_agent_is_idempotent(tmp_path: Path) -> None:
+    """Re-adopting the same agent updates role, never duplicates."""
+    from arqux.handlers.protocol import _register_agent
+
+    meta = _meta_brain(tmp_path)
+    _register_agent(meta, "jarvis", "executor")
+    _register_agent(meta, "jarvis", "governor")
+    content = meta.read_text(encoding="utf-8")
+    assert content.count("IDN:jarvis") == 1
+    assert 'role:"governor"' in content
+
+
+def test_unregister_agent_removes_registry_entry(tmp_path: Path) -> None:
+    """Release deletes the IDN entry; a second release is a no-op."""
+    from arqux.handlers.protocol import _register_agent, _unregister_agent
+
+    meta = _meta_brain(tmp_path)
+    _register_agent(meta, "jarvis", "executor")
+    _unregister_agent(meta, "jarvis")
+    assert "IDN:jarvis" not in meta.read_text(encoding="utf-8")
+    _unregister_agent(meta, "jarvis")  # idempotent

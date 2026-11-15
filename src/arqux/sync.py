@@ -94,10 +94,15 @@ def sync_brain(
 
     changed = False
 
+    # GRADIENT-12: resolve target sections by title — positional slots
+    # legitimately differ between layouts (legacy vs canon).
+    def _sec(title: str, fallback: str) -> str:
+        return _sec_title(doc, title, fallback)
+
     try:
         update_entry(
             doc,
-            "$9/WRK:current",
+            f"{_sec('ACTIVE_CONTEXT', '$7')}/WRK:current",
             set_={
                 "phase": "current",
                 "current": current_text,
@@ -108,11 +113,12 @@ def sync_brain(
         )
         changed = True
     except Exception:
-        logger.exception("sync_brain: failed to update WRK:current @ $9 (continuing)")
+        logger.exception("sync_brain: failed to update WRK:current @ ACTIVE_CONTEXT (continuing)")
 
     if focus:
+        fcs_sec = _sec("FOCUS", "$5")
         try:
-            if select_entries(doc, "$3/FCS:current"):
+            if select_entries(doc, f"{fcs_sec}/FCS:current"):
                 set_ = {"updated": ts, "event": event}
                 if not focus_create_only:
                     set_.update({
@@ -120,12 +126,12 @@ def sync_brain(
                         "priority": "medium",
                         "status": "current",
                     })
-                update_entry(doc, "$3/FCS:current", set_=set_)
+                update_entry(doc, f"{fcs_sec}/FCS:current", set_=set_)
                 changed = True
             elif focus_create_only:
                 add_entry(
                     doc,
-                    "$3",
+                    fcs_sec,
                     "FCS",
                     "current",
                     {
@@ -141,9 +147,9 @@ def sync_brain(
                 )
                 changed = True
             else:
-                logger.debug("sync_brain: no FCS:current @ $3 to update (continuing)")
+                logger.debug("sync_brain: no FCS:current in FOCUS to update (continuing)")
         except Exception:
-            logger.exception("sync_brain: failed to update FCS:current @ $3 (continuing)")
+            logger.exception("sync_brain: failed to update FCS:current in FOCUS (continuing)")
 
     requested_metrics = dict(metrics or {})
     if metrics and _upsert_metrics(doc, metrics, ts):
@@ -164,10 +170,10 @@ def sync_brain(
 
 
 def _upsert_metrics(doc: dict[str, Any], metrics: dict[str, Any], ts: str) -> bool:
-    """Upsert KNW:<metric> entries in $11 by name (doc-level batch helper).
+    """Upsert KNW:<metric> entries in the KNOWLEDGE section by name.
 
     Existing entries are updated in place (value/updated/content); new
-    metrics are appended. Metrics are skipped when $11 is absent.
+    metrics are appended. Metrics are skipped when KNOWLEDGE is absent.
     """
     from arqux.cortex.crud import add_entry, select_entries, update_entry
 
@@ -183,10 +189,11 @@ def _upsert_metrics(doc: dict[str, Any], metrics: dict[str, Any], ts: str) -> bo
             "status": knw_status,
         }
         try:
-            if select_entries(doc, f"$11/KNW:{key}"):
-                update_entry(doc, f"$11/KNW:{key}", set_=attrs)
+            knw_sec = _sec_title(doc, "KNOWLEDGE", "$3")
+            if select_entries(doc, f"{knw_sec}/KNW:{key}"):
+                update_entry(doc, f"{knw_sec}/KNW:{key}", set_=attrs)
             else:
-                add_entry(doc, "$11", "KNW", key, attrs, create_section=False)
+                add_entry(doc, knw_sec, "KNW", key, attrs, create_section=False)
         except Exception:
             logger.debug("sync_brain: failed to upsert metric %s=%s (continuing)", key, value)
             continue
@@ -347,19 +354,42 @@ def _project_name(project_root: Path) -> str:
         return _normalize_dom_name(fallback)
 
 
+def _sec_title(doc: dict[str, Any], title: str, fallback: str) -> str:
+    """Resolve a section id by title inside an already-parsed doc."""
+    want = title.upper()
+    for s in doc.get("sections") or []:
+        if isinstance(s, dict) and str(s.get("title") or "").upper() == want:
+            sid = str(s.get("id") or "").strip()
+            if sid:
+                return sid if sid.startswith("$") else f"${sid}"
+    return fallback
+
+
+def _meta_registry_sec(meta_brain_path: Path) -> str:
+    """Resolve the DOM-registry section by title — canonical ``REGISTRY``
+    (GRADIENT-12), legacy ``PROJECTS``/``DOMAINS``, else ``$10``."""
+    from arqux.core.state._crud import crud_section_id_for_title
+    for title in ("REGISTRY", "PROJECTS", "DOMAINS"):
+        sec = crud_section_id_for_title(meta_brain_path, title)
+        if sec:
+            return sec
+    return "$10"
+
+
 def _upsert_meta_dom(meta_brain_path: Path, dom_name: str, project_root: Path) -> None:
-    """Ensure ``$2/DOM:<dom_name>`` exists in the meta-brain (create if absent)."""
+    """Ensure ``DOM:<dom_name>`` exists in the meta-brain REGISTRY (create if absent)."""
     from arqux.state import crud_add, crud_read
 
+    reg_sec = _meta_registry_sec(meta_brain_path)
     try:
-        existing = crud_read(meta_brain_path, f"$2/DOM:{dom_name}")
+        existing = crud_read(meta_brain_path, f"{reg_sec}/DOM:{dom_name}")
     except Exception:
         existing = {"entries": []}
     if existing.get("entries"):
         return
     proj_dir = project_root.parent if project_root.name == ".arqux" else project_root
     crud_add(
-        meta_brain_path, "$2", "DOM", dom_name,
+        meta_brain_path, reg_sec, "DOM", dom_name,
         {"name": proj_dir.name, "path": str(proj_dir), "status": "current"},
         create_section=False,
         force=True,
@@ -414,7 +444,7 @@ def _dedupe_meta_dom(meta_brain_path: Path) -> dict[str, Any]:
         return result
 
     for section in doc.get("sections", []):
-        if not isinstance(section, dict) or section.get("id") != "$2":
+        if not isinstance(section, dict) or str(section.get("title") or "").upper() not in ("REGISTRY", "PROJECTS", "DOMAINS"):
             continue
         entries = section.get("entries", [])
         if not isinstance(entries, list):
@@ -532,9 +562,10 @@ def _sync_meta_brain(
         except Exception:
             logger.debug("sync_brain: could not create DOM:%s (continuing)", dom_name)
 
+        reg_sec = _meta_registry_sec(meta_brain_path)
         crud_update(
             str(meta_brain_path),
-            f"$2/DOM:{dom_name}",
+            f"{reg_sec}/DOM:{dom_name}",
             set_=dom_updates,
             force=True,
         )
@@ -543,7 +574,7 @@ def _sync_meta_brain(
 
 
 def reconcile_workspace_projects(ws_root: Path) -> dict[str, Any]:
-    """Align the meta-brain ``$2/DOM:*`` registry with governed projects.
+    """Align the meta-brain ``REGISTRY/DOM:*`` records with governed projects.
 
     Source of truth: sibling directories containing ``.arqux/brain.cortex``
     (the workspace directory itself is a container — its self-DOM, marked
@@ -582,10 +613,11 @@ def reconcile_workspace_projects(ws_root: Path) -> dict[str, Any]:
     result["discovered"] = sorted(discovered)
 
     # 2. Read existing DOMs (identify self-DOM vs project DOMs).
+    reg_sec = _meta_registry_sec(meta_brain)
     try:
-        dom_entries = crud_read(str(meta_brain), "$2/DOM:*").get("entries", [])
+        dom_entries = crud_read(str(meta_brain), f"{reg_sec}/DOM:*").get("entries", [])
     except Exception as exc:
-        result["errors"].append(f"cannot read $2/DOM:* — {exc!r}")
+        result["errors"].append(f"cannot read {reg_sec}/DOM:* — {exc!r}")
         return result
 
     ts = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
@@ -597,7 +629,7 @@ def reconcile_workspace_projects(ws_root: Path) -> dict[str, Any]:
     for dom_name, proj_dir in discovered.items():
         if dom_name in known_names:
             crud_update(
-                str(meta_brain), f"$2/DOM:{dom_name}",
+                str(meta_brain), f"{reg_sec}/DOM:{dom_name}",
                 set_={"path": str(proj_dir), "status": "current",
                       "updated": ts, "event": "workspace.sync"},
                 force=True,
@@ -624,7 +656,7 @@ def reconcile_workspace_projects(ws_root: Path) -> dict[str, Any]:
         )
         if not is_governed and attrs.get("status") != "stale":
             crud_update(
-                str(meta_brain), f"$2/DOM:{entry_name}",
+                str(meta_brain), f"{reg_sec}/DOM:{entry_name}",
                 set_={"status": "stale", "updated": ts,
                       "event": "workspace.sync"},
                 force=True,
@@ -640,13 +672,13 @@ def reconcile_brain(project_root: Path) -> dict[str, Any]:
     """Reconcile brain.cortex persistent state with filesystem reality.
 
     Scans all cycles and blueprints, counts by status, and updates:
-    - For project root: brain.cortex §4 (OBJ): an existing entry keeps its
+    - For project root: brain.cortex OBJECTIVES: an existing entry keeps its
       operator-authored goal/status/survive — only success/updated/event
       are refreshed; a generic goal is created only when no OBJ exists
-    - For workspace root: meta-brain.cortex $3 (FCS): an existing
+    - For workspace root: meta-brain.cortex FOCUS: an existing
       FCS:current keeps its what/priority/status — only updated/event
       are refreshed; a generic FCS is created only when absent
-    - For both: meta-brain.cortex $2/DOM:<project>: counts if meta-brain exists
+    - For both: meta-brain.cortex REGISTRY/DOM:<project>: counts if meta-brain exists
 
     Returns dict with reconciliation report.
     """
@@ -724,18 +756,20 @@ def reconcile_brain(project_root: Path) -> dict[str, Any]:
                     f"en {len(open_cycles) + len(closed_cycles)} ciclos "
                     f"({', '.join(sorted(open_cycles + closed_cycles))})."
                 )
-                existing_fcs = crud_read(str(meta_brain), "$3/FCS:current").get("entries", [])
+                from arqux.core.state._crud import crud_section_id_for_title
+                fcs_sec = crud_section_id_for_title(meta_brain, "FOCUS", fallback="$5")
+                existing_fcs = crud_read(str(meta_brain), f"{fcs_sec}/FCS:current").get("entries", [])
                 if existing_fcs:
                     crud_update(
                         str(meta_brain),
-                        "$3/FCS:current",
+                        f"{fcs_sec}/FCS:current",
                         set_={"updated": ts, "event": "brain.reconcile"},
                         force=True,
                     )
                 else:
                     crud_add(
                         str(meta_brain),
-                        "$3",
+                        fcs_sec,
                         "FCS",
                         "current",
                         {
@@ -762,20 +796,23 @@ def reconcile_brain(project_root: Path) -> dict[str, Any]:
             # entry exists.
             brain_path = project_root / ".arqux" / "brain.cortex"
             if brain_path.exists():
+                from arqux.core.state._crud import crud_section_id_for_title
+
                 goal = (
                     f"Mantener sincronia entre brain.cortex y estado real del proyecto. "
                     f"{total_blps} BLPs gestionados en {len(open_cycles) + len(closed_cycles)} ciclos "
                     f"({', '.join(sorted(open_cycles + closed_cycles))})."
                 )
 
+                obj_sec = crud_section_id_for_title(brain_path, "OBJECTIVES", fallback="$6")
                 try:
-                    objs = crud_read(str(brain_path), "$4/OBJ:*").get("entries", [])
+                    objs = crud_read(str(brain_path), f"{obj_sec}/OBJ:*").get("entries", [])
                 except Exception:
                     objs = []
                 if objs:
                     crud_update(
                         str(brain_path),
-                        f"$4/OBJ:{objs[0].get('name')}",
+                        f"{obj_sec}/OBJ:{objs[0].get('name')}",
                         set_={
                             "success": "synced",
                             "updated": ts,
@@ -784,10 +821,10 @@ def reconcile_brain(project_root: Path) -> dict[str, Any]:
                         force=True,
                     )
                 else:
-                    result["errors"].append("brain has no OBJ entry in §4")
+                    result["errors"].append("brain has no OBJ entry in OBJECTIVES")
                     crud_add(
                         str(brain_path),
-                        "$4",
+                        obj_sec,
                         "OBJ",
                         "sync",
                         {
@@ -848,7 +885,7 @@ def reconcile_brain(project_root: Path) -> dict[str, Any]:
 
                     crud_update(
                         str(meta_brain),
-                        f"$2/DOM:{dom_name}",
+                        f"{_meta_registry_sec(meta_brain)}/DOM:{dom_name}",
                         set_=dom_updates,
                         force=True,
                     )
@@ -868,7 +905,9 @@ def _meta_self_dom(meta_brain: Path) -> str | None:
     try:
         from arqux.state import crud_read
 
-        doms = crud_read(meta_brain, "$2/DOM:*").get("entries", [])
+        doms = crud_read(
+            meta_brain, f"{_meta_registry_sec(meta_brain)}/DOM:*"
+        ).get("entries", [])
         for entry in doms:
             value = entry.get("value") or {}
             if value.get("path") == "." or value.get("domain") == "workspace":

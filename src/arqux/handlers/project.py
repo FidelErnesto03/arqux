@@ -20,8 +20,8 @@ from ..constants import (
     BRAIN_SECTION_LESSONS,
     BRAIN_SECTION_SESSIONS,
     CYCLES_DIR,
+    META_BRAIN_CORTEX,
     OUT_WORK,
-    PROJECTS_CORTEX,
 )
 from ..cortex_out import CortexOUT
 from ..permissions import PermissionContext
@@ -177,6 +177,7 @@ def _detect_project_context(project_root: Path) -> list[str]:
     notes.append('  format:"Canonical CODEC-CORTEX sigil with $0 glossary",')
     notes.append('  sections:')
     notes.append('    $1:  IDENTITY')
+    notes.append('      ARQX:artifact{level, name, usage, kind, version, last_writer, updated}')
     notes.append('      IDN:project{name, product, version, purpose}')
     notes.append('      IDN:governor{name, level, project}')
     notes.append('      DOM:scope{name, area, purpose}')
@@ -186,45 +187,7 @@ def _detect_project_context(project_root: Path) -> list[str]:
     notes.append('      Project behavioral axioms: rules imposed by the project')
     notes.append('      or elevated by forced learning. Each brain is unique.')
     notes.append('')
-    notes.append('    $3:  FOCUS')
-    notes.append('      FCS:current{name, what, priority, status, survive}')
-    notes.append('      One-sentence active focus for the project.')
-    notes.append('')
-    notes.append('    $4:  OBJECTIVES')
-    notes.append('      OBJ:name{name, goal, status, success, survive}')
-    notes.append('      Active goals with measurable success criteria.')
-    notes.append('')
-    notes.append('    $5:  SESSIONS')
-    notes.append('      SES:agent{name, input, output, outcome, date}')
-    notes.append('      Initial session: the governor adopting the project.')
-    notes.append('')
-    notes.append('    $6:  HANDOFFS')
-    notes.append('      HDL:handoff{name, from, to, task, note}')
-    notes.append('      Optional — populate if handoff contracts exist.')
-    notes.append('')
-    notes.append('    $7:  PULSE')
-    notes.append('      AUD:event{name, event, evidence, result, date}')
-    notes.append('      Initial evidence: project initialization record.')
-    notes.append('      Bounded audit trail — compacted on session close;')
-    notes.append('      detailed traceability lives in sessions/timelog.')
-    notes.append('')
-    notes.append('    $8:  LESSONS')
-    notes.append('      LNG:name{name, type, cause, lesson, prevention}')
-    notes.append('      Known lessons from previous work. Extract from NOMOS brain')
-    notes.append('      or leave empty if none exist yet.')
-    notes.append('')
-    notes.append('    $9:  ACTIVE_CONTEXT')
-    notes.append('      WRK:current{name, phase, current, blocked, survive}')
-    notes.append('      Current execution phase and state.')
-    notes.append('')
-    notes.append('    $10: RISKS')
-    notes.append('      RSK:risk{name, risk, impact, mitigation, status, survive}')
-    notes.append('      LIM:limit / CNST:constraint / PFL:profile — same section.')
-    notes.append('      Known risks from NOMOS brain or discovered during study.')
-    notes.append('      Extract at least: description, impact (high/medium/low),')
-    notes.append('      mitigation strategy. Empty entries ("-") are NOT acceptable.')
-    notes.append('')
-    notes.append('    $11: KNOWLEDGE')
+    notes.append('    $3:  KNOWLEDGE')
     notes.append('      KNW:stack{name, topic, content, status}')
     notes.append('      KNW:architecture{name, topic, content, status}')
     notes.append('      KNW:dependencies{name, topic, content, status}')
@@ -235,18 +198,39 @@ def _detect_project_context(project_root: Path) -> list[str]:
     notes.append('        - External and internal dependencies')
     notes.append('        - Conventions, coding standards, and project-specific guidelines')
     notes.append('')
-    notes.append("    $12: CONCURRENCY")
-    notes.append('      ERR:concurrency{name, version, last_writer, updated}')
-    notes.append("      Start at version 1.",)
+    notes.append('    $4:  RISKS')
+    notes.append('      RSK:risk{name, risk, impact, mitigation, status, survive}')
+    notes.append('      LIM:limit / CNST:constraint / PFL:profile — same section.')
+    notes.append('      Known risks from NOMOS brain or discovered during study.')
+    notes.append('      Extract at least: description, impact (high/medium/low),')
+    notes.append('      mitigation strategy. Empty entries ("-") are NOT acceptable.')
     notes.append('')
-    notes.append('    $13: ISSUES')
-    notes.append('      Issue register — populated by issue.* handlers.')
+    notes.append('    $5:  FOCUS')
+    notes.append('      FCS:current{name, what, priority, status, survive}')
+    notes.append('      One-sentence active focus for the project.')
     notes.append('')
-    notes.append('    $14: LOOPS')
+    notes.append('    $6:  OBJECTIVES')
+    notes.append('      OBJ:name{name, goal, status, success, survive}')
+    notes.append('      Active goals with measurable success criteria.')
+    notes.append('')
+    notes.append('    $7:  ACTIVE_CONTEXT')
+    notes.append('      WRK:current{name, phase, current, blocked, survive}')
+    notes.append('      HND:<target>{from, to, task, note} — pending handoffs.')
+    notes.append('      Current execution phase and state.')
+    notes.append('')
+    notes.append('    $8:  LESSONS')
+    notes.append('      LNG:name{name, type, cause, lesson, prevention}')
+    notes.append('      Known lessons from previous work. Extract from NOMOS brain')
+    notes.append('      or leave empty if none exist yet.')
+    notes.append('')
+    notes.append('    $9:  LOOPS')
     notes.append('      LOOP:name{state, phases, recurrence, next} — autonomous loops.')
     notes.append('')
-    notes.append('    $15: ARQUX_METADATA')
-    notes.append('      ARQX:artifact{level, name, usage, kind} — always LAST.')
+    notes.append('    $10: SESSIONS')
+    notes.append('      SES:agent{name, input, output, outcome, date}')
+    notes.append('      Initial session: the governor adopting the project.')
+    notes.append('      Session events (AUD/DEC/ERR) live in the session timelog')
+    notes.append('      $5 EVENTS — never in the brain.')
     notes.append('')
     notes.append('  step:"3 - CALL project.init with the built content",')
     notes.append('  action:"project.init(name=..., path=..., seed=<built_content>)",')
@@ -408,26 +392,6 @@ def _update_meta_brain(ws_root: Path, name: str, path_str: str, seed: str) -> No
 
 _BRAIN_TEMPLATE = "brain.cortex"
 
-_PROJECTS_INDEX_TEMPLATE = """\
-$0
-
-# -- $0: MINIMAL LOCAL GLOSSARY --
-# Sigil | Name | Type | Risk | Cognitive Layer | Description
-# DOM   | domain     | attrs      | B | Semantic       | Project descriptor
-# ARQX  | artifact   | attrs      | B | Semantic       | ArqUX artifact metadata
-#
-# Types:
-# attrs = canonical type
-#
-# Micro-glossary:
-
-
-$1: METADATA
-
-ARQX:artifact{level:0, name:"projects", usage:"config", kind:"native"}
-"""
-
-
 def _default_brain_seed(name: str, agent_id: str) -> str:
     """Return the level-2 starter brain from ``templates/brain.cortex``.
 
@@ -445,31 +409,42 @@ def _default_brain_seed(name: str, agent_id: str) -> str:
 
 
 def _register_in_workspace(ws_root: Path, name: str, target: Path) -> bool:
-    """Upsert ``DOM:<name>`` into the workspace ``projects.cortex`` index.
+    """Upsert ``DOM:<name>`` into the workspace meta-brain REGISTRY.
 
-    Creates the index when absent. Returns True only when the DOM entry is
-    actually present afterwards — ``registered_in_workspace`` stays honest.
+    Canon (GRADIENT-12 / G-8): the project registry lives in
+    ``meta-brain.cortex`` — the standalone ``projects.cortex`` index is
+    retired and must never be recreated. Returns True only when the DOM
+    entry is actually present afterwards —
+    ``registered_in_workspace`` stays honest.
     """
     dom_name = _normalize_dom_name(name)
-    projects_path = ws_root / PROJECTS_CORTEX
+    meta_brain = ws_root / META_BRAIN_CORTEX
+    if not meta_brain.exists():
+        return False
     try:
-        if not projects_path.exists():
-            projects_path.write_text(_PROJECTS_INDEX_TEMPLATE, encoding="utf-8")
-        existing = crud_read(projects_path, f"$1/DOM:{dom_name}")
+        from ..core.state._crud import crud_section_id_for_title
+        reg_sec = next(
+            (s for s in (
+                crud_section_id_for_title(meta_brain, t)
+                for t in ("REGISTRY", "PROJECTS", "DOMAINS")
+            ) if s),
+            "$10",
+        )
+        existing = crud_read(meta_brain, f"{reg_sec}/DOM:{dom_name}")
         if existing.get("entries"):
             result = crud_update(
-                projects_path, f"$1/DOM:{dom_name}",
-                set_={"path": str(target)}, force=True,
+                meta_brain, f"{reg_sec}/DOM:{dom_name}",
+                set_={"path": str(target), "status": "current"}, force=True,
             )
         else:
             result = crud_add(
-                projects_path, "$1", "DOM", dom_name,
+                meta_brain, reg_sec, "DOM", dom_name,
                 {"name": name, "path": str(target), "status": "current"},
-                create_section=True, force=True,
+                create_section=True, section_title="REGISTRY", force=True,
             )
         if "error" in result:
             return False
-        check = crud_read(projects_path, f"$1/DOM:{dom_name}")
+        check = crud_read(meta_brain, f"{reg_sec}/DOM:{dom_name}")
         return any(e.get("name") == dom_name for e in check.get("entries", []))
     except Exception:
         return False

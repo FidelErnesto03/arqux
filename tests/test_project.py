@@ -37,7 +37,7 @@ def test_project_bind_writes_session_to_brain(workspace_root: Path, governor_ctx
         result = project.bind(agent_id="ex-1", role="executor")
         # The session should be in brain.cortex, NOT in bindings.cortex.
         brain_text = (project_dir / ARQUX_DIR / BRAIN_CORTEX).read_text(encoding="utf-8")
-        assert "$5: SESSIONS" in brain_text
+        assert "$10: SESSIONS" in brain_text
         assert "agent=ex-1" in brain_text or "SES:ex_1" in brain_text
         assert "role=executor" in brain_text or "executor" in brain_text
         # No bindings.cortex file should exist.

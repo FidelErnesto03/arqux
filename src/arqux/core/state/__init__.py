@@ -76,7 +76,7 @@ CONTEXT_CORTEX: str = "context.cortex"
 _HAS_CODEC_CORTEX: bool = False
 _codec_cortex = None  # type: ignore[assignment]
 
-#: Which API shape was detected: "legacy" | "rc1" | None.
+#: Which API shape was detected: "v1" | None.
 _CODEC_CORTEX_API: str | None = None
 
 #: Capabilities this ArqUX needs that the installed codec does NOT provide.
@@ -85,65 +85,6 @@ _CODEC_CORTEX_MISSING: tuple[str, ...] = ()
 _cc_ast = _cc_lexer = _cc_parser = _cc_validator = None
 _cc_selectors = _cc_renderer = None
 _cc_canonicalize = None
-
-
-def _bind_legacy_api() -> bool:
-    """Bind the 0.6.2 layout (``cortex.*``). Returns True on full success."""
-    global _cc_ast, _cc_lexer, _cc_parser, _cc_validator  # noqa: PLW0603
-    global _cc_selectors, _cc_renderer, _HAS_CODEC_CORTEX  # noqa: PLW0603
-    global _codec_cortex, _CODEC_CORTEX_API, _CODEC_CORTEX_MISSING  # noqa: PLW0603
-
-    try:
-        import cortex.core.ast as ast_mod
-        import cortex.core.lexer as lexer_mod
-        import cortex.core.parser as parser_mod
-        import cortex.core.validator as validator_mod
-        import cortex.crud.selectors as selectors_mod
-        import cortex.hcortex.read_renderer as renderer_mod
-    except ImportError:
-        return False
-
-    _cc_ast = ast_mod
-    _cc_lexer = lexer_mod
-    _cc_parser = parser_mod
-    _cc_validator = validator_mod
-    _cc_selectors = selectors_mod
-    _cc_renderer = renderer_mod
-    _HAS_CODEC_CORTEX = True
-    _codec_cortex = True  # sentinel
-    _CODEC_CORTEX_API = "legacy"
-    _CODEC_CORTEX_MISSING = ()
-    return True
-
-
-def _bind_rc1_api() -> bool:
-    """Bind the 1.0.0rc1 layout (``codec_cortex.*``, flat namespace).
-
-    Only ``parse_cortex`` exists there. ``validate`` and
-    ``render_hcortex_read`` are absent from the candidate, so their handles
-    stay None and are reported in ``_CODEC_CORTEX_MISSING``.
-    """
-    global _cc_parser, _HAS_CODEC_CORTEX, _codec_cortex  # noqa: PLW0603
-    global _CODEC_CORTEX_API, _CODEC_CORTEX_MISSING  # noqa: PLW0603
-
-    try:
-        import codec_cortex.parser as parser_mod
-    except ImportError:
-        return False
-
-    if not hasattr(parser_mod, "parse_cortex"):
-        return False
-
-    _cc_parser = parser_mod
-    _HAS_CODEC_CORTEX = True
-    _codec_cortex = True  # sentinel
-    _CODEC_CORTEX_API = "rc1"
-    # The rc1 candidate exposes compile_hcortex, not render_hcortex_read, and
-    # ships no validator at all. Both handles stay None on purpose: binding a
-    # module that lacks the entry point would turn a precise diagnosis into an
-    # AttributeError at the call site.
-    _CODEC_CORTEX_MISSING = ("validate", "render_hcortex_read")
-    return True
 
 
 def _bind_v1_api() -> bool:
@@ -158,8 +99,10 @@ def _bind_v1_api() -> bool:
     CRUD never come from the codec.
 
     Requires the full 1.0.x surface (``dispatcher`` or ``hcortex``
-    present); the 1.0.0rc1 candidate exposes only ``parser.parse_cortex``
-    and is left to :func:`_bind_rc1_api`.
+    present). The legacy ``cortex`` 0.6.x package and the 1.0.0rc1
+    candidate are not bound at all: the pin (codec-cortex>=1.0,<1.1)
+    excludes both, and either present manually would fail closed here
+    rather than bind a codec missing validate/render capabilities.
     """
     global _cc_parser, _cc_validator, _cc_selectors, _cc_renderer  # noqa: PLW0603
     global _HAS_CODEC_CORTEX, _codec_cortex  # noqa: PLW0603
@@ -198,11 +141,11 @@ def _bind_v1_api() -> bool:
     return True
 
 
-if not _bind_v1_api() and not _bind_legacy_api() and not _bind_rc1_api():
-    # BLP-fix (T-005/G-9): CODEC-CORTEX is optional. Define the
-    # codec handles as None so that 'from . import _cc_*' at module
-    # level in the submodules does not raise ImportError, and the
-    # runtime checks via requires_codec_cortex() still gate usage.
+if not _bind_v1_api():
+    # codec-cortex is a core dependency since 1.0.0 — reaching this branch
+    # means a broken install. Handles stay None so module-level imports in
+    # the submodules do not crash, and requires_codec_cortex() fails
+    # closed at every gated call site with a precise diagnosis.
     _HAS_CODEC_CORTEX = False
     _codec_cortex = None
     _CODEC_CORTEX_API = None
@@ -227,19 +170,6 @@ def codec_cortex_diagnostics() -> dict:
         "can_validate": _cc_validator is not None,
         "can_render_hcortex": _cc_renderer is not None,
     }
-
-# Runtime shim (issue 2026-10-02, schema mismatch verifier<->format):
-# codec-cortex <=0.6.2 requires a `name` ATTRIBUTE on every entry, but in
-# CODEC-CORTEX the name lives in the KEY (SIGIL:name). Published versions
-# still carry the bug, so arqux neutralizes it at load time — the fix
-# travels with arqux, NOT with codec-cortex (which stays untouched).
-if _HAS_CODEC_CORTEX:
-    try:
-        from cortex.core.schema import SchemaResolver as _SchemaResolver
-
-        _SchemaResolver.ALWAYS_REQUIRED = frozenset()
-    except Exception:  # noqa: BLE001  # best-effort shim, never blocks startup
-        pass
 
 # BLP-005: These CODEC modules have been removed from ArqUX.
 # They are kept as None for backward-compatibility with any code

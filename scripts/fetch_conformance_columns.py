@@ -91,7 +91,7 @@ def verify_corpus(column_b: Path) -> Path:
         raise RuntimeError(
             "corpus manifest digest mismatch — the governed corpus changed "
             f"upstream and the conformance numbers in "
-            f"docs/release/0.9.0-report.md §3 would no longer describe it.\n"
+            f"ARQUX-internal/ops/release/0.9.0-report.md §3 would no longer describe it.\n"
             f"  expected: {CORPUS_MANIFEST_SHA256}\n"
             f"  found:    {digest}\n"
             f"Re-run BLP-001 and re-issue the report before updating this pin."

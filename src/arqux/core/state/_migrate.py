@@ -45,6 +45,24 @@ def migrate_cortex_file(path: Path, *, dry_run: bool = False) -> bool:
 
     # 1. Check if migration is needed (has blocking errors).
     text = path.read_text(encoding="utf-8")
+
+    # GRADIENT-12 idempotence: a file already carrying canonical section
+    # titles IS migrated — the legacy rebuild below preserves only the old
+    # $1..$7 model and would destroy dialect entries (284 -> 1 on a
+    # canonical brain). Blocking diagnostics from the legacy ruleset do not
+    # apply to the canonical layout.
+    import re as _re
+    _canon_titles = (
+        "AXIOMS", "KNOWLEDGE", "RISKS", "FOCUS", "OBJECTIVES",
+        "ACTIVE_CONTEXT", "LESSONS", "LOOPS", "SESSIONS", "REGISTRY", "EVENTS",
+    )
+    if _re.search(
+        r"^\$\d+\s*:\s*(?:" + "|".join(_canon_titles) + r")\b",
+        text,
+        _re.M,
+    ):
+        return False
+
     try:
         doc = _cc_parser.parse_cortex(text, path=str(path))
         diags = _cc_validator.validate(doc)

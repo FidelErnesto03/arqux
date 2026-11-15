@@ -351,10 +351,14 @@ def test_session_handoff_writes(tmp_path: Path) -> None:
         ctx=_CONTEXT,
     )
     assert result.profile == "OUT-WORK", str(result.fields)
-    handoff_path = Path(result.fields.get("handoff_path", ""))
-    assert handoff_path.exists()
-    text = handoff_path.read_text()
-    assert "HOF:handoff" in text
+    # GRADIENT-12: the handoff is an HND:<to> entry in brain ACTIVE_CONTEXT,
+    # not a handoffs/ file.
+    handoff_ref = result.fields.get("handoff_ref", "")
+    assert handoff_ref.endswith("HND:alfred"), handoff_ref
+    assert not (proj_root / ".arqux" / "handoffs").exists()
+    brain_text = (proj_root / ".arqux" / "brain.cortex").read_text()
+    assert "HND:alfred" in brain_text
+    assert 'to:"alfred"' in brain_text
 
 
 # ---------------------------------------------------------------------------

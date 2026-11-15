@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "arqux"
-version = "0.9.0"
+version = "1.0.0"
 description = "Architectural User Experience for governed AI agents. Identity contracts, MCP governance, Blueprint lifecycle, CORTEX memory, and verifiable evidence."
 readme = "README.md"
 license = "Apache-2.0"
@@ -15,7 +15,7 @@ authors = [
 requires-python = ">=3.10"
 keywords = ["ai-agents", "governance", "mcp", "agent-orchestration", "cortex", "llm"]
 classifiers = [
-    "Development Status :: 4 - Beta",
+    "Development Status :: 5 - Production/Stable",
     "Intended Audience :: Developers",
     "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
@@ -30,29 +30,26 @@ dependencies = [
     # Pinned <2: server.py uses the lowlevel Server decorators (list_tools/call_tool)
     # removed in mcp 2.x. Port to the new API before unpinning.
     "mcp>=1.0.0,<2",
+    # CODEC-CORTEX — CORTEX/HCORTEX codec. Core dependency since 1.0.0:
+    # verify/render paths, REQ-04 loss-report and REQ-09 review delegate to
+    # its dispatcher/hcortex surface. Pinned to the 1.0.x line (BLP-005,
+    # CYCLE-16): the 1.0.0rc1 candidate is excluded — it exposes only
+    # `parse_cortex` without the 1.0.x dispatcher/hcortex surface.
+    "codec-cortex>=1.0,<1.1",
+    # MCP inputSchema validation (server.py _validate_args — unguarded import).
+    "jsonschema>=4.20",
     # Utilities.
-    "pydantic>=2.0.0",
     "click>=8.1.0",
     "rich>=13.0.0",
 ]
 
 [project.optional-dependencies]
-# CODEC-CORTEX — CORTEX/HCORTEX codec.
-# Optional since 0.7.0 (CYCLE-11 decoupling). ArqUX has its own reader/writer/crud/atomic
-# modules and degrades gracefully without codec-cortex. Install for full CODEC conformance
-# validation and the learning engine:  pip install "arqux[codec]"
-#
-# Pinned to the 1.0.x line (BLP-005, CYCLE-16). The 0.6.x pin existed because
-# `validate`, `render_hcortex_read` and the selectors lived inside the codec;
-# those capabilities are now ArqUX-owned (`arqux.cortex.level_policy`,
-# `arqux.cortex.read_renderer`, `arqux.cortex.selectors`,
-# `arqux.cortex.model`), so the codec is reduced to its format role:
-# `parse_cortex`/`canonicalize`. The 1.0.0rc1 candidate is still excluded —
-# it exposes only `parse_cortex` without the 1.0.x dispatcher/hcortex
-# surface. See issue
-# 2026-10-11-la-dependencia-pineada-codec-cortex-1-0-0rc1-es-.
-codec = [
-    "codec-cortex>=1.0,<1.1",
+# Optional hardened crypto for arqux.security legacy signing API (BLP-023/024).
+# REQ-12 `arqux policy sign/verify` uses a pure-Python Ed25519 and needs no
+# external crypto — install this only for the legacy security.py API:
+#   pip install "arqux[crypto]"
+crypto = [
+    "cryptography>=41.0",
 ]
 # ARQUX Voice (BLP-015) — harness-agnostic local voice participation.
 # Fully local audio pipeline: faster-whisper STT + Piper/Kokoro TTS +
@@ -61,9 +58,11 @@ codec = [
 voice = [
     "faster-whisper>=1.0.0",
     "kokoro-onnx>=0.6.1",
+    "numpy>=1.24",
     "onnx-asr>=0.12.0",
     "onnxruntime>=1.17.0",
     "piper-tts>=1.2.0",
+    "huggingface-hub>=0.20",
 ]
 # ARQUX Comms (BLP-017) — Telegram-only comunicación desde ArqUX y sus agentes.
 # Extensión MCP stdio aparte (no toca el core). Install:

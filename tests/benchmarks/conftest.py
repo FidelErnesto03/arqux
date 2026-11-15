@@ -20,5 +20,5 @@ def pytest_addoption(parser: pytest.Parser) -> None:
         action="store_true",
         default=False,
         dest="publish_benchmark",
-        help="write docs/release/benchmark-*.json instead of only measuring",
+        help="write ARQUX-internal/ops/release/benchmark-*.json instead of only measuring",
     )

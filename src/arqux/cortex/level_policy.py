@@ -233,7 +233,7 @@ def infer_document_kind(doc: CortexDocument, path: str | None = None) -> Documen
         if entry.sigil != "IDN" or not isinstance(entry.value, dict):
             continue
         kind_val = entry.value.get("kind")
-        if isinstance(kind_val, str) and kind_val in ("skill", "brain", "package"):
+        if isinstance(kind_val, str) and kind_val in ("skill", "brain", "package", "generic"):
             return DocumentKind(kind=kind_val, source="idn_attr")
         if entry.name == "skill":
             return DocumentKind(kind="skill", source="idn_attr")
@@ -391,7 +391,7 @@ def validate_level_policy(
                 "message": ("Nivel 2 (brain) MUST have at least one active "
                             "FCS entry (status=current|blocked; 'done' is a "
                             "closed state, not active)"),
-                "section": "$3", "sigil": "FCS",
+                "section": "$5", "sigil": "FCS",
                 "severity": "error", "bypassable": False,
             })
         if not has_obj:
@@ -400,7 +400,7 @@ def validate_level_policy(
                 "message": ("Nivel 2 (brain) MUST have at least one active "
                             "OBJ entry (status=current|blocked; 'done' is a "
                             "closed state, not active)"),
-                "section": "$4", "sigil": "OBJ",
+                "section": "$6", "sigil": "OBJ",
                 "severity": "error", "bypassable": False,
             })
 

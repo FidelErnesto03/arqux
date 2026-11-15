@@ -33,63 +33,50 @@ FULL_BRAIN_BODY = """$0
 GSIG:IDN:identity|attrs|B|Semantic|Actor identity
 
 $1: IDENTITY
+ARQX:artifact{level:"2", name:"brain"}
 IDN:governor{project:"test"}
 
 $2: AXIOMS
 AXM:brain_first{status:"current"}
 
-$3: FOCUS
+$3: KNOWLEDGE
+KNW:meta{content:"project knowledge"}
+
+$4: RISKS
+RSK:r1{risk:"delay"}
+
+$5: FOCUS
 FCS:current{status:"current", what:"shipping v1"}
 
-$4: OBJECTIVES
+$6: OBJECTIVES
 OBJ:v1{status:"active", goal:"ship v1"}
 
-$5: SESSIONS
-SES:s1{agent:"alfred"}
-
-$6: HANDOFFS
-HDL:1{from:"alfred", to:"jarvis"}
-
-$7: PULSE
-AUD:e1{event:"boot"}
+$7: ACTIVE_CONTEXT
+WRK:current{cycle:"CYCLE-01"}
+HND:jarvis{from:"alfred", to:"jarvis"}
 
 $8: LESSONS
 LNG:lesson1{detail:"refactor before adding features"}
 
-$9: ACTIVE_CONTEXT
-WRK:current{cycle:"CYCLE-01"}
-
-$10: RISKS
-RSK:r1{risk:"delay"}
-
-$11: KNOWLEDGE
-KNW:meta{content:"project knowledge"}
-
-$12: CONCURRENCY
-ERR:concurrency{version:"1"}
-
-$13: ISSUES
-ISS:1{description:"none"}
-
-$14: LOOPS
+$9: LOOPS
 LOOP:main{state:"active"}
 
-$15: ARQUX_METADATA
-ARQX:artifact{level:"2", name:"brain"}
+$10: SESSIONS
+SES:s1{agent:"alfred"}
 """
 
 # Brain with only 4 sections — should trigger W002_INCOMPLETE_BRAIN.
 SPARSE_BRAIN_BODY = """$1: IDENTITY
 IDN:governor{project:"test"}
 
-$3: FOCUS
+$5: FOCUS
 FCS:current{status:"current"}
 
-$4: OBJECTIVES
+$6: OBJECTIVES
 OBJ:v1{status:"active"}
 
-$11: CONCURRENCY
-ERR:concurrency{version:"1"}
+$10: SESSIONS
+SES:s1{agent:"alfred"}
 """
 
 # Brain with a misnamed section title.
@@ -99,11 +86,11 @@ IDN:governor{project:"test"}
 $3: WRONG_TITLE
 FCS:current{status:"current"}
 
-$11: CONCURRENCY
-ERR:concurrency{version:"1"}
+$10: SESSIONS
+SES:s1{agent:"alfred"}
 """
 
-# Empty brain — should trigger 13 E026 warnings (lenient mode).
+# Empty brain — should trigger 11 E026 warnings (lenient mode).
 EMPTY_BRAIN_BODY = ""
 
 
@@ -114,7 +101,7 @@ class TestBrainStructureValidator:
         art = _make_brain(FULL_BRAIN_BODY)
         result = BrainStructureValidator().validate(art)
         assert result.is_valid is True
-        # No errors, no warnings for a full 13-section brain.
+        # No errors, no warnings for a full 11-section brain (GRADIENT-12).
         assert result.errors == []
         assert result.warnings == []
 
@@ -128,11 +115,11 @@ class TestBrainStructureValidator:
         # But still is_valid=True (lenient).
         assert result.is_valid is True
 
-    def test_empty_brain_emits_16_warnings(self) -> None:
+    def test_empty_brain_emits_11_warnings(self) -> None:
         art = _make_brain(EMPTY_BRAIN_BODY)
         result = BrainStructureValidator().validate(art)
         e026_warnings = [w for w in result.warnings if w.code == E026_MISSING_SECTION]
-        assert len(e026_warnings) == 16
+        assert len(e026_warnings) == 11
         # W002 also emitted because 0 < 8.
         assert any(w.code == W002_INCOMPLETE_BRAIN for w in result.warnings)
 

@@ -83,7 +83,9 @@ class TestExplicitCompactionStillWorks:
         first = compact_session_pulse(session.proj_root, session_id=event_id,
                                       agent_id="test-governor", ses_ref=session.sid)
         assert first["compacted"] is True
-        assert first["pruned"] >= 6
+        # Canon: timelog $5 EVENTS are append-only — compaction writes the
+        # summary lesson but never prunes the session's events.
+        assert first["pruned"] == 0
 
         consolidated = crud_read(_brain(session), f"$8/LNG:session_{session.sid}")
         assert consolidated["entries"], "la compactación explícita debe dejar la LNG"

@@ -23,7 +23,7 @@ ISSUE_SAMPLE = (
 
 def _wrk(env) -> dict:
     brain = env.proj_root / ".arqux" / "brain.cortex"
-    entries = crud_read(brain, "$9/WRK:current")["entries"]
+    entries = crud_read(brain, "$7/WRK:current")["entries"]
     assert entries, "WRK:current no se escribió"
     return entries[0]["value"]
 
@@ -65,7 +65,7 @@ class TestCurrentEvent:
         from arqux.state import crud_update
 
         brain = arqux_env.proj_root / ".arqux" / "brain.cortex"
-        crud_update(brain, "$9/WRK:current", set_={
+        crud_update(brain, "$7/WRK:current", set_={
             "fcs": "viejo", "obj": "viejo", "tasks": "viejo", "state": "viejo",
             "last_turn": "2026-10-20T00:00:00Z",
             "event": "blueprint.complete",

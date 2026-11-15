@@ -46,8 +46,8 @@ def _add_aud(proj, eid: str, *, kind: str = "note", date: str | None = None,
     if ses_ref:
         value["ses_ref"] = ses_ref
     crud_add(
-        brain, "$7", "AUD", eid.replace("-", "_"), value,
-        create_section=True, force=True,
+        brain, "$11", "AUD", eid.replace("-", "_"), value,
+        create_section=True, section_title="PULSE", force=True,
     )
 
 
@@ -270,11 +270,11 @@ def test_sweep_prunes_dedup_named_entry(tmp_path) -> None:
     # Dedup-named candidate inside the closed window (before last anchor).
     brain = _brain_cortex_path(proj)
     crud_add(
-        brain, "$7", "AUD", "E_0046_0009",
+        brain, "$11", "AUD", "E_0046_0009",
         {"date": _iso_days_ago(30), "event": "E-0046", "task": "-",
          "kind": "decision", "agent": "alfred",
          "result": "payload", "evidence": "payload"},
-        create_section=True, force=True,
+        create_section=True, section_title="PULSE", force=True,
     )
     _add_aud(proj, "E-0047", kind="session")
     _add_aud(proj, "E-0048", kind="note")
@@ -298,14 +298,17 @@ def test_sweep_prunes_dedup_named_entry(tmp_path) -> None:
 # ---------------------------------------------------------------------------
 
 
-def test_append_auto_sweeps_past_trigger(tmp_path) -> None:
-    """append_pulse_to_brain sweeps automatically once AUDs > PULSE_SWEEP_AT."""
+def test_append_never_auto_sweeps(tmp_path) -> None:
+    """Canon: the write path never prunes — events are append-only (T1 retired).
+
+    Appending past the old PULSE_SWEEP_AT trigger leaves every legacy
+    brain-PULSE entry intact; explicit ``session.pulse.gc`` remains the
+    only sweep path.
+    """
     from arqux.pulse import PULSE_SWEEP_AT, append_pulse_to_brain
 
     proj = _bootstrap_project(tmp_path)
     _add_aud(proj, "E-0001", kind="session")
-    # Fill past the trigger with notes; the closing anchor must also go
-    # through append so its write triggers the sweep with candidates live.
     for i in range(PULSE_SWEEP_AT + 10):
         append_pulse_to_brain(
             proj, event_id=f"E-{i + 2:04d}", task_id="-",
@@ -319,5 +322,5 @@ def test_append_auto_sweeps_past_trigger(tmp_path) -> None:
     from arqux.pulse import _aud_count, _brain_cortex_path
 
     remaining = _aud_count(_brain_cortex_path(proj))
-    # Bounded: hot window (K) + anchors, not the full 50+ written.
-    assert remaining <= 30
+    # Nothing pruned: all written entries survive (50 notes + 2 anchors).
+    assert remaining == PULSE_SWEEP_AT + 12

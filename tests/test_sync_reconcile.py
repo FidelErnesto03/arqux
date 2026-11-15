@@ -12,7 +12,7 @@ from pathlib import Path
 
 from arqux.constants import ARQUX_DIR
 from arqux.handlers import project, workspace
-from arqux.state import crud_read, crud_update
+from arqux.state import crud_delete, crud_read, crud_update
 from arqux.sync import reconcile_brain, sync_brain
 
 
@@ -37,14 +37,14 @@ def test_sync_updates_project_dom_not_workspace_self(workspace_root: Path, gover
 
     sync_brain(proj, "test.sync", metrics={"tasks_done": 3})
 
-    dom = crud_read(meta, "$2/DOM:mi_proyecto")
+    dom = crud_read(meta, "$10/DOM:mi_proyecto")
     assert dom["entries"], "DOM:mi_proyecto missing in meta-brain"
     attrs = dom["entries"][0]["value"]
     assert attrs.get("last_event") == "test.sync"
     assert attrs.get("tasks_done") == "3"
 
     # The workspace self-DOM must not absorb project metrics.
-    self_dom = crud_read(meta, "$2/DOM:arqux")
+    self_dom = crud_read(meta, "$10/DOM:arqux")
     for e in self_dom["entries"]:
         assert e["value"].get("last_event") != "test.sync", (
             "project metrics leaked into workspace self-DOM"
@@ -57,12 +57,14 @@ def test_sync_creates_dom_entry_when_missing(workspace_root: Path, governor_ctx)
     proj = _ws_and_project(workspace_root, governor_ctx)
     meta = _meta_brain(workspace_root)
 
-    # Sanity: template meta-brain has no DOM:mi_proyecto yet.
-    assert not crud_read(meta, "$2/DOM:mi_proyecto")["entries"]
+    # init_project already registers DOM:mi_proyecto — remove it so the
+    # test exercises the create-when-absent path.
+    crud_delete(meta, "$10/DOM:mi_proyecto", force=True)
+    assert not crud_read(meta, "$10/DOM:mi_proyecto")["entries"]
 
     sync_brain(proj, "test.create", metrics={"tasks_done": 0})
 
-    dom = crud_read(meta, "$2/DOM:mi_proyecto")
+    dom = crud_read(meta, "$10/DOM:mi_proyecto")
     assert dom["entries"], "sync must create DOM:mi_proyecto when absent"
 
 
@@ -79,7 +81,7 @@ def test_reconcile_tolerates_brain_without_obj(workspace_root: Path, governor_ct
         "",
     )
     brain.write_text(text, encoding="utf-8")
-    assert not crud_read(brain, "$4/OBJ:*")["entries"]
+    assert not crud_read(brain, "$6/OBJ:*")["entries"]
 
     result = reconcile_brain(proj)
 
@@ -87,7 +89,7 @@ def test_reconcile_tolerates_brain_without_obj(workspace_root: Path, governor_ct
         f"missing-OBJ gap not documented: {result['errors']}"
     )
     assert result.get("meta_synced") is True
-    dom = crud_read(_meta_brain(workspace_root), "$2/DOM:mi_proyecto")
+    dom = crud_read(_meta_brain(workspace_root), "$10/DOM:mi_proyecto")
     assert dom["entries"], "DOM:mi_proyecto must be synced even without OBJ"
     assert dom["entries"][0]["value"].get("last_event") == "brain.reconcile"
 
@@ -101,7 +103,7 @@ def test_reconcile_updates_existing_obj_entry(workspace_root: Path, governor_ctx
     result = reconcile_brain(proj)
 
     assert result["reconciled"] is True, str(result["errors"])
-    obj = crud_read(brain, "$4/OBJ:onboard")
+    obj = crud_read(brain, "$6/OBJ:onboard")
     assert obj["entries"], "OBJ:onboard missing"
     assert obj["entries"][0]["value"].get("event") == "brain.reconcile"
 
@@ -118,7 +120,7 @@ def test_reconcile_after_project_restart(workspace_root: Path, governor_ctx) -> 
 
     result = reconcile_brain(proj)
 
-    dom = crud_read(_meta_brain(workspace_root), "$2/DOM:mi_proyecto")
+    dom = crud_read(_meta_brain(workspace_root), "$10/DOM:mi_proyecto")
     assert dom["entries"], "DOM:mi_proyecto missing after reconcile"
     attrs = dom["entries"][0]["value"]
     assert attrs.get("open_cycles") == "1", str(attrs)
@@ -140,7 +142,7 @@ def test_reconcile_workspace_preserves_meta_fcs(workspace_root: Path, governor_c
     result = reconcile_brain(workspace_root)
 
     assert result["reconciled"] is True, str(result["errors"])
-    fcs = crud_read(meta, "$3/FCS:current")
+    fcs = crud_read(meta, "$5/FCS:current")
     assert fcs["entries"], "FCS:current missing in meta-brain"
     val = fcs["entries"][0]["value"]
     assert val["what"] == "Workspace initialized"
@@ -158,12 +160,12 @@ def test_reconcile_workspace_creates_fcs_when_absent(workspace_root: Path, gover
         "",
     )
     meta.write_text(text, encoding="utf-8")
-    assert not crud_read(meta, "$3/FCS:current")["entries"]
+    assert not crud_read(meta, "$5/FCS:current")["entries"]
 
     result = reconcile_brain(workspace_root)
 
     assert result["reconciled"] is True, str(result["errors"])
-    fcs = crud_read(meta, "$3/FCS:current")
+    fcs = crud_read(meta, "$5/FCS:current")
     assert fcs["entries"], "reconcile must create FCS:current when absent"
     assert "Reconciliacion completada" in fcs["entries"][0]["value"].get("what", "")
 
@@ -178,7 +180,7 @@ def test_reconcile_workspace_merges_semantic_duplicate_dom_entries(
     meta = _meta_brain(workspace_root)
     crud_add(
         meta,
-        "$2",
+        "$10",
         "DOM",
         "manhattan_0001_0005",
         {
@@ -192,7 +194,7 @@ def test_reconcile_workspace_merges_semantic_duplicate_dom_entries(
     )
     crud_add(
         meta,
-        "$2",
+        "$10",
         "DOM",
         "manhattan",
         {
@@ -208,7 +210,7 @@ def test_reconcile_workspace_merges_semantic_duplicate_dom_entries(
 
     assert result["meta_deduplication"]["duplicate_groups"] == 1
     assert result["meta_deduplication"]["removed"] == 1
-    doms = crud_read(meta, "$2/DOM:*")["entries"]
+    doms = crud_read(meta, "$10/DOM:*")["entries"]
     manhattan = [entry for entry in doms if entry["name"] == "manhattan"]
     assert len(manhattan) == 1
     attrs = manhattan[0]["value"]
@@ -229,7 +231,7 @@ def test_reconcile_project_preserves_obj_goal(workspace_root: Path, governor_ctx
 
     crud_update(
         str(brain),
-        "$4/OBJ:onboard",
+        "$6/OBJ:onboard",
         set_={"goal": "Operator-authored objective: keep me"},
         force=True,
     )
@@ -237,7 +239,7 @@ def test_reconcile_project_preserves_obj_goal(workspace_root: Path, governor_ctx
     result = reconcile_brain(proj)
 
     assert result["reconciled"] is True, str(result["errors"])
-    obj = crud_read(brain, "$4/OBJ:onboard")
+    obj = crud_read(brain, "$6/OBJ:onboard")
     assert obj["entries"], "OBJ:onboard missing"
     val = obj["entries"][0]["value"]
     assert val["goal"] == "Operator-authored objective: keep me"
@@ -259,12 +261,12 @@ def test_reconcile_project_creates_obj_when_absent(workspace_root: Path, governo
         "",
     )
     brain.write_text(text, encoding="utf-8")
-    assert not crud_read(brain, "$4/OBJ:*")["entries"]
+    assert not crud_read(brain, "$6/OBJ:*")["entries"]
 
     result = reconcile_brain(proj)
 
     assert result["reconciled"] is True, str(result["errors"])
-    objs = crud_read(brain, "$4/OBJ:*")["entries"]
+    objs = crud_read(brain, "$6/OBJ:*")["entries"]
     assert objs, "reconcile must create a generic OBJ when absent"
     assert "Mantener sincronia" in objs[0]["value"].get("goal", "")
 
@@ -288,7 +290,7 @@ def test_reconcile_workspace_discovers_governed_projects(
 
     assert result["reconciled"] is True, str(result["errors"])
     for dom in ("alpha_proj", "beta_proj"):
-        entries = crud_read(meta, f"$2/DOM:{dom}")["entries"]
+        entries = crud_read(meta, f"$10/DOM:{dom}")["entries"]
         assert entries, f"DOM:{dom} not registered by workspace reconcile"
         assert entries[0]["value"].get("status") == "current"
 
@@ -304,7 +306,7 @@ def test_reconcile_workspace_marks_orphan_dom_stale(
     _ws_and_project(workspace_root, governor_ctx)
     meta = _meta_brain(workspace_root)
     crud_add(
-        str(meta), "$2", "DOM", "ghost_proj",
+        str(meta), "$10", "DOM", "ghost_proj",
         {"name": "ghost", "path": str(workspace_root / "ghost_proj"),
          "status": "current"},
         create_section=False, force=True,
@@ -313,7 +315,7 @@ def test_reconcile_workspace_marks_orphan_dom_stale(
     result = reconcile_workspace_projects(workspace_root / ARQUX_DIR)
 
     assert "ghost_proj" in result["stale"], str(result)
-    ghost = crud_read(meta, "$2/DOM:ghost_proj")["entries"][0]["value"]
+    ghost = crud_read(meta, "$10/DOM:ghost_proj")["entries"][0]["value"]
     assert ghost.get("status") == "stale"
     # Second run is idempotent: nothing re-stales, nothing re-creates.
     again = reconcile_workspace_projects(workspace_root / ARQUX_DIR)

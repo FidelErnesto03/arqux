@@ -500,42 +500,23 @@ def _has_learning_recorded(root: Path, bp_id: str) -> bool:
 
 
 def _record_to_brain(root: Path, bp_id: str, outcome: str, evidence: str) -> None:
-    """Record Blueprint outcome in brain PULSE using CODEC-CORTEX (BLP-042)."""
+    """Record Blueprint outcome via the unified pulse path (BLP-042).
+
+    GRADIENT-12: routes through ``record_pulse`` so the event lands in the
+    session timelog ``$5 EVENTS`` when a session is active, or the legacy
+    brain ``PULSE`` fallback — never positionally in ``$7`` (canon
+    ACTIVE_CONTEXT).
+    """
     try:
-        brain_path = root / "brain.cortex"
-        if not brain_path.exists():
-            brain_path = root / ".arqux" / "brain.cortex"
-        if not brain_path.exists():
-            return
+        from ...pulse import record_pulse
 
-        from ...cortex.model import parse_native
-        from ..state import crud_add
-
-        text = brain_path.read_text(encoding="utf-8")
-        doc = parse_native(text)
-
-        # Find PULSE section (title match first; $7 is the canon id).
-        pulse_sec = None
-        for sec in doc.sections:
-            if "PULSE" in sec.title.upper() or sec.id == "$7":
-                pulse_sec = sec
-                break
-        if pulse_sec is None:
-            return
-
-        # Append the AUD entry via CODEC-CORTEX (single-line attrs, no
-        # direct file write).
-        esc_evidence = evidence.replace('"', '\\"')
-        result = crud_add(
-            brain_path,
-            pulse_sec.id,
-            "AUD",
-            f"{bp_id}_{outcome}",
-            f'kind:"blueprint", evidence:"{esc_evidence}", date:"{_now_iso()}"',
-            create_section=False,
+        record_pulse(
+            root,
+            task_id=bp_id,
+            kind="blueprint",
+            agent=PermissionContext.from_env().agent_id,
+            payload=f"{bp_id} {outcome}: {evidence}",
         )
-        if "error" in result:
-            return
     except Exception:
         pass
 

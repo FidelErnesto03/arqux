@@ -350,22 +350,18 @@ def validate_loop_text(text: str) -> str | None:
 
 def log_event(project_root: str | Path, session: str, loop: str,
               event: str, detail: str = "") -> None:
-    """Append a loop progress event to the session timelog — never the
-    brain. Tolerates missing timelog silently (trail is best-effort)."""
+    """Append a loop progress event to the session timelog ``$5 EVENTS`` —
+    never the brain. Tolerates missing timelog silently (trail is
+    best-effort)."""
     if not session:
         return
-    tdir = Path(project_root) / ".arqux" / "timelog"
+    ts = int(time.time())
     try:
-        files = sorted(tdir.glob(f"{session}_*.cortex"))
-    except OSError:
-        return
-    if not files:
-        return
-    try:
-        with files[-1].open("a", encoding="utf-8") as fh:
-            fh.write(
-                f'\nLOOP:{loop}{{event:"{event}", detail:"{_sanitize(detail)}", '
-                f'ts:"{time.time():.0f}"}}\n'
-            )
-    except OSError:
+        from .timelog_store import append_event
+        append_event(
+            project_root, session, "LOOP",
+            re.sub(r"[^A-Za-z0-9_]", "_", f"{loop}_{event}_{ts}"),
+            {"event": event, "detail": _sanitize(detail), "loop": loop, "ts": str(ts)},
+        )
+    except Exception:
         pass

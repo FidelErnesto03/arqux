@@ -1,14 +1,14 @@
 """`session` module — session handoff between agents.
 
 Handlers:
-    session.close           — generate a portable SES entry in brain PULSE
+    session.close           — generate a portable SES entry in brain SESSIONS
     session.resume          — read the last SES and restore context
     session.status          — read SES metadata without restoring full context
     session.context.set     — set the session context pointer (project + scope)
     session.context.get     — read the current context pointer
 
-SES entries are stored in the brain's PULSE section as evidence-like
-entries with kind="session". Each SES is self-contained and < 2KB.
+SES entries are stored in the brain's SESSIONS section (title-resolved)
+with kind="session". Each SES is self-contained and < 2KB.
 """
 
 from __future__ import annotations
@@ -219,13 +219,13 @@ def pulse_gc(
     path: str | None = None,
     ctx: PermissionContext | None = None,
 ) -> CortexOUT:
-    """Force a PULSE hot-window sweep (T1 retention, brain canon).
+    """Explicit sweep of legacy brain-PULSE entries (compatibility path).
 
-    Prunes AUD entries outside the window (rank > PULSE_KEEP_COUNT or
-    age > PULSE_KEEP_DAYS) into the rolling ``LNG:pulse_sweep`` archive.
-    Session anchors and the live tail are never touched. The write path
-    already sweeps automatically past ``PULSE_SWEEP_AT`` — this handler
-    is the explicit/inspection entry point.
+    Canonical pulse events live in the session timelog ``$5 EVENTS`` and are
+    append-only — this handler only ever touches residual AUD entries still
+    held in a legacy brain PULSE section, pruning those outside the window
+    (rank > PULSE_KEEP_COUNT or age > PULSE_KEEP_DAYS) into the rolling
+    ``LNG:pulse_sweep`` archive. The write path never sweeps.
     """
     from ..pulse import sweep_pulse_window
     root = find_project_root(start=path)
@@ -753,7 +753,27 @@ def context_set(
         project_root=str(project_root),
     )
     _write_context(ws_root, execution, document)
-    (ws_root / CONTEXT_CORTEX).write_text(document, encoding="utf-8")
+    # Canon (GRADIENT-12): the workspace context pointer lives in meta-brain
+    # ACTIVE_CONTEXT as WRK:current — context.cortex is retired. The
+    # per-execution file above remains the multi-execution record.
+    try:
+        from ..core.state._crud import crud_section_id_for_title
+        from ..state import _now_iso, crud_add, crud_read, crud_update
+        meta_brain = ws_root / META_BRAIN_CORTEX
+        if meta_brain.exists():
+            ac = crud_section_id_for_title(meta_brain, "ACTIVE_CONTEXT", fallback="$7")
+            wrk_attrs = {
+                "name": "workspace", "agent": agent, "project": project,
+                "scope": scope, "blp": blp or "", "ses": session_id,
+                "project_root": str(project_root), "updated": _now_iso(),
+            }
+            if crud_read(str(meta_brain), f"{ac}/WRK:current").get("entries"):
+                crud_update(str(meta_brain), f"{ac}/WRK:current", set_=wrk_attrs, force=True)
+            else:
+                crud_add(str(meta_brain), ac, "WRK", "current", wrk_attrs,
+                         create_section=True, force=True)
+    except Exception:
+        pass
 
     header = f"⬡ {agent} | {project} | {scope}"
     if blp:
@@ -833,13 +853,19 @@ def _context_file(ws_root: Path, execution: str | None) -> Path:
     return ws_root / CONTEXT_CORTEX
 
 
-def _write_context(ws_root: Path, execution: str | None, document: str) -> Path:
-    """Persist *document* under this execution's own context file."""
-    target = ws_root / CONTEXT_CORTEX
+def _write_context(ws_root: Path, execution: str | None, document: str) -> Path | None:
+    """Persist *document* under this execution's own context file.
+
+    GRADIENT-12: without an execution slug there is no file to write — the
+    retired shared ``context.cortex`` slot is no longer recreated; the
+    meta-brain ``WRK:current`` update the caller performs right after is
+    the canonical shared pointer. Returns the written path or ``None``.
+    """
     slug = _execution_slug(execution)
-    if slug:
-        target = ws_root / CONTEXTS_DIR / f"{slug}.cortex"
-        target.parent.mkdir(parents=True, exist_ok=True)
+    if not slug:
+        return None
+    target = ws_root / CONTEXTS_DIR / f"{slug}.cortex"
+    target.parent.mkdir(parents=True, exist_ok=True)
     target.write_text(document, encoding="utf-8")
     return target
 
@@ -859,11 +885,34 @@ def context_get(
 
     execution = (ctx.execution_key if ctx else None) or authoritative_execution_key()
     context_path = _context_file(ws_root, execution)
-    if not context_path.exists():
-        return CortexOUT.error("no context set", code="NOT_FOUND")
 
-    raw = context_path.read_text(encoding="utf-8")
+    raw = ""
     result: dict[str, str] = {}
+    if context_path.exists():
+        raw = context_path.read_text(encoding="utf-8")
+    elif context_path == ws_root / CONTEXT_CORTEX:
+        # Canon (GRADIENT-12): the retired global slot's replacement is
+        # meta-brain ACTIVE_CONTEXT (WRK:current). It applies ONLY when the
+        # resolution actually chose the global slot — when per-execution
+        # contexts exist, a missing scoped file must NOT leak another
+        # execution's pointer (N-06).
+        meta_brain = ws_root / META_BRAIN_CORTEX
+        if meta_brain.exists():
+            try:
+                from ..core.state._crud import crud_section_id_for_title
+                from ..state import crud_read
+                ac = crud_section_id_for_title(meta_brain, "ACTIVE_CONTEXT", fallback="$7")
+                ents = crud_read(str(meta_brain), f"{ac}/WRK:current").get("entries", [])
+                if ents:
+                    val = ents[0].get("value") or {}
+                    if isinstance(val, dict):
+                        result = {k: str(v) for k, v in val.items() if v is not None}
+            except Exception:
+                result = {}
+        if not result:
+            return CortexOUT.error("no context set", code="NOT_FOUND")
+    else:
+        return CortexOUT.error("no context set", code="NOT_FOUND")
 
     # Canonical CTX:{agent_id}{k:"v"} entry; fall back to the pre-canonical
     # CTX:{agent_id} k="v" line still found in older context files.
@@ -1508,7 +1557,7 @@ def handoff(
     if not is_name_component(target_agent):
         return CortexOUT.error(
             f"target_agent must be a single agent id (slug), got {target_agent!r} "
-            "— it becomes the handoff filename handoffs/<id>.cortex and the HOF 'to' field",
+            "— it becomes the HND:<to> entry name in brain ACTIVE_CONTEXT",
             code="INVALID_ARGS",
         )
 
@@ -1562,11 +1611,25 @@ def handoff(
             handoff_cortex=handoff_cortex,
         )
 
-    # Write handoff file.
-    handoffs_dir = root / "handoffs"
-    handoffs_dir.mkdir(parents=True, exist_ok=True)
-    handoff_path = handoffs_dir / f"{target_agent}.cortex"
-    handoff_path.write_text(handoff_cortex, encoding="utf-8")
+    # Canon (GRADIENT-12): a pending handoff is state, not a file — it lives
+    # as HND:<to> in the brain's ACTIVE_CONTEXT. The handoffs/ directory is
+    # retired; the receiver finds the entry on bootstrap.
+    brain_path = root / BRAIN_CORTEX
+    handoff_ref = ""
+    try:
+        from ..core.state._crud import crud_section_id_for_title
+        from ..state import _now_iso, crud_add
+        ac = crud_section_id_for_title(brain_path, "ACTIVE_CONTEXT", fallback="$7")
+        crud_add(
+            brain_path, ac, "HND", target_agent,
+            {"date": _now_iso(), "from": agent_id, "to": target_agent,
+             "project": project_name, "summary": summary, "blps": blps,
+             "tasks": tasks},
+            create_section=True, force=True,
+        )
+        handoff_ref = f"{ac}/HND:{target_agent}"
+    except Exception as exc:
+        return CortexOUT.error(f"handoff write failed: {exc}", code="WRITE_ERROR")
 
     # Write PULSE for outgoing session — telemetry never blocks the handoff.
     with suppress(Exception):
@@ -1585,19 +1648,19 @@ def handoff(
         f"session.handoff ok from={agent_id} to={target_agent}",
         target_agent=target_agent,
         from_agent=agent_id,
-        handoff_path=str(handoff_path),
+        handoff_ref=handoff_ref,
         dry_run=False,
     )
 
 
 handler_schemas = [
-    {"name": "session.close", "fn": close, "description": "Close the session bound to this execution (or the explicit session_ref) and write its portable summary to brain PULSE. Never closes the newest session of the project when it belongs to another execution.", "input_schema": {"type": "object", "properties": {"summary": {"type": "string", "description": "Short human-readable summary of what was accomplished."}, "blps": {"type": "string", "description": "Comma-separated active blueprint IDs (e.g. BLP-006,BLP-007)."}, "tasks": {"type": "string", "description": "Comma-separated pending task IDs."}, "decisions": {"type": "string", "description": "Comma-separated key decisions made."}, "gaps": {"type": "string", "description": "Comma-separated detected gaps or pending items."}, "session_ref": {"type": "string", "description": "Explicit SESxxx to close. Defaults to this execution's session."}, "path": {"type": "string", "description": "Path to project root. Defaults to cwd."}}, "required": ["summary"]}},
+    {"name": "session.close", "fn": close, "description": "Close the session bound to this execution (or the explicit session_ref) and write its portable summary to brain SESSIONS. Never closes the newest session of the project when it belongs to another execution.", "input_schema": {"type": "object", "properties": {"summary": {"type": "string", "description": "Short human-readable summary of what was accomplished."}, "blps": {"type": "string", "description": "Comma-separated active blueprint IDs (e.g. BLP-006,BLP-007)."}, "tasks": {"type": "string", "description": "Comma-separated pending task IDs."}, "decisions": {"type": "string", "description": "Comma-separated key decisions made."}, "gaps": {"type": "string", "description": "Comma-separated detected gaps or pending items."}, "session_ref": {"type": "string", "description": "Explicit SESxxx to close. Defaults to this execution's session."}, "path": {"type": "string", "description": "Path to project root. Defaults to cwd."}}, "required": ["summary"]}},
     {"name": "session.resume", "fn": resume, "description": "Restore the context of a session. Read-only: selects by explicit session_ref, else the session bound to this execution, else rejects an ambiguous choice instead of taking the newest session. Brains without real session identity keep the legacy PULSE selection.", "input_schema": {"type": "object", "properties": {"session_ref": {"type": "string", "description": "Explicit SESxxx reference."}, "path": {"type": "string", "description": "Path to project root. Defaults to cwd."}}}},
     {"name": "session.status", "fn": status, "description": "Read session metadata without restoring full context. Read-only, same selection rules as session.resume.", "input_schema": {"type": "object", "properties": {"session_ref": {"type": "string", "description": "Explicit SESxxx reference."}, "path": {"type": "string", "description": "Path to project root. Defaults to cwd."}}}},
     {"name": "session.context.set", "fn": context_set, "description": "Set the current session context pointer (project + scope + optional BLP) and open or re-attach the real session bound to this execution. Validates project exists and returns the formatted header.", "input_schema": {"type": "object", "properties": {"project": {"type": "string", "description": "Project name (e.g. ARQUX)"}, "scope": {"type": "string", "description": "Scope within project (e.g. CYCLE-01)"}, "blp": {"type": "string", "description": "Optional active BLP ID (e.g. BLP-014)"}, "intent": {"type": "string", "enum": ["new", "resumed"], "default": "new", "description": "'new' opens or recovers this execution's session; 'resumed' re-attaches session_ref without changing its id or original start."}, "session_ref": {"type": "string", "description": "Explicit SESxxx reference; required when intent='resumed'."}, "path": {"type": "string", "description": "Path to workspace root. Defaults to cwd."}}, "required": ["project", "scope"]}},
     {"name": "session.context.get", "fn": context_get, "description": "Read the current context pointer and return the formatted header.", "input_schema": {"type": "object", "properties": {"path": {"type": "string", "description": "Path to workspace root. Defaults to cwd."}}}},
     {"name": "session.bootstrap", "fn": bootstrap, "description": "Bootstrap a session using the authenticated identity. An explicit agent_id must match the caller (BLP-002). Returns cortex_context (canal I) and hcortex_dashboard (canal E).", "input_schema": {"type": "object", "properties": {"path": {"type": "string", "description": "Starting path. Defaults to cwd."}, "agent_id": {"type": "string", "description": "Optional identity selector; must match the authenticated caller."}}}},
     {"name": "session.handoff", "fn": handoff, "description": "Serialize the current session context as CORTEX and write a handoff PULSE for the target agent (BLP-010 meta-handler). Supports dry_run mode.", "input_schema": {"type": "object", "properties": {"target_agent": {"type": "string", "description": "ID of the agent receiving the handoff."}, "content": {"type": "string", "description": "CORTEX content with keys target_agent, summary, blps, tasks."}, "dry_run": {"type": "boolean", "default": False}, "path": {"type": "string"}}, "required": ["target_agent"]}},
-    {"name": "session.pulse.compact", "fn": pulse_compact, "description": "Compact pulse entries for a session. With ses_ref, selection is by membership: only that session's pulses are pruned and concurrent or legacy pulses are never reassigned by position. Writes a consolidated LNG lesson.", "input_schema": {"type": "object", "properties": {"session_id": {"type": "string"}, "ses_ref": {"type": "string", "description": "Select by session membership instead of position."}, "dry_run": {"type": "boolean", "default": False}, "path": {"type": "string"}}, "required": ["session_id"]}},
-    {"name": "session.pulse.gc", "fn": pulse_gc, "description": "Force a PULSE hot-window sweep (T1 retention): prunes AUD entries outside the window — rank>PULSE_KEEP_COUNT(20) or age>PULSE_KEEP_DAYS(5) — into the rolling LNG:pulse_sweep archive. Session anchors and the live tail are exempt. The write path sweeps automatically past PULSE_SWEEP_AT(40).", "input_schema": {"type": "object", "properties": {"dry_run": {"type": "boolean", "default": False}, "path": {"type": "string"}}}},
+    {"name": "session.pulse.compact", "fn": pulse_compact, "description": "Compact pulse entries for a session. With ses_ref, selection is by membership: only that session's events are summarized and concurrent or legacy events are never reassigned by position. Writes a consolidated LNG lesson; canonical timelog events are append-only and are never pruned.", "input_schema": {"type": "object", "properties": {"session_id": {"type": "string"}, "ses_ref": {"type": "string", "description": "Select by session membership instead of position."}, "dry_run": {"type": "boolean", "default": False}, "path": {"type": "string"}}, "required": ["session_id"]}},
+    {"name": "session.pulse.gc", "fn": pulse_gc, "description": "Explicit sweep of residual brain-PULSE entries (legacy compatibility only): prunes AUD entries outside the window — rank>PULSE_KEEP_COUNT(20) or age>PULSE_KEEP_DAYS(5) — into the rolling LNG:pulse_sweep archive. Canonical session-timelog $5 EVENTS are append-only and are never swept; the write path never sweeps.", "input_schema": {"type": "object", "properties": {"dry_run": {"type": "boolean", "default": False}, "path": {"type": "string"}}}},
 ]

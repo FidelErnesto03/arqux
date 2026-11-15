@@ -668,6 +668,14 @@ def close_cycle(
         manifest_fm["closed_at"] = now
         _write_cycle_manifest(cdir, manifest_fm)
 
+    # REQ-03: seal the cycle — every .cortex artifact gets a SHA-256
+    # recomputed on disk; the root seal goes into the manifest and the
+    # per-file hashes into seal.cortex (verified by cortex.verify).
+    seal_sha256 = _seal_cycle(cdir)
+    if seal_sha256 and manifest_fm is not None:
+        manifest_fm["seal_sha256"] = seal_sha256
+        _write_cycle_manifest(cdir, manifest_fm)
+
     sync_brain(root, "cycle.close", focus="Ciclo cerrado", metrics={"cycles_closed": 1}, detail=f"cycle {cycle_id} closed")
 
     reconcile_cycle(root, cycle_id)
@@ -684,8 +692,55 @@ def close_cycle(
         lessons_generated=len(lesson_entries),
         learning_scan=learning_scan["status"],
         learning_candidates=len(learning_scan.get("candidates", [])),
+        seal_sha256=seal_sha256,
     instruction="Review cortex.learn candidates; apply elevations only with Architect approval.",
         )
+
+
+def _seal_cycle(cdir: Path) -> str | None:
+    """Write ``seal.cortex`` for *cdir* and return its root ``seal_sha256``.
+
+    Every ``.cortex`` artifact of the cycle (cycle.cortex + tasks/*.cortex)
+    is hashed on disk; the seal is the SHA-256 over the sorted per-file
+    hashes. ``cortex.verify`` recomputes the entries and reports
+    ``ERR_HASH_MISMATCH`` on drift (REQ-03).
+    """
+    import hashlib
+
+    artifacts = sorted(
+        p for p in cdir.rglob("*.cortex") if p.name != "seal.cortex"
+    )
+    if not artifacts:
+        return None
+
+    entries: list[tuple[str, str, str]] = []
+    for artifact in artifacts:
+        digest = hashlib.sha256(artifact.read_bytes()).hexdigest()
+        rel = artifact.relative_to(cdir).as_posix()
+        entries.append((rel, digest, rel.replace("/", "_").replace(".", "_").replace("-", "_")))
+
+    root_hash = hashlib.sha256(
+        "".join(d for _, d, _ in entries).encode("utf-8")
+    ).hexdigest()
+
+    lines = [
+        "$0",
+        "$0:format{cortex:1.0, encoding:UTF-8}",
+        "",
+        "# -- $0: GLOSSARY --",
+        "# SEL | seal   | attrs | H | Root seal of a closed cycle",
+        "# HSH | hash   | attrs | M | Per-artifact SHA-256 record",
+        'SEL:sel_contract{type:"attrs", weight:"H", focus:"seal_sha256", fields:"cycle:text|seal_sha256:text|artifacts:int", desc:"Cycle seal", open:true}',
+        'HSH:hsh_contract{type:"attrs", weight:"M", focus:"file", fields:"file:text|sha256:text", desc:"Artifact hash", open:true}',
+        "",
+        "$1: SEAL",
+        f"SEL:seal{{cycle:\"{cdir.name}\", seal_sha256:\"{root_hash}\", artifacts:{len(entries)}}}",
+    ]
+    for rel, digest, name in entries:
+        lines.append(f'HSH:{name}{{file:"{rel}", sha256:"{digest}"}}')
+
+    (cdir / "seal.cortex").write_text("\n".join(lines) + "\n", encoding="utf-8")
+    return root_hash
 
 
 

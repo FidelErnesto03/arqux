@@ -52,7 +52,8 @@ def plan_patch(
             src_attrs = e.value if isinstance(e.value, dict) else None
             break
 
-    dest_section = section_for_sigil(target, document) or "$9"
+    dest_section = section_for_sigil(target, document) \
+        or section_for_sigil("WRK", document) or "$7"
     reason = getattr(candidate, "reason", None) or f"elevate {source_sigil}→{target}"
     promotion_score = int(getattr(candidate, "promotion_score", 0) or 0)
 

@@ -198,10 +198,12 @@ def record_lesson_handler_legacy(
     }
 
     try:
+        from ...core.state._crud import crud_section_id_for_title
+        lessons_sec = crud_section_id_for_title(brain_path, "LESSONS", fallback="$8")
         brain_result = crud_add(
             brain_path,
-            "$8", "LNG", entry_name, value,
-            create_section=True,
+            lessons_sec, "LNG", entry_name, value,
+            create_section=True, section_title="LESSONS",
         )
         # F4: only a clean write counts as filed — a crud_add that
         # returned an error must NOT be reported as persisted.

@@ -3,32 +3,36 @@ $0
 AXM:axm_contract{type:"attrs", weight:"H", focus:"value", fields:"value:any?", desc:"ArqUX AXM entry", open:true}
 ARQX:arqx_contract{type:"attrs", weight:"M", focus:"value", fields:"value:any?", desc:"ArqUX ARQX entry", open:true}
 DOM:dom_contract{type:"attrs", weight:"M", focus:"value", fields:"value:any?", desc:"ArqUX DOM entry", open:true}
-ERR:err_contract{type:"attrs", weight:"M", focus:"value", fields:"value:any?", desc:"ArqUX ERR entry", open:true}
 FCS:fcs_contract{type:"attrs", weight:"M", focus:"value", fields:"value:any?", desc:"ArqUX FCS entry", open:true}
+HND:hnd_contract{type:"attrs", weight:"M", focus:"value", fields:"value:any?", desc:"Pending handoff to another agent", open:true}
 IDN:idn_contract{type:"attrs", weight:"M", focus:"value", fields:"value:any?", desc:"ArqUX IDN entry", open:true}
+KNW:knw_contract{type:"attrs", weight:"M", focus:"value", fields:"value:any?", desc:"ArqUX KNW entry", open:true}
 LNG:lng_contract{type:"attrs", weight:"M", focus:"value", fields:"value:any?", desc:"ArqUX LNG entry", open:true}
 LOOP:loop_contract{type:"attrs", weight:"M", focus:"value", fields:"value:any?", desc:"ArqUX LOOP entry", open:true}
 OBJ:obj_contract{type:"attrs", weight:"M", focus:"value", fields:"value:any?", desc:"ArqUX OBJ entry", open:true}
+RSK:rsk_contract{type:"attrs", weight:"M", focus:"value", fields:"value:any?", desc:"ArqUX RSK entry", open:true}
+SES:ses_contract{type:"attrs", weight:"M", focus:"value", fields:"value:any?", desc:"Compressed session record", open:true}
 WRK:wrk_contract{type:"attrs", weight:"M", focus:"value", fields:"value:any?", desc:"ArqUX WRK entry", open:true}
 $0:format{cortex:1.0, encoding:UTF-8}
 
 # -- $0: MINIMAL LOCAL GLOSSARY --
 # Sigil | Name | Type | Risk | Cognitive Layer | Description
 # AXM   | axiom      | attrs      | H | Prefrontal     | Project behavioral axiom
-# ARQX  | artifact   | attrs      | B | Semantic       | Artifact metadata
+# ARQX  | artifact   | attrs      | B | Semantic       | Artifact metadata (in $1)
 # IDN   | identity   | attrs      | B | Semantic       | Actor identity
 # DOM   | domain     | attrs      | B | Semantic       | Project/scope descriptor
-# FCS   | focus      | attrs      | H | Working        | Active attention anchor
-# OBJ   | objective  | attrs      | H | Working        | Active goal
-# SES   | session    | attrs      | M | Episodic       | Compressed episode
-# HDL   | handoff    | attrs      | M | Episodic       | Work handed between agents
-# AUD   | audit      | attrs      | M | Prefrontal     | Verification record
-# LNG   | lesson     | attrs      | M | Episodic       | Learned lesson
-# WRK   | work       | attrs      | B | Working        | Current execution state
-# RSK   | risk       | attrs      | M | Prefrontal     | Risk with mitigation
 # KNW   | knowledge  | attrs      | B | Semantic       | Stable knowledge
-# ERR   | error      | attrs      | M | Concurrency    | Optimistic-locking state
+# RSK   | risk       | attrs      | M | Prefrontal     | Risk with mitigation
+# FCS   | focus      | attrs      | H | Working        | Active attention anchor
+# OBJ   | objective  | attrs      | H | Working        | Standing objective
+# WRK   | work       | attrs      | B | Working        | Current execution state
+# HND   | handoff    | attrs      | M | Episodic       | Pending handoff (state, not file)
+# LNG   | lesson     | attrs      | M | Episodic       | Learned lesson
 # LOOP  | loop       | attrs      | B | Working        | Autonomous loop declaration
+# SES   | session    | attrs      | M | Episodic       | Compressed session record
+# AUD   | audit      | attrs      | M | Episodic       | Session event (lives in timelog $5 EVENTS)
+# DEC   | decision   | attrs      | M | Episodic       | Session decision (lives in timelog)
+# ERR   | error      | attrs      | M | Episodic       | Session error (lives in timelog)
 #
 # Types:
 # attrs = canonical type
@@ -36,9 +40,15 @@ $0:format{cortex:1.0, encoding:UTF-8}
 #
 # Micro-glossary:
 # cur=current wrk=work min=minimum ok=success
+#
+# GRADIENT-12 layout: $1 IDENTITY | $2 AXIOMS | $3 KNOWLEDGE | $4 RISKS |
+# $5 FOCUS | $6 OBJECTIVES | $7 ACTIVE_CONTEXT | $8 LESSONS | $9 LOOPS |
+# $10 SESSIONS. Events live in .arqux/timelog/<SES>/… $5 EVENTS.
 
 
 $1: IDENTITY
+
+ARQX:artifact{level:2, name:"__PROJECT__", usage:"state", kind:"native", version:"0", revision:"0", last_writer:"__GOVERNOR__"}
 
 IDN:project{name:"__PROJECT__", product:"__PROJECT__", version:"0.1.0", purpose:"New governed project"}
 
@@ -54,50 +64,31 @@ $2: AXIOMS
 # AXM:<name>{rule:"...", severity:"blocking", survive:"min"}
 
 
-$3: FOCUS
+$3: KNOWLEDGE
+
+
+$4: RISKS
+
+
+$5: FOCUS
 
 FCS:current{name:"bootstrap", what:"Initial governance bootstrap of __PROJECT__", priority:"high", status:"current", survive:"work"}
 
 
-$4: OBJECTIVES
+$6: OBJECTIVES
 
 OBJ:onboard{name:"onboarding", goal:"Complete project onboarding: populate brain sections, open first cycle", status:"current", success:"brain valid and first cycle open", survive:"work"}
 
 
-$5: SESSIONS
+$7: ACTIVE_CONTEXT
 
-
-$6: HANDOFFS
-
-
-$7: PULSE
+WRK:current{name:"init", phase:"init", current:"project initialized - pending brain population", blocked:"no", survive:"work"}
 
 
 $8: LESSONS
 
 
-$9: ACTIVE_CONTEXT
-
-WRK:current{name:"init", phase:"init", current:"project initialized - pending brain population", blocked:"no", survive:"work"}
+$9: LOOPS
 
 
-$10: RISKS
-
-
-$11: KNOWLEDGE
-
-
-$12: CONCURRENCY
-
-ERR:concurrency{name:"concurrency", version:"0", last_writer:"__GOVERNOR__", updated:"__DATE__"}
-
-
-$13: ISSUES
-
-
-$14: LOOPS
-
-
-$15: ARQUX_METADATA
-
-ARQX:artifact{level:2, name:"__PROJECT__", usage:"state", kind:"native"}
+$10: SESSIONS

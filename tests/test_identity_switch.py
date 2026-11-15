@@ -181,16 +181,19 @@ def test_switch_registers_handoff_and_pulse(tmp_path: Path) -> None:
     ws_root, proj_root = _bootstrap(tmp_path)
     switch("jarvis", path=str(proj_root), ctx=_ALFRED)
 
-    handoff_file = proj_root / ARQUX_DIR / "handoffs" / "jarvis.cortex"
-    assert handoff_file.exists()
-    text = handoff_file.read_text(encoding="utf-8")
-    assert 'from:"alfred"' in text
-    assert 'to:"jarvis"' in text
-
+    # GRADIENT-12: pending handoffs are HND:<to> entries in the brain's
+    # ACTIVE_CONTEXT — the handoffs/ directory is retired.
     brain = (proj_root / ARQUX_DIR / "brain.cortex").read_text(encoding="utf-8")
-    assert "identity_switch" in brain
-    assert "from=alfred" in brain
-    assert "to=jarvis" in brain
+    assert not (proj_root / ARQUX_DIR / "handoffs").exists()
+    assert "HND:jarvis" in brain
+    assert 'from:"alfred"' in brain
+    assert 'to:"jarvis"' in brain
+
+    # The audit pulse lives in the session timelog $5 EVENTS (GRADIENT-12).
+    timelogs = list((proj_root / ARQUX_DIR / "timelog").glob("*.cortex"))
+    assert timelogs, "no session timelog found"
+    tl_text = "\n".join(t.read_text(encoding="utf-8") for t in timelogs)
+    assert "identity_switch" in tl_text
 
 
 # ---------------------------------------------------------------------------
@@ -221,7 +224,9 @@ def test_switch_updates_context_preserving_scope(tmp_path: Path) -> None:
 def test_switch_dry_run_mutates_nothing(tmp_path: Path) -> None:
     ws_root, proj_root = _bootstrap(tmp_path)
     ws_arqux = _ws_arqux(ws_root)
-    ctx_before = (ws_arqux / "context.cortex").read_text(encoding="utf-8")
+    # The workspace context pointer lives in meta-brain ACTIVE_CONTEXT
+    # (WRK:current) — context.cortex is retired (GRADIENT-12).
+    ctx_before = (ws_arqux / "meta-brain.cortex").read_text(encoding="utf-8")
     brain_before = (proj_root / ARQUX_DIR / "brain.cortex").read_text(encoding="utf-8")
 
     result = switch("jarvis", path=str(proj_root), ctx=_ALFRED, dry_run=True)
@@ -230,7 +235,7 @@ def test_switch_dry_run_mutates_nothing(tmp_path: Path) -> None:
     assert result.fields["dry_run"] is True
     assert result.fields["context_updated"] is False
     assert result.fields["header"] == "⬡ jarvis | test-proj | CYCLE-01"
-    assert (ws_arqux / "context.cortex").read_text(encoding="utf-8") == ctx_before
+    assert (ws_arqux / "meta-brain.cortex").read_text(encoding="utf-8") == ctx_before
     assert (proj_root / ARQUX_DIR / "brain.cortex").read_text(encoding="utf-8") == brain_before
     assert not (proj_root / ARQUX_DIR / "handoffs").exists()
 

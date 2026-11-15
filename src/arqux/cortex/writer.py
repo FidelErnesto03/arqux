@@ -359,6 +359,10 @@ def write_cortex_from_json(doc: dict, *, strict: bool = False) -> str:
     # (BLP-041) is therefore unconditional, not strict-only. ``$0.1`` and
     # ``$19`` coalesce into a single metadata section regardless of order:
     # the first one encountered wins the position, later ones merge in.
+    # GRADIENT-12 note: ``$19`` stays untouched here — the writer preserves
+    # existing document structure. Canonical placement of ``ARQX:artifact``
+    # inside ``$1 IDENTITY`` is the job of creators (templates,
+    # ``brain_from_model``, ``migrator``), not of the generic serializer.
     normalized_sections: list[dict[str, Any]] = []
     metadata_section: dict[str, Any] | None = None
     for section in sections:

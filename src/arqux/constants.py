@@ -333,7 +333,8 @@ class ArtifactUsage(Enum):
 class ArtifactMetadata:
     """Technical identity of a .cortex artifact (BLP-041).
 
-    The ARQX:artifact entry in $0.1 declares level, name, usage, kind.
+    The ARQX:artifact entry in $1 IDENTITY declares level, name, usage, kind
+    (legacy $0.1 / $15 / $19 slots still resolve on read).
     Optional fields (agent, source, upstream_version) are kept for
     BLP-038/BLP-040 extensions.
     """
@@ -379,36 +380,30 @@ class ArtifactMetadata:
 # === BLP-036: BrainSection enum (canonical sections $0..$14) ================
 
 class BrainSection(Enum):
-    """Canonical sections of a Level-3 Brain artifact ($0..$15).
+    """Canonical sections of a Level-3 Brain artifact ($0..$10).
 
-    Canon: ``docs/reference/cortex-brain-section-canon.md`` (reconciles
-    ``niveles-cortex-arqux.md`` §5 with the real ``brain.cortex`` layout).
-    The enum value is the section identifier used in the .cortex file
-    (with the leading ``$``).  ``$0`` is the structural glossary — it is
-    NOT the ArqUX metadata slot; artifact metadata lives in ``$15``.
-    ``$2 AXIOMS`` holds the brain's own behavioral axioms — mandated by
-    the project or elevated by forced learning — making each brain unique.
+    Canon: GRADIENT-12 (``docs/cortex/brain-canon.md``). The enum value is
+    the section identifier used in the .cortex file (with the leading
+    ``$``). ``$0`` is the structural glossary; artifact metadata
+    (``ARQX:artifact``) lives in ``$1 IDENTITY``. Retired sections
+    (PULSE, HANDOFFS, CONCURRENCY, ISSUES, ARQUX_METADATA) are resolved
+    by title when reading legacy brains — never by these ids.
     """
     GLOSSARY = "$0"
     IDENTITY = "$1"
     AXIOMS = "$2"
-    FOCUS = "$3"
-    OBJECTIVES = "$4"
-    SESSIONS = "$5"
-    HANDOFFS = "$6"
-    PULSE = "$7"
+    KNOWLEDGE = "$3"
+    RISKS = "$4"
+    FOCUS = "$5"
+    OBJECTIVES = "$6"
+    ACTIVE_CONTEXT = "$7"
     LESSONS = "$8"
-    ACTIVE_CONTEXT = "$9"
-    RISKS = "$10"
-    KNOWLEDGE = "$11"
-    CONCURRENCY = "$12"
-    ISSUES = "$13"
-    LOOPS = "$14"
-    METADATA = "$15"
+    LOOPS = "$9"
+    SESSIONS = "$10"
 
     @property
     def number(self) -> int:
-        """Numeric section index (0..15)."""
+        """Numeric section index (0..10)."""
         return int(self.value[1:])
 
     @classmethod
@@ -418,24 +413,19 @@ class BrainSection(Enum):
 
 
 #: Mapping from BrainSection → human-readable title (for structural validation).
-#: Canon: docs/reference/cortex-brain-section-canon.md ($0..$15).
+#: Canon: GRADIENT-12 ($0..$10).
 BRAIN_SECTION_TITLES: dict[str, str] = {
     "$0": "GLOSSARY",
     "$1": "IDENTITY",
     "$2": "AXIOMS",
-    "$3": "FOCUS",
-    "$4": "OBJECTIVES",
-    "$5": "SESSIONS",
-    "$6": "HANDOFFS",
-    "$7": "PULSE",
+    "$3": "KNOWLEDGE",
+    "$4": "RISKS",
+    "$5": "FOCUS",
+    "$6": "OBJECTIVES",
+    "$7": "ACTIVE_CONTEXT",
     "$8": "LESSONS",
-    "$9": "ACTIVE_CONTEXT",
-    "$10": "RISKS",
-    "$11": "KNOWLEDGE",
-    "$12": "CONCURRENCY",
-    "$13": "ISSUES",
-    "$14": "LOOPS",
-    "$15": "ARQUX_METADATA",
+    "$9": "LOOPS",
+    "$10": "SESSIONS",
 }
 
 

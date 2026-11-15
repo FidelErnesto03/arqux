@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from .core.state._crud import crud_section_id_for_title
 from .state import (
     _now_iso,
     crud_add,
@@ -29,7 +30,10 @@ def _bump_brain_concurrency(brain_path: Path, agent_id: str) -> None:
     """Bump the ERR:concurrency version after a mutation."""
     from .state import crud_read
     try:
-        result = crud_read(str(brain_path), "$12/ERR:concurrency")
+        # GRADIENT-12: ERR:concurrency folded into ARQX:artifact attrs in $1
+        # (version/revision/last_writer). Legacy brains still carry
+        # ERR:concurrency in a CONCURRENCY-titled section — try canon first.
+        result = crud_read(str(brain_path), "$1/ARQX:artifact")
         entries = result.get("entries", [])
         if entries:
             val = dict(entries[0].get("value", {}))
@@ -40,7 +44,22 @@ def _bump_brain_concurrency(brain_path: Path, agent_id: str) -> None:
             val["version"] = str(cur + 1)
             val["last_writer"] = agent_id
             val["updated"] = _now_iso()
-            crud_update(str(brain_path), "$12/ERR:concurrency", set_=val, force=True)
+            crud_update(str(brain_path), "$1/ARQX:artifact", set_=val, force=True)
+            return
+        # Legacy path: ERR:concurrency in the CONCURRENCY-titled section.
+        conc_sec = crud_section_id_for_title(brain_path, "CONCURRENCY", fallback="$12")
+        result = crud_read(str(brain_path), f"{conc_sec}/ERR:concurrency")
+        entries = result.get("entries", [])
+        if entries:
+            val = dict(entries[0].get("value", {}))
+            try:
+                cur = int(val.get("version", "0"))
+            except (ValueError, TypeError):
+                cur = 0
+            val["version"] = str(cur + 1)
+            val["last_writer"] = agent_id
+            val["updated"] = _now_iso()
+            crud_update(str(brain_path), f"{conc_sec}/ERR:concurrency", set_=val, force=True)
     except Exception:
         pass
 
@@ -56,8 +75,9 @@ def add_session_to_brain(
     """
     ts = _now_iso()
     brain_path = _brain_cortex_path(project_root)
+    ses_section = crud_section_id_for_title(brain_path, "SESSIONS", fallback="$10")
     crud_add(
-        brain_path, "$5", "SES", agent_id.replace("-", "_"),
+        brain_path, ses_section, "SES", agent_id.replace("-", "_"),
         {"date": ts, "agent": agent_id, "role": role, "status": "active",
          "input": f"session start for {agent_id}", "output": "session active", "outcome": "active"},
         create_section=True, force=True,
@@ -83,7 +103,8 @@ def remove_session_from_brain(
     identical placeholders.
     """
     brain_path = _brain_cortex_path(project_root)
-    sessions = crud_list(brain_path, section="$5", sigil="SES").get("entries", [])
+    ses_section = crud_section_id_for_title(brain_path, "SESSIONS", fallback="$10")
+    sessions = crud_list(brain_path, section=ses_section, sigil="SES").get("entries", [])
     updated_line = ""
     for entry in sessions:
         value = entry.get("value") or {}
@@ -96,7 +117,7 @@ def remove_session_from_brain(
             continue
         ts = _now_iso()
         crud_update(
-            brain_path, f"$5/SES:{entry['name']}",
+            brain_path, f"{ses_section}/SES:{entry['name']}",
             set_={
                 "date": ts,
                 "status": "released",
@@ -125,9 +146,21 @@ def append_handoff(
     """
     ts = _now_iso()
     brain_path = _brain_cortex_path(project_root)
-    crud_add(
-        brain_path, "$6", "HDL", f"{from_agent}_{to_agent}_{task_id}",
-        {"date": ts, "from": from_agent, "to": to_agent, "task": task_id, "note": note},
-        create_section=True, force=True,
-    )
+    # Canon (GRADIENT-12): pending handoffs live as HND:<to> in ACTIVE_CONTEXT.
+    # Legacy tolerance: if the brain still carries a HANDOFFS section (and no
+    # ACTIVE_CONTEXT), keep writing HDL there.
+    ac_section = crud_section_id_for_title(brain_path, "ACTIVE_CONTEXT")
+    if ac_section:
+        crud_add(
+            brain_path, ac_section, "HND", f"{from_agent}_{to_agent}_{task_id}",
+            {"date": ts, "from": from_agent, "to": to_agent, "task": task_id, "note": note},
+            create_section=True, force=True,
+        )
+    else:
+        hd_section = crud_section_id_for_title(brain_path, "HANDOFFS", fallback="$6")
+        crud_add(
+            brain_path, hd_section, "HDL", f"{from_agent}_{to_agent}_{task_id}",
+            {"date": ts, "from": from_agent, "to": to_agent, "task": task_id, "note": note},
+            create_section=True, force=True,
+        )
     return f"- [{ts}] {from_agent} -> {to_agent} task={task_id} :: {note}"

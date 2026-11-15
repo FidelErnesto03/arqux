@@ -28,7 +28,7 @@ from ...pulse import record_pulse
 from ...session_identity import current_session_ref, get_session
 from ...session_identity import open_session as rebind
 from ...state import find_workspace_root, find_write_project_root
-from ..session import CONTEXT_CORTEX, _context_document, _write_context, context_get, handoff
+from ..session import _context_document, _write_context, context_get, handoff
 from .get import get_handler
 
 
@@ -206,7 +206,32 @@ def switch(
             # switches identity next.
             if owns_context:
                 _write_context(ws_root, execution, document)
-                (ws_root / CONTEXT_CORTEX).write_text(document, encoding="utf-8")
+                # Canon (GRADIENT-12): the shared workspace pointer lives in
+                # meta-brain ACTIVE_CONTEXT as WRK:current — context.cortex is
+                # retired and must never be recreated here.
+                try:
+                    from ..constants import META_BRAIN_CORTEX
+                    from ..core.state._crud import crud_section_id_for_title
+                    from ..state import _now_iso, crud_add, crud_read, crud_update
+                    meta_brain = ws_root / META_BRAIN_CORTEX
+                    if meta_brain.exists():
+                        ac = crud_section_id_for_title(meta_brain, "ACTIVE_CONTEXT", fallback="$7")
+                        wrk_attrs = {
+                            "name": "workspace", "agent": canonical,
+                            "project": current.get("project", ""),
+                            "scope": current.get("scope", ""),
+                            "blp": current.get("blp", ""),
+                            "ses": current.get("ses", ""),
+                            "project_root": current.get("project_root", ""),
+                            "updated": _now_iso(),
+                        }
+                        if crud_read(str(meta_brain), f"{ac}/WRK:current").get("entries"):
+                            crud_update(str(meta_brain), f"{ac}/WRK:current", set_=wrk_attrs, force=True)
+                        else:
+                            crud_add(str(meta_brain), ac, "WRK", "current", wrk_attrs,
+                                     create_section=True, force=True)
+                except Exception:
+                    pass
             # The session belongs to an execution, not to the workspace pointer.
             # Rebinding it from the global pointer would hand another
             # execution's session to this caller, so the caller must already be

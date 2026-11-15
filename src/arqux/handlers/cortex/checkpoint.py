@@ -1,8 +1,8 @@
 """cortex.checkpoint handler (BLP-014 / CYCLE-05).
 
 Persists the agent's working state (WRK:current) as a single CORTEX
-line in brain.cortex $8.  session.bootstrap reads it back so the agent
-can resume exactly where it left off between turns.
+line in the brain's ACTIVE_CONTEXT section.  session.bootstrap reads it
+back so the agent can resume exactly where it left off between turns.
 
 Format:  WRK:current{fcs:, obj:, tasks:, state:, last_turn:}
 """
@@ -14,6 +14,7 @@ from pathlib import Path
 
 from ...constants import ARQUX_DIR, BRAIN_CORTEX
 from ...core.state import find_workspace_root
+from ...core.state._crud import crud_section_id_for_title
 from ...cortex_out import CortexOUT
 from ...execution import authoritative_execution_key
 from ...permissions import PermissionContext
@@ -59,7 +60,7 @@ def checkpoint_handler(
     path: str | None = None,
     ctx: PermissionContext | None = None,
 ) -> CortexOUT:
-    """Persist WRK:current in brain.cortex $8.
+    """Persist WRK:current in the brain's ACTIVE_CONTEXT section.
 
     Accepts ``content`` as a CORTEX entry string:
         fcs:..., obj:..., tasks:..., state:..., last_turn:...
@@ -134,11 +135,15 @@ def checkpoint_handler(
             code="INVALID_ARGS",
         )
 
+    # GRADIENT-12: WRK:current lives in ACTIVE_CONTEXT — resolve by title,
+    # not a hard-coded slot ($9 legacy / $7 canon).
+    ac_section = crud_section_id_for_title(brain_path, "ACTIVE_CONTEXT", fallback="$7")
+
     # E-2072: merge with the existing WRK:current — keys absent from the
     # input keep their current values instead of being wiped.
     existing_values: dict = {}
     try:
-        existing = crud_read(brain_path, "$9/WRK:current")
+        existing = crud_read(brain_path, f"{ac_section}/WRK:current")
         if existing.get("entries"):
             ev = existing["entries"][0].get("value")
             if isinstance(ev, dict):
@@ -177,10 +182,10 @@ def checkpoint_handler(
 
     # Try crud_update first (if entry exists), fall back to crud_add-like write
     try:
-        existing = crud_read(brain_path, "$9/WRK:current")
+        existing = crud_read(brain_path, f"{ac_section}/WRK:current")
         if existing.get("entries"):
             crud_update(
-                brain_path, "$9/WRK:current",
+                brain_path, f"{ac_section}/WRK:current",
                 set_={
                     "fcs": value["fcs"], "obj": value["obj"],
                     "tasks": value["tasks"], "state": value["state"],
@@ -191,9 +196,9 @@ def checkpoint_handler(
             )
         else:
             # Write as raw CORTEX line
-            _write_wrk_entry(brain_path, value)
+            _write_wrk_entry(brain_path, value, ac_section)
     except Exception:
-        _write_wrk_entry(brain_path, value)
+        _write_wrk_entry(brain_path, value, ac_section)
 
     # Heartbeat: the checkpoint is the most frequent governed boundary, so it is
     # where an open session's last_activity is stamped. Without it the record
@@ -304,7 +309,7 @@ def _summary(fcs: str, limit: int = 120) -> str:
     return text if len(text) <= limit else text[: limit - 1].rstrip() + "…"
 
 
-def _write_wrk_entry(brain_path: Path, value: dict[str, str]) -> None:
+def _write_wrk_entry(brain_path: Path, value: dict[str, str], ac_section: str = "$7") -> None:
     """Write WRK:current via cortex.patch (CODEC-CORTEX)."""
     from ...state import cortex_write
 
@@ -321,7 +326,11 @@ def _write_wrk_entry(brain_path: Path, value: dict[str, str]) -> None:
     )
     text = brain_path.read_text(encoding="utf-8")
 
-    if "$9: ACTIVE_CONTEXT" in text:
+    # Locate the ACTIVE_CONTEXT section by title — the slot legitimately
+    # differs between layouts ($9 legacy, $7 GRADIENT-12). Never append a
+    # phantom second ACTIVE_CONTEXT at a hard-coded id.
+    ac_header = re.compile(rf"^{re.escape(ac_section)}\s*:\s*ACTIVE_CONTEXT\s*$", re.M)
+    if ac_header.search(text) or "ACTIVE_CONTEXT" in text:
         # Replace existing WRK:current line
         lines = text.splitlines()
         new_lines = []
@@ -336,7 +345,7 @@ def _write_wrk_entry(brain_path: Path, value: dict[str, str]) -> None:
             new_lines.append(line.rstrip())
         cortex_write(path=str(brain_path), content="\n".join(new_lines) + "\n")
     else:
-        cortex_write(path=str(brain_path), content=text.rstrip() + f"\n\n$9: ACTIVE_CONTEXT\n\n{line}")
+        cortex_write(path=str(brain_path), content=text.rstrip() + f"\n\n{ac_section}: ACTIVE_CONTEXT\n\n{line}")
 
 
 def _now_iso() -> str:
@@ -350,7 +359,7 @@ handler_schemas = [
         "fn": checkpoint_handler,
         "description": (
             "Persist the agent's working state (WRK:current) as a single "
-            "CORTEX line in brain.cortex §9. session.bootstrap reads it "
+            "CORTEX line in brain.cortex ACTIVE_CONTEXT. session.bootstrap reads it "
             "back so the agent can resume where it left off. "
             "Accepts content as key:value pairs (fcs:,obj:,tasks:,state:)."
         ),

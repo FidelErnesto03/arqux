@@ -40,13 +40,6 @@ def _backend() -> tuple[CodecInfo, Callable[..., Any] | None]:
 
         return CodecInfo("codec_cortex", _package_version(), "dispatcher"), parse_cortex
     except ImportError:
-        pass
-
-    try:
-        from cortex.core.parser import parse_cortex
-
-        return CodecInfo("cortex", _package_version(), "legacy"), parse_cortex
-    except ImportError:
         return CodecInfo(None, _package_version(), None), None
 
 
@@ -62,8 +55,6 @@ def parse_with_codec(text: str, *, path: str | None = None) -> Any:
         raise RuntimeError(
             "CODEC-CORTEX is unavailable; install codec-cortex>=1.0,<1.1"
         )
-    if info.parser == "legacy" and path is not None:
-        return parser(text, path=path)
     return parser(text)
 
 

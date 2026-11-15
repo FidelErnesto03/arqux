@@ -13,8 +13,9 @@ def test_workspace_init_creates_governance_directory(workspace_root: Path, gover
     gov_dir = workspace_root / ARQUX_DIR
     assert gov_dir.exists()
     assert (gov_dir / "meta-brain.cortex").exists()
-    assert (gov_dir / "meta-brain.cortex").exists()
-    assert (gov_dir / "projects.cortex").exists()
+    # projects.cortex is retired (GRADIENT-12): the registry lives in
+    # meta-brain $10 REGISTRY.
+    assert not (gov_dir / "projects.cortex").exists()
     assert "workspace.init ok" in result.to_text()
 
 

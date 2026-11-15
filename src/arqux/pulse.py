@@ -1,9 +1,9 @@
-"""Pulse/evidence and handoff operations on brain.cortex.
+"""Pulse/evidence and handoff operations.
 
-Pulse entries (AUD) are lightweight evidence records appended to the brain's
-PULSE section. Handoff entries (HDL) track agent-to-agent task handovers.
-
-Both are append-only operations on the brain sections dict.
+Canon (GRADIENT-12): pulse events (AUD) live in the session timelog
+``$5 EVENTS`` — append-only, never pruned. A brain ``PULSE`` section is a
+legacy-layout fallback only. Handoff entries (HND) live in brain
+``ACTIVE_CONTEXT``; ``HDL`` is the legacy sigil.
 """
 
 from __future__ import annotations
@@ -32,7 +32,7 @@ def _brain_cortex_path(project_root: Path) -> Path:
 # --- Pulse operations --------------------------------------------------------
 
 
-_PULSE_ID_RE = re.compile(r"^(E-|SES-|OBS-|HDL-)\d+$")
+_PULSE_ID_RE = re.compile(r"^(?:E-|SES-|OBS-|HDL-|SES\d{3}-E)\d+$")
 
 
 def _is_valid_pulse_id(event_id: str) -> bool:
@@ -47,14 +47,34 @@ def _brain_lock(project_root: Path):
     return brain_lock(project_root)
 
 
-def next_pulse_event_id(project_root: Path) -> str:
-    """Return the next sequential event ID (E-XXXX).
+def next_pulse_event_id(project_root: Path, ses_ref: str | None = None) -> str:
+    """Return the next sequential event ID.
 
-    Canonical format uses hyphen (BLP-008 GOV-001 P3.1).
+    Canon (GRADIENT-12): with *ses_ref* the id is session-scoped
+    (``SESNNN-EXXXX``) — events live in that session's timelog, so the
+    sequence is local to it. Without *ses_ref* the legacy global
+    ``E-XXXX`` form is kept (compat).
     Scans existing entries for both hyphen and underscore prefixes
     for backward compatibility. Implements sanity check: if the
     generated ID already exists, keep incrementing (P3.3).
     """
+    if ses_ref:
+        prefix = f"{ses_ref}-E"
+        brain_path = _brain_cortex_path(project_root)
+        existing_ids = {eid.replace("_", "-") for eid in _existing_ids(project_root, brain_path)}
+        max_num = 0
+        for eid in existing_ids:
+            if eid.startswith(prefix):
+                try:
+                    max_num = max(max_num, int(eid[len(prefix):]))
+                except ValueError:
+                    continue
+        candidate = max_num + 1
+        while True:
+            candidate_id = f"{prefix}{candidate:04d}"
+            if candidate_id not in existing_ids:
+                return candidate_id
+            candidate += 1
     events = read_pulse_from_brain(project_root, limit=None)
     existing_ids = set()
     if not events:
@@ -81,6 +101,25 @@ def next_pulse_event_id(project_root: Path) -> str:
         candidate += 1
 
 
+def _resolve_ses_ref(project_root: Path, ses_ref: str | None) -> str | None:
+    """Bind the event to this execution's session when the caller did not.
+
+    Canon (GRADIENT-12): events belong to the session timelog ``$5 EVENTS``.
+    Most emitters never pass ``ses_ref``; resolving it here from the ambient
+    execution keeps them from recreating a legacy brain ``$11 PULSE`` every
+    time they record inside a bound session. Returns the caller's value
+    unchanged when given.
+    """
+    if ses_ref:
+        return ses_ref
+    try:
+        from .execution import authoritative_execution_key
+        from .session_identity import current_session_ref
+        return current_session_ref(project_root, authoritative_execution_key()) or None
+    except Exception:
+        return None
+
+
 def record_pulse(
     project_root: Path,
     *,
@@ -97,8 +136,9 @@ def record_pulse(
     processes read the same maximum id and produce the same ``E-XXXX``, with the
     second write silently overwriting the first (and its ``ses_ref``).
     """
+    ses_ref = _resolve_ses_ref(project_root, ses_ref)
     with _brain_lock(project_root):
-        event_id = next_pulse_event_id(project_root)
+        event_id = next_pulse_event_id(project_root, ses_ref=ses_ref)
         append_pulse_to_brain(
             project_root,
             event_id=event_id,
@@ -161,30 +201,39 @@ def append_pulse_to_brain(
         # lock may hand us one that another process just took. Renaming here is
         # what keeps two processes from silently overwriting each other's
         # evidence (and its membership).
-        if event_id in _existing_ids(brain_path):
-            event_id = next_pulse_event_id(project_root)
+        if event_id in _existing_ids(project_root, brain_path):
+            event_id = next_pulse_event_id(project_root, ses_ref=ses_ref)
             value["event"] = event_id
-        crud_add(
-            brain_path, "$7", "AUD", event_id.replace("-", "_"),
-            value,
-            create_section=True, force=True,
-        )
-    _maybe_sweep_pulse(project_root, brain_path)
+        # Canon (GRADIENT-12): session events live in the session timelog
+        # $5 EVENTS — the brain keeps no PULSE section. Fallback chain:
+        # a PULSE-titled brain section (legacy layout) or, last resort, a
+        # recreated $11 PULSE — never ACTIVE_CONTEXT.
+        written = False
+        if ses_ref:
+            try:
+                from .timelog_store import append_event as _tl_append_event
+                res = _tl_append_event(
+                    project_root, ses_ref, "AUD",
+                    event_id.replace("-", "_"), value,
+                )
+                written = bool(res.get("applied", True))
+            except Exception:
+                written = False
+        if not written:
+            from .core.state._crud import crud_section_id_for_title
+            pulse_sec = crud_section_id_for_title(brain_path, "PULSE", fallback="$11")
+            crud_add(
+                brain_path, pulse_sec, "AUD", event_id.replace("-", "_"),
+                value,
+                create_section=True, section_title="PULSE", force=True,
+            )
     return f"- [{ts}] id={event_id} task={task_id or '-'} kind={kind} agent={agent} :: {payload}"
 
 
-def _existing_ids(brain_path: Path) -> set[str]:
-    """Ids already present in PULSE, both API and storage spelling."""
-    try:
-        result = crud_read(brain_path, "$7/AUD:*")
-    except Exception:
-        return set()
-    ids = set()
-    for entry in result.get("entries", []):
-        value = entry.get("value")
-        value = value if isinstance(value, dict) else {}
-        ids.add(value.get("event", entry.get("name", "")))
-    return ids
+def _existing_ids(project_root: Path, brain_path: Path) -> set[str]:
+    """Ids already present — legacy brain PULSE + session timelog EVENTS."""
+    ids = {ev["id"] for ev in read_pulse_from_brain(project_root, limit=None)}
+    return ids | {eid.replace("-", "_") for eid in ids}
 
 
 def read_pulse_from_brain(
@@ -205,28 +254,11 @@ def read_pulse_from_brain(
     ``limit=None`` reads all matching entries; ``offset`` skips the
     first N matching entries.
     """
-    brain_path = _brain_cortex_path(project_root)
-    if not brain_path.exists():
-        return []
-    try:
-        result = crud_read(brain_path, "$7/AUD:*")
-    except Exception:
-        return []
-    entries: list[dict[str, str]] = []
-    for entry in result.get("entries", []):
-        val = entry.get("value", {})
-        if not isinstance(val, dict):
-            continue
-        ev = {
-            "ts": val.get("date", ""),
-            "id": val.get("event", entry.get("name", "")),
-            "task": val.get("task", "-"),
-            "kind": val.get("kind", ""),
-            "agent": val.get("agent", ""),
-            "payload": val.get("evidence", val.get("result", "")),
-            "cycle": val.get("cycle", ""),
-            "ses_ref": val.get("ses_ref", ""),
-        }
+    entries = _brain_pulse_entries(project_root)
+    # Canon (GRADIENT-12): AUD entries in session timelogs' $5 EVENTS.
+    entries += _timelog_pulse_events(project_root)
+    out: list[dict[str, str]] = []
+    for ev in entries:
         if task_id and ev["task"] != task_id:
             continue
         if cycle and ev.get("cycle") != cycle:
@@ -235,10 +267,82 @@ def read_pulse_from_brain(
             continue
         if since and ev["ts"] < since:
             continue
-        entries.append(ev)
-        if limit is not None and len(entries) >= offset + limit:
+        out.append(ev)
+        if limit is not None and len(out) >= offset + limit:
             break
-    return entries[offset:]
+    return out[offset:]
+
+
+def _brain_pulse_entries(project_root: Path) -> list[dict[str, str]]:
+    """AUD entries in the brain's PULSE-titled section (legacy layout).
+
+    Canon brains carry no PULSE at all; this is the compat read path.
+    """
+    brain_path = _brain_cortex_path(project_root)
+    entries: list[dict[str, str]] = []
+    if brain_path.exists():
+        try:
+            from .core.state._crud import crud_section_id_for_title
+            psec = crud_section_id_for_title(brain_path, "PULSE")
+            result = crud_read(brain_path, f"{psec}/AUD:*") if psec else {"entries": []}
+        except Exception:
+            result = {"entries": []}
+        for entry in result.get("entries", []):
+            val = entry.get("value", {})
+            if not isinstance(val, dict):
+                continue
+            entries.append({
+                "ts": val.get("date", ""),
+                "id": val.get("event", entry.get("name", "")),
+                "task": val.get("task", "-"),
+                "kind": val.get("kind", ""),
+                "agent": val.get("agent", ""),
+                "payload": val.get("evidence", val.get("result", "")),
+                "cycle": val.get("cycle", ""),
+                "ses_ref": val.get("ses_ref", ""),
+            })
+    return entries
+
+
+def _timelog_pulse_events(project_root: Path) -> list[dict[str, str]]:
+    """AUD events stored in session timelogs' ``$5 EVENTS`` (canon home)."""
+    try:
+        from .timelog_store import (
+            _field as _tl_field,
+        )
+        from .timelog_store import (
+            _parse as _tl_parse,
+        )
+        from .timelog_store import (
+            list_timelogs,
+            timelog_dir,
+        )
+    except Exception:
+        return []
+    out: list[dict[str, str]] = []
+    for name in list_timelogs(project_root):
+        ses = name.split("_", 1)[0]
+        try:
+            doc = _tl_parse(
+                (timelog_dir(project_root) / name).read_text(encoding="utf-8")
+            )
+        except Exception:
+            continue
+        for ev in (doc.get("events") or {}).values():
+            if ev.get("sigil") != "AUD":
+                continue
+            a = ev.get("attrs") or ""
+            out.append({
+                "ts": _tl_field(a, "date"),
+                "id": _tl_field(a, "event") or ev.get("name", ""),
+                "task": _tl_field(a, "task") or "-",
+                "kind": _tl_field(a, "kind"),
+                "agent": _tl_field(a, "agent"),
+                "payload": _tl_field(a, "evidence") or _tl_field(a, "result"),
+                "cycle": _tl_field(a, "cycle"),
+                "ses_ref": _tl_field(a, "ses_ref") or ses,
+            })
+    return out
 
 
 def _parse_pulse_line(line: str) -> dict[str, str] | None:
@@ -278,7 +382,15 @@ def read_handoffs(
     if not brain_path.exists():
         return []
     try:
-        result = crud_read(brain_path, "$6/HDL:*")
+        # Canon: pending handoffs are HND:<to> in ACTIVE_CONTEXT (GRADIENT-12);
+        # legacy brains carry HDL:* in a HANDOFFS section. Try canon first.
+        from .core.state._crud import crud_section_id_for_title
+        ac_sec = crud_section_id_for_title(brain_path, "ACTIVE_CONTEXT")
+        if ac_sec:
+            result = crud_read(brain_path, f"{ac_sec}/HND:*")
+        else:
+            hd_sec = crud_section_id_for_title(brain_path, "HANDOFFS", fallback="$6")
+            result = crud_read(brain_path, f"{hd_sec}/HDL:*")
     except Exception:
         return []
     entries: list[dict[str, str]] = []
@@ -372,6 +484,19 @@ def _prune_pulse_entries(
     return result
 
 
+def _prune_timelog_events(
+    project_root: Path,
+    entry_ids: list[str],
+    *,
+    ses_ref: str | None = None,
+) -> dict:
+    """Retired (T1): timelog ``$5 EVENTS`` are append-only and never pruned.
+
+    Kept as a no-op shim so older callers fail safe instead of breaking.
+    """
+    return {"pruned": 0, "errors": 0}
+
+
 # --- PULSE hot-window policy (T1, brain canon §PULSE) ------------------------
 # El brain guarda estado actual + una ventana caliente de PULSE; la traza
 # completa vive en $5 SESSIONS, evidencias BLP y .arqux/timelog/. Un AUD
@@ -389,16 +514,19 @@ def _days_ago_iso(days: int) -> str:
 
 
 def count_aud_entries(text: str) -> int:
-    """AUD census scoped to the ``$7`` PULSE section — one pass, no parse.
+    """AUD census scoped to the PULSE-titled section — one pass, no parse.
 
-    A file-wide ``^AUD:`` count also matches sigil declarations in ``$0``
-    (``AUD:audit{...}``), which are glossary, not pulse entries.
+    Resolution is by title: canonical brains carry no PULSE (count=0),
+    legacy brains may place it anywhere. A file-wide ``^AUD:`` count also
+    matches sigil declarations in ``$0`` (``AUD:audit{...}``), which are
+    glossary, not pulse entries.
     """
     in_pulse = False
     count = 0
     for line in text.splitlines():
         if line.startswith("$"):
-            in_pulse = line.startswith("$7")
+            m = re.match(r"^\$\d+:\s*([A-Za-z_]+)", line)
+            in_pulse = bool(m) and m.group(1).upper() == "PULSE"
             continue
         if in_pulse and line.startswith("AUD:"):
             count += 1
@@ -454,7 +582,7 @@ def sweep_pulse_window(
     if not brain_path.exists():
         return {"error": "brain not found", "swept": False}
 
-    entries = read_pulse_from_brain(project_root, limit=None)
+    entries = _brain_pulse_entries(project_root)
     total = len(entries)
     prune_ids = _sweep_candidates(entries)
 
@@ -489,7 +617,9 @@ def sweep_pulse_window(
     kind_summary = ",".join(f"{k}:{v}" for k, v in sorted(kinds.items()))
 
     with _brain_lock(project_root):
-        existing = crud_read(brain_path, f"$8/LNG:{_PULSE_SWEEP_LNG}")
+        from .core.state._crud import crud_section_id_for_title
+        lessons_sec = crud_section_id_for_title(brain_path, "LESSONS", fallback="$8")
+        existing = crud_read(brain_path, f"{lessons_sec}/LNG:{_PULSE_SWEEP_LNG}")
         prev_entries = existing.get("entries", [])
         prev_val = prev_entries[0].get("value", {}) if prev_entries else {}
         total_pruned = int(prev_val.get("total_pruned", 0)) + len(batch)
@@ -511,13 +641,14 @@ def sweep_pulse_window(
         }
         if prev_entries:
             crud_update(
-                brain_path, f"$8/LNG:{_PULSE_SWEEP_LNG}",
+                brain_path, f"{lessons_sec}/LNG:{_PULSE_SWEEP_LNG}",
                 set_=lng_value, force=True,
             )
         else:
             crud_add(
-                brain_path, "$8", "LNG", _PULSE_SWEEP_LNG,
-                lng_value, create_section=True, force=True,
+                brain_path, lessons_sec, "LNG", _PULSE_SWEEP_LNG,
+                lng_value, create_section=True, section_title="LESSONS",
+                force=True,
             )
         prune_result = _prune_pulse_entries(brain_path, prune_ids)
 
@@ -529,19 +660,6 @@ def sweep_pulse_window(
         "lng_name": _PULSE_SWEEP_LNG,
         "total_pruned": total_pruned,
     }
-
-
-def _maybe_sweep_pulse(project_root: Path, brain_path: Path) -> None:
-    """Write-path retention gate: sweep only when the window overflowed.
-
-    Retention must never break evidence capture — a sweep failure is
-    reported through doctor density checks, not by failing the append.
-    """
-    try:
-        if _aud_count(brain_path) > PULSE_SWEEP_AT:
-            sweep_pulse_window(project_root)
-    except Exception:  # noqa: BLE001
-        pass
 
 
 def compact_session_pulse(
@@ -671,8 +789,10 @@ def _compact_locked(
     # Idempotency check BEFORE entry count — already compacted sessions may have
     # 0 entries because all were pruned. It shares this critical section with
     # the write that follows it, which is what makes the guard atomic.
+    from .core.state._crud import crud_section_id_for_title
+    lng_sec = crud_section_id_for_title(brain_path, "LESSONS", fallback="$8")
     try:
-        existing = crud_read(brain_path, f"$8/LNG:{lng_name}")
+        existing = crud_read(brain_path, f"{lng_sec}/LNG:{lng_name}")
         if existing.get("entries"):
             return {"skip": True,
                     "reason": f"already compacted (LNG:{lng_name} exists)",
@@ -689,16 +809,16 @@ def _compact_locked(
     _declare_lesson_sigil(brain_path)
 
     crud_add(
-        brain_path, "$8", "LNG", lng_name,
+        brain_path, lng_sec, "LNG", lng_name,
         {"type": "session", "entry_count": entry_count, "summary": summary,
          "session_id": session_id, "ses_ref": ses_ref or "", "agent": agent_id,
          "date": _now_iso()},
-        create_section=True, force=True,
+        create_section=True, section_title="LESSONS", force=True,
     )
 
     prune_result = _prune_pulse_entries(brain_path, entry_ids)
 
-    meta_id = next_pulse_event_id(project_root)
+    meta_id = next_pulse_event_id(project_root, ses_ref=ses_ref or None)
     append_pulse_to_brain(
         project_root, event_id=meta_id, task_id="-", kind="pulse_compact",
         agent=agent_id, ses_ref=ses_ref or None,

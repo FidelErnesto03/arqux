@@ -126,9 +126,21 @@ def main():
 @main.command("init")
 @click.option("--path", default=None, help="Path to initialize.")
 @click.option("--verbose", is_flag=True, help="Use OUT-AUDIT profile.")
-def cmd_init(path: str | None, verbose: bool):
-    """Initialize .arqux/ in the current directory."""
+@click.option("--force", is_flag=True, help="Re-run init on an already governed workspace.")
+def cmd_init(path: str | None, verbose: bool, force: bool):
+    """Initialize .arqux/ in the current directory.
+
+    REQ-06: on an already governed workspace, init aborts without --force
+    and never overwrites .arqux/*.cortex.
+    """
     from .handlers.workspace import init_workspace
+    from .state import find_workspace_root
+
+    if not force and find_workspace_root(start=path) is not None:
+        raise click.ClickException(
+            "workspace is already governed (.arqux/ present) — init aborted. "
+            "Pass --force to re-run init; existing .cortex files are never overwritten."
+        )
 
     result = init_workspace(path=path, verbose=verbose)
     click.echo(result.to_text())
@@ -397,6 +409,230 @@ def cmd_cycle(sub: str, args: tuple[str, ...]):
     _group_dispatch("cycle", sub, args)
 
 
+@main.command("sync-harnesses")
+@click.option("--path", type=click.Path(exists=True), default=None,
+              help="Project root. Defaults to cwd.")
+def cmd_sync_harnesses(path: str | None):
+    """Render .arqux/ governance into AGENTS.md, CLAUDE.md, GEMINI.md and
+    .opencode/instructions.md with a shared source_hash header (REQ-07)."""
+    from .adapters.harness import sync_harnesses
+    root = Path(path) if path else Path.cwd()
+    result = sync_harnesses(root)
+    click.echo(f"source_hash:{result['source_hash']}")
+    for target in result["targets"]:
+        click.echo(f"  wrote {target}")
+
+
+@main.command("drift-check")
+@click.option("--path", type=click.Path(exists=True), default=None,
+              help="Project root. Defaults to cwd.")
+def cmd_drift_check(path: str | None):
+    """Detect manual edits to harness projections (REQ-07).
+
+    Exit codes:
+        0 — every projection matches its source render
+        1 — DRIFT_DETECTED (missing or modified), diff printed
+    """
+    from .adapters.harness import drift_report
+    root = Path(path) if path else Path.cwd()
+    dirty = False
+    for d in drift_report(root):
+        if d.status == "ok":
+            click.echo(f"OK {d.target}")
+        else:
+            dirty = True
+            click.echo(f"DRIFT_DETECTED {d.target} ({d.status})", err=True)
+            if d.diff:
+                click.echo(d.diff, err=True)
+    if dirty:
+        sys.exit(1)
+
+
+@main.command("wake")
+@click.option("--identity", required=True,
+              help="Agent identity/role (see .arqux/identities/*.cortex).")
+@click.option("--path", type=click.Path(exists=True), default=None,
+              help="Project root. Defaults to cwd.")
+def cmd_wake(identity: str, path: str | None):
+    """Ultra-dense boot payload for LLM agents (REQ-08): valid cortex:1.0
+    with registry state, enforce rules and the in-progress task."""
+    from .state import find_workspace_root
+    from .wake import available_identities, wake_payload
+
+    root = Path(path) if path else Path.cwd()
+    ws_root = find_workspace_root(start=str(root))
+    if ws_root is None:
+        raise click.ClickException("no governed workspace found (.arqux/ missing)")
+    ws_root = ws_root.parent  # find_workspace_root returns the .arqux dir
+
+    known = available_identities(ws_root)
+    if identity not in known:
+        click.echo(
+            f"unknown identity '{identity}'. Valid contracts: "
+            + (", ".join(known) if known else "(none — .arqux/identities/ is empty)"),
+            err=True,
+        )
+        sys.exit(1)
+
+    project_root = root if (root / ".arqux" / "brain.cortex").exists() else None
+    click.echo(wake_payload(identity, ws_root, project_root))
+
+
+@main.command("review")
+@click.option("--cycle", "cycle_id", required=True, help="Cycle id (e.g. CYCLE-01).")
+@click.option("--path", type=click.Path(exists=True), default=None,
+              help="Project root. Defaults to cwd.")
+def cmd_review(cycle_id: str, path: str | None):
+    """Render a cycle to HCORTEX Markdown for human review / PR (REQ-09)."""
+    from .review import review_report
+    root = Path(path) if path else Path.cwd()
+    try:
+        click.echo(review_report(root, cycle_id))
+    except FileNotFoundError as e:
+        raise click.ClickException(str(e))
+
+
+@main.command("from-hcortex")
+@click.argument("md_path", type=click.Path(exists=True))
+@click.option("--out", type=click.Path(), default=None,
+              help="Output .cortex path. Defaults to <name>.cortex.")
+def cmd_from_hcortex(md_path: str, out: str | None):
+    """Recompile an HCORTEX report back to .cortex (REQ-09).
+
+    Exit codes: 0 — recompiled with loss_count == 0; 1 — errors or loss > 0.
+    """
+    from .review import from_hcortex
+    result = from_hcortex(Path(md_path))
+    if result["errors"]:
+        click.echo(f"FAIL: {'; '.join(result['errors'])}", err=True)
+        sys.exit(1)
+    out_path = Path(out) if out else Path(md_path).with_suffix(".cortex")
+    out_path.write_text(result["text"], encoding="utf-8")
+    click.echo(f"recompiled {out_path} entries={result['entries']} "
+               f"loss_count={result['loss_count']}")
+    if result["loss_count"]:
+        sys.exit(1)
+
+
+@main.group("policy")
+def cmd_policy():
+    """Cryptographic signing of policies and evidence bundles (REQ-12)."""
+
+
+@cmd_policy.command("keygen")
+@click.argument("key_path", type=click.Path())
+def cmd_policy_keygen(key_path: str):
+    """Generate an Ed25519 keypair file (seed+public hex, mode 0600)."""
+    from .signing import generate_keypair
+    result = generate_keypair(Path(key_path))
+    click.echo(f"key_id:{result['key_id']} created {key_path}")
+
+
+@cmd_policy.command("sign")
+@click.argument("doc", type=click.Path(exists=True))
+@click.option("--key", "key_path", required=True, type=click.Path(exists=True),
+              help="Keypair file produced by `arqux policy keygen`.")
+def cmd_policy_sign(doc: str, key_path: str):
+    """Append an Ed25519 SIG:signature entry to a .cortex document."""
+    from .signing import sign_document
+    result = sign_document(Path(doc), Path(key_path))
+    click.echo(f"signed {doc} key_id:{result['key_id']} "
+               f"payload_sha256:{result['payload_sha256'][:16]}")
+
+
+@cmd_policy.command("verify")
+@click.argument("doc", type=click.Path(exists=True))
+@click.option("--key", "key_path", default=None, type=click.Path(exists=True),
+              help="Keypair file; defaults to lookup in .arqux/keys/.")
+def cmd_policy_verify(doc: str, key_path: str | None):
+    """Verify a document's SIG:signature entry (REQ-12).
+
+    Exit codes: 0 — SIGNATURE_VALID; 1 — ERR_INVALID_SIGNATURE / no sig.
+    """
+    from .signing import verify_document
+    public_hex = None
+    if key_path:
+        from .signing import load_keypair
+        _, pub = load_keypair(Path(key_path))
+        public_hex = pub.hex()
+    result = verify_document(Path(doc), public_hex)
+    if result["valid"]:
+        click.echo(f"SIGNATURE_VALID key_id:{result['key_id']}")
+    else:
+        click.echo(f"{result['error']}: {result['detail']}", err=True)
+        sys.exit(1)
+
+
+@main.group("evidence")
+def cmd_evidence():
+    """Evidence bundle export (REQ-11)."""
+
+
+@cmd_evidence.command("export")
+@click.option("--out", "out_path", required=True, type=click.Path(),
+              help="Output bundle path (e.g. bundle.cortex).")
+@click.option("--path", type=click.Path(exists=True), default=None,
+              help="Project root. Defaults to cwd.")
+@click.option("--redact-private", is_flag=True,
+              help="Strip visibility:private entries from the bundle.")
+@click.option("--allow-raw", is_flag=True,
+              help="Include private-marked entries verbatim (audit use).")
+def cmd_evidence_export(out_path: str, path: str | None,
+                        redact_private: bool, allow_raw: bool):
+    """Pack execution spans (identity, files, timestamps, sha256) into a
+    bundle.cortex. Blocks when private-marked fields exist and neither
+    --redact-private nor --allow-raw is given."""
+    from .evidence_export import export_bundle
+    root = Path(path) if path else Path.cwd()
+    if allow_raw and redact_private:
+        raise click.ClickException("--allow-raw and --redact-private are exclusive")
+    try:
+        result = export_bundle(
+            root, Path(out_path),
+            allow_raw=allow_raw, redact_private=redact_private,
+        )
+    except PermissionError as e:
+        click.echo(f"EXPORT_BLOCKED: {e}", err=True)
+        sys.exit(1)
+    click.echo(f"bundle {result['path']} spans={result['spans']} "
+               f"events={result['events']} redacted={result['redacted']}")
+
+
+@main.command("push-delta")
+@click.option("--workspace", "ws_id", required=True, help="Pushing workspace id.")
+@click.option("--delta", "delta_path", required=True, type=click.Path(exists=True),
+              help=".cortex file with the rule delta to apply.")
+@click.option("--base", type=int, required=True,
+              help="Journal version the delta is based on (optimistic lock).")
+@click.option("--path", type=click.Path(exists=True), default=None,
+              help="Workspace root holding the journal. Defaults to cwd.")
+def cmd_push_delta(ws_id: str, delta_path: str, base: int, path: str | None):
+    """Apply a .cortex policy delta to the authoritative journal (REQ-13).
+
+    Exit codes: 0 — applied; 1 — ERR_CONFLICT_VERSION or empty delta.
+    """
+    from .journal import push_delta
+    root = Path(path) if path else Path.cwd()
+    result = push_delta(
+        root, ws_id, Path(delta_path).read_text(encoding="utf-8"), base
+    )
+    if not result["applied"]:
+        click.echo(f"{result['error']}: {result['detail']}", err=True)
+        sys.exit(1)
+    click.echo(f"applied delta from {ws_id}: version={result['version']} "
+               f"rules={result['rules']}")
+
+
+@main.command("pull-policy")
+@click.option("--path", type=click.Path(exists=True), default=None,
+              help="Workspace root holding the journal. Defaults to cwd.")
+def cmd_pull_policy(path: str | None):
+    """Print the authoritative journal policy section (REQ-13)."""
+    from .journal import pull_policy
+    root = Path(path) if path else Path.cwd()
+    click.echo(pull_policy(root))
+
+
 @main.command("cortex-verify")
 @click.argument("path", type=click.Path(exists=True))
 def cmd_cortex_verify(path: str):
@@ -409,6 +645,14 @@ def cmd_cortex_verify(path: str):
     from .security import TamperError, verify_cortex
     try:
         verify_cortex(path)
+        # REQ-03: seal.cortex additionally recomputes each artifact hash;
+        # drift is a tamper failure (ERR_HASH_MISMATCH, exit != 0).
+        if path.endswith("seal.cortex"):
+            from .core.state._crud import _seal_hash_errors
+            mismatches = _seal_hash_errors(Path(path))
+            if mismatches:
+                click.echo(f"FAIL: {'; '.join(mismatches)}", err=True)
+                sys.exit(1)
         click.echo(f"OK: {path} integrity verified")
     except TamperError as e:
         click.echo(f"FAIL: {e}", err=True)

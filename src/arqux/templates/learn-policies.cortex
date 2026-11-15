@@ -10,6 +10,7 @@ $0:format{cortex:1.0, encoding:UTF-8}
 # POL   | policy     | attrs      | M | Learning policy
 # PRT   | protected  | attrs      | H | Protected targets
 # GTE   | gate       | attrs      | H | Mutation gate
+# RUL   | rule       | attrs      | H | Executable enforce rule (CODE|PROMPT|HUMAN)
 # IDN   | identity   | attrs      | B | Identity descriptor
 # KNW   | knowledge  | attrs      | B | Knowledge entry
 
@@ -19,6 +20,7 @@ THR:thr_contract{type:"attrs", weight:"M", focus:"value", fields:"value:any?", d
 POL:pol_contract{type:"attrs", weight:"M", focus:"value", fields:"value:any?", desc:"Learning policy", layer:"Working", open:true}
 PRT:prt_contract{type:"attrs", weight:"H", focus:"value", fields:"value:any?", desc:"Protected targets", layer:"Prefrontal", open:true}
 GTE:gte_contract{type:"attrs", weight:"H", focus:"value", fields:"value:any?", desc:"Mutation gate", layer:"Prefrontal", open:true}
+RUL:rul_contract{type:"attrs", weight:"H", focus:"check", fields:"enforce:text|on:text|check:text", desc:"Executable enforce rule", layer:"Prefrontal", open:true}
 KNW:knw_contract{type:"attrs", weight:"B", focus:"name", fields:"name:text|topic:text|content:text|status:text", desc:"Knowledge entry", layer:"Semantic", open:true}
 # status: candidate, elevated, cooled, feedback, current, deprecated, planned
 
@@ -36,16 +38,17 @@ $3: PROTECTED TARGETS
 PRT:critical_sigils{name:"critical_sigils", topic:"protection", content:"Sigils that require explicit user confirmation for mutation", status:"current", items:"IDN|AXM|CNST:blocking|CLAIM|LIM", mutation:"explicit_user_confirmation"}
 
 $4: CANDIDATE-DRIVEN LEARNING
-POL:candidate_detection{name:"candidate_detection", topic:"learning", content:"Detect learning candidates from brain signals", status:"current", source:"brain", scan_sigils:"WRK|SES|LNG|RSK|NXT|CLAIM|LIM", action:"score", algorithm:"golden_fibonacci_v1"}
-POL:candidate_elevation{name:"candidate_elevation", topic:"learning", content:"Elevate candidates to lessons based on score", status:"current", from:"SES|LNG", to:"LNG|KNW", action:"propose", requires:"user_confirmation"}
+POL:candidate_detection{name:"candidate_detection", topic:"learning", content:"Detect learning candidates from brain signals", status:"current", source:"brain", scan_sigils:"WRK|SES|LNG|RSK|NXT|CLAIM|LIM", action:"score", algorithm:"golden_fibonacci_v1", enforce:"CODE"}
+POL:candidate_elevation{name:"candidate_elevation", topic:"learning", content:"Elevate candidates to lessons based on score", status:"current", from:"SES|LNG", to:"LNG|KNW", action:"propose", requires:"user_confirmation", enforce:"HUMAN"}
 
 $5: POLICY-DRIVEN LEARNING
-POL:auto_ses_to_lng{name:"auto_ses_to_lng", topic:"learning", content:"Auto-promote session events to lessons", status:"current", from:"SES", to:"LNG", action:"apply", requires:"policy_authorized"}
-POL:auto_lng_to_knw{name:"auto_lng_to_knw", topic:"learning", content:"Auto-promote lessons to knowledge", status:"current", from:"LNG", to:"KNW", action:"apply", requires:"admin_policy"}
+POL:auto_ses_to_lng{name:"auto_ses_to_lng", topic:"learning", content:"Auto-promote session events to lessons", status:"current", from:"SES", to:"LNG", action:"apply", requires:"policy_authorized", enforce:"CODE"}
+POL:auto_lng_to_knw{name:"auto_lng_to_knw", topic:"learning", content:"Auto-promote lessons to knowledge", status:"current", from:"LNG", to:"KNW", action:"apply", requires:"admin_policy", enforce:"CODE"}
 
 $6: GATES
-GTE:default_mutation{name:"default_mutation", topic:"mutation", content:"Default mutation gate", status:"current", action:"mutate_brain", default:"dry_run_first"}
-GTE:critical_mutation{name:"critical_mutation", topic:"mutation", content:"Critical mutation gate", status:"current", targets:"IDN|AXM|CNST:blocking|CLAIM|LIM|KNW", default:"block_unless_admin_policy"}
+GTE:default_mutation{name:"default_mutation", topic:"mutation", content:"Default mutation gate", status:"current", action:"mutate_brain", default:"dry_run_first", enforce:"CODE"}
+GTE:critical_mutation{name:"critical_mutation", topic:"mutation", content:"Critical mutation gate", status:"current", targets:"IDN|AXM|CNST:blocking|CLAIM|LIM|KNW", default:"block_unless_admin_policy", enforce:"CODE"}
+RUL:no_secret_commit{name:"no_secret_commit", topic:"security", content:"Block governed writes containing API keys or private keys", status:"current", on:"*", check:"secret_pattern", when:"pre", enforce:"CODE"}
 
 $7: CONFIGURABLE THRESHOLDS
 KNW:fibonacci_thresholds{name:"fibonacci_thresholds", topic:"thresholds", content:"Fibonacci-based promotion thresholds", status:"current", ses:1, lng:3, knw:8, auto_knw:13}

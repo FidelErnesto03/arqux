@@ -52,6 +52,11 @@ _ARQX_DECL_RE = re.compile(r"^ARQX:\w+\s*\{[^}\n]*\btype\s*:", re.MULTILINE)
 _ARQX_SEC0_RE = re.compile(r"^\$0(?:\s*:\s*(?!format\s*\{)[^\n]*)?\s*$", re.MULTILINE)
 #: ``$0:format{...}`` dialect declaration line.
 _ARQX_FORMAT_RE = re.compile(r"^\$0:format\s*\{[^\n]*(?:\n|$)", re.MULTILINE)
+#: A section titled ``IDENTITY`` at any numeric slot — GRADIENT-12 resolves
+#: by title, so the metadata entry targets the section, not ``$1`` blindly.
+_ARQX_IDENTITY_RE = re.compile(
+    r"^\$\d+\s*:\s*IDENTITY\b[^\n]*(?:\n|$)", re.MULTILINE | re.IGNORECASE
+)
 
 logger = logging.getLogger(__name__)
 
@@ -111,7 +116,12 @@ def migrate_file(
     source: str | None = None,
     upstream_version: str | None = None,
 ) -> bool:
-    """Inject ARQX:artifact in the canonical ``$19`` slot if absent.
+    """Inject ARQX:artifact if absent.
+
+    GRADIENT-12: when the artifact has an ``IDENTITY`` section (brains,
+    meta-brains, agent identities), the entry goes inside it — ``$19`` is
+    only the out-of-band fallback for artifacts without one (tasks,
+    cycles, manifest).
 
     Returns True if migration was performed, False if the file already had
     ARQX metadata (no-op).
@@ -144,6 +154,7 @@ def migrate_file(
         upstream_version=upstream_version,
     )
     section_text = render_arqux_section(metadata)
+    entry_line = section_text.strip().splitlines()[-1]
 
     # Strip legacy §0 METADATA if present
     stripped = _remove_legacy_metadata(content)
@@ -151,9 +162,17 @@ def migrate_file(
     # Ensure ARQX is declared in the $0 pipe-table glossary
     stripped = _inject_arqux_glossary_line(stripped)
 
-    # ``$19`` is an out-of-band slot: append it at the end of the document
-    # (same convention as the brain canon, where metadata sits at the tail).
-    new_content = stripped.rstrip("\n") + "\n" + section_text
+    identity_match = _ARQX_IDENTITY_RE.search(stripped)
+    if identity_match:
+        # Canon slot: ARQX:artifact inside the IDENTITY section.
+        insert_at = identity_match.end()
+        new_content = (
+            stripped[:insert_at] + "\n" + entry_line + "\n" + stripped[insert_at:]
+        )
+    else:
+        # ``$19`` is an out-of-band slot: append it at the end of the
+        # document for artifacts without an IDENTITY section.
+        new_content = stripped.rstrip("\n") + "\n" + section_text
 
     p.write_text(new_content, encoding="utf-8")
     logger.info("migrate_file: injected ARQX:artifact into %s (level=%d, name=%s)", p, level, name)

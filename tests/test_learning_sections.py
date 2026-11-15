@@ -12,9 +12,9 @@ def test_section_for_sigil_vigente_real_brain():
     doc = load_brain_document(Path("/home/vatrox/workspace/ARQUX"))
     assert doc is not None
     assert section_for_sigil("LNG", doc) == "$8"  # $8: LESSONS in canon brain
-    assert section_for_sigil("KNW", doc) == "$11"  # $11: KNOWLEDGE in canon brain
-    assert section_for_sigil("SES", doc) == "$5"  # $5: SESSIONS
-    assert section_for_sigil("CNST", doc) == "$10"  # $10: RISKS in canon brain
+    assert section_for_sigil("KNW", doc) == "$3"  # $3: KNOWLEDGE in canon brain
+    assert section_for_sigil("SES", doc) == "$10"  # $10: SESSIONS in canon brain
+    assert section_for_sigil("CNST", doc) == "$4"  # $4: RISKS in canon brain
 
 
 def test_section_for_sigil_fallback_without_document():

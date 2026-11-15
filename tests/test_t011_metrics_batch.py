@@ -168,6 +168,6 @@ def test_meta_brain_synced_even_when_brain_mutations_fail(tmp_path: Path) -> Non
     sync_brain(proj, "meta.event", metrics={"handlers": 3})
 
     meta = ws / ".arqux" / "meta-brain.cortex"
-    dom = crud_read(meta, "$2/DOM:proj")["entries"]
+    dom = crud_read(meta, "$10/DOM:proj")["entries"]
     assert dom, "meta-brain DOM:proj not created"
     assert dom[0]["value"].get("last_event") == "meta.event"

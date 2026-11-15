@@ -311,6 +311,17 @@ class TestConditionalDispatchBinding:
     ``dry_run`` is judged at its declared default (gc defaults preview,
     patch defaults mutating)."""
 
+    @pytest.fixture(autouse=True)
+    def _no_workspace_pointer(self, tmp_path, monkeypatch):
+        """Run each dispatch test outside any governed workspace.
+
+        ``resolve_active_role`` consults the workspace context pointer
+        (meta-brain ``WRK:current``, GRADIENT-12); inside the real repo it
+        resolves to the governor identity and silently overrides the env
+        auditor role under test. A bare tmp cwd keeps the env role.
+        """
+        monkeypatch.chdir(tmp_path)
+
     async def test_gc_force_only_previews_at_dispatch(self) -> None:
         """gc(force=True) with omitted dry_run → effective dry_run=True →
         auditor allowed (the call previews; no mutation possible)."""

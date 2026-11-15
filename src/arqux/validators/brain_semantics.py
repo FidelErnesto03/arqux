@@ -72,6 +72,19 @@ def _extract_sigils_from_section(payload: str, section_id: str,
     return entries
 
 
+_SECTION_TITLE_RE = re.compile(r"^\$(\d+):\s*([A-Za-z_]+)\s*$")
+
+
+def _section_id_by_title(payload: str, title: str) -> str | None:
+    """Return the ``$N`` id of the section titled *title* in *payload*."""
+    want = title.upper()
+    for line in payload.splitlines():
+        m = _SECTION_TITLE_RE.match(line.strip())
+        if m and m.group(2).upper() == want:
+            return f"${m.group(1)}"
+    return None
+
+
 def _is_vigente(status: str) -> bool:
     """Return True if ``status`` is in the VALID_STATUSES whitelist.
 
@@ -100,10 +113,10 @@ class BrainActiveStateValidator(BaseValidator):
         result = ValidationResult(is_valid=True)
         payload = artifact.payload
 
-        # Canon: docs/reference/cortex-brain-section-canon.md — FOCUS=$2,
-        # OBJECTIVES=$3 (resolved via BrainSection, never hardcoded).
-        focus_id = BrainSection.FOCUS.value
-        objectives_id = BrainSection.OBJECTIVES.value
+        # GRADIENT-12: resolve sections by title — slot numbering legitimately
+        # differs between legacy and canonical layouts.
+        focus_id = _section_id_by_title(payload, "FOCUS") or BrainSection.FOCUS.value
+        objectives_id = _section_id_by_title(payload, "OBJECTIVES") or BrainSection.OBJECTIVES.value
 
         # --- FCS evaluation (FOCUS section) ---
         fcs_entries = _extract_sigils_from_section(payload, focus_id, "FCS")

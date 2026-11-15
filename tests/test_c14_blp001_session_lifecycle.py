@@ -202,8 +202,8 @@ class TestAc07CloseAndProjectSwitch:
                             ctx=PermissionContext(agent_id="test-governor", role="governor",
                                                   execution_key=key))
             assert result.profile != "OUT-ERROR", result.fields
-            context = (arqux_env.ws_root / ".arqux" / "context.cortex").read_text()
-            assert f'ses:"{sid}"' in context
+            meta = (arqux_env.ws_root / ".arqux" / "meta-brain.cortex").read_text()
+            assert f'ses:"{sid}"' in meta
             assert get_session(arqux_env.proj_root, sid)["agent"] == "alfred"
         finally:
             reset_execution_key(token)
@@ -251,9 +251,11 @@ class TestAc06MembershipAndCompaction:
                                            agent_id="test-governor",
                                            ses_ref=mine["session_id"])
             assert result["selection"] == "membership"
-            assert result["pruned"] == 6
+            # Canon: timelog $5 EVENTS are append-only — compaction writes the
+            # membership-scoped summary lesson but prunes nothing.
+            assert result["pruned"] == 0
             remaining = read_pulse_from_brain(arqux_env.proj_root, limit=None)
-            assert len([e for e in remaining if e["payload"].startswith("mine")]) == 0
+            assert len([e for e in remaining if e["payload"].startswith("mine")]) == 6
             assert len([e for e in remaining if e["payload"].startswith("theirs")]) == 6
             assert len([e for e in remaining if e["payload"].startswith("legacy")]) == 6
         finally:
@@ -509,12 +511,20 @@ class TestSecondAuditFindings:
 
     def test_context_document_is_canonical_and_self_describing(self, arqux_env):
         """context_set writes a glossary-declared CTX entry the codec can parse."""
-        from arqux.handlers.session import CONTEXT_CORTEX, context_get
+        from arqux.handlers.session import (
+            CONTEXTS_DIR,
+            _execution_slug,
+            context_get,
+        )
 
         key = mint_execution_key()
         _bind("test-proj", key=key, ws=arqux_env.ws_root, scope="CYCLE-CTX")
-        document = (arqux_env.ws_root / ".arqux" / CONTEXT_CORTEX).read_text(
-            encoding="utf-8")
+        # GRADIENT-12: the canonical document lives in the per-execution
+        # context file; the ws-global slot moved to meta-brain WRK:current.
+        document = (
+            arqux_env.ws_root / ".arqux" / CONTEXTS_DIR
+            / f"{_execution_slug(key)}.cortex"
+        ).read_text(encoding="utf-8")
 
         assert "# CTX " in document.split("$1")[0]
         entry_line = next(l for l in document.splitlines()
@@ -588,12 +598,12 @@ class TestPruningMatchesTheEntryIdNotASubstring:
 
     def test_id_inside_a_payload_does_not_prune_that_entry(self, arqux_env):
         from arqux.pulse import (
-            _prune_pulse_entries,
+            _prune_timelog_events,
             append_pulse_to_brain,
             next_pulse_event_id,
         )
-        from arqux.state import crud_read
-        from arqux.timelog_store import brain_path
+        from arqux.timelog_store import _parse as _tl_parse
+        from arqux.timelog_store import _resolve as _tl_resolve
 
         root = arqux_env.proj_root
         session = open_session(root, agent="test-governor", project="test-proj",
@@ -613,12 +623,14 @@ class TestPruningMatchesTheEntryIdNotASubstring:
                                   task_id="T-1.1", kind="note",
                                   agent="test-governor", payload="mine", ses_ref=ses)
 
-        brain = str(brain_path(root))
-        _prune_pulse_entries(brain_path(root), [first])
-        remaining = {e["name"] for e in crud_read(brain, "$7/AUD:*")["entries"]}
-        # The entry that merely quotes the pruned id survives.
+        # GRADIENT-12 canon: timelog $5 EVENTS are append-only — the retired
+        # pruner is a no-op shim, every event (owner and quoter alike) survives.
+        result = _prune_timelog_events(root, [first], ses_ref=ses)
+        assert result["pruned"] == 0
+        tl_doc = _tl_parse(_tl_resolve(root, ses, None).read_text(encoding="utf-8"))
+        remaining = {e["name"] for e in tl_doc["events"].values()}
         assert quoted.replace("-", "_") in remaining, remaining
-        assert first.replace("-", "_") not in remaining
+        assert first.replace("-", "_") in remaining
 
 
 class TestIdentitySwitchStateTransitions:

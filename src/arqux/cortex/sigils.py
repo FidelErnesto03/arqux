@@ -227,15 +227,6 @@ def register_sigil(sigil_id: str, definition: dict[str, Any]) -> None:
     SIGIL_CACHE[key] = dict(definition)
 
 
-# Try to merge sigils from the CODEC-CORTEX library if available.
 # codec-cortex 1.0.x exposes no sigil registry (the glossary is per-document
-# under the 1.0 grammar); this merge only applies to the legacy 0.6.x layout.
-# Under the pinned 1.0 line, ArqUX's own sigil table is the single authority.
-try:  # pragma: no cover — depends on optional dependency layout
-    from cortex.core.glossary import SIGIL_REGISTRY as _cc_sigils  # type: ignore
-
-    for _sid, _sdef in getattr(_cc_sigils, "items", lambda: [])():
-        if isinstance(_sdef, dict):
-            register_sigil(_sid, _sdef)
-except Exception:  # noqa: BLE001 — codec-cortex layout varies across versions
-    pass
+# under the 1.0 grammar) and the legacy 0.6.x merge was retired with the 1.0
+# line — ArqUX's own sigil table above is the single authority.

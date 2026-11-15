@@ -38,7 +38,7 @@ from .concurrency import file_lock, reentrant_file_lock
 from .constants import ARQUX_DIR, BRAIN_CORTEX
 from .state import crud_add, crud_list, crud_update, find_project_root
 
-SESSION_SECTION = "$5"
+SESSION_SECTION = "$5"  # legacy position — retained for reference only
 SESSION_SIGIL = "SES"
 SESSION_ID_RE = re.compile(r"^SES(\d{3,})$")
 SESSION_LOCK = ".sessions.lock"
@@ -112,6 +112,13 @@ def timelog_path(project_root: Path | str, session_id: str, opened_at: str) -> P
 
 def _is_session_id(name: str) -> bool:
     return bool(SESSION_ID_RE.match(name or ""))
+
+
+def _session_section(path: Path) -> str:
+    """Resolve the SESSIONS section by title — GRADIENT-12 canon ``$10``,
+    legacy ``$5`` — never positional."""
+    from .core.state._crud import crud_section_id_for_title
+    return crud_section_id_for_title(path, "SESSIONS", fallback="$10")
 
 
 def list_sessions(project_root: Path | str) -> list[dict[str, Any]]:
@@ -296,8 +303,9 @@ def open_session(
             "lng_count": "0",
             "event": "",
         }
-        crud_add(path, SESSION_SECTION, SESSION_SIGIL, session_id, value,
-                     create_section=True, force=True)
+        ses_sec = _session_section(path)
+        crud_add(path, ses_sec, SESSION_SIGIL, session_id, value,
+                     create_section=True, section_title="SESSIONS", force=True)
 
         # Second file: the canonical timelog (BLP-002). Opening is deliberately
         # not atomic across the two files; the phase is recorded so a retry can
@@ -307,7 +315,7 @@ def open_session(
         timelog = ensure_timelog(project_root, {"session_id": session_id, **value},
                                    operation_ref="session.open")
         value["timelog_state"] = timelog.get("state", "unknown")
-        crud_update(path, f"{SESSION_SECTION}/{SESSION_SIGIL}:{session_id}",
+        crud_update(path, f"{ses_sec}/{SESSION_SIGIL}:{session_id}",
                     set_={"timelog_state": value["timelog_state"],
                           "timelog": timelog.get("timelog", "")}, force=True)
         # ``timelog`` is the canonical file name (stable, comparable with the
@@ -334,8 +342,9 @@ def _bind(
     if blp:
         updates["blp"] = blp
     with brain_lock(project_root):
-        crud_update(brain_path(project_root),
-                    f"{SESSION_SECTION}/{SESSION_SIGIL}:{session['session_id']}",
+        bp = brain_path(project_root)
+        crud_update(bp,
+                    f"{_session_section(bp)}/{SESSION_SIGIL}:{session['session_id']}",
                     set_=updates, force=True)
     return {**session, **updates}
 
@@ -377,9 +386,10 @@ def reopen_session(
             updates["scope"] = scope
         if blp:
             updates["blp"] = blp
+        bp = brain_path(project_root)
         crud_update(
-            brain_path(project_root),
-            f"{SESSION_SECTION}/{SESSION_SIGIL}:{session_ref}",
+            bp,
+            f"{_session_section(bp)}/{SESSION_SIGIL}:{session_ref}",
             set_=updates,
             force=True,
         )
@@ -463,9 +473,10 @@ def _close_locked(
     }
     if event:
         updates["event"] = event
+    bp = brain_path(project_root)
     crud_update(
-        brain_path(project_root),
-        f"{SESSION_SECTION}/{SESSION_SIGIL}:{session_ref}",
+        bp,
+        f"{_session_section(bp)}/{SESSION_SIGIL}:{session_ref}",
         set_=updates,
         force=True,
     )

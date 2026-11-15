@@ -141,8 +141,12 @@ class TestGovernedArtifactExclusion:
 
         stored = crud_read(str(arqux_env.proj_root / ".arqux" / "brain.cortex"), "$8/LNG:*")
         names = {e["name"] for e in stored["entries"]}
+        import re
         for batch in batches:
-            assert set(batch) <= names, "a governed write was silently lost"
+            # Writers normalize entry names to the strict-codec charset
+            # ([A-Za-z0-9_]); the stored name is the sanitized form.
+            expected = {re.sub(r"[^A-Za-z0-9_]", "_", n) for n in batch}
+            assert expected <= names, "a governed write was silently lost"
 
     def test_concurrent_compaction_writes_one_lesson(self, arqux_env):
         """D-03: the idempotency guard has to be evaluated under the lock."""

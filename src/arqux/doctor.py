@@ -217,8 +217,9 @@ def check_brain_integrity(arqux_dir: Path) -> CheckResult:
 
 
 def check_pulse_density(arqux_dir: Path) -> CheckResult:
-    """PULSE hot-window density (T1): warn when AUD count exceeds the
-    sweep trigger — the write-path sweep should have kept it bounded."""
+    """Legacy brain-PULSE residue density: warn when residual AUD entries
+    exceed the sweep trigger. Canonical session events live in timelog
+    ``$5 EVENTS`` (append-only) and are not counted here."""
     brain = arqux_dir / BRAIN_CORTEX
     if not brain.exists():
         return CheckResult(
@@ -249,7 +250,7 @@ def check_pulse_density(arqux_dir: Path) -> CheckResult:
                 f"PULSE dense: {aud_count} AUD entries "
                 f"(hot window is {PULSE_SWEEP_AT})"
             ),
-            detail="Run session.pulse.gc to force a sweep; the write path sweeps automatically past the trigger.",
+            detail="Residual brain-PULSE entries only — canonical timelog events are append-only. Run session.pulse.gc to sweep the legacy residue.",
             fixable=True,
             context="project",
         )

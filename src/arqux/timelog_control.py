@@ -466,11 +466,14 @@ def _apply_tombstone(project_root: Path | str, session_id: str,
                     break
         with suppress(OSError):
             path.unlink(missing_ok=True)
+        from .core.state._crud import crud_section_id_for_title
         from .state import crud_update
 
+        bp = brain_path(project_root)
+        ses_sec = crud_section_id_for_title(bp, "SESSIONS", fallback="$10")
         crud_update(
-            brain_path(project_root),
-            f"$5/SES:{session_id}",
+            bp,
+            f"{ses_sec}/SES:{session_id}",
             set_={"suppressed": "true", "timelog": "", "summary": "",
                   "purged_ref": authorization_ref, "purged_at": _now()},
             force=True,

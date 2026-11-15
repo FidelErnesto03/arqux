@@ -7,6 +7,17 @@ $0:format{cortex:1.0, encoding:UTF-8}
 # Required: every .cortex artifact must be locally self-contained.
 # Sigil | Name | Type | Risk | Cognitive Layer | Description
 # ARQX   | artifact   | attrs      | B | Semantic       | ArqUX artifact metadata
+# IDN    | identity   | attrs      | B | Semantic       | Agent / workspace identity
+# DOM    | domain     | attrs      | B | Semantic       | Governed project/domain record
+# FCS    | focus      | attrs      | H | Working        | Default attention anchor
+# OBJ    | objective  | attrs      | H | Working        | Workspace objective
+# WRK    | work       | attrs      | B | Working        | Workspace active context
+# KNW    | knowledge  | attrs      | B | Semantic       | Workspace-level knowledge
+# HND    | handoff    | attrs      | B | Working        | Pending cross-agent handoff
+# AXM    | axiom      | cuerpo     | H | Prefrontal     | Non-negotiable principle
+# LNG    | lesson     | attrs      | M | Episodic       | Learned lesson
+# RSK    | risk       | attrs      | M | Prefrontal     | Recorded risk
+# LOP    | loop       | attrs      | B | Working        | Recurring loop state
 #
 # Types:
 # relación = canonical type
@@ -25,30 +36,41 @@ IDN:idn_contract{type:"attrs", weight:"B", focus:"value", fields:"value:any?", d
 DOM:dom_contract{type:"attrs", weight:"B", focus:"value", fields:"value:any?", desc:"Workspace domain metadata", layer:"Semantic", open:true}
 FCS:fcs_contract{type:"attrs", weight:"H", focus:"value", fields:"value:any?", desc:"Default attention anchor", layer:"Working", open:true}
 KNW:knw_contract{type:"attrs", weight:"B", focus:"value", fields:"value:any?", desc:"Workspace-level knowledge", layer:"Semantic", open:true}
+WRK:wrk_contract{type:"attrs", weight:"B", focus:"value", fields:"value:any?", desc:"Workspace active context", layer:"Working", open:true}
+OBJ:obj_contract{type:"attrs", weight:"H", focus:"value", fields:"value:any?", desc:"Workspace objective", layer:"Working", open:true}
 # Statuses canonical: blocked, current, deprecated, done, experimental, future, planned, specification
 # status: current
 
 
-$19: ARQUX METADATA
+$1: IDENTITY
 
-ARQX:artifact{level:3, name:"meta-brain", usage:"state", kind:"native"}
-$1: META-BRAIN
-
+ARQX:artifact{level:3, name:"meta-brain", usage:"state", kind:"native", version:"0", revision:"0", last_writer:"__GOVERNOR__"}
 IDN:workspace{name:"workspace", root:"<workspace-root>", governor:"alfred", created:"<timestamp>", projects:0, cycles_active:0, blueprints:"0", status:"current"}
 
-$2: PROJECTS
+$2: AXIOMS
 
-DOM:arqux{name:"arqux", path:".", domain:"workspace", status:"current", cycle:"none", handlers:"0", tests:"0", skills:"", cycle_status:"none", blueprints_done:"0", blueprints_draft:"0", updated:"<timestamp>", last_event:"init", blueprints_cancelled:"0", blueprints_completed:"0"}
+$3: KNOWLEDGE
 
-$3: FOCUS
+KNW:workspace_access{name:"workspace_access", topic:"workspace_access", status:"current", content:"Agents operating under Arqux governance have full access to all projects within the workspace."}
+
+$4: RISKS
+
+$5: FOCUS
 
 FCS:current{name:"current", what:"Workspace initialized", priority:"medium", status:"current", survive:"work", updated:"<timestamp>"}
 
-$4: AGENTS
+$6: OBJECTIVES
 
+OBJ:workspace{name:"workspace_health", goal:"workspace .arqux conforme al canon", success:"cortex_verify valida en todos los artefactos", obj:"mantener gobernanza minima del workspace", status:"current", survive:"min", updated:"<timestamp>"}
+
+$7: ACTIVE_CONTEXT
+
+$8: LESSONS
+
+$9: LOOPS
+
+$10: REGISTRY
+
+DOM:arqux{name:"arqux", path:".", domain:"workspace", status:"current", cycle:"none", handlers:"0", tests:"0", skills:"", cycle_status:"none", blueprints_done:"0", blueprints_draft:"0", updated:"<timestamp>", last_event:"init", blueprints_cancelled:"0", blueprints_completed:"0"}
 IDN:alfred{name:"alfred", role:"governor", status:"current", adopted:"<timestamp>"}
 IDN:jarvis{name:"jarvis", role:"executor", status:"current", adopted:"<timestamp>"}
-
-$5: KNOWLEDGE
-
-KNW:workspace_access{name:"workspace_access", topic:"workspace_access", status:"current", content:"Agents operating under Arqux governance have full access to all projects within the workspace."}

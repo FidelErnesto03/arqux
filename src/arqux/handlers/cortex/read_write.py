@@ -209,6 +209,7 @@ def verify_handler(
         valid=result["valid"],
         sections=result["sections"],
         entries=result["entries"],
+        loss_count=result.get("loss_count"),
         diagnostics=result.get("diagnostics", []),
     )
 

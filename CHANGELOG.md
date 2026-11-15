@@ -2,6 +2,99 @@
 
 All notable changes to ArqUX are documented here.
 
+## [1.0.0] — estable (spec nicho.md completa: 13/13 REQs)
+
+> Primera versión **1.0** de ArqUX. Los 13 requisitos ejecutables de
+> `nicho.md` (spec interna, `ARQUX-internal/spec/`) están implementados y verificados con careo
+> (`audit_record`) por milestone: M1 núcleo local, M2 ergonomía
+> multi-harness, M3 plataforma/compliance.
+
+### Added — M3 plataforma / compliance
+
+- `arqux evidence export` — empaqueta spans de ejecución (identidad, skill,
+  archivos, timestamps, SHA-256) en `bundle.cortex` válido; `--redact-private`
+  excluye campos `visibility:"private"`, `--allow-raw` los conserva para
+  auditoría explícita, y sin flags un campo privado bloquea el export
+  (`EXPORT_BLOCKED`). (REQ-11, `src/arqux/evidence_export.py`)
+- `arqux policy keygen|sign|verify` — firma Ed25519 **pura** (RFC 8032, cero
+  dependencias nuevas, verificada contra `cryptography`); `SIGNATURE_VALID`
+  en éxito, `ERR_INVALID_SIGNATURE` + exit≠0 ante tampering. (REQ-12,
+  `src/arqux/signing.py`)
+- `arqux push-delta` / `pull-policy` — journal autoritativo con bloqueo
+  optimista: deltas disjuntos se ordenan determinísticamente por versión;
+  modificación concurrente sobre la misma base → `ERR_CONFLICT_VERSION`.
+  (REQ-13, `src/arqux/journal.py`)
+
+### Added — M2 ergonomía multi-harness
+
+- `arqux sync-harnesses` / `drift-check` — proyecta la gobernanza `.arqux/`
+  a `AGENTS.md`, `CLAUDE.md`, `GEMINI.md` y `.opencode/instructions.md` con
+  `source_hash` común; `drift-check` detecta ediciones manuales con diff
+  exacto. (REQ-07, `src/arqux/adapters/harness.py`)
+- `arqux wake --identity <role>` — payload CORTEX compacto (<1500 tokens,
+  <500ms) con estado activo, registry del meta-brain, reglas aplicables y
+  tarea actual; roles inválidos listan los contratos válidos. (REQ-08,
+  `src/arqux/wake.py`)
+- `arqux review --cycle <id>` / `from-hcortex` — reporte HCORTEX del ciclo
+  que recompila con `loss_count == 0`. (REQ-09, `src/arqux/review.py`)
+- Niveles `enforce:CODE|PROMPT|HUMAN` obligatorios en reglas de política;
+  reglas `CODE` corren como hooks pre-write; ausencia →
+  `ERR_MISSING_ENFORCE_LEVEL`. (REQ-10, `src/arqux/core/policy_engine.py`)
+
+### Added — M1 núcleo local (hardening de spec)
+
+- `task.run` exige sesión ligada (`require_bound_session`) en ejecución
+  real; `dry_run` queda sin gate. (REQ-02, `src/arqux/handlers/task.py`)
+- Cierre de ciclo emite `seal.cortex` (SHA-256 por artefacto + raíz);
+  `cortex_verify` y `arqux cortex-verify` detectan tampering →
+  `ERR_HASH_MISMATCH`. (REQ-03, `src/arqux/handlers/cycle.py`)
+- Gate REQ-04 `loss-report`: verificación reporta `loss_count` vía
+  dispatcher C14N; escrituras de brain con `loss>0` se rechazan salvo
+  `force`. (`src/arqux/core/state/_crud.py`)
+- `arqux init --force` + abort sobre workspace ya gobernado. (REQ-06)
+
+### Changed — dependencias (transparencia v1.0.0)
+
+- `codec-cortex>=1.0,<1.1` promovido a **dependencia core** — verify,
+  render, REQ-04 y REQ-09 lo requieren.
+- `jsonschema>=4.20` declarada como core (era import sin guard en
+  `server.py`).
+- `pydantic` eliminada de core (declarada sin uso; llega transitivo vía
+  `mcp`).
+- Nuevo extra `crypto` (`cryptography>=41`) para la API legada
+  `security.py`; REQ-12 no la necesita.
+- Extra `voice` declara explícitamente `numpy` y `huggingface-hub`.
+
+### Changed — fail-closed
+
+- Escrituras de `brain.cortex`/`meta-brain.cortex` exigen codec:
+  instalación rota → `RuntimeError`, nunca write sin validar.
+- `_roundtrip_loss_count` ya no devuelve `None` silencioso con codec
+  ausente — eleva `RuntimeError`.
+- Lecturas de archivos sigil (`$0`) sin codec elevan error en vez de
+  alimentar el parser YAML legado (`_brain.py`, `_project.py`);
+  dashboard falla cerrado a través de la capa model.
+
+### Removed — legado `cortex` 0.6.x
+
+- `_bind_legacy_api` y `_bind_rc1_api` retirados de `core/state`: el pin
+  `codec-cortex>=1.0,<1.1` excluye ambos bindings; una instalación manual
+  de rc1 o del paquete legado ahora falla cerrado en vez de ligarse con
+  capacidades faltantes.
+- Fallback al parser `cortex` 0.6.x eliminado de `model.parse_native` y
+  `codec_compat` — `parse_native` siempre devuelve `CortexDocument` v1.
+- Shim `SchemaResolver.ALWAYS_REQUIRED` y merge de `SIGIL_REGISTRY`
+  legado eliminados — la tabla de sigilos propia es la única autoridad.
+- Suite de equivalencia legado→propia retirada
+  (`test_cortex_verify_shim.py` eliminado; `test_cortex_v1_conformance.py`
+  reescrito contra el binding v1: 11 tests, 0 skips).
+
+### Fixed
+
+- Suite: **2953 passed, 2 skipped** (los únicos skips restantes son los
+  tests del extra `voice`, por diseño). Tests dedicados por REQ en
+  `tests/test_req_m{1,2,3}.py` (27 tests).
+
 ## [0.9.0] — estable (integridad transaccional y superficies)
 
 > Primera versión **no pre-release** de la línea 0.9: `pip install arqux`

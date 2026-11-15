@@ -198,7 +198,7 @@ def test_reconcile_level_project_forces_project_brain(tmp_path: Path) -> None:
     out = reconcile_handler(path=str(proj), level="project", ctx=_CONTEXT)
     assert out.profile == "OUT-WORK", str(out.fields)
     assert "workspace=false" in out.message
-    obj = crud_read(proj / ".arqux" / "brain.cortex", "$4/OBJ:*")
+    obj = crud_read(proj / ".arqux" / "brain.cortex", "$6/OBJ:*")
     assert obj["entries"]
     assert obj["entries"][0]["value"].get("event") == "brain.reconcile"
 

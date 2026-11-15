@@ -355,19 +355,14 @@ def from_codec_v1(doc: Any, *, path: str = "<string>") -> CortexDocument:
 def parse_native(text: str, *, path: str = "<string>") -> CortexDocument:
     """Parse ``text`` into the ArqUX model.
 
-    Uses ``codec_cortex`` 1.0.x when importable; falls back to the legacy
-    ``cortex`` 0.6.x parser shape (already API-compatible) when only that
-    is installed.  Returns the codec-native document under legacy so all
-    existing consumers keep working; under v1 returns this module's model.
+    Uses ``codec_cortex`` 1.0.x (a core dependency since arqux 1.0.0) and
+    always returns this module's :class:`CortexDocument`. The legacy
+    ``cortex`` 0.6.x fallback was removed with the 1.0 line: an absent
+    codec is a broken install and fails closed, never a silent downgrade
+    to a different dialect's semantics.
     """
     try:
         from codec_cortex.dispatcher import parse_cortex as _v1_parse
-    except Exception:
-        _v1_parse = None
-    if _v1_parse is not None:
-        return from_codec_v1(_v1_parse(text), path=path)
-    try:
-        from cortex.core.parser import parse_cortex as _legacy_parse
-    except Exception as exc:  # pragma: no cover - environment guard
+    except Exception as exc:
         raise RuntimeError("no CORTEX codec available") from exc
-    return _legacy_parse(text, path=path)
+    return from_codec_v1(_v1_parse(text), path=path)
