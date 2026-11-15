@@ -1,5 +1,24 @@
 # Changelog
 
+## 0.3.0 — cortex-ls + preview polish
+
+- **`cortex-ls`: dedicated LSP server** (ADR-0.3.0). All language
+  intelligence moved out of the extension host into a stdio JSON-RPC
+  server (`src/server/`): diagnostics, completion, hover, symbols,
+  formatting, quick fixes, definition, references, rename, semantic
+  tokens and folding. Reusable by any LSP client (Neovim, Zed,
+  JetBrains) — VS Code connects via `vscode-languageclient`.
+- **Collapsible chapters**: every `§N` section and the glossary render
+  inside a `<details>` chapter — fold dense documents at will.
+- **Preview toolbar**: `Filtrar…` input hides non-matching
+  cards/chips/glossary rows live; `§ Ir a…` dropdown jumps to any
+  section (auto-opens folded chapters).
+- **Cursor-follow highlight**: the schema card of the sigil under the
+  editor cursor lights up (weight-tinted border + outline), and its
+  chapter auto-expands.
+- `providers.ts` deleted — superseded by `src/server/core.ts`
+  (transport-free handlers, unit-tested directly).
+
 ## 0.2.1 — Navigation & semantics pack
 
 - **Go to Definition** (`F12`/`Ctrl+click`): sigil usage → glossary declaration.

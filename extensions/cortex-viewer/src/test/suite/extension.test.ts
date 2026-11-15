@@ -427,3 +427,151 @@ describe('canonicalize (format document)', () => {
     assert.strictEqual(again.stdout, res.stdout, 'canonicalize must be idempotent');
   });
 });
+
+// ── 0.3.0: cortex-ls core (transport-free handlers) ─────────────────
+import * as lsp from '../../server/core';
+import { Position } from 'vscode-languageserver-types';
+
+const LS_DOC =
+  '$0:KERNEL\n' +
+  '$0:format{cortex:1.0,encoding:UTF-8}\n' +
+  'OBJ:item{type:attrs,weight:H,focus:name,desc:"Item",fields:"name:text"}\n' +
+  'WK:step{type:cuerpo,weight:M,focus:note,desc:"Paso",fields:"note:text"}\n' +
+  '$0:enum_capa{values:"CORE|UI"}\n' +
+  '$1: META\n' +
+  'OBJ:item{name:"codec"}\n' +
+  '$2: WORK\n' +
+  'WK:step{note:"go %CORE"}\n';
+
+describe('cortex-ls core (0.3.0)', () => {
+  it('diagnosticsFromCodec mapea severidad/source/code', () => {
+    const stderr = 'I001_UNDECLARED_SYMBOL @ 5:2 — Undeclared sigil: OBJ\n' +
+      'W001_INFO @ 1:0 — warning\n';
+    const diags = lsp.diagnosticsFromCodec(stderr, 10);
+    assert.strictEqual(diags.length, 2);
+    assert.strictEqual(diags[0].source, 'codec-cortex');
+    assert.strictEqual(diags[0].severity, 1); // Error
+    assert.strictEqual(diags[0].code, 'I001_UNDECLARED_SYMBOL');
+    assert.strictEqual(diags[0].range.start.line, 4); // 1-based → 0-based
+    assert.strictEqual(diags[1].severity, 2); // Warning
+  });
+
+  it('completionItems: sigilo declarado + %enum + attr keys', () => {
+    // line start → declared sigils
+    const items = lsp.completionItems(LS_DOC + 'OB', Position.create(9, 2));
+    const labels = items.map((i) => i.label);
+    assert.ok(labels.includes('OBJ:item'));
+    assert.ok(labels.includes('WK:step'));
+
+    // after % → enum values
+    const enums = lsp.completionItems(LS_DOC + 'x%', Position.create(9, 2));
+    assert.deepStrictEqual(
+      enums.map((i) => i.label).sort(), ['CORE', 'UI']);
+
+    // inside {} of a declared sigil → its contract fields
+    const inside = lsp.completionItems(
+      LS_DOC + 'OBJ:item{', Position.create(9, 9));
+    assert.ok(inside.some((i) => i.label === 'name'));
+  });
+
+  it('hoverResult: decl exacta, instancia inline y sección', () => {
+    const h = lsp.hoverResult(LS_DOC, Position.create(2, 3));
+    assert.ok(h && h.contents.value.includes('sigilo declarado'));
+    assert.ok(h!.contents.value.includes('glosario'));
+
+    const inline = lsp.hoverResult(LS_DOC, Position.create(6, 4));
+    assert.ok(inline && /Item|declarado/.test(inline.contents.value));
+
+    const sec = lsp.hoverResult(LS_DOC, Position.create(5, 1));
+    assert.ok(sec && sec.contents.value.includes('Sección §1'));
+  });
+
+  it('documentSymbols: kernel+glosario con hijas y §N', () => {
+    const syms = lsp.documentSymbols(LS_DOC);
+    const names = syms.map((s) => s.name);
+    assert.ok(names.some((n) => n.includes('KERNEL')));
+    assert.ok(names.includes('§1 META') || names.some((n) => n.startsWith('§1')));
+    const kernel = syms.find((s) => s.name.includes('KERNEL'))!;
+    assert.ok((kernel.children ?? []).some((c) => c.name === 'OBJ:item'));
+  });
+
+  it('codeActions genera quickfix para I001', () => {
+    const diags = lsp.diagnosticsFromCodec(
+      'I001_UNDECLARED_SYMBOL @ 6:0 — Undeclared sigil: FOO', 10);
+    const actions = lsp.codeActions('file:///x.cortex', LS_DOC, diags);
+    assert.ok(actions.length >= 1);
+    assert.ok(actions[0].title.includes('Declarar'));
+    const edits = actions[0].edit?.changes?.['file:///x.cortex'] ?? [];
+    assert.ok(edits[0]?.newText.includes('FOO'));
+  });
+
+  it('formatEdits emite reemplazo de doc completo', () => {
+    const edits = lsp.formatEdits('a\nb\n', 'a\nb\nc\n');
+    assert.strictEqual(edits.length, 1);
+    assert.strictEqual(edits[0].newText, 'a\nb\nc\n');
+    assert.strictEqual(edits[0].range.start.line, 0);
+    assert.strictEqual(lsp.formatEdits('x\n', 'x\n').length, 0);
+  });
+
+  it('definition/references/rename sobre instancia declarada', () => {
+    const uri = 'file:///x.cortex';
+    // cursor on OBJ:item usage (line 6)
+    const def = lsp.definitionLocation(uri, LS_DOC, Position.create(6, 3));
+    assert.ok(def && def.range.start.line === 2, 'definition → decl line');
+
+    const refs = lsp.referenceLocations(uri, LS_DOC, Position.create(6, 3));
+    assert.strictEqual(refs.length, 2, 'decl + uso');
+
+    const prep = lsp.prepareRenameRange(LS_DOC, Position.create(6, 3));
+    assert.ok(prep && prep.start.character > 0, 'rename solo instancia');
+
+    const edit = lsp.renameEdits(uri, LS_DOC, Position.create(6, 3), 'item2');
+    const changes = edit.changes?.[uri] ?? [];
+    assert.strictEqual(changes.length, 2);
+    assert.throws(
+      () => lsp.renameEdits(uri, LS_DOC, Position.create(6, 3), '9bad'));
+  });
+
+  it('semanticTokensData: delta-encoded, empieza en $0', () => {
+    const data = lsp.semanticTokensData(LS_DOC);
+    assert.ok(data.length % 5 === 0);
+    assert.strictEqual(data[0], 0); // first token line 0
+    assert.strictEqual(data[1], 0); // col 0
+    assert.strictEqual(data[2], 2); // '$0' length
+  });
+
+  it('foldingRanges cubre cada §N', () => {
+    const fr = lsp.foldingRanges(LS_DOC);
+    const starts = fr.map((f) => f.startLine);
+    assert.ok(starts.includes(5) && starts.includes(7));
+    assert.ok(fr.every((f) => f.endLine > f.startLine));
+  });
+});
+
+describe('preview polish 0.3.0', () => {
+  it('capítulos <details> por §N y glosario plegable', () => {
+    const hc =
+      '<!-- HCORTEX v=1.0 t=canonical k=corpus -->\n' +
+      '<!-- glossary -->\n$0:KERNEL\nOBJ:i{type:attrs,weight:H}\n<!-- /glossary -->\n' +
+      '## §1: META\n<!-- schema:1 -->\n### OBJ:i\n| f | v |\n|---|---|\n| a | b |\n<!-- /schema:1 -->\n' +
+      '## §2: WORK\n<!-- schema:2 -->\n### WK:w\n| n | v |\n|---|---|\n| x | y |\n<!-- /schema:2 -->\n';
+    const html = renderHcortexBody(hc);
+    // dos capítulos §N + uno de glosario, todos <details open>
+    assert.strictEqual((html.match(/<details class="hc-sec-block/g) ?? []).length, 3);
+    assert.ok(html.includes('hc-glossary-wrap'));
+    // las cards caen dentro de su capítulo
+    assert.ok(/<summary>.*§1.*<\/summary>[\s\S]*hc-card/.test(html));
+    // data-sigil para el highlight activo
+    assert.ok(html.includes('data-sigil="OBJ:i"'));
+    // los comentarios estructurales siguen ausentes del render
+    assert.ok(!html.includes('<!--'));
+  });
+
+  it('shell incluye toolbar filtro+goto', () => {
+    const shell = buildHtmlShell({
+      nonce: 'n', cspSource: 'csp', cssUri: 'c', jsUri: 'j',
+    });
+    assert.ok(shell.includes('id="hc-filter"'));
+    assert.ok(shell.includes('id="hc-goto"'));
+  });
+});

@@ -2,7 +2,7 @@
   "name": "arqux-cortex-viewer",
   "displayName": "ArqUX CORTEX Viewer",
   "description": "Live HCORTEX 1.0 preview, real-time CORTEX validation, C14N canonical hash and safe bidirectional editing — powered by the codec-cortex toolchain.",
-  "version": "0.2.1",
+  "version": "0.3.0",
   "publisher": "arqux",
   "license": "Apache-2.0",
   "icon": "media/icon.png",
@@ -176,24 +176,25 @@
   },
   "scripts": {
     "vscode:prepublish": "npm run compile",
-    "compile": "tsc -p ./",
+    "compile": "tsc -p ./ --noEmit && npm run esbuild",
     "watch": "tsc -watch -p ./",
     "pretest": "npm run compile",
     "test": "mocha --timeout 30000 out/test/suite/*.js",
-    "lint": "tsc -p ./ --noEmit"
+    "lint": "tsc -p ./ --noEmit",
+    "esbuild": "esbuild src/extension.ts src/server/server.ts src/test/suite/extension.test.ts --bundle --outbase=src --outdir=out --external:vscode --format=cjs --platform=node --sourcemap"
   },
-  "dependencies": {
-    "markdown-it": "^14.1.0",
-    "vscode-languageclient": "^9.0.1",
-    "vscode-languageserver": "^9.0.1",
-    "vscode-languageserver-textdocument": "^1.0.12"
-  },
+  "dependencies": {},
   "devDependencies": {
     "@types/markdown-it": "^14.1.2",
     "@types/mocha": "^10.0.10",
     "@types/node": "^20.19.0",
     "@types/vscode": "^1.85.0",
+    "esbuild": "^0.24.2",
     "mocha": "^10.8.2",
-    "typescript": "~5.6.3"
+    "typescript": "~5.6.3",
+    "markdown-it": "^14.1.0",
+    "vscode-languageclient": "^9.0.1",
+    "vscode-languageserver": "^9.0.1",
+    "vscode-languageserver-textdocument": "^1.0.12"
   }
 }

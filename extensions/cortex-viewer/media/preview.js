@@ -17,6 +17,8 @@
   const badgeLoss = document.getElementById('badge-loss');
   const badgeRuntime = document.getElementById('badge-runtime');
   const editResult = document.getElementById('edit-result');
+  const filterEl = document.getElementById('hc-filter');
+  const gotoEl = document.getElementById('hc-goto');
 
   let lastHash = '';
 
@@ -27,8 +29,11 @@
         applyUpdate(msg);
         break;
       case 'scrollToSection': {
-        const el = document.getElementById(msg.section);
-        if (el) { el.scrollIntoView({ block: 'start', behavior: 'smooth' }); }
+        revealElement(document.getElementById(msg.section));
+        break;
+      }
+      case 'active': {
+        markActive(msg.sec, msg.sigil);
         break;
       }
       case 'editResult': {
@@ -39,6 +44,38 @@
       }
     }
   });
+
+  /** Open every ancestor <details> then scroll the element into view. */
+  function revealElement(el) {
+    if (!el) { return; }
+    let node = el.parentElement;
+    while (node) {
+      if (node.tagName === 'DETAILS') { node.open = true; }
+      node = node.parentElement;
+    }
+    el.scrollIntoView({ block: 'start', behavior: 'smooth' });
+  }
+
+  /** Cursor-follow highlight: card of the sigil under cursor + its §N. */
+  function markActive(sec, sigil) {
+    bodyEl.querySelectorAll('.active').forEach((e) => e.classList.remove('active'));
+    if (sigil) {
+      const card = bodyEl.querySelector(
+        '.hc-card[data-sigil="' + String(sigil).replace(/"/g, '') + '"]');
+      if (card) {
+        card.classList.add('active');
+        let node = card.parentElement;
+        while (node) {
+          if (node.tagName === 'DETAILS') { node.open = true; }
+          node = node.parentElement;
+        }
+      }
+    }
+    if (sec) {
+      const h = document.getElementById('sec-' + sec);
+      if (h) { h.classList.add('active'); }
+    }
+  }
 
   function applyUpdate(msg) {
     const b = msg.badges || {};
@@ -62,6 +99,45 @@
     badgeRuntime.textContent = 'Runtime: ' + (b.runtime || '—');
 
     wireInteractions();
+    populateGoto();
+    applyFilter(filterEl.value);
+  }
+
+  /** Rebuild the §N jump dropdown from the rendered chapter anchors. */
+  function populateGoto() {
+    const prev = gotoEl.value;
+    gotoEl.innerHTML = '<option value="">§ Ir a…</option>';
+    bodyEl.querySelectorAll('.hc-sec[data-sec]').forEach((h) => {
+      const opt = document.createElement('option');
+      opt.value = h.dataset.sec;
+      opt.textContent = '§' + h.dataset.sec + ' ' +
+        h.textContent.replace(/^§\d+(?:\.\d+)?\s*[:·]?\s*/, '');
+      gotoEl.appendChild(opt);
+    });
+    if ([...gotoEl.options].some((o) => o.value === prev)) {
+      gotoEl.value = prev;
+    }
+  }
+
+  gotoEl.addEventListener('change', () => {
+    if (!gotoEl.value) { return; }
+    revealElement(document.getElementById('sec-' + gotoEl.value));
+    gotoEl.value = '';
+  });
+
+  filterEl.addEventListener('input', () => applyFilter(filterEl.value));
+
+  /** Show only cards/chips/glossary rows matching the query. */
+  function applyFilter(q) {
+    const needle = String(q || '').trim().toLowerCase();
+    const match = (el) => !needle ||
+      el.textContent.toLowerCase().includes(needle);
+    bodyEl.querySelectorAll('.hc-card, .g-chip').forEach((el) => {
+      el.hidden = !match(el);
+    });
+    bodyEl.querySelectorAll('.g-sigils tbody tr').forEach((tr) => {
+      tr.hidden = !match(tr);
+    });
   }
 
   copyBtn.addEventListener('click', () => {

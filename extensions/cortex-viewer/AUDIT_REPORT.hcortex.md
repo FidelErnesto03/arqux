@@ -51,6 +51,21 @@ Fix: solo líneas antes del primer `$N>0` son decls de glosario. Test añadido.
 
 | artefacto | sha256 |
 |---|---|
+| `arqux-cortex-viewer-0.3.0.vsix` (esbuild bundle, 16 files / 300.84 KB, 0 warnings) | `e1c786912465af12969021473f181684461dd2315e72118e7d52c1187d5f7010` |
+| `arqux-cortex-viewer-0.3.0-bundle.tar.gz` | `e0aba028dcee40be7c1903efac385c5aeeedb6c92af17eeb041d60c4a3eb3c28` |
 | `arqux-cortex-viewer-0.2.0.vsix` (post-traslado, repo→arqux, catálogo vendoreado) | `d49690101c90ceb6f0f9542613f7aa146035d63ef1cb9a09d1457ae675ed8f16` |
 | `arqux-cortex-viewer-0.2.0-bundle.tar.gz` | `2fa4179d11fc3e6bf8fb4f3ffc92f70d9c23d42b9a7dbab36904eb600735ab73` |
 | `arqux-cortex-viewer-0.2.0.vsix` (pre-traslado, CODEC-CORTEX) | `f1d4b60cbab51f76801d2ee783fcadaee747c21d92edf8220352cb6877ee869b` |
+
+## §6 0.3.0 — cortex-ls + preview polish (CYCLE-17/BLP-002)
+
+| item | resultado | evidencia |
+|---|---|---|
+| LSP server `out/server/server.js` (stdio JSON-RPC, LSP 3.17) | PASS | handshake stdio `initialize` → 11 capabilities; `didOpen` → `publishDiagnostics` con `I001` severity Error end-to-end |
+| Handlers portados (completion/hover/symbols/codeAction/formatting/definition/references/rename/semanticTokens/folding) | PASS | `src/server/core.ts` puro; 9 tests nuevos directos sobre handlers |
+| providers.ts eliminado | PASS | `LanguageClient` en extension.ts (stdio, initOptions toolchainPath+debounceMs); `grep providers` → 0 refs |
+| Preview polish (details/toolbar/active) | PASS | `<details>` por §N + glosario, filtro `#hc-filter`, goto `#hc-goto`, `data-sigil` + msg `active` cursor-follow |
+| Build bundling | PASS | esbuild 0.24.2: `extension.js` 1.0MB + `server.js` 460KB; vsix 543→16 files, 999→301 KB, **0 warnings** |
+| Tests | PASS | 43/43 mocha (32 legado + 11 nuevos) |
+| SEC greps | PASS | sin `child_process.exec`/`shell:true`/network en src/ |
+| npm audit | NOTA | 3 vulns en **devDependencies solamente** (esbuild dev-server, serialize-javascript vía mocha) — nada viaja en el vsix |

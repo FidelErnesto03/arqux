@@ -226,3 +226,65 @@ blockquote {
   font-family: var(--vscode-editor-font-family, monospace);
   font-size: 0.9em;
 }
+
+/* ── Toolbar: filter + section jump (0.3.0) ─────────────────── */
+#hc-tools {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  margin-left: auto;
+}
+#hc-filter, #hc-goto {
+  font: inherit;
+  font-size: 0.85em;
+  color: var(--vscode-input-foreground);
+  background: var(--vscode-input-background);
+  border: 1px solid var(--vscode-input-border, var(--hc-border));
+  border-radius: 4px;
+  padding: 2px 8px;
+  max-width: 180px;
+}
+#hc-filter:focus, #hc-goto:focus {
+  outline: 1px solid var(--vscode-focusBorder);
+  border-color: var(--vscode-focusBorder);
+}
+
+/* ── Collapsible chapters (0.3.0) ───────────────────────────── */
+details.hc-sec-block {
+  margin: 4px 0 12px;
+}
+details.hc-sec-block > summary {
+  cursor: pointer;
+  list-style: none;
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  border-bottom: 1px solid var(--hc-border);
+}
+details.hc-sec-block > summary::before {
+  content: '▸';
+  font-size: 0.8em;
+  opacity: 0.7;
+  transition: transform 0.12s;
+}
+details.hc-sec-block[open] > summary::before {
+  transform: rotate(90deg);
+}
+details.hc-sec-block > summary::-webkit-details-marker { display: none; }
+details.hc-sec-block > summary > * { margin: 4px 0; }
+details.hc-sec-block > summary h2 { border-bottom: none; }
+
+/* Glossary panel keeps its own chrome inside the chapter */
+.hc-glossary-wrap > summary { border-bottom: none; }
+.hc-glossary-wrap > summary > .g-title { margin: 0; }
+.hc-glossary-wrap > .hc-glossary { margin-top: 6px; }
+
+/* ── Cursor-follow active highlight (0.3.0) ─────────────────── */
+.hc-card.active {
+  outline: 2px solid var(--vscode-focusBorder);
+  outline-offset: 1px;
+}
+.hc-sec.active {
+  color: var(--vscode-symbolIcon-classForeground, inherit);
+  text-decoration: none;
+}

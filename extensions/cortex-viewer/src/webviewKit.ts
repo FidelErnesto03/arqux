@@ -140,7 +140,9 @@ function renderGlossary(block: string): string {
   }
 
   return (
-    `<section class="hc-glossary"><h2 class="g-title">§0 · Glosario</h2>` +
+    `<details class="hc-sec-block hc-glossary-wrap" open>` +
+    `<summary><h2 class="g-title hc-sec" id="sec-0" data-sec="0">§0 · Glosario</h2></summary>` +
+    `<section class="hc-glossary">` +
     `<div class="g-chips">${chips.join('')}</div>` +
     (rows.length
       ? `<table class="g-sigils"><thead><tr>` +
@@ -148,7 +150,7 @@ function renderGlossary(block: string): string {
         `<th>desc</th><th>fields</th><th>otros</th></tr></thead>` +
         `<tbody>${rows.join('')}</tbody></table>`
       : '') +
-    `</section>`);
+    `</section></details>`);
 }
 
 /** sigil inst → declared {type, weight} from the glossary block. */
@@ -245,7 +247,7 @@ function renderSchema(
       (textLines.length ? md.render(textLines.join('\n')) : '');
 
     out.push(
-      `<div class="hc-card ${wc}">` +
+      `<div class="hc-card ${wc}" data-sigil="${escapeHtml(hm[1])}">` +
       `<div class="hc-card-head"><code class="hc-card-sig">${escapeHtml(hm[1])}</code>` +
       (meta?.type ? `<span class="w-chip" title="type">${escapeHtml(meta.type)}</span>` : '') +
       (meta?.weight ? `<span class="w-chip w-${escapeHtml(meta.weight)}" title="weight">${escapeHtml(meta.weight)}</span>` : '') +
@@ -254,9 +256,43 @@ function renderSchema(
   return out.join('');
 }
 
+/**
+ * Render a markdown segment inside the chapter stream: each `## `
+ * heading closes the previous `<details>` chapter and opens a new
+ * collapsible one (cards/tables land inside the open chapter).
+ */
+function emitMarkdownSegment(
+  seg: string,
+  md: MarkdownIt,
+  out: string[],
+  state: { chapterOpen: boolean }
+): void {
+  const lines = seg.split(/\r?\n/);
+  let buf: string[] = [];
+  const flush = () => {
+    const chunk = buf.join('\n');
+    if (chunk.trim()) { out.push(md.render(chunk)); }
+    buf = [];
+  };
+  for (const line of lines) {
+    if (/^##\s+\S/.test(line)) {
+      flush();
+      if (state.chapterOpen) { out.push('</details>'); }
+      const headingHtml = md.render(line).trimEnd();
+      out.push(
+        `<details class="hc-sec-block" open><summary>${headingHtml}</summary>`);
+      state.chapterOpen = true;
+      continue;
+    }
+    buf.push(line);
+  }
+  flush();
+}
+
 export function renderHcortexBody(hcortex: string): string {
   const md = createRenderer();
   const out: string[] = [];
+  const state = { chapterOpen: false };
   const re = /<!--\s*(glossary|schema:\d+)\s*-->([\s\S]*?)<!--\s*\/\1\s*-->/g;
 
   // Pre-pass: glossary info feeds schema card chips.
@@ -268,8 +304,10 @@ export function renderHcortexBody(hcortex: string): string {
   let m: RegExpExecArray | null;
   while ((m = re.exec(hcortex)) !== null) {
     const before = stripHcortexComments(hcortex.slice(last, m.index));
-    if (before.trim()) { out.push(md.render(before)); }
+    emitMarkdownSegment(before, md, out, state);
     if (m[1] === 'glossary') {
+      // The glossary is its own chapter — never nested inside a §N one.
+      if (state.chapterOpen) { out.push('</details>'); state.chapterOpen = false; }
       out.push(renderGlossary(m[2]));
     } else {
       out.push(renderSchema(m[2], info, md));
@@ -277,7 +315,8 @@ export function renderHcortexBody(hcortex: string): string {
     last = m.index + m[0].length;
   }
   const tail = stripHcortexComments(hcortex.slice(last));
-  if (tail.trim()) { out.push(md.render(tail)); }
+  emitMarkdownSegment(tail, md, out, state);
+  if (state.chapterOpen) { out.push('</details>'); }
   return out.join('');
 }
 
@@ -324,6 +363,13 @@ export function buildHtmlShell(opts: {
   </span>
   <span id="badge-loss" class="badge">Loss-Report: —</span>
   <span id="badge-runtime" class="badge">Runtime: —</span>
+  <span id="hc-tools">
+    <input id="hc-filter" type="search" placeholder="Filtrar…"
+      aria-label="Filtrar cards y glosario" autocomplete="off">
+    <select id="hc-goto" aria-label="Ir a sección">
+      <option value="">§ Ir a…</option>
+    </select>
+  </span>
 </header>
 <div id="edit-result" hidden></div>
 <main id="hc-body"></main>

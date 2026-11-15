@@ -7,10 +7,14 @@
  * SEC-06 gate: from-hcortex → validate → loss-report, abort on loss.
  */
 import * as vscode from 'vscode';
+import * as path from 'path';
+import {
+  LanguageClient, LanguageClientOptions, ServerOptions, TransportKind,
+} from 'vscode-languageclient/node';
 import { CodecBridge, INSTALL_HINT, parseHash, parseLossReport } from './codecBridge';
-import { CodecDiagnostic, lineOfSection, parseCodecErrors, sectionAtLine } from './diagnostics';
+import { lineOfSection, parseCodecErrors, sectionAtLine } from './diagnostics';
+import { sigilTokenAt } from './cortexModel';
 import { PreviewPanel } from './previewPanel';
-import { registerProviders } from './providers';
 import { renderHcortexBody } from './webviewKit';
 
 function debounceMs(): number {
@@ -19,21 +23,21 @@ function debounceMs(): number {
 }
 
 let bridge: CodecBridge;
-let diagnostics: vscode.DiagnosticCollection;
 let statusBar: vscode.StatusBarItem;
 let installNotified = false;
+/** cortex-ls client — owns language intelligence since 0.3.0. */
+let lspClient: LanguageClient | undefined;
 /** The document whose HCORTEX the preview is showing right now. */
 let previewedDoc: vscode.TextDocument | undefined;
 const debounceTimers = new Map<string, ReturnType<typeof setTimeout>>();
 
 export function activate(context: vscode.ExtensionContext): void {
   bridge = new CodecBridge();
-  diagnostics = vscode.languages.createDiagnosticCollection('cortex');
   statusBar = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 50);
-  context.subscriptions.push(diagnostics, statusBar);
+  context.subscriptions.push(statusBar);
 
   applySettings();
-  registerProviders(context, bridge);
+  startLanguageServer(context);
 
   context.subscriptions.push(
     vscode.commands.registerCommand('cortex.openPreview', () =>
@@ -52,15 +56,16 @@ export function activate(context: vscode.ExtensionContext): void {
     }),
     vscode.window.onDidChangeTextEditorSelection((e) => {
       if (e.textEditor.document.languageId !== 'cortex') { return; }
-      const sec = sectionAtLine(
-        e.textEditor.document.getText(),
-        e.selections[0].active.line
-      );
+      const text = e.textEditor.document.getText();
+      const line = e.selections[0].active.line;
+      const col = e.selections[0].active.character;
+      const sec = sectionAtLine(text, line);
       if (sec) { PreviewPanel.instance?.scrollToSection(sec); }
+      const sigTok = sigilTokenAt(text, line, col);
+      PreviewPanel.instance?.setActive(sec ?? '', sigTok?.token ?? '');
     }),
     vscode.workspace.onDidCloseTextDocument((doc) => {
       if (doc.languageId === 'cortex') {
-        diagnostics.delete(doc.uri);
         debounceTimers.delete(doc.uri.toString());
       }
     }),
@@ -86,10 +91,48 @@ export function activate(context: vscode.ExtensionContext): void {
   }
 }
 
-export function deactivate(): void {
+export function deactivate(): Promise<void> | undefined {
   for (const t of debounceTimers.values()) { clearTimeout(t); }
   debounceTimers.clear();
   PreviewPanel.instance?.dispose();
+  return lspClient?.stop();
+}
+
+/**
+ * cortex-ls (ADR-0.3.0): all language intelligence runs in the server —
+ * diagnostics, completion, hover, symbols, formatting, quick fixes,
+ * definition, references, rename, semantic tokens and folding.
+ */
+function startLanguageServer(context: vscode.ExtensionContext): void {
+  const serverModule = context.asAbsolutePath(
+    path.join('out', 'server', 'server.js'));
+  const serverOptions: ServerOptions = {
+    run: {
+      module: serverModule,
+      transport: TransportKind.stdio,
+      args: ['--stdio'],
+    },
+    debug: {
+      module: serverModule,
+      transport: TransportKind.stdio,
+      args: ['--stdio'],
+      options: { execArgv: ['--nolazy', '--inspect=6009'] },
+    },
+  };
+  const cfg = vscode.workspace.getConfiguration('cortex');
+  const clientOptions: LanguageClientOptions = {
+    documentSelector: [{ language: 'cortex', scheme: 'file' }],
+    synchronize: { configurationSection: 'cortex' },
+    initializationOptions: {
+      toolchainPath: cfg.get<string>('toolchainPath', ''),
+      debounceMs: cfg.get<number>('debounceMs', 250),
+    },
+  };
+  lspClient = new LanguageClient(
+    'cortex-ls', 'CORTEX Language Server',
+    serverOptions, clientOptions);
+  context.subscriptions.push({ dispose: () => { void lspClient?.stop(); } });
+  void lspClient.start();
 }
 
 function applySettings(): void {
@@ -129,10 +172,10 @@ async function refreshDocument(
   const text = doc.getText();
   const result = await bridge.inspect(text);
 
-  // Diagnostics + state badge (validate is the authority).
+  // State badge (validate is the authority); diagnostics now come from
+  // cortex-ls via publishDiagnostics — no local collection.
   const codecDiags = parseCodecErrors(result.validate.stderr);
   const valid = result.validate.exitCode === 0;
-  diagnostics.set(doc.uri, codecDiags.map((d) => toVscodeDiagnostic(d, doc)));
 
   const hash = parseHash(result.hash.stdout);
   const loss = parseLossReport(result.loss.stdout);
@@ -337,25 +380,6 @@ async function applyHcortexEdit(
   } else {
     panel?.reportEditResult(false, 'WorkspaceEdit rechazado por VS Code.');
   }
-}
-
-function toVscodeDiagnostic(d: CodecDiagnostic, doc: vscode.TextDocument): vscode.Diagnostic {
-  const maxLine = doc.lineCount - 1;
-  const line = Math.min(d.line, Math.max(0, maxLine));
-  const range = new vscode.Range(
-    new vscode.Position(line, d.col),
-    new vscode.Position(line, d.col + 1)
-  );
-  const diag = new vscode.Diagnostic(
-    range,
-    d.message,
-    d.severity === 'warning'
-      ? vscode.DiagnosticSeverity.Warning
-      : vscode.DiagnosticSeverity.Error
-  );
-  diag.source = 'codec-cortex';
-  diag.code = d.code;
-  return diag;
 }
 
 function escapeHtml(s: string): string {

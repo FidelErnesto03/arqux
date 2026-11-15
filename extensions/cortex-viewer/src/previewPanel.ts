@@ -125,6 +125,15 @@ export class PreviewPanel {
     });
   }
 
+  /** Cursor-follow: highlight the §N chapter + sigil card under cursor. */
+  setActive(sectionId: string, sigil: string): void {
+    void this.panel.webview.postMessage({
+      type: 'active',
+      sec: sectionId,
+      sigil,
+    });
+  }
+
   /** Report the outcome of a bidirectional edit back to the preview. */
   reportEditResult(ok: boolean, detail: string): void {
     void this.panel.webview.postMessage({ type: 'editResult', ok, detail });

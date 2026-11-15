@@ -32,6 +32,12 @@ edición bidireccional segura — todo delegado al toolchain `codec-cortex`.
   `desc:`.
 - **Snippets** — `cortex-doc`, `sigil`, `enum`, `sec`, `seccapa`, `obj`,
   `micro`.
+- **`cortex-ls` (LSP)** — toda la inteligencia de lenguaje corre en un
+  servidor LSP stdio dedicado (`out/server/server.js`), reutilizable
+  desde Neovim, Zed o JetBrains.
+- **Preview navegable** — capítulos `§N` plegables, filtro en vivo de
+  cards/glosario, dropdown `§ Ir a…`, y resaltado de la card del sigilo
+  bajo el cursor.
 - **Offline-first / zero-telemetry** — ninguna petición de red; todo corre
   local contra el toolchain instalado.
 
