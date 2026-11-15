@@ -7,7 +7,8 @@ single-line attrs, body preservation, valid $0 glossary.
 No dependency on CODEC-CORTEX writer.
 
 Design (sigil mapping):
-  ArqUX metadata       → $0.1 ARQX:artifact{level, name, usage, kind}
+  ArqUX metadata       → $19 ARQX:artifact{level, name, usage, kind}
+                         (legacy $0.1 / $1 / $15 slots still resolve on read)
   FOCUS                 → $2 FCS:current{...}
   OBJECTIVES            → $3 OBJ:<name>{...}
   SESSIONS              → $4 SES:<agent>{...}
@@ -50,11 +51,13 @@ from .constants import (
 logger = logging.getLogger(__name__)
 
 
-# === BLP-041: ARQX metadata sigil in $0.1 ==================================
+# === BLP-041: ARQX metadata sigil ==========================================
 #
-# Every .cortex file carries an ARQX:artifact entry in section $0.1 declaring
-# level (0-3), name, usage, and kind. The ARQX sigil is declared in the $0
-# pipe-table so CODEC-CORTEX recognises it as a valid attrs sigil.
+# Every .cortex file carries an ARQX:artifact entry declaring level (0-3),
+# name, usage, and kind. Writers emit it in the canonical ``$19`` out-of-band
+# slot (brain canon uses ``$15``, identity artifacts ``$1``); the legacy
+# ``$0.1`` sub-section still resolves on read. The ARQX sigil is declared in
+# the $0 glossary so the 1.0 parser recognises it as a valid attrs sigil.
 #
 # Example:
 #
@@ -64,7 +67,7 @@ logger = logging.getLogger(__name__)
 #     # IDN  | identity  | attrs | B | Semantic | Actor identity
 #     ...
 #
-#     $0.1: ARQUX METADATA
+#     $19: ARQUX METADATA
 #
 #     ARQX:artifact{level:3, name:"brain", usage:"state", kind:"native"}
 #
@@ -83,15 +86,16 @@ _LEGACY_METADATA_RE = re.compile(
 #: Required fields in ARQX:artifact metadata.
 _REQUIRED_METADATA_FIELDS: tuple[str, ...] = ("level", "name", "usage", "kind")
 
-#: Section name for ArqUX metadata.
+#: Section header writers emit for ArqUX metadata.
 #:
-#: ``$0.1`` is the BLP-041 location: a sub-section of the glossary, chosen so the
-#: metadata entry is not part of ``$0`` itself (E033). CORTEX 1.0 forbids that
-#: shape (G004 — the glossary may contain only declarations), so migrated
-#: artifacts declare the metadata in the canonical identity section instead.
-#: Both are accepted; see ``_read_arqux_from_ast`` and BLP-001 T-1.17.
-_ARQUX_META_SECTION = "$0.1"
-_ARQUX_META_SECTION_V1 = "$1"
+#: ``$19`` is the canonical out-of-band slot for non-brain artifacts (the
+#: brain canon reserves ``$15``; identity artifacts embed metadata in ``$1``).
+#: ``$0.1`` is the pre-1.0 BLP-041 location: a sub-section of the glossary,
+#: chosen so the metadata entry was not part of ``$0`` itself (E033). CORTEX
+#: 1.0 forbids that shape (G004 — the glossary may contain only
+#: declarations), so it is accepted on read but never emitted on write.
+#: See ``_read_arqux_from_ast`` and BLP-001 T-1.17.
+_ARQUX_META_SECTION = "$19"
 _ARQUX_META_TITLE = "ARQUX METADATA"
 _ARQUX_META_SIGIL = "ARQX"
 _ARQUX_META_ENTRY = "artifact"
@@ -109,7 +113,7 @@ class CortexArtifact:
     """A parsed .cortex artifact with its metadata and raw payload.
 
     ``metadata`` is the validated ArtifactMetadata extracted from ARQX:artifact
-    in ``$0.1`` (or ArtifactMetadata.default(0) + W001 warning when missing).
+    (or ArtifactMetadata.default(0) + W001 warning when missing).
     ``payload`` is the raw file content as read from disk.
     ``filename`` is the file's stem (e.g. "brain" for "brain.cortex").
     ``path`` is the source path if loaded from disk, else None.
@@ -272,7 +276,7 @@ def read_arqux_metadata(text: str) -> ArtifactMetadata:
     """Extract ArtifactMetadata from CODEC-CORTEX text.
 
     Tries:
-    1. CODEC-CORTEX parser → ARQX:artifact in $0.1 (BLP-041 format)
+    1. Native parser → ARQX:artifact in any section (priority-ordered slots)
     2. Legacy regex → # §0 METADATA{...} (pre-BLP-041 format, for migration)
 
     Falls back to ``ArtifactMetadata.default(level=0)`` + W001 warning.
@@ -305,7 +309,7 @@ def read_arqux_metadata(text: str) -> ArtifactMetadata:
 
 
 def render_arqux_section(metadata: ArtifactMetadata) -> str:
-    """Render ``$0.1`` section with ``ARQX:artifact{...}`` entry.
+    """Render the canonical ``$19`` section with ``ARQX:artifact{...}``.
 
     Returns the section text including header and entry.
     """
@@ -328,7 +332,7 @@ def render_arqux_section(metadata: ArtifactMetadata) -> str:
 
 
 def has_arqux_metadata(text: str) -> bool:
-    """Return True if the text has ARQX:artifact in $0.1 (or legacy metadata)."""
+    """Return True if the text has ARQX:artifact (any slot, or legacy metadata)."""
     if _read_arqux_from_ast(text) is not None:
         return True
     return _LEGACY_METADATA_RE.search(text) is not None
@@ -338,7 +342,7 @@ def read_cortex_artifact(path: str | Path) -> CortexArtifact:
     """Read a .cortex file and return a CortexArtifact.
 
     Uses ``read_arqux_metadata()`` for metadata extraction (supports both
-    BLP-041 ARQX:artifact in $0.1 and legacy §0 METADATA block).
+    ARQX:artifact in any canonical slot and legacy §0 METADATA block).
 
     Returns:
     - ``metadata``: validated ArtifactMetadata (or default(0) + W001)

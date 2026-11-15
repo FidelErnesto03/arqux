@@ -356,7 +356,9 @@ def write_cortex_from_json(doc: dict, *, strict: bool = False) -> str:
     # BLP-005: ``$0.1`` can never be emitted as a section header under the
     # 1.0 grammar — inside the glossary span it parses as a malformed
     # declaration (G004). Normalizing legacy ``$0.1`` metadata into ``$19``
-    # (BLP-041) is therefore unconditional, not strict-only.
+    # (BLP-041) is therefore unconditional, not strict-only. ``$0.1`` and
+    # ``$19`` coalesce into a single metadata section regardless of order:
+    # the first one encountered wins the position, later ones merge in.
     normalized_sections: list[dict[str, Any]] = []
     metadata_section: dict[str, Any] | None = None
     for section in sections:
@@ -366,20 +368,23 @@ def write_cortex_from_json(doc: dict, *, strict: bool = False) -> str:
             normalized_sections.append(section)
             continue
         sid = str(section.get("id", ""))
-        if sid == "$0.1":
+        if sid in ("$0.1", "$19"):
             if metadata_section is None:
                 metadata_section = {
                     "id": "$19",
-                    "title": "ARQUX METADATA",
+                    # ``$0.1`` is being migrated → canonical title; a real
+                    # ``$19`` keeps its own title (never alter user data).
+                    "title": (
+                        "ARQUX METADATA" if sid == "$0.1"
+                        else section.get("title") or "ARQUX METADATA"
+                    ),
                     "comments": list(section.get("comments", [])),
                     "entries": list(section.get("entries", [])),
                 }
                 normalized_sections.append(metadata_section)
             else:
-                metadata_section.setdefault("entries", []).extend(section.get("entries", []))
-            continue
-        if sid == "$19" and metadata_section is not None:
-            metadata_section.setdefault("entries", []).extend(section.get("entries", []))
+                metadata_section.setdefault("entries", []).extend(
+                    section.get("entries", []))
             continue
         normalized_sections.append(section)
     sections = normalized_sections

@@ -33,12 +33,28 @@ from .constants import (
     CortexLevel,
 )
 from .formats import (
-    _ARQUX_GLOSSARY_TEXT,
     read_cortex_artifact,
     render_arqux_section,
 )
 
 logger = logging.getLogger(__name__)
+
+#: ``$0`` block emitted by the skill stores: dialect line (G010) + pipe-table
+#: documentation + executable declarations (I001) for every sigil a stored
+#: skill artifact may carry — ARQX (metadata, ``$19``) and STP (provenance /
+#: content steps, BLP-040 §8).
+_SKILL_GLOSSARY = (
+    "$0\n"
+    "$0:format{cortex:1.0, encoding:UTF-8}\n\n"
+    "# -- $0: ARQUX SKILL GLOSSARY --\n"
+    "# Sigil | Name     | Type  | Risk | Layer    | Description\n"
+    "# ARQX  | artifact | attrs | B    | Semantic | ArqUX artifact metadata\n"
+    "# STP   | step     | attrs | M    | Working  | Skill provenance step\n"
+    'ARQX:arqx_contract{type:"attrs", weight:"M", focus:"value", '
+    'fields:"value:any?", desc:"ArqUX ARQX entry", open:true}\n'
+    'STP:stp_contract{type:"attrs", weight:"M", focus:"value", '
+    'fields:"value:any?", desc:"ArqUX STP entry", open:true}\n'
+)
 
 
 # --- Exceptions -------------------------------------------------------------
@@ -115,9 +131,10 @@ class OriginalStore:
         """
         self.base_path.mkdir(parents=True, exist_ok=True)
         path = self.base_path / f"{name}.skill.md"
-        # Compose CORTEX document: $0 glossary + $0.1 arqux metadata + content.
+        # Compose CORTEX document: conformant $0 glossary + $19 metadata
+        # (canonical slot, BLP-041) + content.
         arqux_section = render_arqux_section(declaration.to_metadata())
-        full_content = f"$0\n\n{_ARQUX_GLOSSARY_TEXT}\n{arqux_section}\n\n{content}\n"
+        full_content = f"{_SKILL_GLOSSARY}\n{arqux_section}\n\n{content}\n"
         path.write_text(full_content, encoding="utf-8")
         logger.info("OriginalStore.save: %s", path)
         return path
@@ -198,7 +215,7 @@ class AdaptedStore:
                 declaration = STPDeclaration(name=name, kind="native")
 
         arqux_section = render_arqux_section(declaration.to_metadata())
-        full_content = f"$0\n\n{_ARQUX_GLOSSARY_TEXT}\n{arqux_section}\n\n{content}\n"
+        full_content = f"{_SKILL_GLOSSARY}\n{arqux_section}\n\n{content}\n"
         path.write_text(full_content, encoding="utf-8")
         logger.info("AdaptedStore.save: %s (kind=%s)", path, declaration.kind)
         return path
@@ -209,7 +226,7 @@ class AdaptedStore:
             raise SkillNotFoundError(f"Adapted skill not found: {path}")
         artifact = read_cortex_artifact(path)
         raw = path.read_text(encoding="utf-8")
-        # Strip ARQX preamble ($0 glossary + $0.1 metadata) to extract
+        # Strip ARQX preamble ($0 glossary + $19 metadata) to extract
         # the actual skill body: everything after the metadata block.
         # Format: $0\n\nGLOSSARY\n$19: ARQUX METADATA\n\nARQX:artifact{...}\n\nBODY
         parts = raw.split("ARQX:artifact")[-1] if "ARQX:artifact" in raw else ""

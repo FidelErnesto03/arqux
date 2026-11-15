@@ -300,7 +300,7 @@ def from_codec_v1(doc: Any, *, path: str = "<string>") -> CortexDocument:
                 name=(sigil.lower() if sigil else ""),
                 type=shape,
                 fields=None,
-                needs_review=bool(getattr(sym, "open", False)),
+                needs_review=bool(getattr(sym, "needs_review", False)),
             )
             out.glossary.add_sigil(sd)
             if shape == "attrs-pos" and contract_fields:

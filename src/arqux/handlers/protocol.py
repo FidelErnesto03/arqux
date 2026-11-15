@@ -77,6 +77,68 @@ def _register_agent(agents_path: Path, agent_id: str, role: str) -> None:
                        {"role": role, "status": "current", "adopted": _now_iso()},
                        create_section=False)
 
+    # Every governed artifact declares its metadata: ensure the registry
+    # carries ARQX:artifact in the canonical $19 slot (W001 otherwise).
+    # Legacy ``$0.1`` sections are coalesced into ``$19`` in the model
+    # first — the writer performs the same merge at emit time, and doing
+    # it here keeps the upsert single-addressed (a ``$0.1`` ARQX:artifact
+    # plus a fresh ``$19`` one would serialize as a duplicate
+    # ``$19:ARQX:artifact`` — I006_DUPLICATE_IDEA_ADDRESS).
+    meta = [
+        sec for sec in doc.get("sections", [])
+        if isinstance(sec, dict) and sec.get("id") in ("$0.1", "$19")
+    ]
+    if meta:
+        first = meta[0]
+        first["id"] = "$19"
+        if not first.get("title"):
+            first["title"] = "ARQUX METADATA"
+        extra_ids = {id(sec) for sec in meta[1:]}
+        for extra in meta[1:]:
+            first.setdefault("entries", []).extend(extra.get("entries", []))
+        doc["sections"] = [
+            sec for sec in doc["sections"] if id(sec) not in extra_ids
+        ]
+    try:
+        crud.update_entry(doc, "$19/ARQX:artifact",
+                          set_={"level": 0, "name": "agents",
+                                "usage": "state", "kind": "native"})
+    except ValueError:
+        crud.add_entry(doc, "$19", "ARQX", "artifact",
+                       {"level": 0, "name": "agents",
+                        "usage": "state", "kind": "native"},
+                       create_section=True)
+        for sec in doc.get("sections", []):
+            if sec.get("id") == "$19" and not sec.get("title"):
+                sec["title"] = "ARQUX METADATA"
+
+    # The ARQX sigil must carry an executable contract in ``$0`` (I001).
+    # Seed it under the canonical ``arqx_contract`` name: leaving it to the
+    # writer's auto-generator would mint ``ARQX:artifact{...}``, an address
+    # that collides with the metadata entry itself.
+    glossary = doc.setdefault(
+        "glossary", {"header": "$0", "comments": [], "symbols": []})
+    if isinstance(glossary, dict):
+        declared = {
+            str(d.get("sigil"))
+            for d in (glossary.get("declarations") or [])
+            if isinstance(d, dict)
+        } | {
+            str(s.get("sigil"))
+            for s in (glossary.get("symbols") or [])
+            if isinstance(s, dict)
+        }
+        if "ARQX" not in declared:
+            glossary.setdefault("declarations", []).append({
+                "sigil": "ARQX",
+                "name": "arqx_contract",
+                "attrs": {
+                    "type": "attrs", "weight": "M", "focus": "value",
+                    "fields": "value:any?", "desc": "ArqUX ARQX entry",
+                    "open": True,
+                },
+            })
+
     atomic_write_json(doc, str(agents_path), strict=False)
 
 

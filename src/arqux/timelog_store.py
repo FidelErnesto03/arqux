@@ -75,7 +75,7 @@ _GLOSSARY = (
     "\n"
     'PRJ:projection{type:"attrs", weight:"B", fields:"value:any?", focus:"value", desc:"Per-provider projection mark", open:true}\n'
     "\n"
-    'ARQX:artifact{type:"attrs", weight:"B", fields:"value:any?", focus:"value", desc:"ArqUX artifact metadata", open:true}\n'
+    'ARQX:arqx_contract{type:"attrs", weight:"B", fields:"value:any?", focus:"value", desc:"ArqUX artifact metadata", open:true}\n'
 )
 
 

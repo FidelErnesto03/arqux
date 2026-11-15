@@ -1,4 +1,4 @@
-"""Migrator for ARQX:artifact in $0.1 (BLP-041).
+"""Migrator for ARQX:artifact (BLP-041).
 
 Injects a ``$19: ARQUX METADATA`` section with ``ARQX:artifact{...}`` entry
 into existing .cortex files. Replaces legacy ``# §0 METADATA{...}`` blocks.
@@ -32,14 +32,46 @@ from .formats import (
 
 # ARQX pipe-table declaration line to inject if missing.
 _ARQX_PIPE_LINE = "# ARQX   | artifact   | attrs      | B | Semantic       | ArqUX artifact metadata"
+# Executable ARQX contract declaration (CORTEX 1.0 I001): the pipe-table
+# row alone is documentation — the strict parser needs a real declaration.
+_ARQX_DECL_LINE = (
+    'ARQX:arqx_contract{type:"attrs", weight:"M", focus:"value", '
+    'fields:"value:any?", desc:"ArqUX ARQX entry", open:true}'
+)
+#: An executable ARQX declaration already present in the text. Detection is
+#: shape-based — a contract line always carries a ``type:`` field — not
+#: name-based: the metadata *data* entry ``ARQX:artifact{level, name, usage,
+#: kind}`` never carries one, while historical glossaries declared the
+#: contract under both ``arqx_contract`` and the colliding ``artifact``
+#: name (timelog_store). Matching only the name would either miss the
+#: contract (I001 left unrepaired) or mint a second ARQX symbol
+#: (G015_DUPLICATE_SYMBOL).
+_ARQX_DECL_RE = re.compile(r"^ARQX:\w+\s*\{[^}\n]*\btype\s*:", re.MULTILINE)
+#: ``$0`` section header (``$0`` or ``$0: TITLE``). Excludes ``$0.1``
+#: sub-sections and the ``$0:format{...}`` dialect line.
+_ARQX_SEC0_RE = re.compile(r"^\$0(?:\s*:\s*(?!format\s*\{)[^\n]*)?\s*$", re.MULTILINE)
+#: ``$0:format{...}`` dialect declaration line.
+_ARQX_FORMAT_RE = re.compile(r"^\$0:format\s*\{[^\n]*(?:\n|$)", re.MULTILINE)
 
 logger = logging.getLogger(__name__)
 
 
 def _inject_arqux_glossary_line(text: str) -> str:
-    """Ensure ``# ARQX | artifact | ...`` is in the $0 pipe-table."""
+    """Ensure the $0 glossary declares ARQX: pipe-table row + contract."""
+    if not _ARQX_DECL_RE.search(text):
+        # No executable declaration — inject one inside the glossary span.
+        # When a ``$0:format`` line exists the contract goes right after it
+        # (the dispatcher-facing order every other writer emits); otherwise
+        # it follows the ``$0`` header directly.
+        fmt_match = _ARQX_FORMAT_RE.search(text)
+        sec0_match = fmt_match or _ARQX_SEC0_RE.search(text)
+        if sec0_match:
+            insert_at = sec0_match.end()
+            text = text[:insert_at] + "\n" + _ARQX_DECL_LINE + "\n" + text[insert_at:]
+        else:
+            text = "$0\n\n" + _ARQX_DECL_LINE + "\n\n" + text
     if re.search(r"^#\s*ARQX\s+\|", text, re.MULTILINE):
-        return text  # already present
+        return text  # pipe-table row already present
     # Find the first pipe-table line (after "# Sigil | Name | ...") and insert ARQX after it
     pipe_header_match = re.search(
         r"^#\s*Sigil\s+\|\s*Name.*$", text, re.MULTILINE
@@ -79,7 +111,7 @@ def migrate_file(
     source: str | None = None,
     upstream_version: str | None = None,
 ) -> bool:
-    """Inject ARQX:artifact in $0.1 if absent.
+    """Inject ARQX:artifact in the canonical ``$19`` slot if absent.
 
     Returns True if migration was performed, False if the file already had
     ARQX metadata (no-op).
@@ -90,13 +122,14 @@ def migrate_file(
 
     content = p.read_text(encoding="utf-8")
 
-    # Already has ARQX:artifact in $0.1 → ensure glossary too, then skip
+    # Already has ARQX:artifact (any slot) → ensure the glossary declares
+    # ARQX (pipe-table row AND executable contract — a missing contract is
+    # I001 under the 1.0 parser), then skip.
     if _read_arqux_from_ast(content) is not None:
-        # Check if ARQX is declared in glossary; inject if missing
-        if not re.search(r"^#\s*ARQX\s+\|", content, re.MULTILINE):
-            content = _inject_arqux_glossary_line(content)
-            p.write_text(content, encoding="utf-8")
-            logger.info("migrate_file: %s — injected ARQX glossary line", p)
+        ensured = _inject_arqux_glossary_line(content)
+        if ensured != content:
+            p.write_text(ensured, encoding="utf-8")
+            logger.info("migrate_file: %s — ensured ARQX glossary declaration", p)
             return True
         logger.info("migrate_file: %s already has ARQX:artifact — skip", p)
         return False
@@ -118,16 +151,9 @@ def migrate_file(
     # Ensure ARQX is declared in the $0 pipe-table glossary
     stripped = _inject_arqux_glossary_line(stripped)
 
-    # Find insertion point: after $0 glossary, before $1 (or end)
-    # Look for first section header after $0 (e.g. "$1", "$2", etc.)
-    sec_match = re.search(r"^\$[1-9]", stripped, re.MULTILINE)
-    if sec_match:
-        # Insert before $1
-        insert_pos = sec_match.start()
-        new_content = stripped[:insert_pos] + section_text + stripped[insert_pos:]
-    else:
-        # No other sections → append
-        new_content = stripped.rstrip("\n") + "\n" + section_text + "\n"
+    # ``$19`` is an out-of-band slot: append it at the end of the document
+    # (same convention as the brain canon, where metadata sits at the tail).
+    new_content = stripped.rstrip("\n") + "\n" + section_text
 
     p.write_text(new_content, encoding="utf-8")
     logger.info("migrate_file: injected ARQX:artifact into %s (level=%d, name=%s)", p, level, name)

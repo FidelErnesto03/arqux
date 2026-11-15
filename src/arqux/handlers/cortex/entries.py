@@ -251,11 +251,18 @@ def _guard_after_write(
     *allowed_sections* is resolved by the caller BEFORE the mutation from the
     selector semantics (HD-01: never widen it by entry name — a same-named
     entry in another section must not authorise writing there).
+
+    Metadata slots are normalization targets, not mutation targets: the
+    writer always coalesces ``$0.1`` into canonical ``$19`` on any write.
+    Allowing them here prevents the sanctioned normalization from being
+    misread as collateral corruption on legacy files (Jarvis finding —
+    the ``$0.1`` write trap).
     """
     if before_text is None:
         return None
     violation = guard_write(
-        path, before_text, allowed_sections=allowed_sections,
+        path, before_text,
+        allowed_sections=allowed_sections | {"$0.1", "$19"},
     )
     if violation is None:
         return None
@@ -272,17 +279,25 @@ def _target_sections(path: str, selector: str) -> set[str]:
 
     Uses the same read path the mutator resolves selectors with; a failed or
     empty read yields an empty set, which makes the guard strict (any change
-    is collateral).
+    is collateral). An explicit ``$N/`` section prefix is itself a resolution
+    to that section — entries unreachable by name (deprecated ``_``/``*``
+    names, T-022) must not leave the guard unable to scope a legitimate
+    ``$N``-scoped repair (E-2540).
     """
+    sections: set[str] = set()
+    m = _re.match(r"\s*(\$\d+(?:\.\d+)?)\s*/", selector or "")
+    if m:
+        sections.add(m.group(1))
     try:
         found = crud_read(path, selector)
     except Exception:
-        return set()
-    return {
+        return sections
+    sections.update(
         str(entry.get("section"))
         for entry in found.get("entries", [])
         if entry.get("section")
-    }
+    )
+    return sections
 
 
 def entry_add_handler(

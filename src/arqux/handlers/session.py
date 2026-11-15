@@ -570,8 +570,12 @@ _CONTEXT_GLOSSARY = (
     "# Sigil | Name    | Type  | Risk | Cognitive Layer | Description\n"
     "# CTX   | context | attrs | B    | Working         | "
     "Session context pointer (execution->project/scope/session binding)\n"
+    "# ARQX  | artifact | attrs | B   | Semantic        | "
+    "ArqUX artifact metadata\n"
     "CTX:ctx_contract{type:\"attrs\", weight:\"M\", focus:\"value\", "
     "fields:\"value:any?\", desc:\"ArqUX CTX entry\", open:true}\n"
+    "ARQX:arqx_contract{type:\"attrs\", weight:\"M\", focus:\"value\", "
+    "fields:\"value:any?\", desc:\"ArqUX ARQX entry\", open:true}\n"
 )
 
 
@@ -597,7 +601,11 @@ def _context_document(
         fields.append(("ses", ses))
     fields.append(("project_root", project_root))
     attrs = ",".join(f'{k}:"{_escape_ses_value(v)}"' for k, v in fields)
-    return f"{_CONTEXT_GLOSSARY}\n$1: CURRENT\nCTX:{agent}{{{attrs}}}\n"
+    return (
+        f"{_CONTEXT_GLOSSARY}\n$1: CURRENT\nCTX:{agent}{{{attrs}}}\n\n"
+        "$19: ARQUX METADATA\n\n"
+        'ARQX:artifact{level:0, name:"context", usage:"state", kind:"native"}\n'
+    )
 
 
 def context_set(
@@ -1516,13 +1524,31 @@ def handoff(
     # never silently mask the active identity with the default fallback.
     agent_id = ctx.agent_id if ctx is not None else PermissionContext.from_env().agent_id
 
-    # Build CORTEX handoff payload.
+    # Build CORTEX handoff payload — the same shape migrated handoffs carry:
+    # executable sigil declarations + $0:format (I001/G010) + $19 metadata.
     handoff_lines = [
         "$0",
         "",
+        'HOF:hof_contract{type:"attrs", weight:"M", focus:"value", '
+        'fields:"value:any?", desc:"ArqUX HOF entry", open:true}',
+        'ARQX:arqx_contract{type:"attrs", weight:"M", focus:"value", '
+        'fields:"value:any?", desc:"ArqUX ARQX entry", open:true}',
+        "$0:format{cortex:1.0, encoding:UTF-8}",
+        "",
         "$1: HANDOFF",
         "",
-        f'HOF:handoff{{from:"{agent_id}", to:"{target_agent}", project:"{project_name}", summary:"{summary}", blps:"{blps}", tasks:"{tasks}"}}',
+        'HOF:handoff{'
+        f'from:"{_escape_ses_value(agent_id)}", '
+        f'to:"{_escape_ses_value(target_agent)}", '
+        f'project:"{_escape_ses_value(project_name)}", '
+        f'summary:"{_escape_ses_value(summary)}", '
+        f'blps:"{_escape_ses_value(blps)}", '
+        f'tasks:"{_escape_ses_value(tasks)}"'
+        '}',
+        "",
+        "$19: ARQUX METADATA",
+        "",
+        f'ARQX:artifact{{level:0, name:"handoff-{target_agent}", usage:"state", kind:"native"}}',
         "",
     ]
     handoff_cortex = "\n".join(handoff_lines)

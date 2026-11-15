@@ -102,7 +102,7 @@ Single `REGISTRY: dict[str, HandlerSpec]` mapping handler names to their specs. 
 - `description`: human-readable
 - `input_schema`: JSON Schema for parameters
 
-**24-handler governance budget**: 24 handlers manage governance artifacts (blueprints, cycles, tasks, evidence, identities, sessions, projects, protocols). The remaining 49 are utility/read operations.
+**24-handler governance budget**: 24 handlers manage governance artifacts (blueprints, cycles, tasks, evidence, identities, sessions, projects, protocols). The remaining 91 are utility/read operations.
 
 ### 2.4 Permissions Layer (`src/arqux/permissions.py`)
 

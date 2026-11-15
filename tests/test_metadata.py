@@ -33,6 +33,7 @@ VALID_ARQX_ENTRY = """$0
 # Sigil | Name | Type | Risk | Layer | Description
 # IDN   | identity   | attrs  | B | Semantic | Actor identity
 # ARQX  | artifact   | attrs  | B | Semantic | ArqUX artifact metadata
+ARQX:arqx_contract{type:"attrs", weight:"M", focus:"value", fields:"value:any?", desc:"ArqUX ARQX entry", open:true}
 
 $0.1: ARQUX METADATA
 
@@ -117,7 +118,7 @@ class TestRenderArquxSection:
             kind=ArtifactKind.NATIVE,
         )
         section = render_arqux_section(meta)
-        assert "$0.1:" in section
+        assert "$19:" in section
         assert "ARQX:artifact" in section
         assert "brain" in section
         # Round-trip: wrap in minimal $0 for parse_cortex
@@ -179,7 +180,7 @@ class TestMigrator:
         assert migrated is True
         content = p.read_text(encoding="utf-8")
         assert "ARQX:artifact" in content
-        assert "$0.1:" in content
+        assert "$19:" in content
         assert "$1: IDENTITY" in content
 
     def test_migrate_file_idempotent(self, tmp_path: Path) -> None:
@@ -195,7 +196,7 @@ class TestMigrator:
         assert migrated is True
         content = p.read_text(encoding="utf-8")
         assert "ARQX:artifact" in content
-        assert "$0.1:" in content
+        assert "$19:" in content
         assert "§0 METADATA" not in content
 
     def test_migrate_file_preserves_content_below_section(self, tmp_path: Path) -> None:

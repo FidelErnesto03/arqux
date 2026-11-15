@@ -35,9 +35,9 @@ fila lleva el comando que la comprueba. Una fila sin comando no entra.
 
 | Indicador | Hoy | G1 exige | Comando |
 |---|---|---|---|
-| Suite | `2924 passed · 12 skipped · 0 xfailed · 0 failed` | 0 failed | `pytest tests/ -q` |
+| Suite | `2930 passed · 12 skipped · 0 xfailed · 0 failed` | 0 failed | `pytest tests/ -q` |
 | **Brechas declaradas (`xfail`)** | **0** | **0** | `pytest tests/ -q \| grep -c XFAIL` |
-| Ajustes abiertos | 11 | 0 | ver §2 |
+| Ajustes abiertos | 10 | 0 | ver §2 |
 
 Los `skipped` son `faster_whisper` (extra opcional de voz) + guards de import legacy `cortex.*` — no defectos.
 
@@ -52,7 +52,7 @@ Leyenda: ✅ cerrado · 🟡 parcial · ⬜ abierto · ⛔ roto en release
 | ID | Ajuste | Verificación | Estado |
 |---|---|---|---|
 | A-01 | Escritura quirúrgica y transaccional | `pytest tests/test_cortex_write_transaction.py` (18) + commit `dd096df` | ✅ |
-| A-02 | Verificador E/W/I | `grep -rc '"W0' src/arqux/` = 27 · `"E0` = 11 · **`"I0` = 0** | 🟡 **falta I** |
+| A-02 | Verificador E/W/I | `grep -rc '"W0' src/arqux/` = 27 · `"E0` = 11 · familia `I0` presente (`level_policy.py`, `constants.py`) | ✅ |
 | A-03 | Identidad contextual | `pytest tests/e2e/test_identity_session.py` (25 con las demás) | ✅ |
 | A-04 | Paridad schema↔implementación | `arqux call cortex.learn content=...` acepta; `test_blueprint_synthesize_schema_exposes_content` | ✅ |
 | A-05 | Matriz de conformidad CORTEX | `pytest tests/test_cortex_conformance.py tests/test_brain_roundtrip_integrity.py tests/test_writer_roundtrip.py tests/test_cortex_two_column_conformance.py tests/test_cortex_invalid_column_conformance.py` (37) | ✅ |
@@ -97,7 +97,7 @@ A-03…A-10 sin verificar". La realidad medida es 9/10. *El reporte no midió el
 | Instalación | `cortex.verify` | `cortex.learn` |
 |---|---|---|
 | Sin `[codec]` | ✅ nativo | ✅ nativo |
-| Con `[codec]` → codec **1.0.1** | ✅ | ✅ (suite 2924, delta 0) |
+| Con `[codec]` → codec **1.0.1** | ✅ | ✅ (suite 2930, delta 0) |
 
 **Evidencia histórica del defecto (al reportarse):**
 
@@ -145,16 +145,16 @@ limpio. **Decisión pendiente del Arquitecto.**
 
 ---
 
-## 3. Brechas declaradas — los 3 `xfail`
+## 3. Brechas declaradas — `xfail` = 0
 
 Son la definición operativa de "primitivo": el producto **admite por escrito** lo que no sabe
-hacer. G1 exige 0.
+hacer. G1 exige 0 — las tres brechas originales quedaron cerradas en BLP-006 (CYCLE-16).
 
 | Gap | Capacidad ausente | Test | Nota |
 |---|---|---|---|
-| 2.6 | Consulta transversal por corpus | `test_cross_corpus_query_exists` | La hereda la Platform (B-05) |
-| 2.9 | Migración que repara contenido | `test_migration_reports_content_repairs` | Reutiliza `reader.py` + `transaction.py` de A-01 |
-| 2.12/U4 | Helper público de emisión ideática | `test_public_emit_helper_is_exported` | Helper sobre el writer existente |
+| 2.6 | Consulta transversal por corpus | `test_cross_corpus_query_exists` | ✅ Cerrado — `cortex.corpus.list`/`query` (BLP-006) |
+| 2.9 | Migración que repara contenido | `test_migration_reports_content_repairs` | ✅ Cerrado — `plan_repairs` sobre `reader.py` + `transaction.py` (BLP-006) |
+| 2.12/U4 | Helper público de emisión ideática | `test_public_emit_helper_is_exported` | ✅ Cerrado — `emit_ideatic` exportado (BLP-006) |
 
 ---
 
