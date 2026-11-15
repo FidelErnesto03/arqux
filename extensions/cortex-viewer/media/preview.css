@@ -1,0 +1,228 @@
+/* preview.css — HCORTEX preview styles. Uses VS Code theme variables
+   so it adapts to dark/light themes automatically. */
+
+:root {
+  --hc-border: var(--vscode-panel-border, #444);
+  --hc-badge-bg: var(--vscode-badge-background, #4d4d4d);
+  --hc-badge-fg: var(--vscode-badge-foreground, #fff);
+  --hc-ok: var(--vscode-testing-iconPassed, #4caf50);
+  --hc-err: var(--vscode-testing-iconFailed, #f44336);
+  --hc-warn: var(--vscode-testing-iconQueued, #ff9800);
+}
+
+body {
+  font-family: var(--vscode-font-family);
+  font-size: var(--vscode-font-size);
+  color: var(--vscode-foreground);
+  background: var(--vscode-editor-background);
+  margin: 0;
+  padding: 0;
+  line-height: 1.5;
+}
+
+/* UI-02: fixed header with the five indicators */
+#hc-header {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+  padding: 6px 10px;
+  background: var(--vscode-editor-background);
+  border-bottom: 1px solid var(--hc-border);
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 8px;
+  border-radius: 10px;
+  background: var(--hc-badge-bg);
+  color: var(--hc-badge-fg);
+  font-size: 0.85em;
+  white-space: nowrap;
+}
+
+.badge.valid { background: var(--hc-ok); }
+.badge.invalid { background: var(--hc-err); }
+.badge.loss-ok { background: var(--hc-ok); }
+.badge.loss-warn { background: var(--hc-warn); color: #000; }
+.badge-hash code { font-size: 0.9em; }
+
+/* VS Code-style icon button (codicon aesthetic, tooltip-only) */
+.icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  background: transparent;
+  color: inherit;
+}
+.icon-btn:hover {
+  background: var(--vscode-toolbar-hoverBackground, rgba(127,127,127,0.3));
+}
+.icon-btn:active {
+  background: var(--vscode-toolbar-activeBackground, rgba(127,127,127,0.5));
+}
+
+#edit-result {
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--hc-border);
+  font-size: 0.9em;
+}
+#edit-result.ok { color: var(--hc-ok); }
+#edit-result.err { color: var(--hc-err); }
+
+#hc-body {
+  padding: 8px 16px 48px;
+}
+
+/* Sections anchored for scroll sync */
+.hc-sec { scroll-margin-top: 48px; cursor: pointer; }
+.hc-sec:hover { text-decoration: underline; }
+
+h1, h2, h3, h4 { font-weight: 600; }
+h2.hc-sec { border-bottom: 1px solid var(--hc-border); padding-bottom: 2px; }
+
+code, pre {
+  font-family: var(--vscode-editor-font-family);
+  background: var(--vscode-textCodeBlock-background);
+  border-radius: 4px;
+}
+code { padding: 1px 4px; }
+pre { padding: 8px 10px; overflow-x: auto; }
+pre code { padding: 0; }
+
+/* HCORTEX tables — clean borders, editable data cells */
+table {
+  border-collapse: collapse;
+  margin: 8px 0;
+  font-size: 0.95em;
+}
+th, td {
+  border: 1px solid var(--hc-border);
+  padding: 4px 10px;
+  text-align: left;
+}
+th {
+  background: var(--vscode-editorWidget-background);
+  font-weight: 600;
+}
+tbody td { cursor: cell; }
+tbody td:hover { outline: 1px dashed var(--vscode-focusBorder); }
+td.editing {
+  padding: 0;
+  outline: 2px solid var(--vscode-focusBorder);
+}
+td.editing input {
+  width: 100%;
+  box-sizing: border-box;
+  border: none;
+  padding: 4px 10px;
+  font: inherit;
+  color: inherit;
+  background: var(--vscode-input-background);
+}
+
+blockquote {
+  border-left: 3px solid var(--hc-border);
+  margin-left: 0;
+  padding-left: 12px;
+  opacity: 0.85;
+}
+
+.hc-error {
+  color: var(--hc-err);
+  white-space: pre-wrap;
+}
+
+/* ── Glossary panel (0.2.1) ─────────────────────────────────── */
+.hc-glossary {
+  border: 1px solid var(--hc-border);
+  border-radius: 8px;
+  padding: 12px 14px;
+  margin: 12px 0;
+  background: var(--vscode-editorWidget-background);
+}
+.g-title {
+  margin: 0 0 8px;
+  font-size: 1.05em;
+  font-weight: 600;
+  color: var(--vscode-editor-foreground);
+}
+.g-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+.g-chip {
+  font-family: var(--vscode-editor-font-family, monospace);
+  font-size: 0.82em;
+  padding: 3px 9px;
+  border-radius: 10px;
+  background: var(--vscode-badge-background);
+  color: var(--vscode-badge-foreground);
+  white-space: nowrap;
+}
+.g-chip b { font-weight: 700; }
+.g-sigils { width: 100%; }
+.g-sigils td:first-child code {
+  color: var(--vscode-symbolIcon-classForeground, var(--vscode-editor-foreground));
+  font-weight: 600;
+}
+.g-extra {
+  font-size: 0.85em;
+  opacity: 0.8;
+  font-family: var(--vscode-editor-font-family, monospace);
+}
+
+/* ── Schema instance cards (0.2.1) ──────────────────────────── */
+.hc-card {
+  border: 1px solid var(--hc-border);
+  border-left: 3px solid var(--hc-border);
+  border-radius: 6px;
+  padding: 8px 12px;
+  margin: 8px 0;
+  background: var(--vscode-editorWidget-background);
+}
+.hc-card.w-h { border-left-color: var(--vscode-charts-orange, #e8912d); }
+.hc-card.w-m { border-left-color: var(--vscode-charts-blue, #3794ff); }
+.hc-card.w-b { border-left-color: var(--vscode-charts-foreground, #888); }
+
+.hc-card-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+.hc-card-sig {
+  font-family: var(--vscode-editor-font-family, monospace);
+  font-weight: 600;
+  font-size: 0.95em;
+  color: var(--vscode-symbolIcon-classForeground, var(--vscode-editor-foreground));
+}
+.w-chip {
+  font-size: 0.7em;
+  font-weight: 700;
+  padding: 1px 7px;
+  border-radius: 9px;
+  background: var(--vscode-badge-background);
+  color: var(--vscode-badge-foreground);
+  text-transform: uppercase;
+}
+.w-chip.w-h { background: var(--vscode-charts-orange, #e8912d); color: #000; }
+.w-chip.w-m { background: var(--vscode-charts-blue, #3794ff); color: #fff; }
+.hc-table { width: auto; min-width: 40%; }
+.hc-card .hc-table td:first-child {
+  font-family: var(--vscode-editor-font-family, monospace);
+  font-size: 0.9em;
+}

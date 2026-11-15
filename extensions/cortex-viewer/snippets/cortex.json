@@ -1,0 +1,55 @@
+{
+  "CORTEX document skeleton": {
+    "prefix": "cortex-doc",
+    "body": [
+      "\\$0:KERNEL",
+      "\\$0:format{cortex:1.0,encoding:UTF-8}",
+      "",
+      "\\$1: ${1:TITLE}",
+      "$0"
+    ],
+    "description": "Esqueleto mínimo de documento CORTEX 1.0 (kernel + format + primera sección)"
+  },
+  "Sigil declaration": {
+    "prefix": "sigil",
+    "body": [
+      "${1:SIGIL}:${2:nombre}{type:${3|attrs,attrs-pos,cuerpo,bloque,relacion|},weight:${4|M,B,H|},focus:${5:name},desc:\"${6:descripción}\",fields:\"${7:campo:text}\"}"
+    ],
+    "description": "Declaración de sigilo en el glosario ($0)"
+  },
+  "Enum declaration": {
+    "prefix": "enum",
+    "body": [
+      "\\$0:enum_${1:nombre}{values:\"${2:a|b|c}\"}"
+    ],
+    "description": "Declaración de enum cerrado en $0 (referenciable como %valor)"
+  },
+  "Section header": {
+    "prefix": "sec",
+    "body": [
+      "\\$${1:2}: ${2:TÍTULO}"
+    ],
+    "description": "Encabezado de sección $N: TÍTULO[:CAPA]"
+  },
+  "Section header with capa": {
+    "prefix": "seccapa",
+    "body": [
+      "\\$${1:2}: ${2:TÍTULO}:${3|KERNEL,CORE,KNOW,DATA,FLOW,CACHE|}"
+    ],
+    "description": "Encabezado de sección con capa explícita"
+  },
+  "Sigil usage": {
+    "prefix": "obj",
+    "body": [
+      "${1:SIGIL}:${2:nombre}{${3:campo}:\"${4:valor}\"}"
+    ],
+    "description": "Instancia de sigilo con attrs"
+  },
+  "Micro declaration": {
+    "prefix": "micro",
+    "body": [
+      "\\$0:micro_${1:t}{expand:\"${2:expansión}\"}"
+    ],
+    "description": "Declaración de micro expansible en $0"
+  }
+}

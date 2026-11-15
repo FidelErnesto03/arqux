@@ -1,0 +1,127 @@
+{
+  "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+  "name": "CORTEX",
+  "scopeName": "source.cortex",
+  "patterns": [
+    { "include": "#comments" },
+    { "include": "#sigil_header" },
+    { "include": "#object_decl" },
+    { "include": "#sigil_decl" },
+    { "include": "#enum_ref" },
+    { "include": "#kv_attrs" },
+    { "include": "#strings" },
+    { "include": "#numbers" }
+  ],
+  "repository": {
+    "comments": {
+      "patterns": [
+        {
+          "name": "comment.line.number-sign.cortex",
+          "match": "#.*$"
+        }
+      ]
+    },
+    "sigil_header": {
+      "patterns": [
+        {
+          "name": "entity.name.section.cortex",
+          "match": "^(\\$\\d+(?:\\.\\d+)?)(:)([^:\\n]*)(?::([A-Z][A-Z0-9_]*))?\\s*$",
+          "captures": {
+            "1": { "name": "keyword.control.section-number.cortex" },
+            "2": { "name": "punctuation.separator.cortex" },
+            "3": { "name": "entity.name.section.title.cortex" },
+            "4": { "name": "constant.language.capa.cortex" }
+          }
+        }
+      ]
+    },
+    "object_decl": {
+      "patterns": [
+        {
+          "name": "meta.object.cortex",
+          "begin": "^(OBJ:)([A-Za-z_][\\w-]*)",
+          "beginCaptures": {
+            "1": { "name": "storage.type.obj.cortex" },
+            "2": { "name": "entity.name.type.object.cortex" }
+          },
+          "end": "$",
+          "patterns": [
+            { "include": "#strings" },
+            { "include": "#kv_attrs" },
+            { "include": "#enum_ref" },
+            { "include": "#numbers" },
+            { "include": "#braces" }
+          ]
+        }
+      ]
+    },
+    "sigil_decl": {
+      "patterns": [
+        {
+          "name": "meta.sigil-decl.cortex",
+          "begin": "^([A-Z][A-Z0-9_]{1,})(:)([A-Za-z_][\\w-]*)",
+          "beginCaptures": {
+            "1": { "name": "support.type.sigil.cortex" },
+            "2": { "name": "punctuation.separator.cortex" },
+            "3": { "name": "entity.name.instance.cortex" }
+          },
+          "end": "$",
+          "patterns": [
+            { "include": "#strings" },
+            { "include": "#kv_attrs" },
+            { "include": "#enum_ref" },
+            { "include": "#numbers" },
+            { "include": "#braces" }
+          ]
+        }
+      ]
+    },
+    "enum_ref": {
+      "patterns": [
+        {
+          "name": "constant.language.enum-ref.cortex",
+          "match": "%[a-z_][a-z0-9_]*"
+        }
+      ]
+    },
+    "kv_attrs": {
+      "patterns": [
+        {
+          "name": "variable.other.attr-key.cortex",
+          "match": "[A-Za-z_][\\w-]*(?=\\s*:)"
+        }
+      ]
+    },
+    "strings": {
+      "patterns": [
+        {
+          "name": "string.quoted.double.cortex",
+          "begin": "\"",
+          "end": "\"",
+          "patterns": [
+            {
+              "name": "constant.character.escape.cortex",
+              "match": "\\\\."
+            }
+          ]
+        }
+      ]
+    },
+    "numbers": {
+      "patterns": [
+        {
+          "name": "constant.numeric.cortex",
+          "match": "(?<![\\w])-?\\d+(\\.\\d+)?(?![\\w])"
+        }
+      ]
+    },
+    "braces": {
+      "patterns": [
+        {
+          "name": "punctuation.definition.braces.cortex",
+          "match": "[\\{\\}\\[\\]\\(\\),]"
+        }
+      ]
+    }
+  }
+}

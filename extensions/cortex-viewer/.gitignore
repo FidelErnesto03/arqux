@@ -1,0 +1,6 @@
+node_modules/
+out/
+*.vsix
+*-bundle.tar.gz
+*.vsix.sha256
+*-bundle.tar.gz.sha256

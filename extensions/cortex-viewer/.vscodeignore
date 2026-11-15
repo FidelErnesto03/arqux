@@ -1,0 +1,20 @@
+# Dev sources and build config — ship compiled out/ only
+src/**
+.vscode/**
+**/tsconfig.json
+**/*.map
+.gitignore
+.gitattributes
+.vscode-test/**
+
+# Tests compilados — no van en el paquete
+out/test/**
+
+# Artefactos de build/distribución — nunca dentro del .vsix
+*.vsix
+*-bundle.tar.gz
+*.tar.gz.sha256
+AUDIT_REPORT.hcortex.md
+
+# node_modules: vsce solo incluye dependencies de produccion
+# (markdown-it closure) — devDependencies quedan fuera

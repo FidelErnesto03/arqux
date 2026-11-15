@@ -1,0 +1,188 @@
+{
+  "name": "arqux-cortex-viewer",
+  "displayName": "ArqUX CORTEX Viewer",
+  "description": "Live HCORTEX 1.0 preview, real-time CORTEX validation, C14N canonical hash and safe bidirectional editing — powered by the codec-cortex toolchain.",
+  "version": "0.2.1",
+  "publisher": "arqux",
+  "license": "Apache-2.0",
+  "icon": "media/icon.png",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/FidelErnesto03/arqux",
+    "directory": "extensions/cortex-viewer"
+  },
+  "bugs": {
+    "url": "https://github.com/FidelErnesto03/arqux/issues"
+  },
+  "homepage": "https://github.com/FidelErnesto03/arqux",
+  "categories": [
+    "Programming Languages",
+    "Visualization",
+    "Formatters"
+  ],
+  "keywords": [
+    "cortex",
+    "hcortex",
+    "c14n",
+    "codec",
+    "arqux"
+  ],
+  "main": "./out/extension.js",
+  "activationEvents": [
+    "onLanguage:cortex"
+  ],
+  "contributes": {
+    "languages": [
+      {
+        "id": "cortex",
+        "aliases": [
+          "CORTEX",
+          "cortex"
+        ],
+        "extensions": [
+          ".cortex"
+        ],
+        "configuration": "./language-configuration.json",
+        "semanticTokenScopes": [
+          {
+            "language": "cortex",
+            "scopes": {
+              "type": ["entity.name.type"],
+              "enumMember": ["variable.other.enummember"],
+              "namespace": ["entity.name.namespace"],
+              "macro": ["keyword.other.directive"]
+            }
+          }
+        ]
+      }
+    ],
+    "grammars": [
+      {
+        "language": "cortex",
+        "scopeName": "source.cortex",
+        "path": "./syntaxes/cortex.tmLanguage.json"
+      }
+    ],
+    "commands": [
+      {
+        "command": "cortex.openPreview",
+        "title": "Open HCORTEX Preview",
+        "category": "CORTEX",
+        "icon": "$(open-preview)"
+      },
+      {
+        "command": "cortex.openPreviewToSide",
+        "title": "Open HCORTEX Preview to the Side",
+        "category": "CORTEX",
+        "icon": "$(split-horizontal)"
+      },
+      {
+        "command": "cortex.verifyHash",
+        "title": "Verify Canonical Hash",
+        "category": "CORTEX",
+        "icon": "$(shield)"
+      },
+      {
+        "command": "cortex.applyHumanEdit",
+        "title": "Apply HCORTEX Human Edit",
+        "category": "CORTEX",
+        "icon": "$(edit)"
+      },
+      {
+        "command": "cortex.exportPreview",
+        "title": "Export Preview",
+        "category": "CORTEX",
+        "icon": "$(export)"
+      }
+    ],
+    "keybindings": [
+      {
+        "command": "cortex.openPreview",
+        "key": "ctrl+shift+v",
+        "mac": "cmd+shift+v",
+        "when": "editorLangId == 'cortex'"
+      },
+      {
+        "command": "cortex.openPreviewToSide",
+        "key": "ctrl+k v",
+        "mac": "cmd+k v",
+        "when": "editorLangId == 'cortex'"
+      }
+    ],
+    "snippets": [
+      {
+        "language": "cortex",
+        "path": "./snippets/cortex.json"
+      }
+    ],
+    "configuration": {
+      "title": "ArqUX CORTEX Viewer",
+      "properties": {
+        "cortex.toolchainPath": {
+          "type": "string",
+          "default": "",
+          "description": "Comando explícito del toolchain codec-cortex (ej. /ruta/a/cortex). Vacío = cadena de prioridad automática."
+        },
+        "cortex.debounceMs": {
+          "type": "number",
+          "default": 250,
+          "minimum": 50,
+          "description": "Debounce en ms para refrescar preview y diagnósticos tras cada edición."
+        },
+        "cortex.formatOnSave": {
+          "type": "boolean",
+          "default": false,
+          "description": "Formatear a forma canónica (canonicalize) al guardar el documento."
+        }
+      }
+    },
+    "menus": {
+      "editor/title": [
+        {
+          "command": "cortex.openPreview",
+          "when": "editorLangId == 'cortex'",
+          "group": "navigation"
+        },
+        {
+          "command": "cortex.openPreviewToSide",
+          "when": "editorLangId == 'cortex'",
+          "group": "navigation"
+        },
+        {
+          "command": "cortex.exportPreview",
+          "when": "editorLangId == 'cortex'",
+          "group": "navigation@1"
+        }
+      ],
+      "editor/context": [
+        {
+          "command": "cortex.verifyHash",
+          "when": "editorLangId == 'cortex'",
+          "group": "cortex"
+        }
+      ]
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "pretest": "npm run compile",
+    "test": "mocha --timeout 30000 out/test/suite/*.js",
+    "lint": "tsc -p ./ --noEmit"
+  },
+  "dependencies": {
+    "markdown-it": "^14.1.0"
+  },
+  "devDependencies": {
+    "@types/markdown-it": "^14.1.2",
+    "@types/mocha": "^10.0.10",
+    "@types/node": "^20.19.0",
+    "@types/vscode": "^1.85.0",
+    "mocha": "^10.8.2",
+    "typescript": "~5.6.3"
+  }
+}
