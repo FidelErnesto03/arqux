@@ -19,22 +19,28 @@ def _legacy_document() -> str:
 
 
 def test_writer_emits_strict_declarations_for_current_codec() -> None:
-    # strict=True is the contract this test names: rc.1 dialect is emitted
-    # only on the explicit strict path (see BUG-1 in test_empty_document).
+    # strict=True is the contract this test names: the strict path upgrades
+    # legacy GSIG lines to executable v1 declarations.
     text = write_cortex_from_json(cortex_to_dict(_legacy_document()), strict=True)
     assert "GSIG:" not in text
     assert "LNG:lesson{" in text
-    assert '$0:format{cortex:"0.1", encoding:"UTF-8"}' in text
+    assert '$0:format{cortex:1.0, encoding:UTF-8}' in text
 
 
-def test_default_writer_does_not_emit_rc1_dialect() -> None:
-    """BUG-1 regression guard: default path must stay in the 0.6.2 dialect."""
+def test_default_writer_emits_v1_dialect() -> None:
+    """Under the codec-cortex>=1.0 pin every emitted artifact must carry the
+    dialect line (G010_FORMAT_REQUIRED); the old BUG-1 guard that pinned the
+    default path to the 0.6.2 dialect is obsolete — the 0.6.x validator that
+    rejected ``$0:format`` is no longer the pinned codec."""
     text = write_cortex_from_json(cortex_to_dict(_legacy_document()))
-    assert '$0:format' not in text
+    assert '$0:format{cortex:1.0, encoding:UTF-8}' in text
 
 
 def test_codec_boundary_verifies_generated_text() -> None:
-    text = write_cortex_from_json(cortex_to_dict(_legacy_document()))
+    # Codec-verifiable output is the strict path: strict=False preserves
+    # legacy ``GSIG:`` symbols verbatim for lossless round-trip, which the
+    # v1 dispatcher rejects (G018_SYMBOL_WEIGHT_REQUIRED).
+    text = write_cortex_from_json(cortex_to_dict(_legacy_document()), strict=True)
     result = verify_text(text)
     assert result["valid"] is True
     assert result["parser"] in {"legacy", "dispatcher"}

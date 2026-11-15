@@ -39,9 +39,13 @@ def test_verify_healthy_brain_without_name_attrs(tmp_path) -> None:
 
     brain = tmp_path / "brain.cortex"
     brain.write_text(
-        "$0\n\n# FCS   | focus | attrs | H | Working | Focus\n"
+        "$0\n\n$0:format{cortex:1.0, encoding:UTF-8}\n\n"
+        "# FCS   | focus | attrs | H | Working | Focus\n"
         '# LNG   | lesson | attrs | M | Episodic | Lessons\n'
         '# OBJ   | objective | attrs | H | Working | Active goal\n'
+        'FCS:fcs_contract{type:"attrs", weight:"H", fields:"value:any?", focus:"value", desc:"Focus", open:true}\n'
+        'LNG:lng_contract{type:"attrs", weight:"M", fields:"value:any?", focus:"value", desc:"Lessons", open:true}\n'
+        'OBJ:obj_contract{type:"attrs", weight:"H", fields:"value:any?", focus:"value", desc:"Active goal", open:true}\n'
         "\n"
         "$1: FOCUS\n"
         'FCS:current{what:"x", priority:"medium", status:"current", survive:"work"}\n'

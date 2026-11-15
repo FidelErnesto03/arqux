@@ -41,9 +41,9 @@ AXM:no_auto_init{NEVER initialize Arqux without Architect approval}
 AXM:prog_ev{Each task:checkpoint IMMEDIATELY. Deferred=prohibited}
 AXM:resume{On resume:read brain.cortex→restore from last checkpoint}
 AXM:session_cortex{Session end:writes SES to brain.cortex PULSE. No close without checkpoint}
-AXM:memory_format{Native memory:CODEC-CORTEX. WRK:current in brain.cortex §5. LNG for lessons. Not prose}
+AXM:memory_format{Native memory:CODEC-CORTEX. WRK:current in brain.cortex $9. LNG for lessons. Not prose}
 AXM:compact{Compact window:call cortex.compact to serialize state to WRK:full. Reload from .cortex instead of prose summary}
-WK:cortex_memory{workflow:(a)Bootstrap loads WRK:current from §5 (b)Agent processes turn (c)Checkpoint:call cortex.checkpoint(content) at end of turn — persists WRK:current to §5 (d)Next turn bootstrap reads updated WRK:current — agent continues exactly where it was. WRK:current is SINGLE SOURCE OF TRUTH for agent working state. One line CORTEX. Agent does not remember — agent reads its state from .cortex}
+WK:cortex_memory{workflow:(a)Bootstrap loads WRK:current from $9 (b)Agent processes turn (c)Checkpoint:call cortex.checkpoint(content) at end of turn — persists WRK:current to $9 (d)Next turn bootstrap reads updated WRK:current — agent continues exactly where it was. WRK:current is SINGLE SOURCE OF TRUTH for agent working state. One line CORTEX. Agent does not remember — agent reads its state from .cortex}
 AXM:platform_agnostic{ZERO platform commands. This file+referenced tiers→fully governed}
 AXM:workspace_access{Full file access to ENTIRE workspace. Workspace=governance boundary}
 AXM:first_response{Present workspace dashboard BEFORE any question. HCORTEX format. Enforced by pre-turn gate.}

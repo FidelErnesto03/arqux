@@ -56,6 +56,7 @@ _GLOSSARY = (
     # parser rejects a file whose first section is not $0
     # (E002_GLOSSARY_NOT_FIRST). The glossary text lives in the comments below it.
     "$0\n"
+    "$0:format{cortex:1.0, encoding:UTF-8}\n"
     "\n"
     "# -- $0: TIMLOG LOCAL GLOSSARY --\n"
     "# Sigil | Name     | Type  | Risk | Cognitive Layer | Description\n"
@@ -63,6 +64,18 @@ _GLOSSARY = (
     "# ACT   | activity | attrs | B    | Episodic        | One activity interval\n"
     "# RCV   | receipt  | attrs | B    | Episodic        | External projection receipt\n"
     "# PRJ   | projection | attrs | B  | Episodic        | Per-provider projection mark\n"
+    "\n"
+    # Executable declarations — required under CORTEX 1.0 (I001/G022).
+    # Timelog sigils are open records like brain sigils (open:true).
+    'TLG:timelog{type:"attrs", weight:"B", fields:"value:any?", focus:"value", desc:"Timelog identity and metadata", open:true}\n'
+    "\n"
+    'ACT:activity{type:"attrs", weight:"B", fields:"value:any?", focus:"value", desc:"One activity interval", open:true}\n'
+    "\n"
+    'RCV:receipt{type:"attrs", weight:"B", fields:"value:any?", focus:"value", desc:"External projection receipt", open:true}\n'
+    "\n"
+    'PRJ:projection{type:"attrs", weight:"B", fields:"value:any?", focus:"value", desc:"Per-provider projection mark", open:true}\n'
+    "\n"
+    'ARQX:artifact{type:"attrs", weight:"B", fields:"value:any?", focus:"value", desc:"ArqUX artifact metadata", open:true}\n'
 )
 
 
@@ -142,6 +155,12 @@ def _serialize(document: dict[str, Any]) -> str:
         f'ses:"{document["ses"]}",opened:"{document["opened"]}",'
         f'version:"{VERSION}",revision:"{document["revision"]}"}}\n'
     )
+    # Explicit NIVEL 0 declaration — a timelog is a raw session record
+    # (PACKAGE), declared so artifact readers do not degrade it with W001.
+    lines.append(
+        'ARQX:artifact{level:"0", name:"timelog", usage:"state",'
+        ' kind:"native"}\n'
+    )
     lines.append("")
     lines.append(f"{SECTION_ACTIVITIES}: ACTIVITIES")
     for ref in sorted(document["blocks"]):
@@ -215,8 +234,17 @@ def _parse(text: str) -> dict[str, Any]:
         "receipts": {},
         "projections": {},
     }
+    in_glossary = False
     for raw in text.splitlines():
         line = raw.strip()
+        # Skip the $0 glossary block: executable sigil declarations
+        # (``ACT:activity{...}`` etc.) are contracts, not records.
+        if line.startswith("$0"):
+            in_glossary = True
+        elif re.match(r"^\$\d", line):
+            in_glossary = False
+        if in_glossary:
+            continue
         if line.startswith(f"{IDENTITY_SIGIL}:"):
             attrs = line[line.index("{") + 1: line.rindex("}")]
             document["project"] = _field(attrs, "project")

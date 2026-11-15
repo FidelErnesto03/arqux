@@ -262,16 +262,16 @@ def _now_iso() -> str:
 
 
 def _lesson_section(brain_path: Path) -> str:
-    """Section that already holds lessons, or the canonical $7."""
+    """Section that already holds lessons, or the canonical $8."""
     try:
         from ..state import crud_list
 
         entries = crud_list(brain_path, sigil="LNG").get("entries", [])
     except Exception:  # noqa: BLE001
-        return "$7"
+        return "$8"
     if not entries:
-        return "$7"
-    return entries[0].get("section") or "$7"
+        return "$8"
+    return entries[0].get("section") or "$8"
 
 
 def _read_cycle_manifest(cdir: Path) -> dict[str, Any] | None:
@@ -622,7 +622,8 @@ def close_cycle(
                 "candidates": [],
             }
         else:
-            candidates = scan.get("candidates", []) or list_candidates(root)
+            _lc = list_candidates(root)
+            candidates = scan.get("candidates", []) or ([] if isinstance(_lc, dict) else _lc)
             learning_scan = {
                 "status": "ok",
                 "total": scan.get("count", 0),

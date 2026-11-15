@@ -29,7 +29,7 @@ def _bump_brain_concurrency(brain_path: Path, agent_id: str) -> None:
     """Bump the ERR:concurrency version after a mutation."""
     from .state import crud_read
     try:
-        result = crud_read(str(brain_path), "$11/ERR:concurrency")
+        result = crud_read(str(brain_path), "$12/ERR:concurrency")
         entries = result.get("entries", [])
         if entries:
             val = dict(entries[0].get("value", {}))
@@ -40,7 +40,7 @@ def _bump_brain_concurrency(brain_path: Path, agent_id: str) -> None:
             val["version"] = str(cur + 1)
             val["last_writer"] = agent_id
             val["updated"] = _now_iso()
-            crud_update(str(brain_path), "$11/ERR:concurrency", set_=val, force=True)
+            crud_update(str(brain_path), "$12/ERR:concurrency", set_=val, force=True)
     except Exception:
         pass
 
@@ -57,7 +57,7 @@ def add_session_to_brain(
     ts = _now_iso()
     brain_path = _brain_cortex_path(project_root)
     crud_add(
-        brain_path, "$4", "SES", agent_id.replace("-", "_"),
+        brain_path, "$5", "SES", agent_id.replace("-", "_"),
         {"date": ts, "agent": agent_id, "role": role, "status": "active",
          "input": f"session start for {agent_id}", "output": "session active", "outcome": "active"},
         create_section=True, force=True,
@@ -83,7 +83,7 @@ def remove_session_from_brain(
     identical placeholders.
     """
     brain_path = _brain_cortex_path(project_root)
-    sessions = crud_list(brain_path, section="$4", sigil="SES").get("entries", [])
+    sessions = crud_list(brain_path, section="$5", sigil="SES").get("entries", [])
     updated_line = ""
     for entry in sessions:
         value = entry.get("value") or {}
@@ -96,7 +96,7 @@ def remove_session_from_brain(
             continue
         ts = _now_iso()
         crud_update(
-            brain_path, f"$4/SES:{entry['name']}",
+            brain_path, f"$5/SES:{entry['name']}",
             set_={
                 "date": ts,
                 "status": "released",
@@ -126,7 +126,7 @@ def append_handoff(
     ts = _now_iso()
     brain_path = _brain_cortex_path(project_root)
     crud_add(
-        brain_path, "$5", "HDL", f"{from_agent}_{to_agent}_{task_id}",
+        brain_path, "$6", "HDL", f"{from_agent}_{to_agent}_{task_id}",
         {"date": ts, "from": from_agent, "to": to_agent, "task": task_id, "note": note},
         create_section=True, force=True,
     )

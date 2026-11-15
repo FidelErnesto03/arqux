@@ -30,9 +30,14 @@ from arqux.core.state._crud import (
 )
 
 VALID_CORTEX = """$0
+
+$0:format{cortex:1.0, encoding:UTF-8}
+
 # Sigil | Name | Type | Risk | Cognitive Layer | Description
 # IDN   | identity  | attrs | B | Semantic | Actor identity
 # FCS   | focus     | attrs | H | Working  | Active anchor
+IDN:idn_contract{type:"attrs", weight:"B", fields:"value:any?", focus:"value", desc:"Actor identity", open:true}
+FCS:fcs_contract{type:"attrs", weight:"H", fields:"value:any?", focus:"value", desc:"Active anchor", open:true}
 
 $1: TEST
 IDN:agent{name:"test-agent", role:"governor", status:"current"}

@@ -62,7 +62,12 @@ def _register_agent(agents_path: Path, agent_id: str, role: str) -> None:
 
     section_id = _agents_section_id(doc)
     if section_id is None:
-        raise ValueError("agents.cortex has no section to hold the registry")
+        # Fresh agents.cortex (file absent or sectionless): seed the registry
+        # section so the upsert below has somewhere to land.
+        doc.setdefault("sections", []).append(
+            {"id": "$1", "title": "AGENTS", "comments": [], "entries": []}
+        )
+        section_id = "$1"
 
     try:
         crud.update_entry(doc, f"{section_id}/IDN:{agent_id}",

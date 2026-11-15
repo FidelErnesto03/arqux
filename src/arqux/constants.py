@@ -113,6 +113,8 @@ BLUEPRINTS_DIR: str = "blueprints"
 # files. This guarantees that every agent bound to the project shares the
 # same mental state.
 
+BRAIN_SECTION_IDENTITY: str = "IDENTITY"
+BRAIN_SECTION_AXIOMS: str = "AXIOMS"
 BRAIN_SECTION_FOCUS: str = "FOCUS"
 BRAIN_SECTION_OBJECTIVES: str = "OBJECTIVES"
 BRAIN_SECTION_SESSIONS: str = "SESSIONS"
@@ -121,10 +123,18 @@ BRAIN_SECTION_PULSE: str = "PULSE"
 BRAIN_SECTION_LESSONS: str = "LESSONS"
 BRAIN_SECTION_ACTIVE_CONTEXT: str = "ACTIVE_CONTEXT"
 BRAIN_SECTION_RISKS: str = "RISKS"
+BRAIN_SECTION_KNOWLEDGE: str = "KNOWLEDGE"
 BRAIN_SECTION_CONCURRENCY: str = "CONCURRENCY"
+BRAIN_SECTION_ISSUES: str = "ISSUES"
+BRAIN_SECTION_LOOPS: str = "LOOPS"
+BRAIN_SECTION_METADATA: str = "ARQUX_METADATA"
 
-#: All canonical brain sections (used for validation).
+#: All canonical brain sections in canon order (canon:
+#: docs/reference/cortex-brain-section-canon.md, $0..$15).
 ALL_BRAIN_SECTIONS: tuple[str, ...] = (
+    "GLOSSARY",
+    BRAIN_SECTION_IDENTITY,
+    BRAIN_SECTION_AXIOMS,
     BRAIN_SECTION_FOCUS,
     BRAIN_SECTION_OBJECTIVES,
     BRAIN_SECTION_SESSIONS,
@@ -133,7 +143,11 @@ ALL_BRAIN_SECTIONS: tuple[str, ...] = (
     BRAIN_SECTION_LESSONS,
     BRAIN_SECTION_ACTIVE_CONTEXT,
     BRAIN_SECTION_RISKS,
+    BRAIN_SECTION_KNOWLEDGE,
     BRAIN_SECTION_CONCURRENCY,
+    BRAIN_SECTION_ISSUES,
+    BRAIN_SECTION_LOOPS,
+    BRAIN_SECTION_METADATA,
 )
 
 # --- Roles and permissions -------------------------------------------------
@@ -257,11 +271,15 @@ def env(var: str, default: str | None = None) -> str | None:
 #   - CORTEX 1.0: the canonical identity section (``$1``). The 1.0 grammar rejects
 #              a sub-section of the glossary (G004_GLOSSARY_DECLARATION_MUST_BE_ATTRS),
 #              so migrated artifacts cannot keep ``$0.1``.
+#   - Brain canon: ``$15`` for brain.cortex (cortex-brain-section-canon); writers
+#              emit ``$19`` for non-brain artifacts.
 #
-# Both locations are read by ``arqux.formats.read_arqux_metadata`` — see
-# ``_ARQUX_META_SECTION`` / ``_ARQUX_META_SECTION_V1``. Emitting metadata into a
-# section the reader does not check degrades the artifact to NIVEL 0 without any
-# visible error, which is why the pair is documented here.
+# ``arqux.formats.read_arqux_metadata`` resolves ARQX by sigil across all
+# sections, preferring ``$0.1`` → ``$1`` → ``$15`` → ``$19`` (see
+# ``_ARQUX_META_PRIORITY``). Emitting metadata into a section the reader does
+# not check degrades the artifact to NIVEL 0 without any visible error —
+# that silent-degradation trap is why resolution is sigil-driven, never
+# position-fixed (audit H-08, CYCLE-16).
 
 
 class CortexLevel(Enum):
@@ -358,57 +376,66 @@ class ArtifactMetadata:
         return d
 
 
-# === BLP-036: BrainSection enum (13 canonical sections $0..$12) ============
+# === BLP-036: BrainSection enum (canonical sections $0..$14) ================
 
 class BrainSection(Enum):
-    """Canonical 13 sections of a Level-3 Brain artifact (BLP-036).
+    """Canonical sections of a Level-3 Brain artifact ($0..$15).
 
-    Maps to niveles-cortex-arqux.md v3.0: $0 through $12 ISSUES.
-    ArqUX metadata lives in $0.1 (BLP-041) or, from CORTEX 1.0, in the
-    canonical identity section $1 (BLP-001 T-1.19).
+    Canon: ``docs/reference/cortex-brain-section-canon.md`` (reconciles
+    ``niveles-cortex-arqux.md`` §5 with the real ``brain.cortex`` layout).
     The enum value is the section identifier used in the .cortex file
-    (with the leading ``$``).
+    (with the leading ``$``).  ``$0`` is the structural glossary — it is
+    NOT the ArqUX metadata slot; artifact metadata lives in ``$15``.
+    ``$2 AXIOMS`` holds the brain's own behavioral axioms — mandated by
+    the project or elevated by forced learning — making each brain unique.
     """
-    METADATA = "$0"
+    GLOSSARY = "$0"
     IDENTITY = "$1"
-    KNOWLEDGE = "$2"
+    AXIOMS = "$2"
     FOCUS = "$3"
     OBJECTIVES = "$4"
-    STATE = "$5"
-    LESSONS = "$6"
-    DECISIONS = "$7"
-    AXIOMS = "$8"
-    LIMITS = "$9"
-    HANDOFF = "$10"
-    CONCURRENCY = "$11"
-    ISSUES = "$12"
+    SESSIONS = "$5"
+    HANDOFFS = "$6"
+    PULSE = "$7"
+    LESSONS = "$8"
+    ACTIVE_CONTEXT = "$9"
+    RISKS = "$10"
+    KNOWLEDGE = "$11"
+    CONCURRENCY = "$12"
+    ISSUES = "$13"
+    LOOPS = "$14"
+    METADATA = "$15"
 
     @property
     def number(self) -> int:
-        """Numeric section index (0..12)."""
+        """Numeric section index (0..15)."""
         return int(self.value[1:])
 
     @classmethod
     def all_ids(cls) -> list[str]:
-        """Return the 13 canonical section ids in order."""
+        """Return the canonical section ids in order."""
         return [s.value for s in cls]
 
 
 #: Mapping from BrainSection → human-readable title (for structural validation).
+#: Canon: docs/reference/cortex-brain-section-canon.md ($0..$15).
 BRAIN_SECTION_TITLES: dict[str, str] = {
     "$0": "GLOSSARY",
     "$1": "IDENTITY",
-    "$2": "KNOWLEDGE",
+    "$2": "AXIOMS",
     "$3": "FOCUS",
     "$4": "OBJECTIVES",
-    "$5": "STATE",
-    "$6": "LESSONS",
-    "$7": "DECISIONS",
-    "$8": "AXIOMS",
-    "$9": "LIMITS",
-    "$10": "HANDOFF",
-    "$11": "CONCURRENCY",
-    "$12": "ISSUES",
+    "$5": "SESSIONS",
+    "$6": "HANDOFFS",
+    "$7": "PULSE",
+    "$8": "LESSONS",
+    "$9": "ACTIVE_CONTEXT",
+    "$10": "RISKS",
+    "$11": "KNOWLEDGE",
+    "$12": "CONCURRENCY",
+    "$13": "ISSUES",
+    "$14": "LOOPS",
+    "$15": "ARQUX_METADATA",
 }
 
 
@@ -465,3 +492,18 @@ E027_MALFORMED_SECTION: str = "E027_MALFORMED_SECTION"
 
 #: BRAIN with no active objectives (HIGH).
 E028_NO_ACTIVE_OBJECTIVES: str = "E028_NO_ACTIVE_OBJECTIVES"
+
+
+# === BLP-006 informational diagnostics (family I) ===========================
+# Family I completes the E/W/I verifier triad (Art. XVI — honest diagnostics).
+# Informational codes are emitted by cortex.verify alongside codec diagnostics
+# and NEVER affect ``valid``: only ``severity == "error"`` invalidates.
+
+#: Informational: which CODEC-CORTEX backend produced the validation.
+I001_CODEC_BACKEND_INFO: str = "I001_CODEC_BACKEND_INFO"
+
+#: Informational: entries whose values still carry ``<placeholder>`` markers.
+I002_PLACEHOLDER_VALUE: str = "I002_PLACEHOLDER_VALUE"
+
+#: Informational: declared sections that contain zero entries.
+I003_EMPTY_SECTION: str = "I003_EMPTY_SECTION"

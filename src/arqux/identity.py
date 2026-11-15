@@ -293,28 +293,62 @@ class IdentityManager:
                 f"Known agents: {', '.join(KNOWN_AGENTS)}."
             )
 
-        # Build the sigil entry to inject.
+        content = path.read_text(encoding="utf-8")
+
+        # Idempotency: a contract entry is unique per (sigil, name). Replaying
+        # an elevation must not duplicate the sigil in the contract.
+        if re.search(rf"(?:^|\n){sigil}:{re.escape(lesson_id)}\{{", content):
+            return {
+                "agent": agent,
+                "sigil": sigil,
+                "name": lesson_id,
+                "path": str(path),
+                "written": False,
+                "already_present": True,
+            }
+
+        # Build the sigil entry to inject. Free-text attrs are escaped with the
+        # canonical CORTEX string escaper — an unescaped quote or newline would
+        # produce a malformed entry (silent_corruption axiom).
+        from .cortex.atomic import AtomicWriteError, atomic_write_text
+        from .cortex.read_renderer import _escape_string
+
         body_text = body if body is not None else pattern
         attrs_parts = [
-            f'name:"{lesson_id}"',
+            f"name:{_escape_string(lesson_id)}",
             'status:"current"',
-            f'body:"{body_text}"',
-            f'source_lesson:"{lesson_id}"',
+            f"body:{_escape_string(body_text)}",
+            f"source_lesson:{_escape_string(lesson_id)}",
         ]
         if evidence_ref:
-            attrs_parts.append(f'evidence_ref:"{evidence_ref}"')
+            attrs_parts.append(f"evidence_ref:{_escape_string(evidence_ref)}")
         attrs_body = ", ".join(attrs_parts)
         new_entry = f"{sigil}:{lesson_id}{{{attrs_body}}}"
 
         # Find a home for it. Try $2: AXIOMS (for AXM) or $3: LIMITS (for LIM).
         # If the section doesn't exist, append to $1: IDENTITY as a fallback.
-        content = path.read_text(encoding="utf-8")
         target_section = "$2" if sigil == "AXM" else "$3"
-
         new_content = self._inject_into_section(
             content, target_section, new_entry, fallback_section="$1",
         )
-        path.write_text(new_content, encoding="utf-8")
+
+        # Atomic write with .bak backup (tmp + fsync + rename).
+        try:
+            atomic_write_text(new_content, str(path))
+        except AtomicWriteError as exc:
+            raise RuntimeError(f"identity write failed atomically: {exc}") from exc
+
+        # silent_corruption guard: verify the artifact actually carries the
+        # new contract before reporting success; on failure restore .bak.
+        written = path.read_text(encoding="utf-8")
+        if not re.search(rf"(?:^|\n){sigil}:{re.escape(lesson_id)}\{{", written):
+            bak = Path(str(path) + ".bak")
+            if bak.exists():
+                bak.replace(path)
+            raise RuntimeError(
+                f"post-write verification failed: {sigil}:{lesson_id} absent "
+                f"from {path} — backup restored"
+            )
 
         logger.info(
             "IdentityManager.elevate_to_identity: injected %s:%s into %s",

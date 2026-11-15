@@ -15,14 +15,17 @@ _CONTEXT = PermissionContext(agent_id="test", role="governor")
 
 _SAMPLE = """$0
 
+$0:format{cortex:1.0, encoding:UTF-8}
+
 # -- $0: TEST GLOSSARY --
 # Sigil | Name | Type | Risk | Cognitive Layer | Description
 # FCS   | focus      | attrs      | H | Working        | Active attention anchor
 # LNG   | lesson     | attrs      | M | Episodic       | Learned lesson
 # OBJ   | objective  | attrs      | H | Working        | Active goal
-GSIG:FCS{name:"focus", type:"attrs", risk:"H", layer:"Working", description:"Active attention anchor"}
-GSIG:LNG{name:"lesson", type:"attrs", risk:"M", layer:"Episodic", description:"Learned lesson"}
-GSIG:OBJ{name:"objective", type:"attrs", risk:"H", layer:"Working", description:"Active goal"}
+FCS:fcs_contract{type:"attrs", weight:"H", fields:"value:any?", focus:"value", desc:"Active attention anchor", open:true}
+LNG:lng_contract{type:"attrs", weight:"M", fields:"value:any?", focus:"value", desc:"Learned lesson", open:true}
+OBJ:obj_contract{type:"attrs", weight:"H", fields:"value:any?", focus:"value", desc:"Active goal", open:true}
+IDN:idn_contract{type:"attrs", weight:"B", fields:"value:any?", focus:"value", desc:"Actor identity", open:true}
 
 $1: IDENTITY
 

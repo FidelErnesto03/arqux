@@ -102,3 +102,93 @@ def test_entry_list_filtered(tmp_path: Path) -> None:
     assert lst.profile == "OUT-WORK"
     assert lst.fields.get("count", 0) >= 1
     assert lst.fields["entries"][0]["sigil"] == "OBJ"
+
+
+# ---------------------------------------------------------------------------
+# entry.list selector vocab — parity with cortex.entry.get
+# ---------------------------------------------------------------------------
+
+
+def test_entry_list_selector_section_and_sigil(tmp_path: Path) -> None:
+    """selector='$N/SIGIL' filters by section + sigil."""
+    f = tmp_path / "test.cortex"
+    f.write_text(_SAMPLE)
+    lst = entry_list_handler(str(f), selector="$3/OBJ", ctx=_CONTEXT)
+    assert lst.profile == "OUT-WORK"
+    entries = lst.fields["entries"]
+    assert entries and all(
+        e["sigil"] == "OBJ" and e["section"] == "$3" for e in entries
+    )
+
+
+def test_entry_list_selector_full(tmp_path: Path) -> None:
+    """selector='$N/SIGIL:name' filters down to the exact entry."""
+    f = tmp_path / "test.cortex"
+    f.write_text(_SAMPLE)
+    lst = entry_list_handler(str(f), selector="$3/OBJ:goal1", ctx=_CONTEXT)
+    assert lst.profile == "OUT-WORK"
+    entries = lst.fields["entries"]
+    assert len(entries) == 1
+    assert entries[0]["name"] == "goal1"
+
+
+def test_entry_list_selector_sigil_only(tmp_path: Path) -> None:
+    """selector='SIGIL' / 'SIGIL:*' filters by sigil across sections."""
+    f = tmp_path / "test.cortex"
+    f.write_text(_SAMPLE)
+    for sel in ("OBJ", "OBJ:*"):
+        lst = entry_list_handler(str(f), selector=sel, ctx=_CONTEXT)
+        assert lst.profile == "OUT-WORK", sel
+        assert lst.fields["count"] >= 1
+        assert all(e["sigil"] == "OBJ" for e in lst.fields["entries"])
+
+
+def test_entry_list_selector_name_prefix(tmp_path: Path) -> None:
+    """Trailing '*' in the name component is a prefix match (entry.get rule)."""
+    f = tmp_path / "test.cortex"
+    f.write_text(_SAMPLE)
+    lst = entry_list_handler(str(f), selector="OBJ:go*", ctx=_CONTEXT)
+    assert lst.profile == "OUT-WORK"
+    assert [e["name"] for e in lst.fields["entries"]] == ["goal1"]
+
+
+def test_entry_list_selector_section_only(tmp_path: Path) -> None:
+    """selector='$N' lists every entry in the section (entry.get parity)."""
+    f = tmp_path / "test.cortex"
+    f.write_text(_SAMPLE)
+    lst = entry_list_handler(str(f), selector="$2", ctx=_CONTEXT)
+    assert lst.profile == "OUT-WORK"
+    entries = lst.fields["entries"]
+    assert entries and all(e["section"] == "$2" for e in entries)
+
+
+def test_entry_list_selector_deprecated_name_rejected(tmp_path: Path) -> None:
+    """':_' is rejected (T-022), matching the rest of the entry.* family."""
+    f = tmp_path / "test.cortex"
+    f.write_text(_SAMPLE)
+    lst = entry_list_handler(str(f), selector="OBJ:_", ctx=_CONTEXT)
+    assert lst.profile == "OUT-ERROR"
+    assert lst.fields.get("code") == "INVALID_ARGS"
+
+
+def test_entry_list_explicit_params_override_selector(tmp_path: Path) -> None:
+    """Explicit section/sigil params win over selector-derived components."""
+    f = tmp_path / "test.cortex"
+    f.write_text(_SAMPLE)
+    lst = entry_list_handler(
+        str(f), selector="$3/OBJ", sigil="FCS", ctx=_CONTEXT,
+    )
+    assert lst.profile == "OUT-WORK"
+    assert all(e["sigil"] == "FCS" for e in lst.fields["entries"])
+    # The effective filters are echoed back for verification.
+    assert lst.fields["sigil"] == "FCS"
+    assert lst.fields["selector"] == "$3/OBJ"
+
+
+def test_entry_list_selector_no_match_is_empty(tmp_path: Path) -> None:
+    f = tmp_path / "test.cortex"
+    f.write_text(_SAMPLE)
+    lst = entry_list_handler(str(f), selector="$3/FCS:*", ctx=_CONTEXT)
+    assert lst.profile == "OUT-WORK"
+    assert lst.fields["count"] == 0
+    assert lst.fields["entries"] == []

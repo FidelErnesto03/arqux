@@ -1,4 +1,4 @@
-"""Contextual elevation logic."""
+"""Contextual elevation logic — native, governed implementation (BLP-004)."""
 from __future__ import annotations
 
 from pathlib import Path
@@ -6,16 +6,14 @@ from typing import Any
 
 from ...constants import ARQUX_DIR, BRAIN_CORTEX
 from ._common import (
-    _HAS_CLE,
     _build_brain_doc,
     _hash_text,
     _load_policies,
-    _resolve_policy_path,
-    detect_candidates,
-    plan_patch,
-    rebuild_index,
-    render_diff,
+    _resolve_project_root,
+    learning_engine_available,
 )
+from .algorithms import detect_candidates, plan_patch, render_diff
+from .sections import section_for_sigil, section_title
 
 
 def _preview_hash(diff: str) -> str:
@@ -23,9 +21,17 @@ def _preview_hash(diff: str) -> str:
     return _hash_text(diff)
 
 
+def _brain_path(project_root: Path) -> Path:
+    # project_root may be workspace/project root or .arqux dir.
+    if (project_root / BRAIN_CORTEX).is_file() and project_root.name == ARQUX_DIR:
+        return project_root / BRAIN_CORTEX
+    if (project_root / ARQUX_DIR / BRAIN_CORTEX).is_file():
+        return project_root / ARQUX_DIR / BRAIN_CORTEX
+    return project_root / BRAIN_CORTEX
+
+
 def _planned_entry(target: Any) -> tuple[str, str, dict[str, Any]]:
-    """Return the entry that would be written for a learning candidate."""
-    new_sigil = target.target
+    new_sigil = getattr(target, "target", "KNW")
     new_name = getattr(target, "candidate_id", "elevated")
     new_value = {
         "topic": "elevated_knowledge",
@@ -40,7 +46,6 @@ def _validate_elevation_payload(
     new_value: dict[str, Any],
     diff: str,
 ) -> list[str]:
-    """Return blocking problems in a proposed learning elevation."""
     problems: list[str] = []
     serialized_values = [str(v).strip() for v in new_value.values()]
     if any(v in {"", "[]", "{}", "None"} for v in serialized_values):
@@ -56,7 +61,7 @@ def _validate_elevation_payload(
     ]
     if any(marker in diff for marker in generic_markers):
         problems.append("proposed elevation contains generic or placeholder content")
-    if new_sigil not in {"SES", "LNG", "KNW"}:
+    if new_sigil not in {"SES", "LNG", "KNW", "CNST", "STP"}:
         problems.append(f"unexpected elevation target: {new_sigil}")
     boilerplate = {"active", "pending", "follow_policy", "not_applicable", "not_specified"}
     for key, val in new_value.items():
@@ -66,6 +71,55 @@ def _validate_elevation_payload(
     return problems
 
 
+def _quote_cortex_val(val: Any) -> str:
+    s = str(val)
+    if any(c in s for c in (" ", ",", '"', "'", "{", "}", "\n")):
+        return '"' + s.replace("\\", "\\\\").replace('"', '\\"') + '"'
+    return s
+
+
+def _format_attrs(value: dict[str, Any]) -> str:
+    return "{" + ", ".join(f"{k}:{_quote_cortex_val(v)}" for k, v in value.items()) + "}"
+
+
+def _apply_patch_governed(brain_file: Path, section_id: str, sigil: str, name: str, value: dict[str, Any]) -> dict[str, Any]:
+    from ...cortex.atomic import atomic_write_text
+    from ...cortex.reader import cortex_to_dict
+    from ...cortex.transaction import guard_write
+    from ...cortex.writer import write_cortex_from_json
+
+    before_text = brain_file.read_text(encoding="utf-8")
+    doc = cortex_to_dict(before_text)
+    sections = doc.setdefault("sections", [])
+    target = None
+    for sec in sections:
+        if str(sec.get("id")) == str(section_id):
+            target = sec
+            break
+    if target is None:
+        target = {"id": str(section_id), "title": section_title(section_id) or "", "entries": [], "comments": []}
+        sections.append(target)
+    target.setdefault("entries", [])
+
+    # Idempotent replace if same sigil:name exists in target section.
+    entry = {"sigil": sigil, "name": name, "attrs": dict(value)}
+    replaced = False
+    for i, existing in enumerate(target.get("entries") or []):
+        if isinstance(existing, dict) and existing.get("sigil") == sigil and existing.get("name") == name:
+            target["entries"][i] = entry
+            replaced = True
+            break
+    if not replaced:
+        target["entries"].append(entry)
+
+    after_text = write_cortex_from_json(doc)
+    result = atomic_write_text(after_text, str(brain_file))
+    violation = guard_write(str(brain_file), before_text, allowed_sections=[str(section_id)])
+    if violation:
+        return {"error": violation.get("error", "transaction guard rejected write"), **violation}
+    return {"ok": True, "bytes_written": getattr(result, "bytes_written", None), "section": str(section_id)}
+
+
 def elevate_candidate(
     project_root: Path,
     candidate_id: str,
@@ -73,13 +127,15 @@ def elevate_candidate(
     dry_run: bool = True,
     confirm_hash: str | None = None,
 ) -> dict[str, Any]:
-    """Elevate a candidate (SES→LNG or LNG→KNW).
+    """Elevate a candidate (SES→LNG or LNG→KNW, governed).
 
     When ``dry_run=True`` (default), returns the diff without applying.
-    When ``dry_run=False``, applies the elevation to brain.cortex.
+    When ``dry_run=False``, applies only with a valid ``confirm_hash`` and
+    through governed write (writer+atomic+transaction guard).
     """
-    if not _HAS_CLE:
-        return {"error": "learning engine unavailable"}
+    ok, cause = learning_engine_available()
+    if not ok:
+        return {"error": "learning engine unavailable", "cause": cause or "unknown"}
 
     try:
         brain_doc = _build_brain_doc(project_root)
@@ -87,33 +143,24 @@ def elevate_candidate(
             return {"error": "could_not_build_document"}
 
         policy_set = _load_policies(project_root)
-        if not policy_set:
-            return {"error": "policies_not_found"}
-
-        brain_path = project_root / ARQUX_DIR / BRAIN_CORTEX
-        brain_hash = _hash_text(brain_path.read_text(encoding="utf-8"))
-        policy_path = _resolve_policy_path(project_root)
-        policy_hash = _hash_text(policy_path.read_text(encoding="utf-8"))
-
-        index = rebuild_index(brain_doc, policy_set, brain_hash, policy_hash)
-        candidates = detect_candidates(brain_doc, index, policy_set)
+        candidates = detect_candidates(brain_doc)
 
         target = None
         for c in candidates:
-            if c.candidate_id == candidate_id:
+            if getattr(c, "candidate_id", None) == candidate_id:
                 target = c
                 break
         if target is None:
             return {"error": f"candidate {candidate_id!r} not found"}
 
         patch = plan_patch(brain_doc, policy_set, target)
-        if patch.mode == "block":
-            return {"error": f"elevation blocked by policy: {patch.block_reason}"}
+        if getattr(patch, "mode", "") == "block":
+            return {"error": f"elevation blocked: {getattr(patch, 'reason', 'blocked')}"}
 
         diff = render_diff(brain_doc, patch)
         preview_hash = _preview_hash(diff)
 
-        new_sigil = patch.new_entry_sigil or target.target
+        new_sigil = patch.new_entry_sigil or getattr(target, "target", "KNW")
         new_name = patch.new_entry_name
         new_value = patch.new_entry_value
         if not new_name or not new_value:
@@ -150,36 +197,17 @@ def elevate_candidate(
                 "diff": diff,
             }
 
-        from ...constants import BRAIN_SECTION_LESSONS, BRAIN_SECTION_SESSIONS
-        from ...state import crud_add
+        root = _resolve_project_root(str(project_root)) or Path(project_root)
+        brain_file = _brain_path(root)
+        section = section_for_sigil(new_sigil, brain_doc) or patch.target_section
+        applied = _apply_patch_governed(brain_file, section, new_sigil, new_name, new_value)
+        if "error" in applied:
+            return {"error": f"elevation write failed: {applied['error']}", "preview_hash": preview_hash, "diff": diff, **{k:v for k,v in applied.items() if k!='error'}}
 
-        sigil_section: dict[str, str] = {
-            "LNG": BRAIN_SECTION_LESSONS,
-            "KNW": "KNOWLEDGE",
-            "SES": BRAIN_SECTION_SESSIONS,
-        }
-        section = sigil_section.get(new_sigil, "KNOWLEDGE")
-
-        def _quote_cortex_val(val: Any) -> str:
-            s = str(val)
-            if any(c in s for c in (" ", ",", '"', "'", "{")):
-                return f'"{s}"'
-            return s
-
-        value_body = ", ".join(
-            f"{k}:{_quote_cortex_val(v)}" for k, v in new_value.items()
-        )
-
-        result = crud_add(
-            str(brain_path), section, new_sigil, new_name, value_body,
-            create_section=True,
-            force=True,
-        )
-        if "error" in result:
-            return {"error": f"elevation write failed: {result['error']}",
-                    "preview_hash": preview_hash, "diff": diff}
-
-        return {"mode": "applied", "diff": diff, "candidate": candidate_id, "preview_hash": preview_hash}
+        return {"mode": "applied", "diff": diff, "candidate": candidate_id, "preview_hash": preview_hash, "section": section}
 
     except Exception as exc:
         return {"error": str(exc)}
+
+
+__all__ = ["elevate_candidate"]

@@ -19,6 +19,7 @@ directly — tests may depend on it, the writer cannot.
 
 from __future__ import annotations
 
+import re
 import sys
 from pathlib import Path
 
@@ -26,24 +27,30 @@ import pytest
 
 # ---------------------------------------------------------------------------
 # Ensure CODEC-CORTEX parser is importable for round-trip tests.
-# The legacy ``cortex.core`` parser is installed alongside arqux; if it is
-# not available we skip the round-trip tests rather than failing.
+# The pinned codec is codec-cortex 1.0.x (``codec_cortex``), whose strict
+# grammar requires ``$0:format`` (G010) and executable sigil declarations
+# in ``$0`` (I001). ``arqux.cortex.model.parse_native`` drives the codec
+# dispatcher and adapts the v1 AST back to the shape these tests assert
+# (``$N`` section ids, ``.entries``, ``.sigil``, ``.value``). If no codec
+# is available we skip the round-trip tests rather than failing.
 # ---------------------------------------------------------------------------
 _HAS_CORTEX_PARSER = False
+_parse_cortex = None
+
+# The codec may resolve to the local dev repo — that's intentional.
+_CODEC_PATH = Path("/home/vatrox/workspace/CODEC-CORTEX")
+if _CODEC_PATH.is_dir() and str(_CODEC_PATH) not in sys.path:
+    sys.path.insert(0, str(_CODEC_PATH))
+
 try:
-    from cortex.core.parser import parse_cortex as _parse_cortex  # noqa: F401
+    import codec_cortex.dispatcher  # noqa: F401
+
+    from arqux.cortex.model import parse_native as _parse_cortex  # noqa: F401
 
     _HAS_CORTEX_PARSER = True
 except ImportError:
-    pass
-
-# Also try codec_cortex (newer package) — add its path if needed.
-if not _HAS_CORTEX_PARSER:
-    _CODEC_PATH = Path("/home/vatrox/workspace/CODEC-CORTEX")
-    if _CODEC_PATH.is_dir():
-        sys.path.insert(0, str(_CODEC_PATH))
     try:
-        from codec_cortex.parser import parse_cortex as _parse_cortex  # noqa: F401
+        from cortex.core.parser import parse_cortex as _parse_cortex  # noqa: F401
 
         _HAS_CORTEX_PARSER = True
     except ImportError:
@@ -68,11 +75,49 @@ _GLOSSARY_COMMENTS = [
     "# DESC  | description | cuerpo | B | Semantic | Structured textual description",
 ]
 
+# CODEC-CORTEX 1.0.x requires executable sigil declarations in ``$0``
+# (I001_UNDECLARED_SYMBOL) plus a ``$0:format`` dialect declaration
+# (G010_FORMAT_REQUIRED). These mirror the declarations shipped in
+# ``src/arqux/templates/brain.cortex``: ``open:true`` keeps ArqUX's
+# intentionally-open payload records parseable under the strict contract.
+_GLOSSARY_DECLARATIONS = [
+    {"sigil": "ARQX", "name": "arqx_contract", "attrs": {
+        "type": "attrs", "weight": "B", "fields": "value:any?",
+        "focus": "value", "desc": "ArqUX artifact metadata", "open": True}},
+    {"sigil": "FCS", "name": "fcs_contract", "attrs": {
+        "type": "attrs", "weight": "H", "fields": "value:any?",
+        "focus": "value", "desc": "Active attention anchor", "open": True}},
+    {"sigil": "DESC", "name": "desc_contract", "attrs": {
+        "type": "cuerpo", "weight": "B",
+        "focus": "$body", "desc": "Structured textual description", "open": True}},
+    {"sigil": "IDN", "name": "idn_contract", "attrs": {
+        "type": "attrs", "weight": "B", "fields": "value:any?",
+        "focus": "value", "desc": "Actor identity", "open": True}},
+    {"sigil": "OBJ", "name": "obj_contract", "attrs": {
+        "type": "attrs", "weight": "H", "fields": "value:any?",
+        "focus": "value", "desc": "Active goal", "open": True}},
+    {"sigil": "WRK", "name": "wrk_contract", "attrs": {
+        "type": "attrs", "weight": "B", "fields": "value:any?",
+        "focus": "value", "desc": "Current execution state", "open": True}},
+]
+
+
+def _glossary() -> dict:
+    """A glossary block whose emitted text is valid under CODEC-CORTEX 1.0.x."""
+    return {
+        "comments": list(_GLOSSARY_COMMENTS),
+        "format_decl": '$0:format{cortex:1.0, encoding:UTF-8}',
+        "declarations": [
+            {"sigil": d["sigil"], "name": d["name"], "attrs": dict(d["attrs"])}
+            for d in _GLOSSARY_DECLARATIONS
+        ],
+    }
+
 
 def _basic_doc() -> dict:
     """A minimal document with glossary + one section + one attrs entry."""
     return {
-        "glossary": {"comments": list(_GLOSSARY_COMMENTS)},
+        "glossary": _glossary(),
         "sections": [
             {
                 "id": "$19",
@@ -130,7 +175,7 @@ def test_basic_document_ends_with_newline() -> None:
 def test_multiple_sections_multiple_entries() -> None:
     """Multiple sections each with multiple entries render correctly."""
     doc = {
-        "glossary": {"comments": list(_GLOSSARY_COMMENTS)},
+        "glossary": _glossary(),
         "sections": [
             {
                 "id": "$1",
@@ -179,7 +224,7 @@ def test_multiple_sections_multiple_entries() -> None:
 def test_string_escaping_quotes() -> None:
     """Double quotes inside strings are escaped as \\"."""
     doc = {
-        "glossary": {"comments": list(_GLOSSARY_COMMENTS)},
+        "glossary": _glossary(),
         "sections": [
             {
                 "id": "$1",
@@ -201,7 +246,7 @@ def test_string_escaping_quotes() -> None:
 def test_string_escaping_backslashes() -> None:
     """Backslashes inside strings are escaped as \\\\."""
     doc = {
-        "glossary": {"comments": list(_GLOSSARY_COMMENTS)},
+        "glossary": _glossary(),
         "sections": [
             {
                 "id": "$1",
@@ -223,7 +268,7 @@ def test_string_escaping_backslashes() -> None:
 def test_string_escaping_unicode() -> None:
     """Unicode characters are preserved (not escaped)."""
     doc = {
-        "glossary": {"comments": list(_GLOSSARY_COMMENTS)},
+        "glossary": _glossary(),
         "sections": [
             {
                 "id": "$1",
@@ -245,7 +290,7 @@ def test_string_escaping_unicode() -> None:
 def test_string_escaping_combined() -> None:
     """Quotes + backslashes + unicode together escape correctly."""
     doc = {
-        "glossary": {"comments": list(_GLOSSARY_COMMENTS)},
+        "glossary": _glossary(),
         "sections": [
             {
                 "id": "$1",
@@ -272,7 +317,7 @@ def test_string_escaping_combined() -> None:
 def test_cuerpo_entry_multiline() -> None:
     """Cuerpo entries render as multi-line with closing brace on its own line."""
     doc = {
-        "glossary": {"comments": list(_GLOSSARY_COMMENTS)},
+        "glossary": _glossary(),
         "sections": [
             {
                 "id": "$1",
@@ -295,7 +340,7 @@ def test_cuerpo_entry_multiline() -> None:
 def test_cuerpo_entry_single_line_body() -> None:
     """A cuerpo entry with a single-line body still uses multi-line format."""
     doc = {
-        "glossary": {"comments": list(_GLOSSARY_COMMENTS)},
+        "glossary": _glossary(),
         "sections": [
             {
                 "id": "$1",
@@ -322,22 +367,24 @@ def test_cuerpo_entry_single_line_body() -> None:
 def test_empty_section() -> None:
     """A section with no entries renders just the header."""
     doc = {
-        "glossary": {"comments": list(_GLOSSARY_COMMENTS)},
+        "glossary": _glossary(),
         "sections": [
             {"id": "$1", "title": "EMPTY", "entries": []},
         ],
     }
     text = write_cortex_from_json(doc)
     assert "$1: EMPTY" in text
-    # No entries should be present
-    assert "ARQX:" not in text
-    assert "FCS:" not in text
+    # No entries should be present after the header (the sigil declarations
+    # in the $0 glossary legitimately mention ARQX:/FCS: — scope the check
+    # to the section body itself).
+    tail = text.split("$1: EMPTY", 1)[1]
+    assert all(not line.strip() for line in tail.splitlines())
 
 
 def test_empty_section_no_entries_key() -> None:
     """A section without an 'entries' key is treated as empty."""
     doc = {
-        "glossary": {"comments": list(_GLOSSARY_COMMENTS)},
+        "glossary": _glossary(),
         "sections": [
             {"id": "$1", "title": "NO_ENTRIES"},
         ],
@@ -370,7 +417,7 @@ def test_glossary_comments_preserved() -> None:
 def test_section_comments_preserved() -> None:
     """Comment lines within a section appear verbatim after the header."""
     doc = {
-        "glossary": {"comments": list(_GLOSSARY_COMMENTS)},
+        "glossary": _glossary(),
         "sections": [
             {
                 "id": "$1",
@@ -428,7 +475,7 @@ def test_roundtrip_basic() -> None:
 def test_roundtrip_multiple_entries() -> None:
     """Multiple entries round-trip correctly."""
     doc = {
-        "glossary": {"comments": list(_GLOSSARY_COMMENTS)},
+        "glossary": _glossary(),
         "sections": [
             {
                 "id": "$1",
@@ -456,7 +503,7 @@ def test_roundtrip_cuerpo() -> None:
     """Cuerpo (multi-line body) entries round-trip correctly."""
     body_text = "First line\nSecond line\nThird line"
     doc = {
-        "glossary": {"comments": list(_GLOSSARY_COMMENTS)},
+        "glossary": _glossary(),
         "sections": [
             {
                 "id": "$1",
@@ -483,7 +530,7 @@ def test_roundtrip_string_escaping() -> None:
     """Strings with special characters survive a write→parse round-trip."""
     special = 'quotes "here" and back\\slash and café'
     doc = {
-        "glossary": {"comments": list(_GLOSSARY_COMMENTS)},
+        "glossary": _glossary(),
         "sections": [
             {
                 "id": "$1",
@@ -506,7 +553,7 @@ def test_roundtrip_string_escaping() -> None:
 def test_roundtrip_booleans_integers() -> None:
     """Boolean and integer values round-trip as unquoted atoms."""
     doc = {
-        "glossary": {"comments": list(_GLOSSARY_COMMENTS)},
+        "glossary": _glossary(),
         "sections": [
             {
                 "id": "$1",
@@ -533,7 +580,10 @@ def test_roundtrip_booleans_integers() -> None:
     entry = sec.entries[0]
     assert entry.value["b_true"] == True  # noqa: E712
     assert entry.value["b_false"] == False  # noqa: E712
-    assert entry.value["i_val"] == 42
+    # codec_cortex 1.0.x keeps integer/decimal scalar values as strings;
+    # 0.6.x returned them as int/float. Accept either (same tolerance as
+    # f_val below).
+    assert int(entry.value["i_val"]) == 42
     # float may be parsed as float or string depending on parser
     assert float(entry.value["f_val"]) == 3.14
 
@@ -542,7 +592,7 @@ def test_roundtrip_booleans_integers() -> None:
 def test_roundtrip_none_skipped() -> None:
     """None values are skipped in output and absent after parsing."""
     doc = {
-        "glossary": {"comments": list(_GLOSSARY_COMMENTS)},
+        "glossary": _glossary(),
         "sections": [
             {
                 "id": "$1",
@@ -581,7 +631,7 @@ def test_roundtrip_none_skipped() -> None:
 def test_boolean_values_unquoted() -> None:
     """True → true, False → false (no quotes)."""
     doc = {
-        "glossary": {"comments": list(_GLOSSARY_COMMENTS)},
+        "glossary": _glossary(),
         "sections": [
             {
                 "id": "$1",
@@ -606,7 +656,7 @@ def test_boolean_values_unquoted() -> None:
 def test_integer_values_unquoted() -> None:
     """Integers render without quotes."""
     doc = {
-        "glossary": {"comments": list(_GLOSSARY_COMMENTS)},
+        "glossary": _glossary(),
         "sections": [
             {
                 "id": "$1",
@@ -636,7 +686,7 @@ def test_integer_values_unquoted() -> None:
 def test_none_values_skipped() -> None:
     """None values are omitted from the output entirely."""
     doc = {
-        "glossary": {"comments": list(_GLOSSARY_COMMENTS)},
+        "glossary": _glossary(),
         "sections": [
             {
                 "id": "$1",
@@ -664,7 +714,7 @@ def test_none_values_skipped() -> None:
 def test_section_no_title() -> None:
     """A section with title=None renders just the $N header (no colon)."""
     doc = {
-        "glossary": {"comments": list(_GLOSSARY_COMMENTS)},
+        "glossary": _glossary(),
         "sections": [
             {
                 "id": "$5",
@@ -684,7 +734,7 @@ def test_section_no_title() -> None:
 def test_section_no_title_key() -> None:
     """A section without a 'title' key defaults to no-title (glossary-style)."""
     doc = {
-        "glossary": {"comments": list(_GLOSSARY_COMMENTS)},
+        "glossary": _glossary(),
         "sections": [
             {
                 "id": "$5",
@@ -711,29 +761,28 @@ def test_no_glossary() -> None:
 
 
 def test_empty_document() -> None:
-    """An empty document stays bare on the default path.
+    """An empty document still carries the mandatory dialect declaration.
 
-    BUG-1: the default (non-strict) writer injected the rc.1 dialect
-    (``$0:format`` plus sigil-schema declarations) into every document,
-    including ones that never asked for it. The pinned codec-cortex 0.6.2
-    parses bare ``$0`` fine, so the declaration belongs to the strict path
-    only.
+    BLP-005: with codec-cortex>=1.0 pinned, every artifact the writer emits
+    must declare ``$0:format`` — the dispatcher refuses a bare ``$0``
+    (G010_FORMAT_REQUIRED). The old BUG-1 carve-out for codec 0.6.2 is gone
+    with the legacy pin.
     """
     text = write_cortex_from_json({})
     assert text.startswith("$0\n")
-    assert '$0:format' not in text
+    assert '$0:format{cortex:' in text
 
 
 def test_empty_document_strict_declares_format() -> None:
-    """The strict path still emits the CODEC-CORTEX 1.0.0-rc.1 declaration."""
+    """The strict path emits a dispatcher-accepted dialect declaration."""
     text = write_cortex_from_json({}, strict=True)
-    assert '$0:format{cortex:"0.1", encoding:"UTF-8"}' in text
+    assert re.search(r'\$0:format\{cortex:"?(0\.1|1\.0)"?, encoding:"?UTF-8"?', text)
 
 
 def test_attrs_and_body_mutually_exclusive() -> None:
     """An entry with both attrs and body raises ValueError."""
     doc = {
-        "glossary": {"comments": list(_GLOSSARY_COMMENTS)},
+        "glossary": _glossary(),
         "sections": [
             {
                 "id": "$1",
@@ -756,7 +805,7 @@ def test_attrs_and_body_mutually_exclusive() -> None:
 def test_entry_neither_attrs_nor_body() -> None:
     """An entry with neither attrs nor body raises ValueError."""
     doc = {
-        "glossary": {"comments": list(_GLOSSARY_COMMENTS)},
+        "glossary": _glossary(),
         "sections": [
             {
                 "id": "$1",
@@ -802,7 +851,7 @@ def test_custom_glossary_header() -> None:
 def test_roundtrip_empty_section() -> None:
     """Empty sections survive a write→parse round-trip."""
     doc = {
-        "glossary": {"comments": list(_GLOSSARY_COMMENTS)},
+        "glossary": _glossary(),
         "sections": [
             {"id": "$1", "title": "EMPTY", "entries": []},
             {"id": "$2", "title": "ALSO_EMPTY", "entries": []},
@@ -819,7 +868,7 @@ def test_roundtrip_empty_section() -> None:
 def test_roundtrip_section_no_title() -> None:
     """A section with no title round-trips correctly."""
     doc = {
-        "glossary": {"comments": list(_GLOSSARY_COMMENTS)},
+        "glossary": _glossary(),
         "sections": [
             {
                 "id": "$5",
@@ -837,11 +886,17 @@ def test_roundtrip_section_no_title() -> None:
     assert sec.entries[0].value == {"v": "1"}
 
 
-@requires_parser
 def test_roundtrip_section_comments() -> None:
-    """Section comments survive a write→parse round-trip."""
+    """Section comments survive a write→parse round-trip.
+
+    codec_cortex 1.0.x discards ``#`` lines at parse time (they are not
+    represented in the v1 AST), so the codec cannot verify this — ArqUX's
+    own reader (``cortex_to_dict``) retains section comments.
+    """
+    from arqux.cortex.reader import cortex_to_dict
+
     doc = {
-        "glossary": {"comments": list(_GLOSSARY_COMMENTS)},
+        "glossary": _glossary(),
         "sections": [
             {
                 "id": "$1",
@@ -854,17 +909,17 @@ def test_roundtrip_section_comments() -> None:
         ],
     }
     text = write_cortex_from_json(doc)
-    parsed = _parse_cortex(text)
-    sec = next(s for s in parsed.sections if s.id == "$1")
-    assert "# important note" in sec.comments
-    assert "# another note" in sec.comments
+    parsed = cortex_to_dict(text)
+    sec = next(s for s in parsed["sections"] if s["id"] == "$1")
+    assert "# important note" in sec["comments"]
+    assert "# another note" in sec["comments"]
 
 
 @requires_parser
 def test_roundtrip_multiple_sections() -> None:
     """Multiple sections with mixed entry types round-trip correctly."""
     doc = {
-        "glossary": {"comments": list(_GLOSSARY_COMMENTS)},
+        "glossary": _glossary(),
         "sections": [
             {
                 "id": "$19",
@@ -933,7 +988,7 @@ def test_cuerpo_body_with_lone_brace_raises() -> None:
     matching would truncate the body at the first lone '}' line.
     """
     doc = {
-        "glossary": {"comments": list(_GLOSSARY_COMMENTS)},
+        "glossary": _glossary(),
         "sections": [
             {
                 "id": "$1",
@@ -955,7 +1010,7 @@ def test_cuerpo_body_with_lone_brace_raises() -> None:
 def test_cuerpo_body_with_stripped_brace_raises() -> None:
     """A cuerpo body with a line that strips to '}' (e.g. '  }  ') raises."""
     doc = {
-        "glossary": {"comments": list(_GLOSSARY_COMMENTS)},
+        "glossary": _glossary(),
         "sections": [
             {
                 "id": "$1",
@@ -981,7 +1036,7 @@ def test_cuerpo_body_with_brace_in_text_does_not_raise() -> None:
     A '}' that appears inline with other content is safe.
     """
     doc = {
-        "glossary": {"comments": list(_GLOSSARY_COMMENTS)},
+        "glossary": _glossary(),
         "sections": [
             {
                 "id": "$1",
@@ -1004,7 +1059,7 @@ def test_cuerpo_body_with_brace_in_text_does_not_raise() -> None:
 def test_cuerpo_body_lone_brace_error_mentions_entry() -> None:
     """The ValueError message includes the sigil:name for diagnostics."""
     doc = {
-        "glossary": {"comments": list(_GLOSSARY_COMMENTS)},
+        "glossary": _glossary(),
         "sections": [
             {
                 "id": "$1",
@@ -1035,7 +1090,7 @@ def test_list_attr_value_converted_to_comma_string() -> None:
     were JSON-encoded and then escaped again, producing garbled output.
     """
     doc = {
-        "glossary": {"comments": list(_GLOSSARY_COMMENTS)},
+        "glossary": _glossary(),
         "sections": [
             {
                 "id": "$1",
@@ -1060,7 +1115,7 @@ def test_list_attr_value_converted_to_comma_string() -> None:
 def test_tuple_attr_value_converted_to_comma_string() -> None:
     """Tuple attr values are also converted to comma-separated strings."""
     doc = {
-        "glossary": {"comments": list(_GLOSSARY_COMMENTS)},
+        "glossary": _glossary(),
         "sections": [
             {
                 "id": "$1",
@@ -1082,7 +1137,7 @@ def test_tuple_attr_value_converted_to_comma_string() -> None:
 def test_list_attr_with_mixed_types() -> None:
     """List with mixed types (str, int) is joined as strings."""
     doc = {
-        "glossary": {"comments": list(_GLOSSARY_COMMENTS)},
+        "glossary": _glossary(),
         "sections": [
             {
                 "id": "$1",
@@ -1104,7 +1159,7 @@ def test_list_attr_with_mixed_types() -> None:
 def test_list_attr_empty_list() -> None:
     """An empty list becomes an empty string."""
     doc = {
-        "glossary": {"comments": list(_GLOSSARY_COMMENTS)},
+        "glossary": _glossary(),
         "sections": [
             {
                 "id": "$1",
@@ -1126,7 +1181,7 @@ def test_list_attr_empty_list() -> None:
 def test_list_attr_preserves_other_attrs() -> None:
     """List conversion doesn't affect other non-list attrs in the same entry."""
     doc = {
-        "glossary": {"comments": list(_GLOSSARY_COMMENTS)},
+        "glossary": _glossary(),
         "sections": [
             {
                 "id": "$1",
@@ -1159,7 +1214,7 @@ def test_roundtrip_list_attr_as_string() -> None:
     list syntax in attrs, so lists are converted to strings.
     """
     doc = {
-        "glossary": {"comments": list(_GLOSSARY_COMMENTS)},
+        "glossary": _glossary(),
         "sections": [
             {
                 "id": "$1",

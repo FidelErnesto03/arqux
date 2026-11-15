@@ -1,16 +1,21 @@
 $0
 
+AXM:axm_contract{type:"attrs", weight:"H", focus:"value", fields:"value:any?", desc:"ArqUX AXM entry", open:true}
 ARQX:arqx_contract{type:"attrs", weight:"M", focus:"value", fields:"value:any?", desc:"ArqUX ARQX entry", open:true}
 DOM:dom_contract{type:"attrs", weight:"M", focus:"value", fields:"value:any?", desc:"ArqUX DOM entry", open:true}
 ERR:err_contract{type:"attrs", weight:"M", focus:"value", fields:"value:any?", desc:"ArqUX ERR entry", open:true}
 FCS:fcs_contract{type:"attrs", weight:"M", focus:"value", fields:"value:any?", desc:"ArqUX FCS entry", open:true}
 IDN:idn_contract{type:"attrs", weight:"M", focus:"value", fields:"value:any?", desc:"ArqUX IDN entry", open:true}
+LNG:lng_contract{type:"attrs", weight:"M", focus:"value", fields:"value:any?", desc:"ArqUX LNG entry", open:true}
+LOOP:loop_contract{type:"attrs", weight:"M", focus:"value", fields:"value:any?", desc:"ArqUX LOOP entry", open:true}
 OBJ:obj_contract{type:"attrs", weight:"M", focus:"value", fields:"value:any?", desc:"ArqUX OBJ entry", open:true}
 WRK:wrk_contract{type:"attrs", weight:"M", focus:"value", fields:"value:any?", desc:"ArqUX WRK entry", open:true}
 $0:format{cortex:1.0, encoding:UTF-8}
 
 # -- $0: MINIMAL LOCAL GLOSSARY --
 # Sigil | Name | Type | Risk | Cognitive Layer | Description
+# AXM   | axiom      | attrs      | H | Prefrontal     | Project behavioral axiom
+# ARQX  | artifact   | attrs      | B | Semantic       | Artifact metadata
 # IDN   | identity   | attrs      | B | Semantic       | Actor identity
 # DOM   | domain     | attrs      | B | Semantic       | Project/scope descriptor
 # FCS   | focus      | attrs      | H | Working        | Active attention anchor
@@ -23,7 +28,7 @@ $0:format{cortex:1.0, encoding:UTF-8}
 # RSK   | risk       | attrs      | M | Prefrontal     | Risk with mitigation
 # KNW   | knowledge  | attrs      | B | Semantic       | Stable knowledge
 # ERR   | error      | attrs      | M | Concurrency    | Optimistic-locking state
-# ARQX  | artifact   | attrs      | B | Semantic       | Artifact metadata
+# LOOP  | loop       | attrs      | B | Working        | Autonomous loop declaration
 #
 # Types:
 # attrs = canonical type
@@ -31,11 +36,6 @@ $0:format{cortex:1.0, encoding:UTF-8}
 #
 # Micro-glossary:
 # cur=current wrk=work min=minimum ok=success
-
-
-$19: ARQUX METADATA
-
-ARQX:artifact{level:2, name:"__PROJECT__", usage:"state", kind:"native"}
 
 
 $1: IDENTITY
@@ -47,42 +47,57 @@ IDN:governor{name:"__GOVERNOR__", level:"governor", project:"__PROJECT__"}
 DOM:scope{name:"__PROJECT__", area:"__PROJECT__", purpose:"Governed project workspace"}
 
 
-$2: FOCUS
+$2: AXIOMS
+
+# Project behavioral axioms — mandated by the Architect or elevated by
+# forced learning. Recommended: severity:"blocking", survive:"min".
+# AXM:<name>{rule:"...", severity:"blocking", survive:"min"}
+
+
+$3: FOCUS
 
 FCS:current{name:"bootstrap", what:"Initial governance bootstrap of __PROJECT__", priority:"high", status:"current", survive:"work"}
 
 
-$3: OBJECTIVES
+$4: OBJECTIVES
 
 OBJ:onboard{name:"onboarding", goal:"Complete project onboarding: populate brain sections, open first cycle", status:"current", success:"brain valid and first cycle open", survive:"work"}
 
 
-$4: SESSIONS
+$5: SESSIONS
 
 
-$5: HANDOFFS
+$6: HANDOFFS
 
 
-$6: PULSE
+$7: PULSE
 
 
-$7: LESSONS
+$8: LESSONS
 
 
-$8: ACTIVE_CONTEXT
+$9: ACTIVE_CONTEXT
 
 WRK:current{name:"init", phase:"init", current:"project initialized - pending brain population", blocked:"no", survive:"work"}
 
 
-$9: RISKS
+$10: RISKS
 
 
-$10: KNOWLEDGE
+$11: KNOWLEDGE
 
 
-$11: CONCURRENCY
+$12: CONCURRENCY
 
 ERR:concurrency{name:"concurrency", version:"0", last_writer:"__GOVERNOR__", updated:"__DATE__"}
 
 
-$12: PACKAGES
+$13: ISSUES
+
+
+$14: LOOPS
+
+
+$15: ARQUX_METADATA
+
+ARQX:artifact{level:2, name:"__PROJECT__", usage:"state", kind:"native"}

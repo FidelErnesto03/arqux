@@ -1,6 +1,6 @@
 """BrainActiveStateValidator — Nivel 3 semantic validator (BLP-037).
 
-Inspects the CONTENT of the FOCUS ($3) and OBJECTIVES ($4) sections to
+Inspects the CONTENT of the FOCUS ($2) and OBJECTIVES ($3) sections to
 guarantee at least one active FCS and OBJ. Emits E024_LEVEL3_MISSING_FOCUS
 or E028_NO_ACTIVE_OBJECTIVES when the brain is semantically inert (a
 "zombie project").
@@ -23,6 +23,7 @@ from ..constants import (
     E028_NO_ACTIVE_OBJECTIVES,
     INVALID_STATUSES,
     VALID_STATUSES,
+    BrainSection,
 )
 from .base import BaseValidator, ValidationResult
 
@@ -99,13 +100,18 @@ class BrainActiveStateValidator(BaseValidator):
         result = ValidationResult(is_valid=True)
         payload = artifact.payload
 
-        # --- FCS evaluation (FOCUS section, $3) ---
-        fcs_entries = _extract_sigils_from_section(payload, "$3", "FCS")
+        # Canon: docs/reference/cortex-brain-section-canon.md — FOCUS=$2,
+        # OBJECTIVES=$3 (resolved via BrainSection, never hardcoded).
+        focus_id = BrainSection.FOCUS.value
+        objectives_id = BrainSection.OBJECTIVES.value
+
+        # --- FCS evaluation (FOCUS section) ---
+        fcs_entries = _extract_sigils_from_section(payload, focus_id, "FCS")
         if not fcs_entries:
             result.add_error(
                 code=E024_LEVEL3_MISSING_FOCUS,
-                message="Brain $3 FOCUS has no FCS sigils — project is zombie",
-                section="$3",
+                message=f"Brain {focus_id} FOCUS has no FCS sigils — project is zombie",
+                section=focus_id,
                 severity="critical",
             )
         else:
@@ -115,21 +121,21 @@ class BrainActiveStateValidator(BaseValidator):
                 result.add_error(
                     code=E024_LEVEL3_MISSING_FOCUS,
                     message=(
-                        "All FCS in $3 FOCUS are inerte "
+                        f"All FCS in {focus_id} FOCUS are inerte "
                         f"(statuses: {[e.get('status', '') for e in fcs_entries]}) "
                         "— project is zombie"
                     ),
-                    section="$3",
+                    section=focus_id,
                     severity="critical",
                 )
 
-        # --- OBJ evaluation (OBJECTIVES section, $4) ---
-        obj_entries = _extract_sigils_from_section(payload, "$4", "OBJ")
+        # --- OBJ evaluation (OBJECTIVES section) ---
+        obj_entries = _extract_sigils_from_section(payload, objectives_id, "OBJ")
         if not obj_entries:
             result.add_error(
                 code=E028_NO_ACTIVE_OBJECTIVES,
-                message="Brain $4 OBJECTIVES has no OBJ sigils — no active goals",
-                section="$4",
+                message=f"Brain {objectives_id} OBJECTIVES has no OBJ sigils — no active goals",
+                section=objectives_id,
                 severity="high",
             )
         else:
@@ -138,11 +144,11 @@ class BrainActiveStateValidator(BaseValidator):
                 result.add_error(
                     code=E028_NO_ACTIVE_OBJECTIVES,
                     message=(
-                        "All OBJ in $4 OBJECTIVES are inerte "
+                        f"All OBJ in {objectives_id} OBJECTIVES are inerte "
                         f"(statuses: {[e.get('status', '') for e in obj_entries]}) "
                         "— no active goals"
                     ),
-                    section="$4",
+                    section=objectives_id,
                     severity="high",
                 )
 

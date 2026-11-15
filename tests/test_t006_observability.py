@@ -16,7 +16,7 @@ _SAMPLE = """$0
 # Sigil | Name | Type | Risk | Cognitive Layer | Description
 # LNG   | lesson     | attrs      | M | Episodic       | Learned lesson
 
-$7: LESSONS
+$8: LESSONS
 
 LNG:existing{type:"process", cause:"c", lesson:"l", prevention:"p"}
 """
@@ -27,7 +27,7 @@ def test_entry_add_reports_entry_bytes_separate_from_file_bytes(tmp_path: Path) 
     f = tmp_path / "brain.cortex"
     f.write_text(_SAMPLE)
     value = 'type:"process", cause:"c", lesson:"a specific lesson body", prevention:"p"'
-    out = entry_add_handler(str(f), "$7", "LNG", "metric_test", value, force=True, ctx=_CONTEXT)
+    out = entry_add_handler(str(f), "$8", "LNG", "metric_test", value, force=True, ctx=_CONTEXT)
     assert out.profile == "OUT-WORK", str(out.fields)
 
     entry_bytes = out.fields["entry_bytes"]
@@ -77,15 +77,17 @@ def test_cortex_ref_sections_matches_brain_template(tmp_path: Path) -> None:
 
     assert sections["$1"]["title"] == "IDENTITY"
     assert "IDN" in sections["$1"]["sigils"]
-    assert sections["$8"]["title"] == "ACTIVE_CONTEXT"
-    assert sections["$8"]["sigils"] == ["WRK"]
-    assert sections["$6"]["title"] == "PULSE"
-    assert sections["$7"]["sigils"] == ["LNG"]
-    assert sections["$19"]["title"] == "ARQUX METADATA"
-    assert sections["$19"]["sigils"] == ["ARQX"]
-    assert sections["$2"]["sigils"] == ["FCS"]
-    assert sections["$10"]["sigils"] == ["KNW"]
-    assert sections["$11"]["sigils"] == ["ERR"]
+    assert sections["$2"]["title"] == "AXIOMS"
+    assert sections["$2"]["sigils"] == ["AXM"]
+    assert sections["$9"]["title"] == "ACTIVE_CONTEXT"
+    assert sections["$9"]["sigils"] == ["WRK"]
+    assert sections["$7"]["title"] == "PULSE"
+    assert sections["$8"]["sigils"] == ["LNG"]
+    assert sections["$15"]["title"] == "ARQUX_METADATA"
+    assert sections["$15"]["sigils"] == ["ARQX"]
+    assert sections["$3"]["sigils"] == ["FCS"]
+    assert sections["$11"]["sigils"] == ["KNW"]
+    assert sections["$12"]["sigils"] == ["ERR"]
 
     # sigil lookup still works with sections param present
     out2 = ref_handler("WRK", sections=False, ctx=_CONTEXT)

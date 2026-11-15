@@ -18,7 +18,7 @@ from contextlib import suppress
 from pathlib import Path
 from typing import Any
 
-from ..constants import ARQUX_DIR, BRAIN_CORTEX, is_name_component
+from ..constants import ARQUX_DIR, BRAIN_CORTEX, META_BRAIN_CORTEX, is_name_component
 from ..cortex_out import CortexOUT
 from ..execution import authoritative_execution_key
 from ..loops import dispatch_pending_loops
@@ -211,6 +211,52 @@ def pulse_compact(
     if result.get("dry_run"):
         return CortexOUT.work("pulse.compact dry_run ok", entry_count=result.get("entry_count", 0), entries_to_prune=result.get("entries_to_prune", []), dry_run=True)
     return CortexOUT.work("pulse.compact ok", pruned=result.get("pruned", 0), entry_count=result.get("entry_count", 0), lng_name=result.get("lng_name", ""), meta_event=result.get("meta_event", ""), dry_run=False)
+
+
+def pulse_gc(
+    *,
+    dry_run: bool = False,
+    path: str | None = None,
+    ctx: PermissionContext | None = None,
+) -> CortexOUT:
+    """Force a PULSE hot-window sweep (T1 retention, brain canon).
+
+    Prunes AUD entries outside the window (rank > PULSE_KEEP_COUNT or
+    age > PULSE_KEEP_DAYS) into the rolling ``LNG:pulse_sweep`` archive.
+    Session anchors and the live tail are never touched. The write path
+    already sweeps automatically past ``PULSE_SWEEP_AT`` — this handler
+    is the explicit/inspection entry point.
+    """
+    from ..pulse import sweep_pulse_window
+    root = find_project_root(start=path)
+    if root is None:
+        return CortexOUT.error("no project initialized", code="NOT_FOUND")
+    result = sweep_pulse_window(root, dry_run=dry_run)
+    if result.get("error"):
+        return CortexOUT.error(result["error"], code="SWEEP_ERROR")
+    if result.get("dry_run"):
+        return CortexOUT.work(
+            "session.pulse.gc dry_run ok",
+            aud_total=result.get("aud_total", 0),
+            would_prune=result.get("would_prune", 0),
+            keep_count=result.get("keep_count", 0),
+            keep_days=result.get("keep_days", 0),
+            dry_run=True,
+        )
+    if result.get("skip"):
+        return CortexOUT.work(
+            f"session.pulse.gc skip {result.get('reason', '')}",
+            aud_total=result.get("aud_total", 0),
+            dry_run=False,
+        )
+    return CortexOUT.work(
+        "session.pulse.gc ok",
+        pruned=result.get("pruned", 0),
+        aud_total_before=result.get("aud_total_before", 0),
+        batch=result.get("batch", ""),
+        total_pruned=result.get("total_pruned", 0),
+        dry_run=False,
+    )
 
 
 def checkpoint_context(
@@ -452,42 +498,62 @@ def status(
     )
 
 
-def _resolve_project_from_meta_brain(ws_root: Path, project_name: str) -> Path | None:
-    """Look up a project's absolute root path from meta-brain.cortex.
+def _is_project_root(path: Path) -> bool:
+    return (path / ARQUX_DIR / BRAIN_CORTEX).is_file()
 
-    Reads the workspace meta-brain, finds the DOM entry matching *project_name*,
-    and returns the resolved absolute path.
+
+def _resolve_project_from_meta_brain(ws_root: Path, project_name: str) -> Path | None:
+    """Resolve a project root from workspace meta-brain or filesystem.
+
+    Distinguishes workspace container (``ws_root``) from project roots
+    (subdirs with ``.arqux/brain.cortex``). Never returns the workspace root
+    as a project.
     """
     meta_brain_path = ws_root / "meta-brain.cortex"
-    if not meta_brain_path.exists():
-        return None
+    workspace_base = ws_root.parent
+    wanted = project_name.casefold()
 
-    try:
-        raw = meta_brain_path.read_text(encoding="utf-8")
-        # Find DOM:<name>{... path="VALUE" ... name="PROJECT_NAME" ...}
-        # or DOM:<name>{... name="PROJECT_NAME" ... path="VALUE" ...}
-        import re as _re
-        # Look for DOM entry where name matches project_name (case-insensitive)
-        pattern = (
-            rf'DOM:\w+\s*{{\s*'
-            rf'(?:[^}}]*?path:"([^"]*)"[^}}]*?name:"{_re.escape(project_name)}"'
-            rf'|[^}}]*?name:"{_re.escape(project_name)}"[^}}]*?path:"([^"]*)"'
-            rf')[^}}]*?}}'
-        )
-        m = _re.search(pattern, raw, _re.IGNORECASE)
-        if m:
-            rel_path = m.group(1) or m.group(2)
-            if rel_path:
-                resolved = (ws_root.parent / rel_path).resolve()
-                if resolved.exists():
+    # 1) Meta-brain DOM entries (authoritative registry), but only if they
+    # point to an actual project root.
+    if meta_brain_path.exists():
+        try:
+            raw = meta_brain_path.read_text(encoding="utf-8")
+            dom_re = re.compile(r'DOM:\w+\s*\{([^}]*)\}', re.IGNORECASE)
+            for dm in dom_re.finditer(raw):
+                body = dm.group(1)
+                name_m = re.search(r'name:"([^"]*)"', body)
+                path_m = re.search(r'path:"([^"]*)"', body)
+                if not name_m or not path_m:
+                    continue
+                if name_m.group(1).casefold() != wanted:
+                    continue
+                rel_path = path_m.group(1).strip()
+                if not rel_path:
+                    continue
+                resolved = (workspace_base / rel_path).resolve()
+                # Common misconfiguration: path "." points at workspace base.
+                if resolved == workspace_base and _is_project_root(workspace_base / project_name):
+                    return (workspace_base / project_name).resolve()
+                if _is_project_root(resolved):
                     return resolved
-    except Exception:
-        pass
+        except Exception:
+            pass
 
-    # Fallback: try to find the project as a subdirectory of workspace
-    candidate = ws_root.parent / project_name
-    if (candidate / ARQUX_DIR / BRAIN_CORTEX).exists():
-        return candidate
+    # 2) Direct subdirectory by exact/common names.
+    for candidate_name in (project_name, project_name.upper(), project_name.lower()):
+        candidate = (workspace_base / candidate_name).resolve()
+        if _is_project_root(candidate):
+            return candidate
+
+    # 3) Case-insensitive directory scan (ergonomic fallback).
+    try:
+        for child in workspace_base.iterdir():
+            if not child.is_dir():
+                continue
+            if child.name.casefold() == wanted and _is_project_root(child):
+                return child.resolve()
+    except OSError:
+        pass
     return None
 
 CONTEXT_CORTEX = "context.cortex"
@@ -498,11 +564,14 @@ CONTEXTS_DIR = "contexts"
 #: glossary and a non-canonical ``CTX:agent key="val"`` line that the codec
 #: could not parse (issue 2026-10-18-higiene-workspace-t-032-arqux-context-cortex-pun).
 _CONTEXT_GLOSSARY = (
-    "$0\n\n"
+    "$0\n"
+    "$0:format{cortex:1.0, encoding:UTF-8}\n\n"
     "# -- $0: SESSION CONTEXT GLOSSARY --\n"
     "# Sigil | Name    | Type  | Risk | Cognitive Layer | Description\n"
     "# CTX   | context | attrs | B    | Working         | "
     "Session context pointer (execution->project/scope/session binding)\n"
+    "CTX:ctx_contract{type:\"attrs\", weight:\"M\", focus:\"value\", "
+    "fields:\"value:any?\", desc:\"ArqUX CTX entry\", open:true}\n"
 )
 
 
@@ -573,11 +642,15 @@ def context_set(
         agent = ctx_env.agent_id
         execution = authoritative_execution_key()
 
-    # Phase 2: resolve target project from meta-brain
+    # Phase 2: resolve target project (workspace container != project root).
     project_root = _resolve_project_from_meta_brain(ws_root, project)
     if project_root is None:
+        project_root_hint = (ws_root.parent / project).resolve()
         return CortexOUT.error(
-            f"project {project!r} not found — is it registered in meta-brain?",
+            f"project {project!r} not found from workspace {ws_root.parent} "
+            f"(expected a project root with {ARQUX_DIR}/{BRAIN_CORTEX}, e.g. {project_root_hint}; "
+            "workspace root is a container, not a governed project). "
+            "Register the project in meta-brain/projects registry or pass the workspace root as path.",
             code="NOT_FOUND",
         )
 
@@ -585,7 +658,8 @@ def context_set(
     project_brain = project_root / ARQUX_DIR / BRAIN_CORTEX
     if not project_brain.exists():
         return CortexOUT.error(
-            f"project {project!r} not found (no brain.cortex at {project_brain})",
+            f"project {project!r} resolved to {project_root} but has no {ARQUX_DIR}/{BRAIN_CORTEX} "
+            "(governed project root required; workspace container is not valid here)",
             code="NOT_FOUND",
         )
 
@@ -785,18 +859,29 @@ def context_get(
 
     # Canonical CTX:{agent_id}{k:"v"} entry; fall back to the pre-canonical
     # CTX:{agent_id} k="v" line still found in older context files.
-    m = re.search(r"CTX:([^\s{]+)\{([^}]*)\}", raw)
-    if m:
+    # The $0 glossary declares ``CTX:ctx_contract{...}`` — a *_contract
+    # sigil is a declaration, never the live entry, so it is skipped.
+    entry_match = None
+    for m in re.finditer(r"CTX:([^\s{]+)\{([^}]*)\}", raw):
+        if m.group(1).endswith("_contract"):
+            continue
+        entry_match = m
+        break
+    if entry_match is not None:
+        m = entry_match
         result["agent"] = m.group(1)
         for key, val in re.findall(r'(\w+):"([^"]*)"', m.group(2)):
             result[key] = val
     else:
-        m = re.search(r"CTX:(\S+)\s+(.+)", raw)
-        if m:
-            result["agent"] = m.group(1)
+        for m in re.finditer(r"CTX:(\S+)\s+(.+)", raw):
+            agent_name = m.group(1)
+            if "{" in agent_name or agent_name.endswith("_contract"):
+                continue
+            result["agent"] = agent_name
             pairs = m.group(2)
             for pair in re.findall(r'(\w+)="([^"]*)"', pairs):
                 result[pair[0]] = pair[1]
+            break
 
     if not result:
         return CortexOUT.error("invalid context format", code="PARSE_ERROR")
@@ -898,6 +983,99 @@ def _escape_ses_value(value: str) -> str:
 # ---------------------------------------------------------------------------
 
 
+def _resolve_bootstrap_scope(start: Path) -> tuple[str, Path] | None:
+    """Nearest ``.arqux/`` at or above *start*, classified project vs workspace.
+
+    A ``.arqux/`` holding ``brain.cortex`` is a governed project; one holding
+    only ``meta-brain.cortex`` is a workspace. The CLOSEST ancestor wins, so
+    an explicit path inside a project binds that project even when a
+    workspace encloses it — the workspace level is reached only from
+    genuinely workspace-level paths (issue: session-bootstrap-resolves-upward;
+    previously find_workspace_root ran first and every project path inside a
+    workspace resolved to the workspace).
+    """
+    cursor = start
+    # Path already inside a .arqux/ directory (BC-6 parity with
+    # find_project_root: never double-nest).
+    if cursor.name == ARQUX_DIR:
+        if (cursor / BRAIN_CORTEX).exists():
+            return ("project", cursor)
+        if (cursor / META_BRAIN_CORTEX).exists():
+            return ("workspace", cursor)
+        return None
+    while True:
+        candidate = cursor / ARQUX_DIR
+        if (candidate / BRAIN_CORTEX).exists():
+            return ("project", candidate)
+        if (candidate / META_BRAIN_CORTEX).exists():
+            return ("workspace", candidate)
+        if cursor.parent == cursor:
+            return None
+        cursor = cursor.parent
+
+
+#: Cap on entry heads included in the bootstrap identity contract summary.
+_IDENTITY_SUMMARY_CAP = 100
+
+#: Head of a CORTEX entry — ``SIGIL:name`` at line start.
+_IDENTITY_ENTRY_RE = re.compile(r"(?m)^([A-Z][A-Z0-9]{1,11}):([^\s{:]+)")
+
+
+def _identity_summary(content: str) -> dict[str, list[str]]:
+    """sigil → entry names — a bounded contract summary of an identity file.
+
+    GSIG glossary declarations are schema, not contract, and are skipped.
+    """
+    summary: dict[str, list[str]] = {}
+    count = 0
+    for m in _IDENTITY_ENTRY_RE.finditer(content):
+        sigil, name = m.group(1), m.group(2)
+        if sigil == "GSIG":
+            continue
+        names = summary.setdefault(sigil, [])
+        if name not in names:
+            names.append(name)
+            count += 1
+            if count >= _IDENTITY_SUMMARY_CAP:
+                break
+    return summary
+
+
+def _identity_reference(
+    agent_id: str,
+    bases: list[tuple[Path, str]],
+) -> tuple[dict[str, Any], str]:
+    """Bounded identity reference for the bootstrap ``cortex_context``.
+
+    The bootstrap payload used to embed the whole ``<agent>.cortex`` file as
+    escaped text — several KB per call (issue: session-bootstrap-embeds).
+    The reference carries just enough to locate and gauge the contract:
+    resolved ``path``, ``source`` and a sigil → entry-names ``contracts``
+    summary. Returns ``(reference, source)``; ``source`` is "" when no
+    identity file resolved under *bases*.
+    """
+    for base, source in bases:
+        candidate = base / f"{agent_id}.cortex"
+        if not candidate.exists():
+            continue
+        try:
+            content = candidate.read_text(encoding="utf-8")
+        except OSError:
+            continue
+        return {
+            "agent_id": agent_id,
+            "source": source,
+            "path": str(candidate),
+            "contracts": _identity_summary(content),
+        }, source
+    return {
+        "agent_id": agent_id,
+        "source": None,
+        "path": None,
+        "contracts": {},
+    }, ""
+
+
 def _list_projects_from_meta(ws_root: Path) -> list[dict[str, str]]:
     """Extract project DOM entries from the workspace meta-brain.cortex."""
     meta_path = ws_root / "meta-brain.cortex"
@@ -945,21 +1123,16 @@ def _bootstrap_workspace(
             if f.is_file() and f.name.endswith(".skill.md"):
                 skills.append(f.stem.removesuffix(".skill"))
 
-    # 3. Load identity.
-    identity_content = ""
-    identity_source = ""
-    for base, source in (
-        (ws_root / "identities", "workspace"),
-        (_IDENTITIES_DIR, "package"),
-    ):
-        candidate = base / f"{agent_id}.cortex"
-        if candidate.exists():
-            try:
-                identity_content = candidate.read_text(encoding="utf-8")
-                identity_source = source
-                break
-            except OSError:
-                pass
+    # 3. Resolve the identity contract as a REFERENCE (agent_id + path +
+    # contract summary) — embedding the raw file cost several KB per call
+    # (issue: session-bootstrap-embeds).
+    identity_ref, identity_source = _identity_reference(
+        agent_id,
+        [
+            (ws_root / "identities", "workspace"),
+            (_IDENTITIES_DIR, "package"),
+        ],
+    )
 
     # 4. Build cortex_context (workspace-level, no project/cycle binding).
     cortex_context: dict[str, Any] = {
@@ -976,7 +1149,7 @@ def _bootstrap_workspace(
         "agents": [],
         "skills": skills,
         "brain": {},
-        "identity": identity_content,
+        "identity": identity_ref,
         "identity_source": identity_source,
         "agent_id": agent_id,
     }
@@ -1039,7 +1212,12 @@ def _bootstrap_project(
     agent_id: str,
     ctx: PermissionContext | None,
 ) -> CortexOUT:
-    """Build a project-level bootstrap (legacy, no workspace found)."""
+    """Build a project-level bootstrap.
+
+    Fires when the start path resolves to a project ``.arqux/`` — either a
+    standalone project or one nested inside a workspace (the project wins
+    over its enclosing workspace; issue: session-bootstrap-resolves-upward).
+    """
     from ..constants import CYCLES_DIR as _CYCLES_DIR
     from ..constants import IDENTITIES_DIR as _IDENTITIES_DIR
     from ..state import read_brain as _read_brain
@@ -1089,21 +1267,18 @@ def _bootstrap_project(
             if f.is_file() and f.name.endswith(".skill.md"):
                 skills.append(f.stem.removesuffix(".skill"))
 
-    # 5. Load identity.
-    identity_content = ""
-    identity_source = ""
-    for base, source in (
+    # 5. Resolve the identity contract as a REFERENCE (bounded payload —
+    # issue: session-bootstrap-embeds). Identity contracts live at
+    # workspace level (AXM:identity_loading), so an enclosing workspace's
+    # identities dir is consulted between the project's and the package's.
+    identity_bases: list[tuple[Path, str]] = [
         (project_arqux / "identities", "project"),
-        (_IDENTITIES_DIR, "package"),
-    ):
-        candidate = base / f"{agent_id}.cortex"
-        if candidate.exists():
-            try:
-                identity_content = candidate.read_text(encoding="utf-8")
-                identity_source = source
-                break
-            except OSError:
-                pass
+    ]
+    enclosing_ws = find_workspace_root(start=project_root_parent)
+    if enclosing_ws is not None:
+        identity_bases.append((enclosing_ws / "identities", "workspace"))
+    identity_bases.append((_IDENTITIES_DIR, "package"))
+    identity_ref, identity_source = _identity_reference(agent_id, identity_bases)
 
     # Build canal-I cortex_context dict.
     cortex_context: dict[str, Any] = {
@@ -1126,7 +1301,7 @@ def _bootstrap_project(
             "lessons": sections.get("LESSONS", ""),
             "risks": sections.get("RISKS", ""),
         },
-        "identity": identity_content,
+        "identity": identity_ref,
         "identity_source": identity_source,
         "agent_id": agent_id,
     }
@@ -1220,16 +1395,15 @@ def bootstrap(
         )
     agent_id = authenticated_agent.casefold()
 
-    workspace_arqux = find_workspace_root(start=start)
-
-    if workspace_arqux:
-        # Workspace found — workspace-level bootstrap, no project binding.
-        return _bootstrap_workspace(workspace_arqux, start, agent_id, ctx)
-
-    project_arqux = find_project_root(start=start)
-    if project_arqux:
-        # No workspace, only project — legacy project-level bootstrap.
-        return _bootstrap_project(project_arqux, start, agent_id, ctx)
+    # Nearest .arqux wins: a path inside a governed project bootstraps THAT
+    # project context; only a genuinely workspace-level path (or one inside
+    # the workspace but outside every project) binds the workspace level.
+    resolved = _resolve_bootstrap_scope(start)
+    if resolved is not None:
+        kind, arqux_root = resolved
+        if kind == "project":
+            return _bootstrap_project(arqux_root, start, agent_id, ctx)
+        return _bootstrap_workspace(arqux_root, start, agent_id, ctx)
 
     # No .arqux/ found — informative message, NOT an error.
     return CortexOUT.work(
@@ -1399,4 +1573,5 @@ handler_schemas = [
     {"name": "session.bootstrap", "fn": bootstrap, "description": "Bootstrap a session using the authenticated identity. An explicit agent_id must match the caller (BLP-002). Returns cortex_context (canal I) and hcortex_dashboard (canal E).", "input_schema": {"type": "object", "properties": {"path": {"type": "string", "description": "Starting path. Defaults to cwd."}, "agent_id": {"type": "string", "description": "Optional identity selector; must match the authenticated caller."}}}},
     {"name": "session.handoff", "fn": handoff, "description": "Serialize the current session context as CORTEX and write a handoff PULSE for the target agent (BLP-010 meta-handler). Supports dry_run mode.", "input_schema": {"type": "object", "properties": {"target_agent": {"type": "string", "description": "ID of the agent receiving the handoff."}, "content": {"type": "string", "description": "CORTEX content with keys target_agent, summary, blps, tasks."}, "dry_run": {"type": "boolean", "default": False}, "path": {"type": "string"}}, "required": ["target_agent"]}},
     {"name": "session.pulse.compact", "fn": pulse_compact, "description": "Compact pulse entries for a session. With ses_ref, selection is by membership: only that session's pulses are pruned and concurrent or legacy pulses are never reassigned by position. Writes a consolidated LNG lesson.", "input_schema": {"type": "object", "properties": {"session_id": {"type": "string"}, "ses_ref": {"type": "string", "description": "Select by session membership instead of position."}, "dry_run": {"type": "boolean", "default": False}, "path": {"type": "string"}}, "required": ["session_id"]}},
+    {"name": "session.pulse.gc", "fn": pulse_gc, "description": "Force a PULSE hot-window sweep (T1 retention): prunes AUD entries outside the window — rank>PULSE_KEEP_COUNT(20) or age>PULSE_KEEP_DAYS(5) — into the rolling LNG:pulse_sweep archive. Session anchors and the live tail are exempt. The write path sweeps automatically past PULSE_SWEEP_AT(40).", "input_schema": {"type": "object", "properties": {"dry_run": {"type": "boolean", "default": False}, "path": {"type": "string"}}}},
 ]

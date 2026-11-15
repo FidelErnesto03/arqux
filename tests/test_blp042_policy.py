@@ -17,7 +17,11 @@ _DECLARATION_FIELDS = frozenset({"type", "weight", "focus", "desc"})
 
 @pytest.fixture
 def workspace_root(tmp_path: Path) -> Path:
-    """Create a minimal workspace with .arqux/identities/."""
+    """Project root with brain.cortex ($8) + identities dir.
+
+    Architect rule 2026-11-15: lessons are filed ONLY in brain.cortex $8;
+    identity files are never written by ``identity.record``.
+    """
     d = tmp_path / ".arqux" / "identities"
     d.mkdir(parents=True)
     agent_file = d / "test-agent.cortex"
@@ -36,6 +40,14 @@ def workspace_root(tmp_path: Path) -> Path:
         "$3: OBJECTIVES\n\n"
         "OBJ:main{goal:\"Test\", status:\"current\", survive:\"min\"}\n\n"
         "$5: BEHAVIORAL LESSONS\n\n"
+    )
+    (tmp_path / ".arqux" / "brain.cortex").write_text(
+        "$0\n\n"
+        "$2: FOCUS\n"
+        'FCS:current{what:"tests", priority:"high", survive:"work", status:"current"}\n\n'
+        'OBJ:current{goal:"tests pass", success:"green", survive:"work", status:"current"}\n\n'
+        "$8: LESSONS\n\n",
+        encoding="utf-8",
     )
     return tmp_path
 
@@ -65,14 +77,17 @@ class TestRecordLessonPrevention:
         # On success, profile should not be OUT-ERROR
         assert result.profile != "OUT-ERROR", f"Handler returned error: {result.message}"
 
-        # Read back and verify LNG contains prevention
-        identity_file = workspace_root / ".arqux" / "identities" / "test-agent.cortex"
-        content = identity_file.read_text(encoding="utf-8")
-        assert "prevention" in content, "prevention field missing from identity file"
-        assert "Always include prevention in LNG entries" in content
+        # Read back the brain — the LNG must carry prevention there.
+        brain = (workspace_root / ".arqux" / "brain.cortex").read_text(encoding="utf-8")
+        assert "prevention" in brain, "prevention field missing from brain $8"
+        assert "Always include prevention in LNG entries" in brain
 
     def test_record_without_prevention(self, workspace_root: Path, ctx: PermissionContext) -> None:
-        """LNG entry accepts empty prevention string (falls back to empty)."""
+        """Empty prevention is rejected — BLP-042 requires it, no fallback.
+
+        Brain E034 independently rejects empty required fields on LNG;
+        the handler enforces BLP-042 up front with INVALID_ARGS.
+        """
         result = cortex_handlers.record_lesson_handler(
             lesson="Test without prevention",
             kind="behavioral",
@@ -82,12 +97,8 @@ class TestRecordLessonPrevention:
             path=str(workspace_root),
             ctx=ctx,
         )
-        assert result.profile != "OUT-ERROR", f"Handler returned error: {result.message}"
-
-        # Should still have prevention in the entry (empty string is acceptable)
-        identity_file = workspace_root / ".arqux" / "identities" / "test-agent.cortex"
-        content = identity_file.read_text(encoding="utf-8")
-        assert "prevention" in content, "prevention field should exist even if empty"
+        assert result.profile == "OUT-ERROR"
+        assert result.fields.get("code") == "INVALID_ARGS"
 
     def test_no_direct_write_bypass(self, workspace_root: Path, ctx: PermissionContext) -> None:
         """The handler uses crud_add (CODEC-CORTEX), not direct string append."""
@@ -102,10 +113,10 @@ class TestRecordLessonPrevention:
         )
         assert result.profile != "OUT-ERROR", f"Handler returned error: {result.message}"
 
-        # Verify the file can be parsed by CODEC-CORTEX with proper LNG structure
-        identity_file = workspace_root / ".arqux" / "identities" / "test-agent.cortex"
-        from cortex.core.parser import parse_cortex
-        doc = parse_cortex(identity_file.read_text(encoding="utf-8"), path=str(identity_file))
+        # Verify the brain can be parsed by CODEC-CORTEX with proper LNG structure
+        brain_file = workspace_root / ".arqux" / "brain.cortex"
+        from arqux.cortex.model import parse_native
+        doc = parse_native(brain_file.read_text(encoding="utf-8"), path=str(brain_file))
 
         # Find the LNG entry and verify all required fields.
         #

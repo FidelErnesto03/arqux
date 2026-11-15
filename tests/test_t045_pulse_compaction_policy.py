@@ -56,7 +56,7 @@ class TestCloseDoesNotCompact:
         assert out.fields["pulse_events"] >= 6
         assert "compact" not in out.fields
 
-        consolidated = crud_read(_brain(session), f"$7/LNG:session_{session.sid}")
+        consolidated = crud_read(_brain(session), f"$8/LNG:session_{session.sid}")
         assert consolidated["entries"] == []
 
     def test_close_tells_how_to_consolidate(self, session):
@@ -85,7 +85,7 @@ class TestExplicitCompactionStillWorks:
         assert first["compacted"] is True
         assert first["pruned"] >= 6
 
-        consolidated = crud_read(_brain(session), f"$7/LNG:session_{session.sid}")
+        consolidated = crud_read(_brain(session), f"$8/LNG:session_{session.sid}")
         assert consolidated["entries"], "la compactación explícita debe dejar la LNG"
 
         second = compact_session_pulse(session.proj_root, session_id=event_id,
@@ -121,4 +121,4 @@ class TestCompactorUsesTheAtomicWriter:
         monkeypatch.undo()
 
         assert result["compacted"] is True
-        assert crud_read(brain, f"$7/LNG:session_{session.sid}")["entries"]
+        assert crud_read(brain, f"$8/LNG:session_{session.sid}")["entries"]

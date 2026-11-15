@@ -84,6 +84,7 @@ _CODEC_CORTEX_MISSING: tuple[str, ...] = ()
 
 _cc_ast = _cc_lexer = _cc_parser = _cc_validator = None
 _cc_selectors = _cc_renderer = None
+_cc_canonicalize = None
 
 
 def _bind_legacy_api() -> bool:
@@ -145,7 +146,59 @@ def _bind_rc1_api() -> bool:
     return True
 
 
-if not _bind_legacy_api() and not _bind_rc1_api():
+def _bind_v1_api() -> bool:
+    """Bind CODEC-CORTEX 1.0.x (flat ``codec_cortex`` namespace).
+
+    The codec supplies *format* only: ``parse_cortex``/``canonicalize``
+    are adapted into the ArqUX-owned model
+    (:mod:`arqux.cortex.model`).  ``validate``, ``render_hcortex_read``
+    and the selectors are ArqUX-native
+    (:mod:`arqux.cortex.level_policy`, :mod:`arqux.cortex.read_renderer`,
+    :mod:`arqux.cortex.selectors`) — learning, governance semantics and
+    CRUD never come from the codec.
+
+    Requires the full 1.0.x surface (``dispatcher`` or ``hcortex``
+    present); the 1.0.0rc1 candidate exposes only ``parser.parse_cortex``
+    and is left to :func:`_bind_rc1_api`.
+    """
+    global _cc_parser, _cc_validator, _cc_selectors, _cc_renderer  # noqa: PLW0603
+    global _HAS_CODEC_CORTEX, _codec_cortex  # noqa: PLW0603
+    global _CODEC_CORTEX_API, _CODEC_CORTEX_MISSING  # noqa: PLW0603
+    global _cc_canonicalize  # noqa: PLW0603
+
+    try:
+        import codec_cortex.dispatcher as dispatcher_mod
+        _v1_parse_cortex = dispatcher_mod.parse_cortex
+        _v1_canonicalize = getattr(dispatcher_mod, "canonicalize", None)
+    except (ImportError, AttributeError):
+        try:
+            import codec_cortex.hcortex  # noqa: F401 — full 1.0.x surface
+            import codec_cortex.parser as parser_mod
+            _v1_parse_cortex = parser_mod.parse_cortex
+            _v1_canonicalize = None
+        except (ImportError, AttributeError):
+            return False
+
+    import types as _types
+
+    from arqux.cortex import level_policy, model, read_renderer, selectors
+
+    def _parse(text, path="<string>"):
+        return model.from_codec_v1(_v1_parse_cortex(text), path=path)
+
+    _cc_parser = _types.SimpleNamespace(parse_cortex=_parse)
+    _cc_canonicalize = _v1_canonicalize
+    _cc_validator = level_policy
+    _cc_selectors = selectors
+    _cc_renderer = read_renderer
+    _HAS_CODEC_CORTEX = True
+    _codec_cortex = True  # sentinel
+    _CODEC_CORTEX_API = "v1"
+    _CODEC_CORTEX_MISSING = ()
+    return True
+
+
+if not _bind_v1_api() and not _bind_legacy_api() and not _bind_rc1_api():
     # BLP-fix (T-005/G-9): CODEC-CORTEX is optional. Define the
     # codec handles as None so that 'from . import _cc_*' at module
     # level in the submodules does not raise ImportError, and the
@@ -156,6 +209,7 @@ if not _bind_legacy_api() and not _bind_rc1_api():
     _CODEC_CORTEX_MISSING = ("parse_cortex", "validate", "render_hcortex_read")
     _cc_ast = _cc_lexer = _cc_parser = _cc_validator = None
     _cc_selectors = _cc_renderer = None
+    _cc_canonicalize = None
 
 
 def codec_cortex_diagnostics() -> dict:

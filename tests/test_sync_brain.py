@@ -27,13 +27,13 @@ def brain_path(tmp_path: Path) -> Path:
 # FCS   | focus      | attrs      | H | Working        | Active attention anchor
 # OBJ   | objective  | attrs      | H | Working        | Active goal
 
-$2: FOCUS
+$3: FOCUS
 FCS:current{what:"Initial focus", priority:"medium", status:"current", survive:"work"}
 
-$3: OBJECTIVES
+$4: OBJECTIVES
 OBJ:main{goal:"Test objective", status:"current", success:"done", survive:"work"}
 
-$8: ACTIVE_CONTEXT
+$9: ACTIVE_CONTEXT
 WRK:current{phase:"active", current:"initial state", blocked:"no", survive:"work"}
 """
     brain.write_text(content, encoding="utf-8")
@@ -182,7 +182,7 @@ def test_sync_run_creates_fcs_when_absent(brain_project: Path) -> None:
 
 
 def test_sync_brain_creates_fcs_when_section_missing(brain_project: Path) -> None:
-    """T-001 gap: a brain lacking the $2 section entirely still gets an
+    """T-001 gap: a brain lacking the $3 section entirely still gets an
     FCS:current created (create_section path)."""
     from arqux.handlers.sync import sync_run_handler
     from arqux.state import cortex_read
@@ -190,10 +190,10 @@ def test_sync_brain_creates_fcs_when_section_missing(brain_project: Path) -> Non
     brain = brain_project / ".arqux" / "brain.cortex"
     text = brain.read_text(encoding="utf-8")
     text = text.replace(
-        '$2: FOCUS\nFCS:current{what:"Initial focus", priority:"medium", status:"current", survive:"work"}\n\n',
+        '$3: FOCUS\nFCS:current{what:"Initial focus", priority:"medium", status:"current", survive:"work"}\n\n',
         "",
     )
-    assert "$2" not in text
+    assert "$3: FOCUS" not in text
     brain.write_text(text, encoding="utf-8")
 
     result = sync_run_handler(path=str(brain_project))
@@ -310,10 +310,10 @@ def test_sync_meta_brain_no_warning(tmp_path: Path, caplog) -> None:
 # WRK   | work       | attrs      | B | Working        | Current execution
 # FCS   | focus      | attrs      | H | Working        | Active attention anchor
 
-$2: FOCUS
+$3: FOCUS
 FCS:current{what:"Test", priority:"medium", status:"current", survive:"work"}
 
-$8: ACTIVE_CONTEXT
+$9: ACTIVE_CONTEXT
 WRK:current{phase:"active", current:"test", blocked:"no", survive:"work"}
 """, encoding="utf-8")
 

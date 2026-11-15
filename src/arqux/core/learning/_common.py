@@ -1,4 +1,7 @@
-"""Shared helpers for the learning engine package."""
+"""Shared helpers for the learning engine package.
+
+Native implementation only (no external codec dependencies).
+"""
 from __future__ import annotations
 
 import hashlib
@@ -10,37 +13,8 @@ from ...constants import ARQUX_DIR
 
 logger = logging.getLogger(__name__)
 
-_HAS_CLE: bool = False
-try:
-    from cortex.core.ast import CortexDocument, Entry
-    from cortex.core.parser import parse_cortex
-    from cortex.learning.candidates import detect_candidates
-    from cortex.learning.elevation import apply_patch, plan_patch, render_diff
-    from cortex.learning.errors import LearningError
-    from cortex.learning.index import rebuild_index
-    from cortex.learning.policy import parse_policy_document
-
-    _HAS_CLE = True
-except ImportError:
-    CortexDocument = None  # type: ignore
-    Entry = None  # type: ignore
-    parse_cortex = None  # type: ignore
-    rebuild_index = None  # type: ignore
-    parse_policy_document = None  # type: ignore
-    detect_candidates = None  # type: ignore
-    plan_patch = None  # type: ignore
-    apply_patch = None  # type: ignore
-    render_diff = None  # type: ignore
-    LearningError = None  # type: ignore
-
-# BLP-005: CODEC-CORTEX writer has been removed from ArqUX.
-# Set write_cortex to None — the learning engine degrades gracefully
-# (CLE is optional). When write_cortex functionality is needed,
-# use arqux.cortex.writer.write_cortex_from_json instead.
-write_cortex = None
-
-
 POLICY_FILENAME = "learn-policies.cortex"
+
 
 
 def _resolve_project_root(path: str | None) -> Path | None:
@@ -52,25 +26,6 @@ def _resolve_project_root(path: str | None) -> Path | None:
     return result.parent
 
 
-def _load_policies(project_root: Path) -> Any | None:
-    """Load learn-policies.cortex from ``.arqux/``.
-
-    Returns a ``LearningPolicySet`` or ``None`` (policy invalid). If the
-    project-local policy is missing, fall back to the packaged default so
-    migrated projects can still run cortex.learn before policy seeding.
-    """
-    if not _HAS_CLE:
-        return None
-    policy_path = _resolve_policy_path(project_root)
-    if not policy_path.exists():
-        return None
-    from cortex.core.parser import parse_cortex
-    doc = parse_cortex(policy_path.read_text(encoding="utf-8"))
-    if not doc:
-        return None
-    return parse_policy_document(doc)
-
-
 def _resolve_policy_path(project_root: Path) -> Path:
     """Return project policy path or packaged default fallback."""
     project_policy = project_root / ARQUX_DIR / POLICY_FILENAME
@@ -79,22 +34,52 @@ def _resolve_policy_path(project_root: Path) -> Path:
     return Path(__file__).resolve().parent.parent.parent / "templates" / POLICY_FILENAME
 
 
-def _build_brain_doc(project_root: Path) -> CortexDocument | None:
-    """Build a CortexDocument from the project's brain.cortex sections.
+def _load_policies(project_root: Path) -> Any | None:
+    """Load learn-policies.cortex from ``.arqux/``.
 
-    Uses the existing ``formats._build_brain_doc()`` to convert sections
-    dict → CortexDocument so the learning engine can process it.
+    Returns the parsed policy document, or ``None`` if the policy is missing
+    or invalid. The caller is responsible for deciding what to do with
+    ``None`` — it is NOT the same as an empty policy.
     """
-    from cortex.core.ast import CortexDocument as CDoc
+    from ...cortex.reader import cortex_to_dict
+    from .algorithms import parse_policy_document
 
-    from ...formats import _build_brain_doc as _build_doc
-    from ...state import read_brain
+    policy_path = _resolve_policy_path(project_root)
+    if not policy_path.exists():
+        return None
+    try:
+        doc = cortex_to_dict(policy_path.read_text(encoding="utf-8"))
+    except Exception:  # noqa: BLE001 - unreadable policy => None, not crash
+        logger.warning("learn-policies: cannot parse %s", policy_path)
+        return None
+    return parse_policy_document(doc)
 
-    fm, sections, _ = read_brain(project_root)
-    doc = CDoc()
-    _build_doc(doc, fm, sections)
-    return doc
+
+def learning_engine_available() -> tuple[bool, str | None]:
+    """Report whether the native learning engine can operate.
+
+    Returns ``(True, None)`` when the engine is wireable. ``(False, cause)``
+    otherwise. The ``cause`` string is actionable — callers propagate it
+    verbatim to the user instead of silently returning an empty list.
+    """
+    try:
+        from .document import load_brain_document  # noqa: F401
+        from .protocol import LearningDocument  # noqa: F401
+        return True, None
+    except Exception as exc:  # noqa: BLE001
+        return False, f"import error: {exc}"
 
 
 def _hash_text(text: str) -> str:
     return hashlib.sha256(text.encode("utf-8")).hexdigest()[:16]
+
+
+def _build_brain_doc(project_root: Path):
+    """Build a native learning document from the brain.
+
+    BLP-002: no longer returns a CortexDocument. Callers receive a
+    ``NativeLearningDocument`` that satisfies ``LearningDocument``.
+    """
+    from .document import load_brain_document
+
+    return load_brain_document(project_root)

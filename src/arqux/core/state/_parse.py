@@ -5,6 +5,7 @@ import re
 
 from ...constants import (
     BRAIN_SECTION_ACTIVE_CONTEXT,
+    BRAIN_SECTION_AXIOMS,
     BRAIN_SECTION_CONCURRENCY,
     BRAIN_SECTION_FOCUS,
     BRAIN_SECTION_HANDOFFS,
@@ -32,6 +33,7 @@ def parse_brain_sections(body: str) -> dict[str, str]:
 def rebuild_brain_body(sections: dict[str, str]) -> str:
     parts: list[str] = []
     for section_name in (
+        BRAIN_SECTION_AXIOMS,
         BRAIN_SECTION_FOCUS,
         BRAIN_SECTION_OBJECTIVES,
         BRAIN_SECTION_SESSIONS,

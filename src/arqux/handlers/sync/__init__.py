@@ -71,11 +71,20 @@ def reconcile_handler(
         cycle_id: If set, reconcile only this cycle's MANIFEST.md.
         level: Scope level — ``cycle``, ``project``, ``workspace``, or ``auto``.
     """
-    root = find_project_root(start=path)
-    if root is None:
-        return CortexOUT.error("no project initialized", code="NOT_FOUND")
-
-    project_root = root.parent if root.name == ".arqux" else root
+    # Workspace level resolves the workspace container, not a project:
+    # the workspace root holds .arqux/meta-brain.cortex but no project
+    # brain.cortex, so find_project_root would fail with NOT_FOUND.
+    if level == "workspace" and not cycle_id:
+        from arqux.state import find_workspace_root
+        ws_root_early = find_workspace_root(start=path)
+        if ws_root_early is None:
+            return CortexOUT.error("no workspace initialized", code="NOT_FOUND")
+        project_root = ws_root_early.parent
+    else:
+        root = find_project_root(start=path)
+        if root is None:
+            return CortexOUT.error("no project initialized", code="NOT_FOUND")
+        project_root = root.parent if root.name == ".arqux" else root
 
     # Cycle-level reconcile (when cycle_id provided or level=cycle)
     if cycle_id or level == "cycle":

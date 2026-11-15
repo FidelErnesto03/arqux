@@ -53,7 +53,7 @@ def requires_codec_cortex() -> None:
 
     if not _cc_available:
         raise RuntimeError(
-            "CODEC-CORTEX is required. Install with: pip install codec-cortex>=0.4.0"
+            "CODEC-CORTEX is required. Install with: pip install codec-cortex>=1.0,<1.1"
         )
 
 
@@ -271,9 +271,9 @@ def requires_capability(capability: str) -> None:
             f"CODEC-CORTEX does not provide '{capability}'. "
             f"Detected api={_CODEC_CORTEX_API or 'none'!r}, "
             f"missing={list(_CODEC_CORTEX_MISSING)}, "
-            f"diagnostics={diag}. The rc1 candidate (codec-cortex==1.0.0rc1) "
-            f"exposes only parse_cortex; install a 0.6.x release for "
-            f"validate + render_hcortex_read."
+            f"diagnostics={diag}. The pinned line (codec-cortex>=1.0,<1.1) "
+            f"binds parse/canonicalization only; governance semantics "
+            f"(validate/selectors/render/learning) are native to ArqUX."
         )
 
 
@@ -299,6 +299,10 @@ def cortex_read(path: str | Path) -> dict:
     doc = _cc_parser.parse_cortex(text, path=str(path))
     return {
         "path": str(path),
+        # ``$0`` is the glossary, not a content section. Under codec v1 the
+        # model already excludes it; under the legacy binding it appears (and
+        # may appear twice — once for the format decl). Filter it in both
+        # paths so the section model is stable across codec APIs.
         "sections": [
             {
                 "id": s.id,
@@ -307,6 +311,7 @@ def cortex_read(path: str | Path) -> dict:
                 "comment_count": len(s.comments or []),
             }
             for s in doc.sections
+            if str(s.id) != "$0"
         ],
         "glossary": {
             "sigil_count": len(doc.glossary.sigils) if doc.glossary else 0,
@@ -348,18 +353,30 @@ def cortex_write(
     ):
         try:
             ast_doc = _cc_parser.parse_cortex(content, path=path)
-            diags = _cc_validator.validate(ast_doc)
-            diags = filter_dialect_false_positives(ast_doc, diags)
-            errors = [d for d in diags if d.get("severity") == "error"]
-            if errors and not force:
+        except Exception as exc:
+            # silent_corruption: content the strict parser cannot read must
+            # never be written and reported as valid — a parse failure is a
+            # hard stop, not a skippable diagnostic.
+            if not force:
                 return {
                     "path": path,
-                    "error": f"Validation failed ({len(errors)} errors). Use force=True to override.",
-                    "diagnostics": [f"[{d.get('code','?')}] {d.get('message','')} (line {d.get('line','?')})" for d in errors],
+                    "error": f"Content is not parseable under codec-cortex 1.0 ({exc}). Use force=True to override.",
+                    "diagnostics": [f"[PARSE] {exc}"],
                 }
-        except Exception:
-            # Validation is best-effort — proceed with write.
-            pass
+        else:
+            try:
+                diags = _cc_validator.validate(ast_doc)
+                diags = filter_dialect_false_positives(ast_doc, diags)
+                errors = [d for d in diags if d.get("severity") == "error"]
+                if errors and not force:
+                    return {
+                        "path": path,
+                        "error": f"Validation failed ({len(errors)} errors). Use force=True to override.",
+                        "diagnostics": [f"[{d.get('code','?')}] {d.get('message','')} (line {d.get('line','?')})" for d in errors],
+                    }
+            except Exception:
+                # The validator itself is best-effort — proceed with write.
+                pass
 
     result = atomic_write_json(doc, path)
     return {
@@ -369,6 +386,84 @@ def cortex_write(
         "diagnostics": [],
         "dry_run": result.dry_run,
     }
+
+
+#: Placeholder markers left in entry values by templates (``<timestamp>``,
+#: ``<workspace-root>`` ...). Family I reports them aggregated, never per
+#: entry — the W001 signal-noise lesson applies to info codes too.
+_INFO_PLACEHOLDER_RE = re.compile(r"<[a-zA-Z][a-zA-Z0-9_-]*>")
+
+
+def _info_diagnostics(doc: object) -> list[str]:
+    """ArqUX-native informational diagnostics (family I, BLP-006).
+
+    Appended to the cortex.verify report alongside codec diagnostics.
+    Contract: informational codes NEVER affect ``valid`` — only codec
+    ``severity == "error"`` diagnostics invalidate. Findings are
+    aggregated per file (counts + first occurrences), not per entry.
+    """
+    from ...constants import (
+        I001_CODEC_BACKEND_INFO,
+        I002_PLACEHOLDER_VALUE,
+        I003_EMPTY_SECTION,
+    )
+    from ...cortex.codec_compat import codec_info
+
+    out: list[str] = []
+    info = codec_info()
+    out.append(
+        f"[{I001_CODEC_BACKEND_INFO}] codec backend="
+        f"{info.package or 'none'}/{info.parser or 'none'} "
+        f"version={info.version or 'unknown'}"
+    )
+
+    placeholder_names: list[str] = []
+    empty_sections: list[str] = []
+    for section in getattr(doc, "sections", None) or []:
+        entries = (
+            getattr(section, "entries", None)
+            or getattr(section, "ideas", None)
+            or []
+        )
+        section_id = str(getattr(section, "id", "?"))
+        if not entries and section_id != "$0":
+            empty_sections.append(section_id)
+        for entry in entries:
+            value = getattr(entry, "value", "")
+            if isinstance(value, dict):
+                haystack = " ".join(str(v) for v in value.values())
+            elif isinstance(value, (list, tuple)):
+                haystack = " ".join(str(v) for v in value)
+            else:
+                haystack = str(value or "")
+            if _INFO_PLACEHOLDER_RE.search(haystack):
+                sigil = getattr(entry, "sigil", "?")
+                name = getattr(entry, "name", "?")
+                placeholder_names.append(f"{sigil}:{name}")
+
+    if placeholder_names:
+        shown = ", ".join(placeholder_names[:5])
+        extra = (
+            f" (+{len(placeholder_names) - 5} more)"
+            if len(placeholder_names) > 5
+            else ""
+        )
+        out.append(
+            f"[{I002_PLACEHOLDER_VALUE}] {len(placeholder_names)} "
+            f"entrie(s) con valores placeholder: {shown}{extra}"
+        )
+    if empty_sections:
+        shown = ", ".join(empty_sections[:8])
+        extra = (
+            f" (+{len(empty_sections) - 8} more)"
+            if len(empty_sections) > 8
+            else ""
+        )
+        out.append(
+            f"[{I003_EMPTY_SECTION}] {len(empty_sections)} "
+            f"seccion(es) sin entradas: {shown}{extra}"
+        )
+    return out
 
 
 def cortex_verify(path: str | Path) -> dict:
@@ -386,10 +481,15 @@ def cortex_verify(path: str | Path) -> dict:
     diags = _cc_validator.validate(doc)
     diags = filter_dialect_false_positives(doc, diags)
     errors = [d for d in diags if d.get("severity") == "error"]
+    diagnostics = [
+        f"[{d.get('code','?')}] {d.get('message','')} (line {d.get('line','?')})"
+        for d in diags
+    ]
+    diagnostics.extend(_info_diagnostics(doc))
     return {
         "path": str(path),
         "valid": len(errors) == 0,
-        "diagnostics": [f"[{d.get('code','?')}] {d.get('message','')} (line {d.get('line','?')})" for d in diags],
+        "diagnostics": diagnostics,
         "sections": len(doc.sections),
         "entries": sum(len(s.entries) for s in doc.sections),
     }
@@ -463,29 +563,36 @@ def _write_mutated(path: Path, doc: dict, *, force: bool, dry_run: bool) -> dict
             # Re-serialize to text for CODEC validation.
             cortex_text = write_cortex_from_json(doc)
             ast_doc = _cc_parser.parse_cortex(cortex_text, path=str(path))
-            diags = _cc_validator.validate(ast_doc)
-            diags = filter_dialect_false_positives(ast_doc, diags)
-            errors = [d for d in diags if d.get("severity") == "error"]
-            if errors and not force:
+        except Exception as exc:
+            # silent_corruption: if our own serialization does not re-parse,
+            # the write must not proceed as if validated (t009).
+            if not force:
                 return {
-                    "error": f"Validation failed ({len(errors)} errors). Use force=True to override.",
-                    "diagnostics": [f"[{d.get('code','?')}] {d.get('message','')}" for d in errors],
+                    "error": f"Serialized content is not parseable under codec-cortex 1.0 ({exc}). Use force=True to override.",
+                    "diagnostics": [f"[PARSE] {exc}"],
                 }
-        except Exception:
-            # Validation is best-effort — proceed with write.
-            pass
+        else:
+            try:
+                diags = _cc_validator.validate(ast_doc)
+                diags = filter_dialect_false_positives(ast_doc, diags)
+                errors = [d for d in diags if d.get("severity") == "error"]
+                if errors and not force:
+                    return {
+                        "error": f"Validation failed ({len(errors)} errors). Use force=True to override.",
+                        "diagnostics": [f"[{d.get('code','?')}] {d.get('message','')}" for d in errors],
+                    }
+            except Exception:
+                # The validator itself is best-effort — proceed with write.
+                pass
 
     if dry_run:
         return {"dry_run": True, "path": str(path), "diagnostics": []}
     try:
-        # BUG-1: ``atomic_write_json`` defaults to strict=True, so every
-        # cortex.entry.* write went through the CODEC-CORTEX 1.0.0-rc.1
-        # serializer and injected a ``$0:format{...}`` line plus a sigil
-        # schema dictionary into ``$0`` of files that never asked for it.
-        # The pinned validator (codec-cortex 0.6.2) parses bare ``$0`` and
-        # tolerates undeclared sigils, so the entry CRUD path stays on the
-        # 0.6.2 dialect. The rc.1 upgrade remains explicit, on the migration
-        # handlers that ask for it (cortex.migrate, state._migrate).
+        # BLP-005: the pin is codec-cortex>=1.0 — write_cortex_from_json now
+        # emits the 1.0 dialect ($0:format + executable declarations) in both
+        # modes, so the original BUG-1 constraint (0.6.x validator rejecting
+        # the dialect line) no longer exists. ``strict=False`` keeps only its
+        # remaining role: skip migration normalization of legacy glossary data.
         result = atomic_write_json(doc, str(path), strict=False)
     except Exception as e:
         return {"error": f"Atomic write failed: {e}", "non_bypassable": True}

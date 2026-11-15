@@ -11,10 +11,12 @@ Handlers:
 
 from __future__ import annotations
 
+from .elevate import elevate
 from .get import DEFAULT_AGENT, get_handler
 from .switch import switch
 
 __all__ = [
+    "elevate",
     "get_handler",
     "DEFAULT_AGENT",
     "switch",
@@ -63,6 +65,45 @@ handler_schemas = [
                 "dry_run": {"type": "boolean", "default": False},
                 "path": {"type": "string"},
             },
+        },
+    },
+    {
+        "name": "identity.elevate",
+        "fn": elevate,
+        "description": (
+            "Elevate a brain.cortex $8 LNG lesson into an agent identity "
+            "contract (AXM or LIM) — the behavioral learning line. "
+            "Default is dry-run returning the proposal + preview_hash; "
+            "apply=true requires confirm_hash matching the reviewed proposal."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "lesson_id": {
+                    "type": "string",
+                    "description": "LNG entry name in brain $8 (e.g. verify_post_write_state).",
+                },
+                "agent": {
+                    "type": "string",
+                    "description": "Target identity (e.g. alfred, jarvis).",
+                },
+                "contract_type": {
+                    "type": "string",
+                    "enum": ["AXIOM", "LIMIT"],
+                    "description": "AXIOM → AXM sigil | LIMIT → LIM sigil.",
+                },
+                "apply": {
+                    "type": "boolean",
+                    "default": False,
+                    "description": "Apply the elevation (requires confirm_hash).",
+                },
+                "confirm_hash": {
+                    "type": "string",
+                    "description": "preview_hash from the dry-run proposal.",
+                },
+                "path": {"type": "string", "description": "Path to project root."},
+            },
+            "required": ["lesson_id", "agent", "contract_type"],
         },
     },
 ]

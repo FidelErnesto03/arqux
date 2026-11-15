@@ -80,6 +80,37 @@ def inspect_file(path: str | Path) -> dict[str, Any]:
     }
 
 
+def plan_repairs(path: str | Path) -> dict[str, Any]:
+    """Plan content repairs for a CORTEX file (BLP-006 / gap 2.9).
+
+    Returns a deterministic, non-mutating repair plan comparing the current
+    document to its normalized writer output. This is a content-level plan
+    (not only format migration): callers can inspect proposed repairs before
+    applying.
+    """
+    source = Path(path)
+    text = source.read_text(encoding="utf-8") if source.exists() else ""
+    repairs: list[dict[str, Any]] = []
+    try:
+        document = cortex_to_dict(text)
+        normalized = write_cortex_from_json(document, strict=True)
+        if normalized != text:
+            repairs.append({
+                "kind": "normalize_content",
+                "reason": "normalized writer output differs from source",
+            })
+    except Exception as exc:  # noqa: BLE001
+        repairs.append({
+            "kind": "unparseable",
+            "reason": f"{type(exc).__name__}: {exc}",
+        })
+    return {
+        "path": str(source),
+        "repairs": repairs,
+        "repair_count": len(repairs),
+    }
+
+
 def migrate_file(
     path: str | Path,
     *,
@@ -136,4 +167,4 @@ def migrate_tree(
     return [migrate_file(file, dry_run=dry_run, keep_backup=keep_backup) for file in files]
 
 
-__all__ = ["inspect_file", "migrate_file", "migrate_tree"]
+__all__ = ["inspect_file", "migrate_file", "migrate_tree", "plan_repairs"]

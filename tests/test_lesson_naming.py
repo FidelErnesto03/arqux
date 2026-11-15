@@ -23,6 +23,11 @@ from arqux.permissions import PermissionContext
 
 @pytest.fixture
 def workspace_root(tmp_path: Path) -> Path:
+    """Project root with brain.cortex ($8) + workspace identities dir.
+
+    Architect rule 2026-11-15: lessons are filed ONLY in brain.cortex $8;
+    identity files are never written by ``identity.record``.
+    """
     d = tmp_path / ".arqux" / "identities"
     d.mkdir(parents=True)
     (d / "test-agent.cortex").write_text(
@@ -33,6 +38,14 @@ def workspace_root(tmp_path: Path) -> Path:
         "$5: LIMITS\n\n"
         "$6: BEHAVIORAL LESSONS\n\n"
     )
+    (tmp_path / ".arqux" / "brain.cortex").write_text(
+        "$0\n\n"
+        "$2: FOCUS\n"
+        'FCS:current{what:"tests", priority:"high", survive:"work", status:"current"}\n\n'
+        'OBJ:current{goal:"tests pass", success:"green", survive:"work", status:"current"}\n\n'
+        "$8: LESSONS\n\n",
+        encoding="utf-8",
+    )
     return tmp_path
 
 
@@ -42,7 +55,13 @@ def ctx() -> PermissionContext:
 
 
 def _names(path: Path) -> list[str]:
-    text = (path / ".arqux" / "identities" / "test-agent.cortex").read_text()
+    text = (path / ".arqux" / "brain.cortex").read_text()
+    # Skip the $0 glossary block — executable declarations like
+    # ``LNG:lesson{...}`` are contracts, not lesson entries.
+    for hdr in re.finditer(r"(?m)^\$(\d+)", text):
+        if hdr.group(1) != "0":
+            text = text[hdr.start():]
+            break
     return re.findall(r"^LNG:([A-Za-z0-9_]+)", text, re.M)
 
 
@@ -54,6 +73,38 @@ class TestDeriveLessonName:
 
     def test_explicit_name_wins(self) -> None:
         assert _derive_lesson_name("Al handler...", {"al"}, "mi_regla") == "mi_regla"
+
+    def test_explicit_name_is_not_truncated(self) -> None:
+        """Explicit names are honoured in full — the 30-char cap only
+        applies to auto-derived names (silent-truncation fix)."""
+        long_name = "regla_de_verificacion_posterior_a_escritura"  # 44 chars
+        assert len(long_name) > 30
+        assert _derive_lesson_name("Al handler...", set(), long_name) == long_name
+
+    def test_explicit_name_still_slugified(self) -> None:
+        """Explicit intent wins on length, not on charset: names are still
+        normalized to a valid CORTEX entry name."""
+        assert (
+            _derive_lesson_name("Al handler...", set(), "Mi Regla Larga!")
+            == "mi_regla_larga"
+        )
+
+    def test_derived_name_stays_capped(self) -> None:
+        """The 30-char cap still applies to names derived from prose."""
+        lesson = "Supercalifragilisticoespialidosamente larga leccion..."
+        name = _derive_lesson_name(lesson, set())
+        assert len(name) <= 30
+
+    def test_explicit_long_name_lands_in_brain(
+        self, workspace_root: Path, ctx: PermissionContext
+    ) -> None:
+        long_name = "verificacion_de_artefactos_despues_de_cada_escritura"
+        assert len(long_name) > 30
+        cortex_handlers.record_lesson_handler(
+            lesson="Al escribir...", kind="rule", cause="c", prevention="p",
+            name=long_name, path=str(workspace_root), ctx=ctx,
+        )
+        assert long_name in _names(workspace_root)
 
     def test_collision_is_disambiguated(self) -> None:
         n1 = _derive_lesson_name("Al primer caso...", {"al"})
@@ -112,23 +163,27 @@ class TestRecordLessonIntegration:
         assert "escritura_estructura" in _names(workspace_root)
 
 
-def test_lessons_land_in_lessons_section_not_limits(
+def test_lessons_land_in_brain_and_identity_untouched(
     workspace_root: Path, ctx: PermissionContext
 ) -> None:
-    """identity.record must not append lessons into the LIMITS block.
+    """identity.record files lessons in brain $8 — never in the identity.
 
-    Identity files use $5 for LIMITS and $6 for BEHAVIORAL LESSONS. Writing
-    lessons to $5 put them inside LIMITS.
+    Architect rule 2026-11-15: brain.cortex is the ONLY lesson surface.
+    The identity file must remain byte-identical after recording.
     """
+    identity_file = (
+        workspace_root / ".arqux" / "identities" / "test-agent.cortex"
+    )
+    before = identity_file.read_text()
     cortex_handlers.record_lesson_handler(
         lesson="Al escribir un artefacto...", kind="rule", cause="c",
         prevention="p", path=str(workspace_root), ctx=ctx,
     )
-    text = (workspace_root / ".arqux" / "identities" / "test-agent.cortex").read_text()
-    limits = text.split("$5: LIMITS")[1].split("$6:")[0]
-    lessons = text.split("$6: BEHAVIORAL LESSONS")[1]
-    assert "LNG:" not in limits, "lesson leaked into the LIMITS section"
-    assert "LNG:" in lessons
+    assert identity_file.read_text() == before, (
+        "identity file was mutated by identity.record"
+    )
+    brain = (workspace_root / ".arqux" / "brain.cortex").read_text()
+    assert "LNG:" in brain.split("$8:")[1]
 
 
 # --- Lessons section resolution ---------------------------------------------
@@ -177,18 +232,20 @@ class TestLessonsSectionResolution:
         assert _lessons_section_for(f) is None
         assert _ensure_lessons_section(f) == "$6"
 
-    def test_expertise_section_stays_clean_end_to_end(
+    def test_identity_file_stays_clean_end_to_end(
         self, workspace_root: Path, ctx: PermissionContext
     ) -> None:
+        """Even with an EXPERTISE section present, identity.record writes
+        only to brain $8 — the identity file is never touched."""
         f = workspace_root / ".arqux" / "identities" / "test-agent.cortex"
         f.write_text(
             "$0\n\n# -- $0: GLOSSARY --\n\n$5: LIMITS\n\n$6: EXPERTISE\n\n$7: DESCRIPTION\n\n"
         )
+        before = f.read_text()
         cortex_handlers.record_lesson_handler(
             lesson="Al escribir un artefacto...", kind="rule", cause="c",
             prevention="p", path=str(workspace_root), ctx=ctx,
         )
-        text = f.read_text()
-        expertise = text.split("$6: EXPERTISE")[1].split("$7:")[0]
-        assert "LNG:" not in expertise, "lesson leaked into EXPERTISE"
-        assert "LNG:" in text.split("$8:")[1]
+        assert f.read_text() == before
+        brain = (workspace_root / ".arqux" / "brain.cortex").read_text()
+        assert "LNG:" in brain.split("$8:")[1]

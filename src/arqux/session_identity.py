@@ -38,7 +38,7 @@ from .concurrency import file_lock, reentrant_file_lock
 from .constants import ARQUX_DIR, BRAIN_CORTEX
 from .state import crud_add, crud_list, crud_update, find_project_root
 
-SESSION_SECTION = "$4"
+SESSION_SECTION = "$5"
 SESSION_SIGIL = "SES"
 SESSION_ID_RE = re.compile(r"^SES(\d{3,})$")
 SESSION_LOCK = ".sessions.lock"

@@ -26,23 +26,26 @@ from ...cortex.sigils import get_sigil, list_sigils
 from ...cortex_out import CortexOUT
 from ...permissions import PermissionContext
 
-#: Standard brain.cortex section map (templates/brain.cortex, v0.7 standard):
+#: Standard brain.cortex section map (canon:
+#: docs/reference/cortex-brain-section-canon.md, $0..$15):
 #: section id → title → sigils that live in it.
 BRAIN_SECTION_MAP: dict[str, dict[str, Any]] = {
     "$0": {"title": "GLOSSARY", "sigils": []},
-    "$19": {"title": "ARQUX METADATA", "sigils": ["ARQX"]},
-    "$1": {"title": "IDENTITY", "sigils": ["IDN", "DOM"]},
-    "$2": {"title": "FOCUS", "sigils": ["FCS"]},
-    "$3": {"title": "OBJECTIVES", "sigils": ["OBJ"]},
-    "$4": {"title": "SESSIONS", "sigils": ["SES"]},
-    "$5": {"title": "HANDOFFS", "sigils": ["HDL"]},
-    "$6": {"title": "PULSE", "sigils": ["AUD"]},
-    "$7": {"title": "LESSONS", "sigils": ["LNG"]},
-    "$8": {"title": "ACTIVE_CONTEXT", "sigils": ["WRK"]},
-    "$9": {"title": "RISKS", "sigils": ["RSK"]},
-    "$10": {"title": "KNOWLEDGE", "sigils": ["KNW"]},
-    "$11": {"title": "CONCURRENCY", "sigils": ["ERR"]},
-    "$12": {"title": "PACKAGES", "sigils": []},
+    "$1": {"title": "IDENTITY", "sigils": ["IDN"]},
+    "$2": {"title": "AXIOMS", "sigils": ["AXM"]},
+    "$3": {"title": "FOCUS", "sigils": ["FCS"]},
+    "$4": {"title": "OBJECTIVES", "sigils": ["OBJ"]},
+    "$5": {"title": "SESSIONS", "sigils": ["SES"]},
+    "$6": {"title": "HANDOFFS", "sigils": ["HDL"]},
+    "$7": {"title": "PULSE", "sigils": ["AUD"]},
+    "$8": {"title": "LESSONS", "sigils": ["LNG"]},
+    "$9": {"title": "ACTIVE_CONTEXT", "sigils": ["WRK"]},
+    "$10": {"title": "RISKS", "sigils": ["RSK", "LIM", "CNST", "PFL"]},
+    "$11": {"title": "KNOWLEDGE", "sigils": ["KNW"]},
+    "$12": {"title": "CONCURRENCY", "sigils": ["ERR"]},
+    "$13": {"title": "ISSUES", "sigils": []},
+    "$14": {"title": "LOOPS", "sigils": ["LOOP"]},
+    "$15": {"title": "ARQUX_METADATA", "sigils": ["ARQX"]},
 }
 
 
@@ -72,7 +75,7 @@ def ref_handler(
         return CortexOUT.work(
             f"cortex.ref ok sections={len(BRAIN_SECTION_MAP)}",
             sections=BRAIN_SECTION_MAP,
-            source="templates/brain.cortex (standard section map)",
+            source="docs/reference/cortex-brain-section-canon.md (canon section map)",
         )
 
     if not sigil or not isinstance(sigil, str):

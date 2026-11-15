@@ -140,8 +140,12 @@ def test_legacy_builder_never_creates_empty_or_duplicate_names():
     )
 
     assert "LNG:_{" not in text
-    assert "RSK:risk{" not in text
-    lessons = re.findall(r"^LNG:([A-Za-z0-9_]+)\{", text, re.M)
-    risks = re.findall(r"^RSK:([A-Za-z0-9_]+)\{", text, re.M)
+    # codec-cortex 1.0 emits generated sigil declarations (``RSK:risk{...}``,
+    # ``LNG:lesson{...}``) in $0 — the "no degenerate names" contract applies
+    # to real entries, so scan only below the glossary.
+    body = text[re.search(r"(?m)^\$[1-9]\d*:", text).start():]
+    assert "RSK:risk{" not in body
+    lessons = re.findall(r"^LNG:([A-Za-z0-9_]+)\{", body, re.M)
+    risks = re.findall(r"^RSK:([A-Za-z0-9_]+)\{", body, re.M)
     assert len(lessons) == len(set(lessons)) == 2, lessons
     assert len(risks) == len(set(risks)) == 2, risks

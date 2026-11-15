@@ -161,7 +161,7 @@ def test_compact_lng_written(tmp_path) -> None:
     assert result.get("compacted") is True
 
     brain_path = proj / ".arqux" / "brain.cortex"
-    lng = crud_read(brain_path, "$7/LNG:session_E_0009")
+    lng = crud_read(brain_path, "$8/LNG:session_E_0009")
     assert len(lng.get("entries", [])) == 1
     val = lng["entries"][0]["value"]
     assert val["type"] == "session"

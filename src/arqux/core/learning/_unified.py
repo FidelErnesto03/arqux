@@ -8,10 +8,6 @@ from typing import Any
 from ...constants import ARQUX_DIR, IDENTITIES_DIR, is_name_component
 from ._common import _resolve_project_root
 from ._elevate import elevate_candidate
-from ._lesson import (
-    InsufficientConfidenceError,
-    LessonStore,
-)
 from ._models import (
     AgentIdentityError,
     ContainerIdentityError,
@@ -143,50 +139,81 @@ def elevate(
         )
 
     # --- Behavioral line ---
+    # Architect rule 2026-11-15: the behavioral line sources lessons from the
+    # project brain ``$8`` LNG (the ONLY lesson surface) and elevates them into
+    # ``<agent>.cortex`` as AXM/LIM via ``IdentityManager.elevate_to_identity``.
+    # ``source``/``target`` parameters are accepted for signature compatibility
+    # but ignored — the brain and the workspace identities dir are resolved
+    # from ``project_root``. ``.lessons.cortex`` stores are deprecated.
     if line_norm == "behavioral":
         if not agent:
             raise AgentIdentityError(
                 "agent is required for the behavioral line"
             )
-        src_path = Path(source)
-        if not src_path.exists():
-            src_path, _ = _resolve_behavioral_paths(agent, project_root=project_root)
-        store = LessonStore(src_path, agent=agent)
-        lesson = store.get_lesson(lesson_id)
-        can, reason = store.can_elevate(lesson)
-        if not can:
-            raise InsufficientConfidenceError(
-                f"Cannot elevate {lesson_id}: {reason}"
-            )
+        if project_root is None:
+            resolved = _resolve_project_root(None)
+            if resolved is None:
+                raise ContainerIdentityError(
+                    "Could not resolve project_root for behavioral elevation"
+                )
+            project_root = resolved
+        from ._identity_elevate import elevate_lesson_to_identity
+
         sigil_to_write = "AXM" if contract_norm == "AXIOM" else "LIM"
+        preview = elevate_lesson_to_identity(
+            project_root, lesson_id, agent, contract_norm, dry_run=True,
+        )
+        if "error" in preview:
+            return {
+                "mode": "error",
+                "line": "behavioral",
+                "error": preview["error"],
+                "code": preview.get("code"),
+            }
+        if preview.get("skip"):
+            return {
+                "mode": "skipped",
+                "line": "behavioral",
+                "reason": preview.get("reason"),
+            }
+        proposal = preview.get("proposal", {})
         draft = BlueprintDraft(
             line="behavioral",
-            source=str(src_path),
-            target=target,
+            source=preview.get("source", ""),
+            target=preview.get("target", target),
             contract_type=contract_norm,
             lesson_id=lesson_id,
             sigil_to_write=sigil_to_write,
-            content={
-                "name": lesson_id,
-                "body": lesson.pattern,
-                "status": "current",
-                "source_lesson": lesson_id,
-            },
-            evidence_refs=[lesson.evidence_ref] if lesson.evidence_ref else [],
+            content=proposal,
+            evidence_refs=[proposal.get("evidence_ref", "")],
         )
         if dry_run and not apply:
-            return {"mode": "dry_run", "line": "behavioral", "draft": draft.to_dict() if hasattr(draft, "to_dict") else _draft_to_dict(draft)}
-        store.mark_elevated(lesson_id)
+            return {
+                "mode": "dry_run",
+                "line": "behavioral",
+                "draft": _draft_to_dict(draft),
+                "preview_hash": preview.get("preview_hash"),
+            }
+        # apply=True is the explicit confirmation (CLI --apply / governed
+        # caller). Re-issue with the freshly computed preview hash so the
+        # governed writer still enforces hash-checked mutation.
+        applied = elevate_lesson_to_identity(
+            project_root, lesson_id, agent, contract_norm,
+            dry_run=False, confirm_hash=preview.get("preview_hash"),
+        )
+        if "error" in applied:
+            return {
+                "mode": "error",
+                "line": "behavioral",
+                "error": applied["error"],
+                "code": applied.get("code"),
+            }
         return {
             "mode": "applied",
             "line": "behavioral",
             "draft": _draft_to_dict(draft),
-            "lesson_status": "elevated",
-            "next_step": (
-                f"call IdentityManager.elevate_to_identity(agent={agent!r}, "
-                f"lesson_id={lesson_id!r}, contract_type={contract_norm!r}) "
-                f"to write the {sigil_to_write} sigil into {target}"
-            ),
+            "verified": applied.get("verified", False),
+            "result": applied.get("result"),
         }
 
     # --- Procedural line ---

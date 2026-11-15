@@ -40,7 +40,7 @@ def test_diagnostics_reports_a_known_shape() -> None:
         "can_validate",
         "can_render_hcortex",
     }
-    assert diag["api"] in {"legacy", "rc1", None}
+    assert diag["api"] in {"legacy", "rc1", "v1", None}
     assert isinstance(diag["missing_capabilities"], list)
 
 

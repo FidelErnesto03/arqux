@@ -75,14 +75,19 @@ def _derive_lesson_name(
     entries in total. Entry identity must not come from prose.
 
     Resolution order:
-      1. An explicit *name* supplied by the caller.
+      1. An explicit *name* supplied by the caller — honoured in full once
+         slugified (explicit intent wins; the 30-char cap below used to
+         truncate it silently — ergonomics issue). Slugification stays:
+         entry names cannot carry spaces or braces in CORTEX.
       2. The first word, when it is still free.
       3. The first word plus a digest of the lesson content. The digest makes
          the result deterministic, so re-recording the same lesson yields the
          same name instead of appending yet another numeric suffix.
+
+    The 30-char cap applies ONLY to auto-derived names (branches 2–3).
     """
     if explicit:
-        candidate = re.sub(r"[^a-z0-9_]", "_", explicit.casefold())[:30].strip("_")
+        candidate = re.sub(r"[^a-z0-9_]", "_", explicit.casefold()).strip("_")
         if candidate:
             return candidate
     first_word = lesson.lstrip(" -\"").lower().split()[0] if lesson.split() else "lesson"
@@ -99,7 +104,14 @@ def record_lesson_handler(
     agent_id: str | None = None,
     path: str | None = None, ctx: PermissionContext | None = None,
 ) -> CortexOUT:
-    """Record a behavioral lesson into agent identity with HMAC verification."""
+    """Record a lesson into the project brain ``$8`` with HMAC verification.
+
+    Architect rule 2026-11-15: ``brain.cortex`` is the ONLY lesson surface.
+    All kinds (behavioral, technical, process, infrastructure) are filed as
+    ``LNG`` entries in ``$8`` with the originating ``agent`` preserved as a
+    field. Elevation to ``$11`` KNW or to an identity ``AXM``/``LIM`` is a
+    separate governed step (``cortex.learn.elevate`` / ``identity.elevate``).
+    """
     authenticated = enforce_ctx(
         ctx, "identity.record",
         require_hmac=os.environ.get("ARQUX_STRICT_SECURITY") == "1",
@@ -132,126 +144,106 @@ def record_lesson_handler_legacy(
     path: str = "",
     ctx: PermissionContext | None = None,
 ) -> CortexOUT:
-    """Record a behavioral lesson into the agent's identity file.
+    """Record a lesson into the project brain ``$8`` LESSONS section.
 
-    Appends an LNG entry to ``$5: BEHAVIORAL LESSONS`` in the agent's
-    identity at ``<workspace or project>/.arqux/identities/<agent_id>.cortex``.
+    Architect rule 2026-11-15: lessons live ONLY in ``brain.cortex``.
+    Every kind — including ``behavioral`` — is filed as an ``LNG`` entry in
+    ``$8``; the originating agent is preserved in the entry's ``agent``
+    field. Identity files no longer receive lesson captures: behavioral
+    knowledge reaches ``<agent>.cortex`` only through governed elevation
+    (``identity.elevate`` → ``AXM``/``LIM``).
 
-    This is how identities evolve — each significant behavioral lesson
-    becomes a permanent part of the agent's identity.
-
-    BLP-042: prevention is REQUIRED. No fallback bypass.
+    BLP-042: prevention is REQUIRED. No fallback bypass. Brain E034 also
+    rejects empty ``cause`` — both are enforced here so callers get a
+    clear INVALID_ARGS instead of a downstream CRUD_ERROR.
     """
     agent = (agent_id or (ctx.agent_id if ctx else "alfred")).casefold()
     target_path = Path(path or ".").resolve()
 
-    identity_file = None
-    cursor = target_path
-    while True:
-        candidate = cursor / ARQUX_DIR / "identities" / f"{agent}.cortex"
-        if candidate.exists():
-            identity_file = candidate
-            break
-        if cursor.parent == cursor:
-            break
-        cursor = cursor.parent
+    missing = [f for f, v in (("cause", cause), ("prevention", prevention)) if not str(v).strip()]
+    if missing:
+        return CortexOUT.error(
+            f"required lesson field(s) empty: {', '.join(missing)} "
+            f"(BLP-042/E034 — brain $8 LNG entries must carry non-empty "
+            f"cause, lesson and prevention)",
+            code="INVALID_ARGS",
+        )
 
-    if identity_file is None:
-        pkg = Path(__file__).resolve().parent.parent.parent / "identities" / f"{agent}.cortex"
-        if pkg.exists():
-            identity_file = pkg
-        else:
-            return CortexOUT.error(
-                f"identity file not found for agent={agent}", code="NOT_FOUND"
-            )
+    root = find_project_root(start=str(target_path))
+    brain_path = root / "brain.cortex" if root is not None else None
+    if brain_path is None or not brain_path.exists():
+        direct = target_path / ARQUX_DIR / "brain.cortex"
+        brain_path = direct if direct.exists() else None
+    if brain_path is None:
+        return CortexOUT.error(
+            "no project brain.cortex found — lessons are filed only in brain $8",
+            code="NOT_FOUND",
+        )
 
     try:
-        content_text = identity_file.read_text(encoding="utf-8")
+        content_text = brain_path.read_text(encoding="utf-8")
         taken = {m.group(1) for m in re.finditer(r"^LNG:([A-Za-z0-9_]+)", content_text, re.M)}
         entry_name = _derive_lesson_name(lesson, taken, name)
         if entry_name in ("_", "*"):  # T-022: '_'/'*' are reserved selector names
             entry_name = "lesson"
     except Exception as exc:  # noqa: BLE001
-        return CortexOUT.error(str(exc), code="IDENTITY_UPDATE_ERROR")
+        return CortexOUT.error(str(exc), code="BRAIN_UPDATE_ERROR")
 
-    value = {"type": kind, "cause": cause, "lesson": lesson, "prevention": prevention}
+    value = {
+        "type": kind,
+        "cause": cause,
+        "lesson": lesson,
+        "prevention": prevention,
+        "agent": agent,
+    }
 
-    # BLP-022 invariante B (E-1808): a Level-1 identity contract admits no
-    # live-state sigil. When the identity declares level 1 the lesson is filed
-    # in an apt destination (the project brain) instead of corrupting the
-    # contract; if no apt destination exists the write is rejected.
-    # BLP-020 exemption (Architect policy 2026-11-02): kind="behavioral" is
-    # contract content of a usage:"identity" artifact — it is filed in the
-    # identity's BEHAVIORAL LESSONS section, never in the project brain.
-    from ...timelog_capture import require_writable_destination
-
-    destination_rejection = require_writable_destination(
-        identity_file, "LNG", action="identity.record", entry_kind=kind,
-    )
-    filed_in_identity = destination_rejection is None
-    if filed_in_identity:
-        try:
-            result = crud_add(
-                identity_file,
-                # Resolved by section title: identities disagree on the number
-                # ($5 for governor, $6 for alfred/jarvis) and some reuse $6 for
-                # EXPERTISE, so a fixed id files lessons under the wrong section.
-                _ensure_lessons_section(identity_file),
-                "LNG", entry_name, value,
-                create_section=True,
-                force=True,
-            )
-            if "error" in result:
-                return CortexOUT.error(result["error"], code="CRUD_ERROR")
-        except Exception as exc:  # noqa: BLE001
-            return CortexOUT.error(str(exc), code="IDENTITY_UPDATE_ERROR")
+    try:
+        brain_result = crud_add(
+            brain_path,
+            "$8", "LNG", entry_name, value,
+            create_section=True,
+        )
+        # F4: only a clean write counts as filed — a crud_add that
+        # returned an error must NOT be reported as persisted.
+        if "error" in brain_result:
+            return CortexOUT.error(brain_result["error"], code="CRUD_ERROR")
+    except Exception as exc:  # noqa: BLE001
+        return CortexOUT.error(str(exc), code="BRAIN_UPDATE_ERROR")
 
     scan_candidates = 0
-    filed_in_brain = False
     try:
         from ...learning import scan_brain  # lazy: allow monkeypatch
 
-        root = find_project_root(start=path or ".")
-        if root is not None:
-            project_dir = root.parent
-            brain_path = project_dir / ".arqux" / "brain.cortex"
-            # BLP-020: a lesson filed in the identity (kind=behavioral) does
-            # NOT duplicate into the project brain — contextual lessons only.
-            if brain_path.exists() and not filed_in_identity:
-                brain_result = crud_add(
-                    brain_path,
-                    "$7", "LNG", entry_name,
-                    {"type": kind, "cause": cause, "lesson": lesson,
-                     "prevention": prevention},
-                    create_section=True,
-                )
-                # F4: only a clean write counts as filed — a crud_add that
-                # returned an error must NOT be reported as persisted.
-                filed_in_brain = "error" not in brain_result
-
-            scan = scan_brain(project_dir, verbose=True)
-            scan_candidates = len(scan.get("candidates", []))
+        project_dir = brain_path.parent.parent
+        scan = scan_brain(project_dir, verbose=True)
+        scan_candidates = len(scan.get("candidates", []))
     except Exception:  # noqa: BLE001
         pass
-
-    if not filed_in_identity and not filed_in_brain:
-        return CortexOUT.error(
-            destination_rejection["message"],
-            code=destination_rejection["code"],
-            remediation=destination_rejection["remediation"],
-        )
 
     result = CortexOUT.work(
         f"identity.record ok agent={agent} lesson={entry_name} kind={kind}",
         agent=agent,
         kind=kind,
         lesson=entry_name,
-        file=str(identity_file),
-        destination="identity" if filed_in_identity else "brain",
+        file=str(brain_path),
+        destination="brain",
     )
     if scan_candidates:
         result.fields["hint"] = f"{scan_candidates} learning candidate(s) detected — run cortex.learn.elevate to review"
         result.fields["learning_candidates"] = scan_candidates
+    else:
+        # The recorded lesson itself is a valid learning signal — expose it
+        # as a local candidate so auto-trigger consumers (and the native
+        # engine contract) get a hint.
+        lesson_candidate = {
+            "candidate_id": f"cand_lng_{entry_name}",
+            "source_entries": [f"LNG:{entry_name}"],
+            "target": "KNW",
+            "source": "identity.record",
+        }
+        result.fields["hint"] = "1 learning candidate(s) detected — run cortex.learn.elevate to review"
+        result.fields["learning_candidates"] = 1
+        result.fields["candidates"] = [lesson_candidate]
     return result
 
 
@@ -294,7 +286,8 @@ def learn_scan_handler(
     if "error" in scan:
         return CortexOUT.error(scan["error"], code="LEARN_ERROR")
 
-    candidates = scan.get("candidates", []) or list_candidates(root)
+    _lc = list_candidates(root)
+    candidates = scan.get("candidates", []) or ([] if isinstance(_lc, dict) else _lc)
 
     return CortexOUT.work(
         f"learn.scan ok count={scan.get('count', 0)} entries scanned",

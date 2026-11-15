@@ -14,6 +14,13 @@ from arqux.handlers.cortex.read_write import verify_handler
 
 HEALTHY_BRAIN = """$0
 
+$0:format{cortex:1.0, encoding:UTF-8}
+
+IDN:idn_contract{type:"attrs", weight:"B", fields:"value:any?", focus:"value", desc:"Actor identity", open:true}
+FCS:fcs_contract{type:"attrs", weight:"H", fields:"value:any?", focus:"value", desc:"Active anchor", open:true}
+OBJ:obj_contract{type:"attrs", weight:"H", fields:"value:any?", focus:"value", desc:"Active goal", open:true}
+LNG:lng_contract{type:"attrs", weight:"M", fields:"value:any?", focus:"value", desc:"Learned lesson", open:true}
+
 $1: METADATA
 
 IDN:test{name:"test", kind:"brain"}
@@ -65,11 +72,18 @@ def test_entry_name_lives_in_the_key_not_as_field(tmp_path):
 
 
 def test_real_corruption_is_flagged_not_buried(tmp_path):
-    """A duplicated entry is a real E-code and must be visible."""
+    """A duplicated entry is real corruption and must be visible."""
     dup = HEALTHY_BRAIN + '\nLNG:healthy{type:"process", cause:"dup", lesson:"dup", prevention:"dup"}\n'
     out = verify_handler(str(_brain(tmp_path, dup)))
     codes = _diagnostic_codes(out)
-    assert any(c.startswith("E") for c in codes), out.fields.get("diagnostics")
+    # codec-cortex 1.0 rejects duplicate addresses at parse time
+    # (I006_DUPLICATE_IDEA_ADDRESS) — verify surfaces that as an explicit
+    # error; validator-level duplicates keep arriving as E-codes.
+    flagged = (
+        (out.profile == OUT_ERROR and "duplicate" in out.message.lower())
+        or any(c.startswith(("E", "I")) for c in codes)
+    )
+    assert flagged, out.fields
 
 
 def test_verify_missing_file_is_explicit(tmp_path):

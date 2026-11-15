@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import importlib.resources
 import subprocess
+import sys
 import tempfile
 from pathlib import Path
 
@@ -55,7 +56,7 @@ class TestInitCopiesWorkflows:
         """Run arqux init in a tmpdir and verify workflows are present."""
         with tempfile.TemporaryDirectory() as tmpdir:
             result = subprocess.run(
-                ["arqux", "call", "workspace.init", f"path={tmpdir}"],
+                [sys.executable, "-m", "arqux", "call", "workspace.init", f"path={tmpdir}"],
                 capture_output=True,
                 text=True,
                 timeout=30,

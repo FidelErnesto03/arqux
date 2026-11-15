@@ -123,30 +123,46 @@ Las **SKILL** no forman parte directa de este nivel — son **procedimentales**,
 
 ### Sistema de Aprendizaje por Identidad
 
-Cada identidad cuenta con su propio **paquete de lecciones** (Level 0) que permite el aprendizaje regular sin cambiar la identidad directamente.
+> **Regla del Arquitecto (2026-11-15):** las lecciones viven SOLO en
+> `brain.cortex` `$8` (LNG). Desde ahí pueden elevarse a dos destinos:
+>
+> - **`$11` KNOWLEDGE (KNW)** — conocimiento operativo del proyecto, dentro
+>   del brain (`cortex.learn.elevate`).
+> - **`<agent>.cortex` `AXM`/`LIM`** — conocimiento conductual, dentro del
+>   contrato de identidad (`identity.elevate` →
+>   `IdentityManager.elevate_to_identity`).
+>
+> `.lessons.cortex` (Level 0) y la sección `BEHAVIORAL LESSONS` de las
+> identidades quedan **deprecados como almacenes de lecciones** — la
+> identidad porta solo contratos elevados (AXM/LIM), nunca capturas crudas.
 
 **Flujo de Aprendizaje:**
 
 ```
-Aprendizaje rutinario → <agent>.lessons.cortex (Level 0 = PACKAGE)
-                              ↓
-                    Acumulación de patrones
-                              ↓
-                    Motor de aprendizaje evalúa
-                              ↓
-                    ¿Se convierte en conocimiento conductual?
-                         ↓              ↓
-                        NO            SÍ
-                         ↓              ↓
-                    Permanece      Eleva a identidad
-                    en Level 0     <agent>.cortex (Level 1)
+Captura (única superficie)            Elevación (dos destinos, gobernada)
+
+brain.cortex $8 LNG ──┬──▶ brain $11 KNW          (operativo: cortex.learn.elevate)
+                      └──▶ <agent>.cortex AXM/LIM  (conductual: identity.elevate)
+
+   type/cause/lesson/prevention/agent   dry-run → preview_hash → confirm → verify
 ```
 
-**Nota:** `<agent>.lessons.cortex` es un archivo Level 0 (PACKAGE) — no un nivel separado.
+**Regla Fundamental:** La personalidad NO cambia directamente. Ningún handler
+de captura escribe en el contrato de identidad — solo la elevación gobernada
+muta `<agent>.cortex`, con dry-run, hash de confirmación y verificación
+post-escritura atómica (axioma `silent_corruption`).
 
-**Regla Fundamental:** La personalidad NO cambia directamente. Solo después de una profunda reflexión de aprendizajes, el motor de aprendizaje establece que las lecciones acumuladas se convierten en conocimiento conductual.
+**Captura:** `identity.record` (todas las kinds) y cualquier path de
+consolidación (cycle.close, pulse sweeps) escriben `LNG` en `$8` del brain del
+proyecto. El campo `agent` del LNG preserva la atribución del originador —
+necesaria para decidir a qué contrato eleva una lección conductual.
 
-**Uso de codec-cortex:** El motor de elevación ya existe en codec-cortex. ArqUX debe usarlo correctamente.
+**Elevación conductual (`identity.elevate`, MCP):** lee el LNG desde el brain,
+propone `AXM` (contract_type=AXIOM) o `LIM` (LIMIT), escribe via
+`IdentityManager.elevate_to_identity` — la única vía sancionada de mutación
+de identidad (escritura atómica con `.bak`, escape canónico, dedup por
+`(sigilo, nombre)`, verificación post-escritura con reversión). Permiso:
+`CONDITIONAL_MUTATING` — auditor solo preview; governor/executor aplican.
 
 ### Sigilos Típicos
 
@@ -325,31 +341,39 @@ Un brain con FCS `status:done` NO satisface Nivel 3.
 
 ### Estructura Canónica de un Brain
 
+> **Canon vigente:** `docs/reference/cortex-brain-section-canon.md`
+> ($0–$15, incluye `AXIOMS` en `$2` — axiomas de comportamiento propios de
+> cada brain, impuestos por el proyecto o elevados por aprendizaje forzado).
+> La tabla siguiente refleja ese canon.
+
 | Sección | Contenido | Obligatorio |
 |---|---|---|
 | $0 | Glosario local de sigilos | Sí |
 | $1 | IDENTITY — gobernador, proyecto | Sí |
-| $2 | FOCUS — FCS activo | Sí |
-| $3 | OBJECTIVES — OBJ activo | Sí |
-| $4 | SESSIONS — historial de sesiones | Opcional |
-| $5 | HANDOFFS — traspasos entre agentes | Opcional |
-| $6 | PULSE — auditoría de eventos | Sí |
-| $7 | LESSONS — lecciones aprendidas | Opcional |
-| $8 | ACTIVE_CONTEXT — WRK actual | Sí |
-| $9 | RISKS — riesgos identificados | Opcional |
-| $10 | KNOWLEDGE — conocimiento estable | Opcional |
-| $11 | CONCURRENCY — control de versiones | Sí |
-| $12 | ISSUES — registro de incidencias | Opcional |
+| $2 | AXIOMS — axiomas de comportamiento del proyecto | Sí |
+| $3 | FOCUS — FCS activo | Sí |
+| $4 | OBJECTIVES — OBJ activo | Sí |
+| $5 | SESSIONS — historial de sesiones | Opcional |
+| $6 | HANDOFFS — traspasos entre agentes | Opcional |
+| $7 | PULSE — auditoría de eventos (acotado) | Sí |
+| $8 | LESSONS — lecciones aprendidas | Opcional |
+| $9 | ACTIVE_CONTEXT — WRK actual | Sí |
+| $10 | RISKS — riesgos, límites y constreñimientos | Opcional |
+| $11 | KNOWLEDGE — conocimiento estable | Opcional |
+| $12 | CONCURRENCY — control de versiones | Sí |
+| $13 | ISSUES — registro de incidencias | Opcional |
+| $14 | LOOPS — loops autónomos | Opcional |
+| $15 | ARQUX_METADATA — metadatos del artefacto | Sí |
 
 ### Ejemplo
 
 ```cortex
-$2: FOCUS
+$3: FOCUS
 
 FCS:current{what:"Implementar validación de duplicados",
   priority:"medium", status:"current", survive:"work"}
 
-$3: OBJECTIVES
+$4: OBJECTIVES
 
 OBJ:_1{goal:"Completar BLP-003 con auto-numeración",
   status:"current", success:"E3 resuelto", survive:"work"}
@@ -419,7 +443,7 @@ Esto se aplica en TODOS los niveles sin excepción y no es bypassable.
 
 | Nivel | Nombre | Tipo | Archivos | Estado vivo | Error clave |
 |---|---|---|---|---|---|
-| 0 | PACKAGE | Personal Library | Documentos densos + `<agent>.lessons.cortex` | **VIVO** (se actualiza) | — |
+| 0 | PACKAGE | Personal Library | Documentos densos (`<agent>.lessons.cortex` **deprecado** 2026-11-15 — lecciones solo en brain `$8`) | **VIVO** (se actualiza) | — |
 | 1 | BEHAVIORAL | Identity | `<agent>.cortex` | PROHIBIDO (solo por elevación) | E023_LEVEL1_LIVE_STATE |
 | 2 | SKILL | Procedimental | `.md` con contenido cortex | Por diseño/evolución | — |
 | 3 | BRAIN | Estado | `brain.cortex`, `meta-brain.cortex` | REQUERIDO (FCS+OBJ) | E024_LEVEL3_MISSING_FOCUS |

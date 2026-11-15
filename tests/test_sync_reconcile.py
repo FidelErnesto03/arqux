@@ -3,7 +3,7 @@
 BUG-003 (workspace issue): ``sync.run``/``reconcile`` hardcoded the selector
 ``$2/DOM:arqux``, so project metrics were written onto the workspace
 self-DOM and the project's own ``DOM:<name>`` went stale. Reconcile also
-aborted when the project brain had no ``OBJ`` entry in §3.
+aborted when the project brain had no ``OBJ`` entry in §4.
 """
 
 from __future__ import annotations
@@ -67,19 +67,19 @@ def test_sync_creates_dom_entry_when_missing(workspace_root: Path, governor_ctx)
 
 
 def test_reconcile_tolerates_brain_without_obj(workspace_root: Path, governor_ctx) -> None:
-    """``reconcile_brain`` must not abort when the brain §3 has no OBJ entry:
+    """``reconcile_brain`` must not abort when the brain §4 has no OBJ entry:
     it records the gap in ``errors[]`` and still syncs the meta-brain DOM."""
     proj = _ws_and_project(workspace_root, governor_ctx)
     brain = proj / ARQUX_DIR / "brain.cortex"
 
-    # Strip the seeded OBJ entry so §3 has no OBJ at all.
+    # Strip the seeded OBJ entry so §4 has no OBJ at all.
     text = brain.read_text(encoding="utf-8")
     text = text.replace(
         'OBJ:onboard{name:"onboarding", goal:"Complete project onboarding: populate brain sections, open first cycle", status:"current", success:"brain valid and first cycle open", survive:"work"}',
         "",
     )
     brain.write_text(text, encoding="utf-8")
-    assert not crud_read(brain, "$3/OBJ:*")["entries"]
+    assert not crud_read(brain, "$4/OBJ:*")["entries"]
 
     result = reconcile_brain(proj)
 
@@ -101,7 +101,7 @@ def test_reconcile_updates_existing_obj_entry(workspace_root: Path, governor_ctx
     result = reconcile_brain(proj)
 
     assert result["reconciled"] is True, str(result["errors"])
-    obj = crud_read(brain, "$3/OBJ:onboard")
+    obj = crud_read(brain, "$4/OBJ:onboard")
     assert obj["entries"], "OBJ:onboard missing"
     assert obj["entries"][0]["value"].get("event") == "brain.reconcile"
 
@@ -229,7 +229,7 @@ def test_reconcile_project_preserves_obj_goal(workspace_root: Path, governor_ctx
 
     crud_update(
         str(brain),
-        "$3/OBJ:onboard",
+        "$4/OBJ:onboard",
         set_={"goal": "Operator-authored objective: keep me"},
         force=True,
     )
@@ -237,7 +237,7 @@ def test_reconcile_project_preserves_obj_goal(workspace_root: Path, governor_ctx
     result = reconcile_brain(proj)
 
     assert result["reconciled"] is True, str(result["errors"])
-    obj = crud_read(brain, "$3/OBJ:onboard")
+    obj = crud_read(brain, "$4/OBJ:onboard")
     assert obj["entries"], "OBJ:onboard missing"
     val = obj["entries"][0]["value"]
     assert val["goal"] == "Operator-authored objective: keep me"
@@ -248,7 +248,7 @@ def test_reconcile_project_preserves_obj_goal(workspace_root: Path, governor_ctx
 
 
 def test_reconcile_project_creates_obj_when_absent(workspace_root: Path, governor_ctx) -> None:
-    """Project-context reconcile writes the generic OBJ goal only when §3
+    """Project-context reconcile writes the generic OBJ goal only when §4
     has no OBJ entry at all."""
     proj = _ws_and_project(workspace_root, governor_ctx)
     brain = proj / ARQUX_DIR / "brain.cortex"
@@ -259,11 +259,63 @@ def test_reconcile_project_creates_obj_when_absent(workspace_root: Path, governo
         "",
     )
     brain.write_text(text, encoding="utf-8")
-    assert not crud_read(brain, "$3/OBJ:*")["entries"]
+    assert not crud_read(brain, "$4/OBJ:*")["entries"]
 
     result = reconcile_brain(proj)
 
     assert result["reconciled"] is True, str(result["errors"])
-    objs = crud_read(brain, "$3/OBJ:*")["entries"]
+    objs = crud_read(brain, "$4/OBJ:*")["entries"]
     assert objs, "reconcile must create a generic OBJ when absent"
     assert "Mantener sincronia" in objs[0]["value"].get("goal", "")
+
+
+def test_reconcile_workspace_discovers_governed_projects(
+    workspace_root: Path, governor_ctx
+) -> None:
+    """Workspace reconcile registers every governed project (dirs with
+    ``.arqux/brain.cortex``) as ``$2/DOM:<name>`` in the meta-brain."""
+    from arqux.handlers import project
+
+    workspace.init_workspace(path=str(workspace_root), ctx=governor_ctx)
+    for name in ("alpha_proj", "beta proj"):
+        p = workspace_root / name
+        p.mkdir()
+        project.init_project(name=name, path=str(p), ctx=governor_ctx)
+    (workspace_root / "plain_dir").mkdir()
+    meta = _meta_brain(workspace_root)
+
+    result = reconcile_brain(workspace_root)
+
+    assert result["reconciled"] is True, str(result["errors"])
+    for dom in ("alpha_proj", "beta_proj"):
+        entries = crud_read(meta, f"$2/DOM:{dom}")["entries"]
+        assert entries, f"DOM:{dom} not registered by workspace reconcile"
+        assert entries[0]["value"].get("status") == "current"
+
+
+def test_reconcile_workspace_marks_orphan_dom_stale(
+    workspace_root: Path, governor_ctx
+) -> None:
+    """A ``DOM`` pointing at a deleted/non-governed path is marked
+    ``status:"stale"`` — never deleted — and the self-DOM is untouched."""
+    from arqux.core.state import crud_add
+    from arqux.sync import reconcile_workspace_projects
+
+    _ws_and_project(workspace_root, governor_ctx)
+    meta = _meta_brain(workspace_root)
+    crud_add(
+        str(meta), "$2", "DOM", "ghost_proj",
+        {"name": "ghost", "path": str(workspace_root / "ghost_proj"),
+         "status": "current"},
+        create_section=False, force=True,
+    )
+
+    result = reconcile_workspace_projects(workspace_root / ARQUX_DIR)
+
+    assert "ghost_proj" in result["stale"], str(result)
+    ghost = crud_read(meta, "$2/DOM:ghost_proj")["entries"][0]["value"]
+    assert ghost.get("status") == "stale"
+    # Second run is idempotent: nothing re-stales, nothing re-creates.
+    again = reconcile_workspace_projects(workspace_root / ARQUX_DIR)
+    assert again["stale"] == []
+    assert again["created"] == []

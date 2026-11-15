@@ -18,7 +18,7 @@ SEED = ('fcs:"foco previo",obj:"objetivo previo",'
 
 def _wrk(env) -> dict:
     brain = env.proj_root / ".arqux" / "brain.cortex"
-    entries = crud_read(brain, "$8/WRK:current")["entries"]
+    entries = crud_read(brain, "$9/WRK:current")["entries"]
     return entries[0]["value"] if entries else {}
 
 

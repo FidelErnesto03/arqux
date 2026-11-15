@@ -21,7 +21,10 @@ from .state import find_workspace_root
 _HAS_CODEC_CORTEX = False
 _cc_parser = None
 try:
-    import cortex.core.parser as _cc_parser
+    # BLP-005: parse through the ArqUX-owned model (codec 1.0.x when
+    # installed, legacy 0.6.x shape otherwise) — never the codec
+    # namespace directly.
+    from .cortex import model as _cc_parser
     _HAS_CODEC_CORTEX = True
 except ImportError:
     pass
@@ -40,7 +43,7 @@ def _get_agents_from_meta(ws_root: Path) -> list[dict]:
     text = meta_path.read_text(encoding="utf-8")
     if not _HAS_CODEC_CORTEX or "$0" not in text[:80]:
         return []
-    doc = _cc_parser.parse_cortex(text, path=str(meta_path))
+    doc = _cc_parser.parse_native(text, path=str(meta_path))
     agents = []
     for sec in doc.sections:
         if sec.title and sec.title.upper() == "AGENTS":
@@ -62,7 +65,7 @@ def _get_projects_from_meta(ws_root: Path) -> list[dict]:
     text = meta_path.read_text(encoding="utf-8")
     if not _HAS_CODEC_CORTEX or "$0" not in text[:80]:
         return []
-    doc = _cc_parser.parse_cortex(text, path=str(meta_path))
+    doc = _cc_parser.parse_native(text, path=str(meta_path))
     projects = []
     seen_names = set()
     for sec in doc.sections:
@@ -93,7 +96,7 @@ def _get_evidence_events(ws_root: Path) -> list[dict]:
     text = brain_path.read_text(encoding="utf-8")
     if not _HAS_CODEC_CORTEX or "$0" not in text[:80]:
         return []
-    doc = _cc_parser.parse_cortex(text, path=str(brain_path))
+    doc = _cc_parser.parse_native(text, path=str(brain_path))
     events = []
     for sec in doc.sections:
         if sec.title and sec.title.upper() in ("PULSE", "STATE"):

@@ -138,7 +138,7 @@ def checkpoint_handler(
     # input keep their current values instead of being wiped.
     existing_values: dict = {}
     try:
-        existing = crud_read(brain_path, "$8/WRK:current")
+        existing = crud_read(brain_path, "$9/WRK:current")
         if existing.get("entries"):
             ev = existing["entries"][0].get("value")
             if isinstance(ev, dict):
@@ -177,10 +177,10 @@ def checkpoint_handler(
 
     # Try crud_update first (if entry exists), fall back to crud_add-like write
     try:
-        existing = crud_read(brain_path, "$8/WRK:current")
+        existing = crud_read(brain_path, "$9/WRK:current")
         if existing.get("entries"):
             crud_update(
-                brain_path, "$8/WRK:current",
+                brain_path, "$9/WRK:current",
                 set_={
                     "fcs": value["fcs"], "obj": value["obj"],
                     "tasks": value["tasks"], "state": value["state"],
@@ -321,7 +321,7 @@ def _write_wrk_entry(brain_path: Path, value: dict[str, str]) -> None:
     )
     text = brain_path.read_text(encoding="utf-8")
 
-    if "$8: ACTIVE_CONTEXT" in text:
+    if "$9: ACTIVE_CONTEXT" in text:
         # Replace existing WRK:current line
         lines = text.splitlines()
         new_lines = []
@@ -336,7 +336,7 @@ def _write_wrk_entry(brain_path: Path, value: dict[str, str]) -> None:
             new_lines.append(line.rstrip())
         cortex_write(path=str(brain_path), content="\n".join(new_lines) + "\n")
     else:
-        cortex_write(path=str(brain_path), content=text.rstrip() + f"\n\n$8: ACTIVE_CONTEXT\n\n{line}")
+        cortex_write(path=str(brain_path), content=text.rstrip() + f"\n\n$9: ACTIVE_CONTEXT\n\n{line}")
 
 
 def _now_iso() -> str:
@@ -350,7 +350,7 @@ handler_schemas = [
         "fn": checkpoint_handler,
         "description": (
             "Persist the agent's working state (WRK:current) as a single "
-            "CORTEX line in brain.cortex §8. session.bootstrap reads it "
+            "CORTEX line in brain.cortex §9. session.bootstrap reads it "
             "back so the agent can resume where it left off. "
             "Accepts content as key:value pairs (fcs:,obj:,tasks:,state:)."
         ),

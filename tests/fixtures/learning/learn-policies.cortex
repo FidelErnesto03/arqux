@@ -1,0 +1,7 @@
+$0
+
+$5: LEARNING POLICY
+POL:ses_to_lng{from:"SES", to:"LNG", tier:"1", threshold:"3"}
+POL:lng_to_knw{from:"LNG", to:"KNW", tier:"1", threshold:"5"}
+THR:fibonacci{series:"1,1,2,3,5,8,13,21"}
+PRT:protected{sigils:"CNST,IDN,AXM,CLAIM,LIM"}

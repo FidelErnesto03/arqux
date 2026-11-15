@@ -1,7 +1,8 @@
 """BrainStructureValidator — Nivel 3 anatomical validator (BLP-036).
 
-Validates that a Level-3 BRAIN artifact possesses the 13 canonical sections
-($0 METADATA through $12 ISSUES) per niveles-cortex-arqux.md v3.0.
+Validates that a Level-3 BRAIN artifact possesses the 16 canonical sections
+($0 GLOSSARY through $15 ARQUX_METADATA) per
+docs/reference/cortex-brain-section-canon.md.
 
 This validator is STRICTLY TOPOLOGICAL: it checks the CONTINENT (section
 presence), not the CONTENT (sigil semantics). Content validation is the
@@ -34,7 +35,7 @@ _SECTION_HEADER_RE = re.compile(
 
 
 class BrainStructureValidator(BaseValidator):
-    """Validates the 13-section anatomy of a Level-3 BRAIN artifact."""
+    """Validates the 16-section anatomy of a Level-3 BRAIN artifact."""
 
     def validate(self, artifact: Any) -> ValidationResult:
         if artifact.metadata.level is not CortexLevel.BRAIN:
@@ -52,7 +53,7 @@ class BrainStructureValidator(BaseValidator):
 
         result = ValidationResult(is_valid=True)
 
-        # Verify each of the 13 canonical sections is present.
+        # Verify each of the 16 canonical sections is present.
         canonical = list(BrainSection)
         active_count = 0
         for sec in canonical:
@@ -84,7 +85,7 @@ class BrainStructureValidator(BaseValidator):
             result.add_warning(
                 code=W002_INCOMPLETE_BRAIN,
                 message=(
-                    f"Brain has only {active_count}/13 active sections "
+                    f"Brain has only {active_count}/16 active sections "
                     f"(threshold: 8)"
                 ),
             )

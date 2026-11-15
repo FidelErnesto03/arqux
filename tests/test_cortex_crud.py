@@ -673,18 +673,26 @@ class TestGlossaryCrud:
         doc = _doc_with_glossary()
         add_entry(doc, "$0", "GSIG", "TST", {"name": "test", "type": "attrs", "risk": "B"})
         text = write_cortex_from_json(doc)
-        # Symbols serialize inside the $0 block, before numbered sections.
-        assert "GSIG:TST{" in text
-        assert "GSIG:IDN{" in text
+        # BLP-005: legacy GSIG records are upgraded to executable v1
+        # declarations — the 1.0 grammar has no GSIG sigil.
+        assert "GSIG:" not in text
+        assert "TST:tst{" in text
+        assert "IDN:identity{" in text
+        assert "LNG:lesson{" in text
         # Exactly one $0 header — no fake "$0:" section header was minted
         # (a real section header would sit at the start of a line).
-        assert "\n$0:" not in text
-        # Re-parse round-trips into glossary.symbols again.
+        # ``$0:name{...}`` meta-declarations ($0:format, enums, micros) are
+        # glossary content under the codec-cortex 1.0.x dialect, not headers.
+        import re
+
+        assert not re.search(r"^\$0:(?![a-z_][a-z0-9_-]*\{)", text, re.MULTILINE)
+        # Re-parse round-trips: the GCON convention body survives as a
+        # glossary symbol; GSIG records became sigil declarations.
         from arqux.cortex.reader import cortex_to_dict
 
         reparsed = cortex_to_dict(text)
-        names = {s["name"] for s in reparsed["glossary"]["symbols"] if s["sigil"] == "GSIG"}
-        assert {"IDN", "LNG", "TST"} <= names
+        names = {s["name"] for s in reparsed["glossary"]["symbols"]}
+        assert "BASE" in names
 
     def test_deprecated_underscore_still_rejected_in_glossary(self) -> None:
         doc = _doc_with_glossary()

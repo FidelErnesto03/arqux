@@ -10,10 +10,11 @@ from __future__ import annotations
 
 import os
 import re
+import time
 from pathlib import Path
 
 from .constants import ARQUX_DIR, BRAIN_CORTEX
-from .state import _now_iso, crud_add, crud_read, find_project_root
+from .state import _now_iso, crud_add, crud_read, crud_update, find_project_root
 
 
 def _brain_cortex_path(project_root: Path) -> Path:
@@ -164,17 +165,18 @@ def append_pulse_to_brain(
             event_id = next_pulse_event_id(project_root)
             value["event"] = event_id
         crud_add(
-            brain_path, "$6", "AUD", event_id.replace("-", "_"),
+            brain_path, "$7", "AUD", event_id.replace("-", "_"),
             value,
             create_section=True, force=True,
         )
+    _maybe_sweep_pulse(project_root, brain_path)
     return f"- [{ts}] id={event_id} task={task_id or '-'} kind={kind} agent={agent} :: {payload}"
 
 
 def _existing_ids(brain_path: Path) -> set[str]:
     """Ids already present in PULSE, both API and storage spelling."""
     try:
-        result = crud_read(brain_path, "$6/AUD:*")
+        result = crud_read(brain_path, "$7/AUD:*")
     except Exception:
         return set()
     ids = set()
@@ -207,7 +209,7 @@ def read_pulse_from_brain(
     if not brain_path.exists():
         return []
     try:
-        result = crud_read(brain_path, "$6/AUD:*")
+        result = crud_read(brain_path, "$7/AUD:*")
     except Exception:
         return []
     entries: list[dict[str, str]] = []
@@ -276,7 +278,7 @@ def read_handoffs(
     if not brain_path.exists():
         return []
     try:
-        result = crud_read(brain_path, "$5/HDL:*")
+        result = crud_read(brain_path, "$6/HDL:*")
     except Exception:
         return []
     entries: list[dict[str, str]] = []
@@ -309,21 +311,28 @@ def _normalize_id(event_id: str) -> str:
     return (event_id or "").replace("_", "-").strip()
 
 
-def _line_entry_id(line: str) -> str:
-    """The id a PULSE line actually declares, or '' when the line has none.
+def _line_entry_ids(line: str) -> set[str]:
+    """Every pulse id a line declares, in normalized ``E-XXXX`` form.
 
-    Handles both the stored ``AUD:E_0005{...}`` form and the legacy
-    ``- [ts] id=E-0005 task=...`` form.
+    The storage name may carry a dedup suffix (``AUD:E_0301_0003``) while the
+    entry's ``event`` field keeps the canonical id (``E-0301``). Pruning must
+    match either spelling — comparing only the storage name leaves
+    deduplicated entries permanently unprunable.
     """
     stripped = line.strip()
+    ids: set[str] = set()
     if stripped.startswith("AUD:"):
         rest = stripped[len("AUD:"):]
         name = re.split(r"[{\s]", rest, maxsplit=1)[0]
-        return _normalize_id(name)
-    if stripped.startswith("- ["):
+        ids.add(_normalize_id(name))
+        m = re.search(r'[{,\s]event:"([^"]+)"|[{,\s]event:([^,}\s]+)', stripped)
+        if m:
+            ids.add(_normalize_id(m.group(1) or m.group(2)))
+    elif stripped.startswith("- ["):
         m = re.search(r"\bid=(\S+)", stripped)
-        return _normalize_id(m.group(1)) if m else ""
-    return ""
+        if m:
+            ids.add(_normalize_id(m.group(1)))
+    return ids
 
 
 def _atomic_write_text(path: Path, text: str) -> None:
@@ -351,7 +360,7 @@ def _prune_pulse_entries(
     pruned = 0
     kept: list[str] = []
     for line in lines:
-        if _line_entry_id(line) in wanted:
+        if _line_entry_ids(line) & wanted:
             pruned += 1
             continue
         kept.append(line)
@@ -361,6 +370,178 @@ def _prune_pulse_entries(
     if dry_run:
         result["would_prune"] = pruned
     return result
+
+
+# --- PULSE hot-window policy (T1, brain canon §PULSE) ------------------------
+# El brain guarda estado actual + una ventana caliente de PULSE; la traza
+# completa vive en $5 SESSIONS, evidencias BLP y .arqux/timelog/. Un AUD
+# conserva sentido mientras es retomable: la ventana se cierra por el primer
+# límite alcanzado — K eventos o T días (intersección de ambas cotas).
+
+PULSE_KEEP_COUNT = 20  # K — newest non-exempt AUDs always retained
+PULSE_KEEP_DAYS = 5  # T — AUDs younger than T days always retained
+PULSE_SWEEP_AT = 40  # auto-sweep triggers when total AUDs exceed this
+_PULSE_SWEEP_LNG = "pulse_sweep"
+
+
+def _days_ago_iso(days: int) -> str:
+    return time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(time.time() - days * 86400))
+
+
+def count_aud_entries(text: str) -> int:
+    """AUD census scoped to the ``$7`` PULSE section — one pass, no parse.
+
+    A file-wide ``^AUD:`` count also matches sigil declarations in ``$0``
+    (``AUD:audit{...}``), which are glossary, not pulse entries.
+    """
+    in_pulse = False
+    count = 0
+    for line in text.splitlines():
+        if line.startswith("$"):
+            in_pulse = line.startswith("$7")
+            continue
+        if in_pulse and line.startswith("AUD:"):
+            count += 1
+    return count
+
+
+def _aud_count(brain_path: Path) -> int:
+    """Cheap AUD census — one read, no parse (write-path gate)."""
+    try:
+        return count_aud_entries(brain_path.read_text(encoding="utf-8"))
+    except OSError:
+        return 0
+
+
+def _sweep_candidates(entries: list[dict]) -> list[str]:
+    """Event ids outside the hot window, in file order.
+
+    Retention = rank <= PULSE_KEEP_COUNT AND age <= PULSE_KEEP_DAYS —
+    whichever bound is hit first closes the window, so an entry is pruned
+    when EITHER bound is exceeded. Exempt: ``kind:"session"`` anchors (the
+    pulse index) and the live tail after the last anchor (the open
+    session's pulses are retomable by definition).
+    """
+    n = len(entries)
+    last_anchor = -1
+    for i, e in enumerate(entries):
+        if e.get("kind") == "session":
+            last_anchor = i
+    cutoff = _days_ago_iso(PULSE_KEEP_DAYS)
+    prune: list[str] = []
+    for i, e in enumerate(entries):
+        if i > last_anchor or e.get("kind") == "session":
+            continue
+        rank = n - i
+        ts = e.get("ts") or ""
+        if rank > PULSE_KEEP_COUNT or (ts and ts < cutoff):
+            prune.append(e["id"])
+    return prune
+
+
+def sweep_pulse_window(
+    project_root: Path,
+    *,
+    dry_run: bool = False,
+) -> dict:
+    """Garbage-collect AUD entries outside the hot window (T1).
+
+    Pruned events are consolidated into the rolling ``LNG:pulse_sweep``
+    archive entry ($8 LESSONS) — a pointer, not a trace. The full trace
+    remains in $5 SESSIONS, BLP evidence and .arqux/timelog/.
+    """
+    brain_path = _brain_cortex_path(project_root)
+    if not brain_path.exists():
+        return {"error": "brain not found", "swept": False}
+
+    entries = read_pulse_from_brain(project_root, limit=None)
+    total = len(entries)
+    prune_ids = _sweep_candidates(entries)
+
+    if dry_run:
+        return {
+            "dry_run": True,
+            "aud_total": total,
+            "would_prune": len(prune_ids),
+            "prune_ids": prune_ids[:50],
+            "keep_count": PULSE_KEEP_COUNT,
+            "keep_days": PULSE_KEEP_DAYS,
+            "swept": False,
+        }
+    if not prune_ids:
+        return {
+            "skip": True,
+            "reason": "nothing outside hot window",
+            "aud_total": total,
+            "swept": False,
+        }
+
+    by_id = {e["id"]: e for e in entries}
+    batch = [by_id[i] for i in prune_ids if i in by_id]
+    kinds: dict[str, int] = {}
+    dates = []
+    for e in batch:
+        k = e.get("kind") or "unknown"
+        kinds[k] = kinds.get(k, 0) + 1
+        if e.get("ts"):
+            dates.append(e["ts"][:10])
+    date_range = f"{min(dates)}..{max(dates)}" if dates else "-"
+    kind_summary = ",".join(f"{k}:{v}" for k, v in sorted(kinds.items()))
+
+    with _brain_lock(project_root):
+        existing = crud_read(brain_path, f"$8/LNG:{_PULSE_SWEEP_LNG}")
+        prev_entries = existing.get("entries", [])
+        prev_val = prev_entries[0].get("value", {}) if prev_entries else {}
+        total_pruned = int(prev_val.get("total_pruned", 0)) + len(batch)
+        sweeps = int(prev_val.get("sweeps", 0)) + 1
+        now = _now_iso()
+        lng_value = {
+            "type": "sweep_archive",
+            "total_pruned": total_pruned,
+            "sweeps": sweeps,
+            "last_sweep": now,
+            "last_batch": f"{len(batch)} events {date_range} kinds={kind_summary}",
+            "keep_count": PULSE_KEEP_COUNT,
+            "keep_days": PULSE_KEEP_DAYS,
+            "agent": "system",
+            "date": now,
+            "cause": "PULSE hot-window policy (T1): el brain conserva solo la ventana retomable; la traza completa vive en $5 SESSIONS, evidencias BLP y timelog",
+            "lesson": f"Sweep #{sweeps}: {len(batch)} AUD fuera de ventana (rank>{PULSE_KEEP_COUNT} o age>{PULSE_KEEP_DAYS}) archivados; total historico {total_pruned}",
+            "prevention": "La retencion es automatica en el write path (PULSE_SWEEP_AT={PULSE_SWEEP_AT}); session.pulse.gc fuerza el barrido. No acumular AUDs en brain.cortex",
+        }
+        if prev_entries:
+            crud_update(
+                brain_path, f"$8/LNG:{_PULSE_SWEEP_LNG}",
+                set_=lng_value, force=True,
+            )
+        else:
+            crud_add(
+                brain_path, "$8", "LNG", _PULSE_SWEEP_LNG,
+                lng_value, create_section=True, force=True,
+            )
+        prune_result = _prune_pulse_entries(brain_path, prune_ids)
+
+    return {
+        "swept": True,
+        "pruned": prune_result["pruned"],
+        "aud_total_before": total,
+        "batch": f"{len(batch)} events {date_range} kinds={kind_summary}",
+        "lng_name": _PULSE_SWEEP_LNG,
+        "total_pruned": total_pruned,
+    }
+
+
+def _maybe_sweep_pulse(project_root: Path, brain_path: Path) -> None:
+    """Write-path retention gate: sweep only when the window overflowed.
+
+    Retention must never break evidence capture — a sweep failure is
+    reported through doctor density checks, not by failing the append.
+    """
+    try:
+        if _aud_count(brain_path) > PULSE_SWEEP_AT:
+            sweep_pulse_window(project_root)
+    except Exception:  # noqa: BLE001
+        pass
 
 
 def compact_session_pulse(
@@ -491,7 +672,7 @@ def _compact_locked(
     # 0 entries because all were pruned. It shares this critical section with
     # the write that follows it, which is what makes the guard atomic.
     try:
-        existing = crud_read(brain_path, f"$7/LNG:{lng_name}")
+        existing = crud_read(brain_path, f"$8/LNG:{lng_name}")
         if existing.get("entries"):
             return {"skip": True,
                     "reason": f"already compacted (LNG:{lng_name} exists)",
@@ -508,7 +689,7 @@ def _compact_locked(
     _declare_lesson_sigil(brain_path)
 
     crud_add(
-        brain_path, "$7", "LNG", lng_name,
+        brain_path, "$8", "LNG", lng_name,
         {"type": "session", "entry_count": entry_count, "summary": summary,
          "session_id": session_id, "ses_ref": ses_ref or "", "agent": agent_id,
          "date": _now_iso()},

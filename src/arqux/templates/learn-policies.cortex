@@ -37,11 +37,11 @@ PRT:critical_sigils{name:"critical_sigils", topic:"protection", content:"Sigils 
 
 $4: CANDIDATE-DRIVEN LEARNING
 POL:candidate_detection{name:"candidate_detection", topic:"learning", content:"Detect learning candidates from brain signals", status:"current", source:"brain", scan_sigils:"WRK|SES|LNG|RSK|NXT|CLAIM|LIM", action:"score", algorithm:"golden_fibonacci_v1"}
-POL:candidate_elevation{name:"candidate_elevation", topic:"learning", content:"Elevate candidates to lessons based on score", status:"current", source:"SES|LNG", target:"LNG|KNW", when:"promotion_score>=8", action:"propose", requires:"user_confirmation"}
+POL:candidate_elevation{name:"candidate_elevation", topic:"learning", content:"Elevate candidates to lessons based on score", status:"current", from:"SES|LNG", to:"LNG|KNW", action:"propose", requires:"user_confirmation"}
 
 $5: POLICY-DRIVEN LEARNING
-POL:auto_ses_to_lng{name:"auto_ses_to_lng", topic:"learning", content:"Auto-promote session events to lessons", status:"current", source:"SES", target:"LNG", when:"promotion_score>=8|user_validated=true", action:"apply", requires:"policy_authorized"}
-POL:auto_lng_to_knw{name:"auto_lng_to_knw", topic:"learning", content:"Auto-promote lessons to knowledge", status:"current", source:"LNG", target:"KNW", when:"promotion_score>=13|user_validated=true|risk_weight>=8", action:"apply", requires:"admin_policy"}
+POL:auto_ses_to_lng{name:"auto_ses_to_lng", topic:"learning", content:"Auto-promote session events to lessons", status:"current", from:"SES", to:"LNG", action:"apply", requires:"policy_authorized"}
+POL:auto_lng_to_knw{name:"auto_lng_to_knw", topic:"learning", content:"Auto-promote lessons to knowledge", status:"current", from:"LNG", to:"KNW", action:"apply", requires:"admin_policy"}
 
 $6: GATES
 GTE:default_mutation{name:"default_mutation", topic:"mutation", content:"Default mutation gate", status:"current", action:"mutate_brain", default:"dry_run_first"}

@@ -97,7 +97,7 @@ def sync_brain(
     try:
         update_entry(
             doc,
-            "$8/WRK:current",
+            "$9/WRK:current",
             set_={
                 "phase": "current",
                 "current": current_text,
@@ -108,11 +108,11 @@ def sync_brain(
         )
         changed = True
     except Exception:
-        logger.exception("sync_brain: failed to update WRK:current @ $8 (continuing)")
+        logger.exception("sync_brain: failed to update WRK:current @ $9 (continuing)")
 
     if focus:
         try:
-            if select_entries(doc, "$2/FCS:current"):
+            if select_entries(doc, "$3/FCS:current"):
                 set_ = {"updated": ts, "event": event}
                 if not focus_create_only:
                     set_.update({
@@ -120,12 +120,12 @@ def sync_brain(
                         "priority": "medium",
                         "status": "current",
                     })
-                update_entry(doc, "$2/FCS:current", set_=set_)
+                update_entry(doc, "$3/FCS:current", set_=set_)
                 changed = True
             elif focus_create_only:
                 add_entry(
                     doc,
-                    "$2",
+                    "$3",
                     "FCS",
                     "current",
                     {
@@ -141,9 +141,9 @@ def sync_brain(
                 )
                 changed = True
             else:
-                logger.debug("sync_brain: no FCS:current @ $2 to update (continuing)")
+                logger.debug("sync_brain: no FCS:current @ $3 to update (continuing)")
         except Exception:
-            logger.exception("sync_brain: failed to update FCS:current @ $2 (continuing)")
+            logger.exception("sync_brain: failed to update FCS:current @ $3 (continuing)")
 
     requested_metrics = dict(metrics or {})
     if metrics and _upsert_metrics(doc, metrics, ts):
@@ -164,10 +164,10 @@ def sync_brain(
 
 
 def _upsert_metrics(doc: dict[str, Any], metrics: dict[str, Any], ts: str) -> bool:
-    """Upsert KNW:<metric> entries in $6 by name (doc-level batch helper).
+    """Upsert KNW:<metric> entries in $11 by name (doc-level batch helper).
 
     Existing entries are updated in place (value/updated/content); new
-    metrics are appended. Metrics are skipped when $6 is absent.
+    metrics are appended. Metrics are skipped when $11 is absent.
     """
     from arqux.cortex.crud import add_entry, select_entries, update_entry
 
@@ -183,10 +183,10 @@ def _upsert_metrics(doc: dict[str, Any], metrics: dict[str, Any], ts: str) -> bo
             "status": knw_status,
         }
         try:
-            if select_entries(doc, f"$6/KNW:{key}"):
-                update_entry(doc, f"$6/KNW:{key}", set_=attrs)
+            if select_entries(doc, f"$11/KNW:{key}"):
+                update_entry(doc, f"$11/KNW:{key}", set_=attrs)
             else:
-                add_entry(doc, "$6", "KNW", key, attrs, create_section=False)
+                add_entry(doc, "$11", "KNW", key, attrs, create_section=False)
         except Exception:
             logger.debug("sync_brain: failed to upsert metric %s=%s (continuing)", key, value)
             continue
@@ -542,11 +542,105 @@ def _sync_meta_brain(
         logger.exception("sync_brain: failed to sync meta-brain @ DOM:<project> (continuing)")
 
 
+def reconcile_workspace_projects(ws_root: Path) -> dict[str, Any]:
+    """Align the meta-brain ``$2/DOM:*`` registry with governed projects.
+
+    Source of truth: sibling directories containing ``.arqux/brain.cortex``
+    (the workspace directory itself is a container — its self-DOM, marked
+    by ``path:"."`` or ``domain:"workspace"``, is left untouched).
+
+    For every discovered project: ensure a ``DOM:<name>`` exists with
+    ``name``/``path``/``status`` populated.  For existing DOMs whose
+    ``path`` no longer resolves to a governed project (moved, deleted,
+    pytest residue) and whose name matches no discovered project: mark
+    ``status:"stale"`` — traceable, never deleted.  Runs
+    ``_dedupe_meta_dom`` afterwards.  Idempotent.
+    """
+    from arqux.state import crud_read, crud_update
+
+    result: dict[str, Any] = {
+        "discovered": [],
+        "created": [],
+        "updated": [],
+        "stale": [],
+        "errors": [],
+    }
+    ws_dir = ws_root.parent if ws_root.name == ".arqux" else ws_root
+    meta_brain = ws_root / "meta-brain.cortex" if ws_root.name == ".arqux" \
+        else ws_root / ".arqux" / "meta-brain.cortex"
+    if not meta_brain.exists():
+        result["errors"].append("meta-brain.cortex not found")
+        return result
+
+    # 1. Discover governed projects on the filesystem.
+    discovered: dict[str, Path] = {}
+    for child in sorted(ws_dir.iterdir()):
+        if not child.is_dir():
+            continue
+        if (child / ".arqux" / "brain.cortex").exists():
+            discovered[_normalize_dom_name(child.name)] = child
+    result["discovered"] = sorted(discovered)
+
+    # 2. Read existing DOMs (identify self-DOM vs project DOMs).
+    try:
+        dom_entries = crud_read(str(meta_brain), "$2/DOM:*").get("entries", [])
+    except Exception as exc:
+        result["errors"].append(f"cannot read $2/DOM:* — {exc!r}")
+        return result
+
+    ts = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+
+    # 3. Upsert discovered projects.
+    known_names = {
+        _normalize_dom_name(str(e.get("name") or "")) for e in dom_entries
+    }
+    for dom_name, proj_dir in discovered.items():
+        if dom_name in known_names:
+            crud_update(
+                str(meta_brain), f"$2/DOM:{dom_name}",
+                set_={"path": str(proj_dir), "status": "current",
+                      "updated": ts, "event": "workspace.sync"},
+                force=True,
+            )
+            result["updated"].append(dom_name)
+        else:
+            _upsert_meta_dom(meta_brain, dom_name, proj_dir)
+            result["created"].append(dom_name)
+
+    # 4. Mark orphan DOMs stale (skip self-DOM and discovered names).
+    for entry in dom_entries:
+        attrs = entry.get("value") or entry.get("attrs") or {}
+        entry_name = str(entry.get("name") or "")
+        if attrs.get("path") == "." or attrs.get("domain") == "workspace":
+            continue  # self-DOM: the workspace container record
+        norm = _normalize_dom_name(entry_name)
+        if norm in discovered:
+            continue
+        path_str = str(attrs.get("path") or "").strip()
+        resolved = (ws_dir / path_str).resolve() if path_str else None
+        is_governed = bool(
+            resolved and resolved.is_dir()
+            and (resolved / ".arqux" / "brain.cortex").exists()
+        )
+        if not is_governed and attrs.get("status") != "stale":
+            crud_update(
+                str(meta_brain), f"$2/DOM:{entry_name}",
+                set_={"status": "stale", "updated": ts,
+                      "event": "workspace.sync"},
+                force=True,
+            )
+            result["stale"].append(entry_name)
+
+    # 5. Dedupe after alignment.
+    result["dedupe"] = _dedupe_meta_dom(meta_brain)
+    return result
+
+
 def reconcile_brain(project_root: Path) -> dict[str, Any]:
     """Reconcile brain.cortex persistent state with filesystem reality.
 
     Scans all cycles and blueprints, counts by status, and updates:
-    - For project root: brain.cortex §3 (OBJ): an existing entry keeps its
+    - For project root: brain.cortex §4 (OBJ): an existing entry keeps its
       operator-authored goal/status/survive — only success/updated/event
       are refreshed; a generic goal is created only when no OBJ exists
     - For workspace root: meta-brain.cortex $3 (FCS): an existing
@@ -623,6 +717,8 @@ def reconcile_brain(project_root: Path) -> dict[str, Any]:
             meta_brain = ws_root / "meta-brain.cortex"
             if meta_brain.exists():
                 result["meta_deduplication"] = _dedupe_meta_dom(meta_brain)
+                result["workspace_projects"] = reconcile_workspace_projects(
+                    ws_root)
                 fcs_text = (
                     f"Reconciliacion completada. {total_blps} BLPs gestionados "
                     f"en {len(open_cycles) + len(closed_cycles)} ciclos "
@@ -656,7 +752,7 @@ def reconcile_brain(project_root: Path) -> dict[str, Any]:
                     )
                 result["reconciled"] = True
         else:
-            # Project context: refresh brain.cortex §3 (OBJ), preserving
+            # Project context: refresh brain.cortex §4 (OBJ), preserving
             # the operator-authored goal.
             # Tolerant: resolves the first OBJ:* entry — a missing OBJ is
             # recorded in errors[] instead of aborting (BLP-008 / BUG-003).
@@ -673,13 +769,13 @@ def reconcile_brain(project_root: Path) -> dict[str, Any]:
                 )
 
                 try:
-                    objs = crud_read(str(brain_path), "$3/OBJ:*").get("entries", [])
+                    objs = crud_read(str(brain_path), "$4/OBJ:*").get("entries", [])
                 except Exception:
                     objs = []
                 if objs:
                     crud_update(
                         str(brain_path),
-                        f"$3/OBJ:{objs[0].get('name')}",
+                        f"$4/OBJ:{objs[0].get('name')}",
                         set_={
                             "success": "synced",
                             "updated": ts,
@@ -688,10 +784,10 @@ def reconcile_brain(project_root: Path) -> dict[str, Any]:
                         force=True,
                     )
                 else:
-                    result["errors"].append("brain has no OBJ entry in §3")
+                    result["errors"].append("brain has no OBJ entry in §4")
                     crud_add(
                         str(brain_path),
-                        "$3",
+                        "$4",
                         "OBJ",
                         "sync",
                         {
@@ -708,7 +804,7 @@ def reconcile_brain(project_root: Path) -> dict[str, Any]:
                     )
                 result["reconciled"] = True
 
-                # Upsert real count metrics into $6/KNW (issue: KNW metrics
+                # Upsert real count metrics into $11/KNW (issue: KNW metrics
                 # were frozen because reconcile never wrote them).
                 try:
                     from arqux.cortex.atomic import atomic_write_json as _awj

@@ -60,8 +60,7 @@ def parse_with_codec(text: str, *, path: str | None = None) -> Any:
     info, parser = _backend()
     if parser is None:
         raise RuntimeError(
-            "CODEC-CORTEX is unavailable; install codec-cortex>=0.6.2,<0.7 "
-            "(the 1.0.0rc1 candidate provides only parse_cortex)"
+            "CODEC-CORTEX is unavailable; install codec-cortex>=1.0,<1.1"
         )
     if info.parser == "legacy" and path is not None:
         return parser(text, path=path)
@@ -71,7 +70,18 @@ def parse_with_codec(text: str, *, path: str | None = None) -> Any:
 def verify_text(text: str, *, path: str | None = None) -> dict[str, Any]:
     """Return a compact, version-independent verification result."""
     info = codec_info()
-    doc = parse_with_codec(text, path=path)
+    try:
+        doc = parse_with_codec(text, path=path)
+    except Exception as exc:
+        # Callers must be able to distinguish "invalid" from "crashed":
+        # a parse failure is an invalid result, never a propagated error.
+        return {
+            "valid": False,
+            "package": info.package,
+            "version": info.version,
+            "parser": info.parser,
+            "diagnostics": [str(exc)],
+        }
     sections = getattr(doc, "sections", [])
     entries = sum(
         len(getattr(section, "ideas", getattr(section, "entries", [])))

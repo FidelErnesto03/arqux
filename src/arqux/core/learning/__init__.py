@@ -1,25 +1,28 @@
 # ruff: noqa: F401
-"""Learning engine — package split.
+"""Learning engine — native implementation.
 
 Submodules:
 
-* ``_common``  — shared helpers, CLE imports, policy loading
+* ``_common``  — shared helpers, policy loading, engine availability
 * ``_scan``    — scanning, candidate listing, profile building
 * ``_elevate`` — contextual candidate elevation
 * ``_lesson``  — LessonStore, Lesson, behavioral exceptions
 * ``_unified`` — unified ``elevate()``, ``BlueprintDraft``
+
+The native learning engine is self-contained.
+CODEC-CORTEX is a format convention, not a learning implementation.
 """
 from __future__ import annotations
 
 # Shared helpers ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 from ._common import (
-    _HAS_CLE,
     POLICY_FILENAME,
     _build_brain_doc,
     _hash_text,
     _load_policies,
     _resolve_policy_path,
     _resolve_project_root,
+    learning_engine_available,
     logger,
 )
 

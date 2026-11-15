@@ -1,0 +1,15 @@
+{
+  "provenance": "synthesized-in-arqux",
+  "captured_by": "BLP-002 (CYCLE-16)",
+  "decision_date": "2026-11-14",
+  "decision": "Fixtures are authored in ArqUX from the documented behavioural contract of the CLE. No codec output is embedded. See docs/adr/0001-titularidad-aprendizaje.md.",
+  "corpus": [
+    "brain.cortex",
+    "learn-policies.cortex"
+  ],
+  "fixture_sha256": {
+    "brain.cortex": "24c84e04acb98478dbc33ad7dcfd88bb726c3c9a38c49b727104b7bd7775025e",
+    "learn-policies.cortex": "58a2bae3fd10ccf4466b597c87b9a4fe0217339ed0a8ee5866ef8e837d5dceb4"
+  },
+  "determinism": "iter_entries() yields document order; scoring is pure integer arithmetic. Two consecutive pytest runs produce identical results."
+}

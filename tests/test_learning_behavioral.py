@@ -246,118 +246,164 @@ class TestLessonStoreImportFromBrain:
 
 
 # --- Unified elevate() API tests -------------------------------------------
+#
+# Architect rule 2026-11-15: the behavioral line sources lessons from the
+# project brain ``$8`` LNG (the ONLY lesson surface) and elevates them into
+# ``<agent>.cortex`` as AXM/LIM. ``.lessons.cortex`` stores are deprecated.
+
+
+@pytest.fixture
+def project_with_lesson(tmp_path: Path) -> Path:
+    """Project with brain.cortex ($8 LNG) + project-local identities dir."""
+    proj = tmp_path / "proj"
+    (proj / ARQUX_DIR / "identities").mkdir(parents=True)
+    (proj / ARQUX_DIR / "brain.cortex").write_text(
+        "$0\n\n"
+        "$8: LESSONS\n"
+        'LNG:verify_write{type:behavioral, cause:"c", '
+        'lesson:"Always verify post-write state before reporting", '
+        'prevention:"re-read the artifact", agent:"jarvis"}\n',
+        encoding="utf-8",
+    )
+    (proj / ARQUX_DIR / "identities" / "jarvis.cortex").write_text(
+        "$0\nGSIG:IDN:identity|attrs|B|Semantic|Actor identity\n\n"
+        "$1: IDENTITY\nIDN:jarvis{agent:\"jarvis\"}\n\n"
+        "$2: AXIOMS\n\n$3: LIMITS\n",
+        encoding="utf-8",
+    )
+    return proj
+
 
 class TestElevateBehavioral:
-    def test_dry_run_returns_draft(self, identities_dir: Path, lessons_path: Path) -> None:
-        store = LessonStore(lessons_path, agent="jarvis")
-        store.append_lesson(
-            context="c1", pattern="p1", confidence=0.9, occurrences=3,
+    def test_dry_run_returns_draft(
+        self, project_with_lesson: Path,
+    ) -> None:
+        identity_file = (
+            project_with_lesson / ARQUX_DIR / "identities" / "jarvis.cortex"
         )
-        target = str(identities_dir / "jarvis.cortex")
+        before = identity_file.read_text(encoding="utf-8")
         result = elevate(
-            source=str(lessons_path),
-            target=target,
+            source="brain.cortex",
+            target=str(identity_file),
             contract_type="AXIOM",
-            lesson_id="lsn-001",
+            lesson_id="verify_write",
             line="behavioral",
             agent="jarvis",
+            project_root=project_with_lesson,
             dry_run=True,
         )
         assert result["mode"] == "dry_run"
         assert result["line"] == "behavioral"
         draft = result["draft"]
         assert draft["sigil_to_write"] == "AXM"
-        assert draft["lesson_id"] == "lsn-001"
+        assert draft["lesson_id"] == "verify_write"
+        assert result["preview_hash"]
+        # Dry-run must not touch the identity file.
+        assert identity_file.read_text(encoding="utf-8") == before
 
-    def test_apply_marks_lesson_elevated(self, identities_dir: Path, lessons_path: Path) -> None:
-        store = LessonStore(lessons_path, agent="jarvis")
-        store.append_lesson(
-            context="c1", pattern="p1", confidence=0.9, occurrences=3,
+    def test_apply_writes_contract_and_verifies(
+        self, project_with_lesson: Path,
+    ) -> None:
+        identity_file = (
+            project_with_lesson / ARQUX_DIR / "identities" / "jarvis.cortex"
         )
-        target = str(identities_dir / "jarvis.cortex")
         result = elevate(
-            source=str(lessons_path),
-            target=target,
-            contract_type="LIMIT",
-            lesson_id="lsn-001",
+            source="brain.cortex",
+            target=str(identity_file),
+            contract_type="AXIOM",
+            lesson_id="verify_write",
             line="behavioral",
             agent="jarvis",
+            project_root=project_with_lesson,
             apply=True,
         )
         assert result["mode"] == "applied"
-        assert result["lesson_status"] == "elevated"
-        # Lesson is now marked.
-        lesson = store.get_lesson("lsn-001")
-        assert lesson.status == "elevated"
+        assert result["verified"] is True
+        content = identity_file.read_text(encoding="utf-8")
+        assert "AXM:verify_write{" in content
+        assert 'source_lesson:"verify_write"' in content
 
-    def test_insufficient_confidence_raises(self, identities_dir: Path, lessons_path: Path) -> None:
-        store = LessonStore(lessons_path, agent="jarvis")
-        store.append_lesson(
-            context="c1", pattern="p1", confidence=0.3, occurrences=1,
+    def test_apply_is_idempotent(
+        self, project_with_lesson: Path,
+    ) -> None:
+        identity_file = (
+            project_with_lesson / ARQUX_DIR / "identities" / "jarvis.cortex"
         )
-        with pytest.raises(InsufficientConfidenceError):
-            elevate(
-                source=str(lessons_path),
-                target=str(identities_dir / "jarvis.cortex"),
-                contract_type="AXIOM",
-                lesson_id="lsn-001",
-                line="behavioral",
-                agent="jarvis",
-                dry_run=True,
-            )
+        kwargs = {
+            "source": "brain.cortex",
+            "target": str(identity_file),
+            "contract_type": "AXIOM",
+            "lesson_id": "verify_write",
+            "line": "behavioral",
+            "agent": "jarvis",
+            "project_root": project_with_lesson,
+            "apply": True,
+        }
+        first = elevate(**kwargs)
+        assert first["mode"] == "applied"
+        second = elevate(**kwargs)
+        assert second["mode"] == "skipped"
+        content = identity_file.read_text(encoding="utf-8")
+        assert content.count("AXM:verify_write{") == 1
 
-    def test_unknown_lesson_raises(self, identities_dir: Path, lessons_path: Path) -> None:
-        store = LessonStore(lessons_path, agent="jarvis")
-        store.append_lesson(context="c1", pattern="p1")
-        with pytest.raises(LessonNotFoundError):
-            elevate(
-                source=str(lessons_path),
-                target=str(identities_dir / "jarvis.cortex"),
-                contract_type="AXIOM",
-                lesson_id="lsn-999",
-                line="behavioral",
-                agent="jarvis",
-                dry_run=True,
-            )
+    def test_lesson_not_in_brain_returns_error(
+        self, project_with_lesson: Path,
+    ) -> None:
+        result = elevate(
+            source="brain.cortex",
+            target="anywhere",
+            contract_type="AXIOM",
+            lesson_id="lsn-999",
+            line="behavioral",
+            agent="jarvis",
+            project_root=project_with_lesson,
+            dry_run=True,
+        )
+        assert result["mode"] == "error"
+        assert result["code"] == "NOT_FOUND"
 
-    def test_missing_agent_raises(self, lessons_path: Path) -> None:
+    def test_missing_agent_raises(self, project_with_lesson: Path) -> None:
         with pytest.raises(AgentIdentityError):
             elevate(
-                source=str(lessons_path),
+                source="brain.cortex",
                 target="anywhere",
                 contract_type="AXIOM",
-                lesson_id="lsn-001",
+                lesson_id="verify_write",
                 line="behavioral",
                 agent=None,
+                project_root=project_with_lesson,
             )
 
-    def test_invalid_contract_type_raises(self, identities_dir: Path, lessons_path: Path) -> None:
-        store = LessonStore(lessons_path, agent="jarvis")
-        store.append_lesson(
-            context="c1", pattern="p1", confidence=0.9, occurrences=3,
-        )
+    def test_invalid_contract_type_raises(
+        self, project_with_lesson: Path,
+    ) -> None:
         with pytest.raises(ValueError, match="Behavioral line"):
             elevate(
-                source=str(lessons_path),
-                target=str(identities_dir / "jarvis.cortex"),
+                source="brain.cortex",
+                target="anywhere",
                 contract_type="KNW",  # contextual, not behavioral
-                lesson_id="lsn-001",
+                lesson_id="verify_write",
                 line="behavioral",
                 agent="jarvis",
+                project_root=project_with_lesson,
                 dry_run=True,
             )
 
-    def test_unknown_agent_raises(self, tmp_path: Path, lessons_path: Path) -> None:
-        with pytest.raises(AgentIdentityError):
-            elevate(
-                source=str(lessons_path),
-                target="anywhere",
-                contract_type="AXIOM",
-                lesson_id="lsn-001",
-                line="behavioral",
-                agent="nonexistent-agent",
-                project_root=tmp_path,
-            )
+    def test_unknown_agent_returns_error(
+        self, project_with_lesson: Path,
+    ) -> None:
+        result = elevate(
+            source="brain.cortex",
+            target="anywhere",
+            contract_type="AXIOM",
+            lesson_id="verify_write",
+            line="behavioral",
+            agent="nonexistent-agent",
+            project_root=project_with_lesson,
+            dry_run=True,
+        )
+        assert result["mode"] == "error"
+        assert result["code"] == "NOT_FOUND"
 
 
 class TestElevateProcedural:

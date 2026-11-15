@@ -199,7 +199,12 @@ def check_a22() -> Result:
 
 def check_xfail() -> Result:
     """Declared gaps. G1 demands zero — each xfail is a written admission."""
-    verdict, detail = _run([sys.executable, "-m", "pytest", "tests/", "-q", "--no-header"])
+    # The full suite takes ~10 min on a dev machine; 600s kills the
+    # measurement itself, not the tests. 1800s is a hang guard, not a budget.
+    verdict, detail = _run(
+        [sys.executable, "-m", "pytest", "tests/", "-q", "--no-header"],
+        timeout=1800,
+    )
     found = len(re.findall(r"\bXFAIL\b", detail))
     failed = len(re.findall(r"\bFAILED\b", detail))
     if failed:
@@ -210,7 +215,10 @@ def check_xfail() -> Result:
 
 
 def check_suite() -> Result:
-    verdict, detail = _run([sys.executable, "-m", "pytest", "tests/", "-q", "--no-header"])
+    verdict, detail = _run(
+        [sys.executable, "-m", "pytest", "tests/", "-q", "--no-header"],
+        timeout=1800,
+    )
     tail = " ".join(detail.strip().splitlines()[-1:])[:200]
     return Result("SUITE", "Suite completa", PASS if verdict == 0 else FAIL, tail)
 
@@ -221,6 +229,33 @@ def _package_version() -> str | None:
         return None
     m = re.search(r'^version\s*=\s*"([^"]+)"', pyproject.read_text(encoding="utf-8"), re.M)
     return m.group(1) if m else None
+
+
+def check_quickstart() -> Result:
+    """The published-package quickstart must be CI-verified (BLP-006).
+
+    The workflow must install ``arqux`` from PyPI into a clean environment,
+    run ``arqux init`` and exercise the handler surface — the path a new
+    user actually takes, not the repo's own source tree.
+    """
+    wf = REPO_ROOT / ".github" / "workflows" / "quickstart.yml"
+    if not wf.exists():
+        return Result("QUICKSTART", "Quickstart en CI", FAIL, "workflow ausente")
+    text = wf.read_text(encoding="utf-8")
+    missing = [
+        marker
+        for marker in ("install", "arqux init", "handlers")
+        if marker not in text
+    ]
+    if missing:
+        return Result(
+            "QUICKSTART", "Quickstart en CI", FAIL,
+            f"faltan pasos: {', '.join(missing)}",
+        )
+    return Result(
+        "QUICKSTART", "Quickstart en CI", PASS,
+        "workflow valida install PyPI + init + handlers",
+    )
 
 
 def check_dialect() -> Result:
@@ -254,6 +289,76 @@ def check_dialect() -> Result:
     return Result("DIALECTO", "Conformidad de dialecto", verdict, summary)
 
 
+def check_a12() -> Result:
+    """Release flags and README maturity must tell the same story (BLP-006 AC-03).
+
+    Static half (always runs): the README version badge must equal the
+    version ``pyproject.toml`` declares, and the status badge must name a
+    known maturity. Dynamic half (best effort): the newest *published*
+    GitHub release — drafts are not public flags — must carry the package
+    version and its ``isPrerelease`` flag must agree with the README
+    maturity (alpha/beta/rc ⇒ prerelease, stable ⇒ not).
+    """
+    readme = REPO_ROOT / "README.md"
+    if not readme.exists():
+        return Result("A-12", "Flags de release", UNVERIFIED, "README ausente")
+    text = readme.read_text(encoding="utf-8")
+
+    problems: list[str] = []
+    m_ver = re.search(r"version-(\d+\.\d+\.\d+(?:rc\d+|a\d+|b\d+)?)", text)
+    m_mat = re.search(r"status-(alpha|beta|rc|stable)", text)
+    pkg_version = _package_version()
+    if not m_ver:
+        problems.append("README sin badge de versión")
+    elif pkg_version and m_ver.group(1) != pkg_version:
+        problems.append(f"README dice {m_ver.group(1)}, pyproject {pkg_version}")
+    if not m_mat:
+        problems.append("README sin badge de madurez (status-*)")
+    if problems:
+        return Result("A-12", "Flags de release", FAIL, " | ".join(problems))
+
+    maturity = m_mat.group(1)
+    code, out = _run(
+        ["gh", "release", "list", "--json", "tagName,isDraft,isPrerelease", "--limit", "20"],
+        timeout=30,
+    )
+    if code != 0:
+        return Result(
+            "A-12", "Flags de release", UNVERIFIED,
+            f"gh no consultable ({out.strip()[:120]}); estática OK ({maturity})",
+        )
+    try:
+        releases = json.loads(out[out.index("["):])
+    except (ValueError, json.JSONDecodeError):
+        return Result("A-12", "Flags de release", UNVERIFIED, "salida gh no parseable")
+
+    published = [r for r in releases if not r.get("isDraft")]
+    drafts = len(releases) - len(published)
+    if not published:
+        return Result(
+            "A-12", "Flags de release", PASS,
+            f"sin release publicado ({drafts} drafts); README={maturity} "
+            f"coherente con pyproject {pkg_version}",
+        )
+
+    latest = published[0]
+    tag = str(latest.get("tagName", "")).lstrip("v")
+    pre = bool(latest.get("isPrerelease"))
+    expects_pre = maturity != "stable"
+    if tag != pkg_version:
+        problems.append(f"release {latest.get('tagName')} ≠ pyproject {pkg_version}")
+    if pre != expects_pre:
+        problems.append(
+            f"isPrerelease={pre} no coincide con madurez '{maturity}'"
+        )
+    if problems:
+        return Result("A-12", "Flags de release", FAIL, " | ".join(problems))
+    return Result(
+        "A-12", "Flags de release", PASS,
+        f"release {latest.get('tagName')} prerelease={pre} ≙ README {maturity}",
+    )
+
+
 CHECKS = {
     "A-01": check_a01,
     "A-02": check_a02,
@@ -262,8 +367,10 @@ CHECKS = {
     "A-06": check_a06,
     "A-09": check_a09,
     "A-11": check_a11,
+    "A-12": check_a12,
     "A-22": check_a22,
     "DIALECTO": check_dialect,
+    "QUICKSTART": check_quickstart,
     "XFAIL": check_xfail,
     "SUITE": check_suite,
 }

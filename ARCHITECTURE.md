@@ -25,12 +25,12 @@ ArqUX is a governance framework for AI agent teams. It sits between the user, th
              ▼
 ┌─────────────────────────────────────────────────────────┐
 │              MCP Server (stdio / SSE)                    │
-│  Exposes 73 handlers via Model Context Protocol         │
+│  Exposes 115 handlers via Model Context Protocol         │
 └────────────┬────────────────────────────────────────────┘
              │
              ▼
 ┌─────────────────────────────────────────────────────────┐
-│         Handler Registry (73 handlers, 12 modules)       │
+│         Handler Registry (115 handlers, 12 modules)       │
 │  blueprint | cortex | cycle | evidence | identity |      │
 │  project | protocol | session | setup | skill | task |   │
 │  workspace                                               │
@@ -86,13 +86,13 @@ Click-based command-line interface. Commands:
 - `arqux elevate` — elevate a lesson via the unified motor
 - `arqux identity {resolve, elevate, list}` — manage agent identities
 - `arqux skill {import, list, resolve}` — manage skills with provenance
-- `arqux handlers` — list all 73 handlers
+- `arqux handlers` — list all 115 handlers
 - `arqux serve` — start MCP server on stdio
 - `arqux setup-plantuml` / `arqux serve-plantuml` — PlantUML integration
 
 ### 2.2 MCP Server Layer (`src/arqux/server.py`)
 
-Exposes the 73 handlers via Model Context Protocol. Supports stdio transport (default) and SSE transport. Each handler is invoked with a JSON input schema and returns a `CortexOUT` (text-based, parseable) response.
+Exposes the 115 handlers via Model Context Protocol. Supports stdio transport (default) and SSE transport. Each handler is invoked with a JSON input schema and returns a `CortexOUT` (text-based, parseable) response.
 
 ### 2.3 Handler Registry (`src/arqux/handlers/__init__.py`)
 

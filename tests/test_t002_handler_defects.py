@@ -20,9 +20,11 @@ _CONTEXT = PermissionContext(agent_id="test", role="governor")
 
 _GC_BRAIN = """$0
 
-GSIG:KNW{name:"knowledge", type:"attrs", risk:"B", layer:"Semantic", description:"k"}
+$0:format{cortex:1.0, encoding:UTF-8}
 
-$10: KNOWLEDGE
+KNW:knw_contract{type:"attrs", weight:"B", fields:"value:any?", focus:"value", desc:"k", open:true}
+
+$11: KNOWLEDGE
 
 KNW:metric{name:"metric", value:"1", updated:"a", topic:"metrics", content:"c", status:"current"}
 KNW:metric{name:"metric", value:"2", updated:"b", topic:"metrics", content:"c", status:"current"}
@@ -32,15 +34,20 @@ KNW:metric{name:"metric", value:"4", updated:"b", topic:"metrics", content:"c", 
 
 _PULSE_BRAIN = """$0
 
-GSIG:KNW{name:"knowledge", type:"attrs", risk:"B", layer:"Semantic", description:"k"}
+$0:format{cortex:1.0, encoding:UTF-8}
 
-$6: PULSE
+KNW:knw_contract{type:"attrs", weight:"B", fields:"value:any?", focus:"value", desc:"k", open:true}
+AUD:aud_contract{type:"attrs", weight:"M", fields:"value:any?", focus:"value", desc:"a", open:true}
+
+$7: PULSE
 
 AUD:E_0001{date:"t", event:"E-0001", task:"-", kind:"note", agent:"a", result:"r", evidence:"r"}
+
+$11: KNOWLEDGE
 """
 
 
-def _read_kept_values(f: Path, selector: str = "$10/KNW:*") -> list:
+def _read_kept_values(f: Path, selector: str = "$11/KNW:*") -> list:
     from arqux.core.state import crud_read
 
     return [e["value"].get("value") for e in crud_read(f, selector)["entries"]]
@@ -155,7 +162,7 @@ def test_sync_metrics_batch_single_rewrite(tmp_path: Path, monkeypatch) -> None:
 
     from arqux.core.state import crud_read
 
-    entries = crud_read(brain, "$6/KNW:*")["entries"]
+    entries = crud_read(brain, "$11/KNW:*")["entries"]
     by_name = {e["name"]: e["value"].get("value") for e in entries}
     assert by_name == {"handlers": "7", "tasks_done": "2", "cycles_closed": "1"}
 
@@ -191,7 +198,7 @@ def test_reconcile_level_project_forces_project_brain(tmp_path: Path) -> None:
     out = reconcile_handler(path=str(proj), level="project", ctx=_CONTEXT)
     assert out.profile == "OUT-WORK", str(out.fields)
     assert "workspace=false" in out.message
-    obj = crud_read(proj / ".arqux" / "brain.cortex", "$3/OBJ:*")
+    obj = crud_read(proj / ".arqux" / "brain.cortex", "$4/OBJ:*")
     assert obj["entries"]
     assert obj["entries"][0]["value"].get("event") == "brain.reconcile"
 
@@ -207,7 +214,7 @@ def test_entry_add_preserves_name_verbatim(tmp_path: Path) -> None:
     f.write_text(_GC_BRAIN)
     for name in ("MyMetric", "my-metric", "metric.v2", "metric_2"):
         out = entry_add_handler(
-            str(f), "$10", "KNW", name,
+            str(f), "$11", "KNW", name,
             'name:"x", value:"1", updated:"t", topic:"metrics", content:"c", status:"current"',
             force=True, ctx=_CONTEXT,
         )
@@ -221,8 +228,8 @@ def test_entry_add_collision_rename_is_documented(tmp_path: Path) -> None:
     f = tmp_path / "brain.cortex"
     f.write_text(_GC_BRAIN)
     value = 'name:"x", value:"1", updated:"t", topic:"metrics", content:"c", status:"current"'
-    first = entry_add_handler(str(f), "$10", "KNW", "dup", value, force=True, ctx=_CONTEXT)
-    second = entry_add_handler(str(f), "$10", "KNW", "dup", value, force=True, ctx=_CONTEXT)
+    first = entry_add_handler(str(f), "$11", "KNW", "dup", value, force=True, ctx=_CONTEXT)
+    second = entry_add_handler(str(f), "$11", "KNW", "dup", value, force=True, ctx=_CONTEXT)
     assert first.fields["name"] == "dup"
     assert second.fields["name"] == "dup_0001"
     assert second.fields["requested"] == "dup"
@@ -239,7 +246,7 @@ def test_entry_add_content_only_accepted_without_value(tmp_path: Path) -> None:
     f = tmp_path / "brain.cortex"
     f.write_text(_GC_BRAIN)
     out = entry_add_handler(
-        str(f), "$10", "KNW", "dummy",
+        str(f), "$11", "KNW", "dummy",
         content='KNW:from_content{name:"from_content", value:"9", updated:"t", topic:"metrics", content:"c", status:"current"}',
         force=True, ctx=_CONTEXT,
     )
@@ -250,9 +257,22 @@ def test_entry_add_content_only_accepted_without_value(tmp_path: Path) -> None:
 def test_entry_add_validation_errors_enumerated(tmp_path: Path) -> None:
     """Pinned from T-004: each violation is enumerated with entry/field context."""
     f = tmp_path / "brain.cortex"
-    f.write_text(_GC_BRAIN + "\nKNW:bad0{name:\"bad0\"}\n")
+    # codec-cortex 1.0 rejects duplicate KNW:metric addresses at parse time
+    # (I006), so this test uses a deduplicated brain — _GC_BRAIN's repeated
+    # names exist only for the gc dedup scenarios above.
+    f.write_text("""$0
+
+$0:format{cortex:1.0, encoding:UTF-8}
+
+KNW:knw_contract{type:"attrs", weight:"B", fields:"value:any?", focus:"value", desc:"k", open:true}
+
+$11: KNOWLEDGE
+
+KNW:metric{name:"metric", value:"1", updated:"a", topic:"metrics", content:"c", status:"current"}
+KNW:bad0{name:"bad0"}
+""")
     out = entry_add_handler(
-        str(f), "$10", "KNW", "bad1",
+        str(f), "$11", "KNW", "bad1",
         'name:"bad1", bogus_field:"x"',
         ctx=_CONTEXT,
     )

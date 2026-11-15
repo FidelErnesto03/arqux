@@ -42,7 +42,7 @@ def loop_register(path: str, name: str, phases: list | None = None,
     if _find(path, name):
         return CortexOUT.error(f"loop {name!r} already registered", code="ALREADY_EXISTS")
     res = crud_add(
-        _brain(path), "$18", "LOOP", name,
+        _brain(path), "$14", "LOOP", name,
         {"state": "armed", "index": "0", "retries": "0",
          "phases": phases or [], "recurrence": recurrence,
          "max_stall": str(max_stall or "60"),

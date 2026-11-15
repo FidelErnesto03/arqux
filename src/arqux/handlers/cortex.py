@@ -7,7 +7,7 @@ preserve backward compatibility with code that imports
 New code should import directly from the package submodules:
     from arqux.handlers.cortex.entries import add_entry, delete_entry
     from arqux.handlers.cortex.read_write import cortex_read, cortex_write
-    from arqux.handlers.cortex.learning import learn, elevate
+    from arqux.handlers.cortex learning import learn, elevate
     from arqux.handlers.cortex.diagram import render_diagram
 """
 from .cortex import *  # noqa: F401, F403

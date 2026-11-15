@@ -68,6 +68,9 @@ def test_repeated_prefix_stripped() -> None:
     """Even deeply nested repetition collapses to a single value."""
     body = "# OBJ\ntext=text=text=Corregir\n"
     text = _write_task(body)
-    m = re.search(r"OBJ:objective\{([^}]*)\}", text)
+    # codec-cortex 1.0 also emits a generated OBJ:objective declaration in
+    # $0 — anchor on the entry's own ``text:`` payload, not the first
+    # ``OBJ:objective{`` match.
+    m = re.search(r'OBJ:objective\{(text:[^}]*)\}', text)
     assert m is not None
     assert m.group(1) == 'text:"Corregir"'

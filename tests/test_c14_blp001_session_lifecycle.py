@@ -615,7 +615,7 @@ class TestPruningMatchesTheEntryIdNotASubstring:
 
         brain = str(brain_path(root))
         _prune_pulse_entries(brain_path(root), [first])
-        remaining = {e["name"] for e in crud_read(brain, "$6/AUD:*")["entries"]}
+        remaining = {e["name"] for e in crud_read(brain, "$7/AUD:*")["entries"]}
         # The entry that merely quotes the pruned id survives.
         assert quoted.replace("-", "_") in remaining, remaining
         assert first.replace("-", "_") not in remaining

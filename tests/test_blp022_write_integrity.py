@@ -487,7 +487,11 @@ def test_synthesize_fallback_picks_the_open_cycle(tmp_path):
 
 def test_identity_record_rejects_when_no_destination_persists(tmp_path, monkeypatch):
     """F4: si la escritura al brain devuelve error, no se reporta filed; se
-    rechaza con DESTINATION_NOT_ALLOWED en vez de un falso éxito."""
+    rechaza con CRUD_ERROR en vez de un falso éxito.
+
+    Architect rule 2026-11-15: brain $8 is the ONLY lesson surface — a
+    failed brain write has no alternate destination, so the error is
+    surfaced directly (previously DESTINATION_NOT_ALLOWED)."""
     from arqux.handlers.cortex import learning
 
     ident = tmp_path / ".arqux" / "identities" / "alfred.cortex"
@@ -502,7 +506,7 @@ def test_identity_record_rejects_when_no_destination_persists(tmp_path, monkeypa
         agent_id="alfred", path=str(tmp_path),
     )
     assert result.profile == "OUT-ERROR", result.to_text()
-    assert result.fields["code"] == "DESTINATION_NOT_ALLOWED"
+    assert result.fields["code"] == "CRUD_ERROR"
 
 
 # --- T-037 — task.create tampoco escribe en un ciclo cerrado ----------------

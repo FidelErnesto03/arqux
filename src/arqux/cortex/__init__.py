@@ -8,6 +8,8 @@ Submodules:
 
 from __future__ import annotations
 
+from .emit import emit_ideatic
+from .migration import plan_repairs
 from .parse_content import parse_content_entry
 from .sigils import (
     SIGIL_CACHE,
@@ -18,8 +20,10 @@ from .sigils import (
 
 __all__ = [
     "SIGIL_CACHE",
+    "emit_ideatic",
     "get_sigil",
     "list_sigils",
+    "plan_repairs",
     "register_sigil",
     "parse_content_entry",
 ]

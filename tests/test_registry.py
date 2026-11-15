@@ -14,9 +14,11 @@ from __future__ import annotations
 from arqux.handlers import REGISTRY, handler_count, list_handlers
 
 
-def test_handler_count_is_111() -> None:
-    """Total handler count is 111 (BLP-023 added loop.*, 9 handlers)."""
-    assert handler_count() == 111
+def test_handler_count_is_115() -> None:
+    """Total handler count is 115 (BLP-023 added loop.*, 9 handlers;
+    BLP-006 added cortex.corpus.*, 2 handlers; T1 added pulse.gc;
+    identity.elevate added for brain→identity lesson elevation)."""
+    assert handler_count() == 115
 
 
 def test_handler_list_accepts_mcp_context() -> None:
@@ -38,6 +40,7 @@ def test_mutating_handler_count() -> None:
         "cortex.ref", "cortex.format",
         "cortex.migrate",  # transform handler (utility)
         "identity.record", "identity.get",
+        "identity.elevate",  # conditional-mutating (dry-run preview default)
         "skill.import", "skill.convert", "skill.record",
         "skill.evolve", "skill.list", "blueprint.read", "blueprint.list",
         "setup.plantuml", "session.context.get",
@@ -74,16 +77,16 @@ def test_module_handler_counts() -> None:
     expected = {
         "blueprint": 16,  # +1: blueprint.frontmatter.update (BLP-003)
         "context": 2,
-        "cortex": 21,  # +1: cortex.gc (BLP-002)
+        "cortex": 23,  # +2: cortex.corpus.* (BLP-006 gap 2.6)
         "cycle": 6,  # +1: cycle.reopen (BLP-006)
         "evidence": 3,
-        "identity": 3,  # +2: identity.get, identity.switch (BLP-011)
+        "identity": 4,  # +2: identity.get, identity.switch (BLP-011); +1: identity.elevate
         "handler": 2,  # +1: handler.how_to (BLP-012)
         "issue": 4,  # T-027: issue.create/update/list/read
         "loop": 9,  # BLP-023: autonomous loop commands
         "project": 5,
         "protocol": 5,
-        "session": 8,  # +3: bootstrap, handoff, pulse.compact
+        "session": 9,  # +3: bootstrap, handoff, pulse.compact; +1: pulse.gc (T1)
         "setup": 1,
         "skill": 8,  # +2: skill.install, skill.get (BLP-012)
         "task": 8,  # +1: task.run

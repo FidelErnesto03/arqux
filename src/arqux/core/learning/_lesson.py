@@ -1,4 +1,11 @@
-"""Lesson store and behavioral learning infrastructure (BLP-038)."""
+"""Lesson store and behavioral learning infrastructure (BLP-038).
+
+DEPRECATED (Architect rule 2026-11-15): ``brain.cortex`` ``$8`` LNG is the
+ONLY lesson surface. ``.lessons.cortex`` stores and identity
+BEHAVIORAL-LESSONS sections are no longer written by production paths.
+``LessonStore`` remains for compatibility/tests only; behavioral elevation
+reads brain ``$8`` via ``core.learning._identity_elevate``.
+"""
 from __future__ import annotations
 
 import fcntl
@@ -346,7 +353,8 @@ class LessonStore:
     ) -> list[Lesson]:
         """Migrate behavioral LNG lessons from a project brain to this store.
 
-        Reads the ``$6 LESSONS`` section of ``brain_path``, extracts any LNG
+        Reads the ``LESSONS`` section of ``brain_path`` (resolved by title —
+        section ids are physical ordering only), extracts any LNG
         entries that look behavioral (or unclassified — defaults to the
         store's agent), and appends them here. The brain is left untouched
         (the caller is responsible for cleaning the brain afterwards).
@@ -358,9 +366,9 @@ class LessonStore:
             raise FileNotFoundError(f"Brain not found: {brain_p}")
         text = brain_p.read_text(encoding="utf-8")
 
-        # Extract the $6 LESSONS section.
+        # Extract the LESSONS section — any $N id, matched by title.
         section_match = re.search(
-            r"\$6\s*:?\s*LESSONS?\s*\n(.*?)(?=\$\d+\s*:?\s*[A-Z_]|\Z)",
+            r"\$\d+\s*:?\s*LESSONS?\s*\n(.*?)(?=\$\d+\s*:?\s*[A-Z_]|\Z)",
             text, re.DOTALL,
         )
         if not section_match:

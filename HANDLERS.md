@@ -1,6 +1,6 @@
 # ArqUX Handlers
 
-Total: **111** handlers
+Total: **115** handlers
 
 ## blueprint
 
@@ -35,6 +35,8 @@ Total: **111** handlers
 | Handler | Description |
 |---------|-------------|
 | `cortex.checkpoint` | Persist the agent's working state (WRK:current) as a single CORTEX line in brain.cortex §8. Accepts content as key:value pairs (fcs:,obj:,tasks:,state:). |
+| `cortex.corpus.list` | List .cortex files in a corpus/root directory. |
+| `cortex.corpus.query` | Query corpus .cortex files by path substring/pattern. |
 | `cortex.entry.add` | Add a new entry to a .cortex file. Accepts a 'content' CORTEX entry string (BLP-005, canal I) — when provided, fields extracted from content override individual params. Output metrics: bytes_written/entry_bytes = size of the serialized entry as written on disk (writer's form, quoting included); file_bytes = whole file size after the write. |
 | `cortex.entry.delete` | Delete an entry matching a CORTEX selector from a .cortex file. Output metrics: bytes_written/file_bytes = whole file size after the rewrite (unlike entry.add, where bytes_written is the serialized entry size). |
 | `cortex.entry.get` | Read entries matching a CORTEX selector from a .cortex file. format='cortex' returns raw CORTEX entries (canal I); format='hcortex' (default) returns parsed dicts (canal E). |
@@ -89,6 +91,7 @@ Pass apply=true with confirm_hash from a reviewed dry-run to write the elevation
 
 | Handler | Description |
 |---------|-------------|
+| `identity.elevate` | Elevate a brain.cortex $8 LNG lesson into an agent identity contract (AXM or LIM) — the behavioral learning line. Default is dry-run returning the proposal + preview_hash; apply=true requires confirm_hash matching the reviewed proposal. |
 | `identity.get` | Return agent identity data from .arqux/identities/<agent>.cortex or the packaged identities. Default agent_id is 'alfred'. |
 | `identity.record` | Record a behavioral lesson into the authenticated agent's identity file; explicit agent_id must match the caller (BLP-002). |
 | `identity.switch` | Hot identity switch in one atomic call (BLP-011): validate the identity exists, hydrate the full contract, register handoff + PULSE audit, update the active context and return the header. Accepts content CORTEX and dry_run (meta-handler BLP-010). |
@@ -97,10 +100,24 @@ Pass apply=true with confirm_hash from a reviewed dry-run to write the elevation
 
 | Handler | Description |
 |---------|-------------|
-| `issue.create` | Report a new issue (status: open) in <project>/.arqux/issues/ with a PULSE event. Severity: low|medium|high|blocking. |
+| `issue.create` | Report a new issue (status: open) in <project>/.arqux/issues/ with a PULSE event. Severity: low|medium|high|blocking. The header uses title when given, else the first line of desc, truncated to 120 chars; the full desc is the body under ## PROBLEM. |
 | `issue.list` | List issues in <project>/.arqux/issues/, optionally filtered by status. |
 | `issue.read` | Read one issue file verbatim by id (file stem). |
 | `issue.update` | Update an issue's status/severity with a PULSE-traced transition. status=verified REQUIRES audit_ref (the PULSE event id of the auditor's verdict — the validator profile is the auditor). |
+
+## loop
+
+| Handler | Description |
+|---------|-------------|
+| `loop.activate` | Arm a registered loop for dispatch (armed|paused|stalled → active; retries reset). |
+| `loop.advance` | Advance the loop to the next phase: index+1, checkpoint persisted in §LOOPS, progress event appended to the session timelog. |
+| `loop.complete` | Close an active loop (→ done); the dispatcher stops signalling it. |
+| `loop.deactivate` | Silence an active loop (→ paused) without removing it. |
+| `loop.list` | List registered loops (name, state, recurrence, next) — tombstoned entries excluded. |
+| `loop.register` | Register an autonomous loop in the brain §LOOPS registry (state armed). phases[] + recurrence (on_bootstrap|every_bootstrap|cooldown:<n>h|on_heartbeat) + max_stall(<n>m) declare the cycle. |
+| `loop.remove` | Eliminate a loop from the registry (tombstone; requires deactivate first if active). |
+| `loop.suggest` | Suggest a recurrence for a loop (or all) based on its execution pattern — read-only. |
+| `loop.wake` | Manually queue a WAKE for a loop — the next governed call surfaces it as pending_loop. |
 
 ## project
 
@@ -133,6 +150,7 @@ workspace. |
 | `session.context.set` | Set the current session context pointer (project + scope + optional BLP) and open or re-attach the real session bound to this execution. Validates project exists and returns the formatted header. |
 | `session.handoff` | Serialize the current session context as CORTEX and write a handoff PULSE for the target agent (BLP-010 meta-handler). Supports dry_run mode. |
 | `session.pulse.compact` | Compact pulse entries for a session. With ses_ref, selection is by membership: only that session's pulses are pruned and concurrent or legacy pulses are never reassigned by position. Writes a consolidated LNG lesson. |
+| `session.pulse.gc` | Force a PULSE hot-window sweep (T1 retention): prunes AUD entries outside the window — rank>PULSE_KEEP_COUNT(20) or age>PULSE_KEEP_DAYS(5) — into the rolling LNG:pulse_sweep archive. Session anchors and the live tail are exempt. The write path sweeps automatically past PULSE_SWEEP_AT(40). |
 | `session.resume` | Restore the context of a session. Read-only: selects by explicit session_ref, else the session bound to this execution, else rejects an ambiguous choice instead of taking the newest session. Brains without real session identity keep the legacy PULSE selection. |
 | `session.status` | Read session metadata without restoring full context. Read-only, same selection rules as session.resume. |
 

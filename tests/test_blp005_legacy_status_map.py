@@ -212,7 +212,7 @@ def test_checkpoint_list_value_round_trips(arqux_env):
     assert out.fields["state"] == "Z"
 
     read = crud_read(
-        arqux_env.proj_root / ".arqux" / "brain.cortex", "$8/WRK:current"
+        arqux_env.proj_root / ".arqux" / "brain.cortex", "$9/WRK:current"
     )
     value = read["entries"][0]["value"]
     assert value["fcs"] == "X"
@@ -234,7 +234,7 @@ def test_checkpoint_list_value_with_internal_colon_round_trips(arqux_env):
     assert out.fields["state"] == "Z"
 
     read = crud_read(
-        arqux_env.proj_root / ".arqux" / "brain.cortex", "$8/WRK:current"
+        arqux_env.proj_root / ".arqux" / "brain.cortex", "$9/WRK:current"
     )
     value = read["entries"][0]["value"]
     assert value["fcs"] == "X"
@@ -257,7 +257,7 @@ def test_checkpoint_closing_bracket_ends_value_without_separator(arqux_env):
     assert "hint" not in out.fields
 
     read = crud_read(
-        arqux_env.proj_root / ".arqux" / "brain.cortex", "$8/WRK:current"
+        arqux_env.proj_root / ".arqux" / "brain.cortex", "$9/WRK:current"
     )
     value = read["entries"][0]["value"]
     assert value["fcs"] == "X"
@@ -278,7 +278,7 @@ def test_checkpoint_escaped_quote_round_trips_without_double_escaping(arqux_env)
     assert out.fields["fcs"] == 'say "hi"'
 
     read = crud_read(
-        arqux_env.proj_root / ".arqux" / "brain.cortex", "$8/WRK:current"
+        arqux_env.proj_root / ".arqux" / "brain.cortex", "$9/WRK:current"
     )
     value = read["entries"][0]["value"]
     assert value["fcs"] == 'say "hi"'
@@ -305,7 +305,7 @@ def test_checkpoint_without_path_uses_session_context(arqux_env, monkeypatch):
     assert out.fields["brain"] == str(arqux_env.proj_root / ".arqux" / "brain.cortex")
 
     read = crud_read(
-        arqux_env.proj_root / ".arqux" / "brain.cortex", "$8/WRK:current"
+        arqux_env.proj_root / ".arqux" / "brain.cortex", "$9/WRK:current"
     )
     assert read["entries"][0]["value"]["fcs"] == "X"
 

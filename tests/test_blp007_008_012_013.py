@@ -240,10 +240,11 @@ def test_synthesize_invalid_bp_id(tmp_path: Path) -> None:
 
 
 def test_bootstrap_with_arqux(tmp_path: Path) -> None:
-    """bootstrap returns workspace-level context when workspace .arqux/ exists."""
+    """bootstrap at the workspace root returns workspace-level context."""
     proj_root = _bootstrap_env(tmp_path)
+    ws_root = proj_root.parent
 
-    result = bootstrap(path=str(proj_root), ctx=_CONTEXT)
+    result = bootstrap(path=str(ws_root), ctx=_CONTEXT)
     assert result.profile == "OUT-WORK"
     assert result.fields.get("found") is True
     assert "cortex_context" in result.fields
@@ -258,6 +259,53 @@ def test_bootstrap_with_arqux(tmp_path: Path) -> None:
     assert "cycles" in cortex_ctx
 
 
+def test_bootstrap_project_path_binds_project(tmp_path: Path) -> None:
+    """bootstrap(path=<project>) inside a workspace binds the PROJECT.
+
+    Ergonomics fix (session-bootstrap-resolves-upward): the nearest .arqux
+    wins — a path inside a governed project used to resolve to the
+    workspace level even though it had its own .arqux/brain.cortex.
+    """
+    proj_root = _bootstrap_env(tmp_path)
+
+    result = bootstrap(path=str(proj_root), ctx=_CONTEXT)
+    assert result.profile == "OUT-WORK"
+    cortex_ctx = result.fields["cortex_context"]
+    assert cortex_ctx.get("found") is True
+    assert cortex_ctx.get("kind") == "project"
+    assert cortex_ctx.get("project")
+    assert cortex_ctx.get("project_path") == str(proj_root)
+    assert cortex_ctx.get("cycle") is None  # no auto-selection
+    assert len(cortex_ctx.get("cycles", [])) >= 1
+
+
+def test_bootstrap_deep_project_path_still_binds_project(tmp_path: Path) -> None:
+    """A path BELOW a governed project binds that project, not the workspace."""
+    proj_root = _bootstrap_env(tmp_path)
+    deep = proj_root / "src" / "pkg"
+    deep.mkdir(parents=True)
+
+    result = bootstrap(path=str(deep), ctx=_CONTEXT)
+    assert result.profile == "OUT-WORK"
+    cortex_ctx = result.fields["cortex_context"]
+    assert cortex_ctx.get("kind") == "project"
+    assert cortex_ctx.get("project_path") == str(proj_root)
+
+
+def test_bootstrap_workspace_nonproject_dir_binds_workspace(tmp_path: Path) -> None:
+    """Inside the workspace but outside every project → workspace level."""
+    proj_root = _bootstrap_env(tmp_path)
+    ws_root = proj_root.parent
+    misc = ws_root / "docs"
+    misc.mkdir()
+
+    result = bootstrap(path=str(misc), ctx=_CONTEXT)
+    assert result.profile == "OUT-WORK"
+    cortex_ctx = result.fields["cortex_context"]
+    assert cortex_ctx.get("kind") == "workspace"
+    assert cortex_ctx.get("project") is None
+
+
 def test_bootstrap_no_arqux(tmp_path: Path) -> None:
     """bootstrap with no .arqux/ returns informative message (not error)."""
     deep = tmp_path / "a" / "b" / "c"
@@ -270,7 +318,12 @@ def test_bootstrap_no_arqux(tmp_path: Path) -> None:
 
 
 def test_bootstrap_identity_loaded(tmp_path: Path) -> None:
-    """bootstrap loads identity content from packaged identities."""
+    """bootstrap resolves the identity contract as a bounded reference.
+
+    Ergonomics fix (session-bootstrap-embeds): cortex_context['identity']
+    is now agent_id + path + a sigil→names contract summary — never the
+    raw .cortex file.
+    """
     proj_root = _bootstrap_env(tmp_path)
 
     # Explicit identity selectors must match the authenticated context (BLP-002).
@@ -278,8 +331,28 @@ def test_bootstrap_identity_loaded(tmp_path: Path) -> None:
     result = bootstrap(path=str(proj_root), agent_id="alfred", ctx=alfred_ctx)
     assert result.profile == "OUT-WORK"
     cortex_ctx = result.fields.get("cortex_context", {})
-    assert cortex_ctx.get("identity", "") != ""
-    assert "IDN:alfred" in cortex_ctx["identity"]
+    identity = cortex_ctx.get("identity")
+    assert isinstance(identity, dict), "identity must be a reference, not raw text"
+    assert identity.get("agent_id") == "alfred"
+    assert identity.get("path") and identity["path"].endswith("alfred.cortex")
+    # The contract summary exposes entry heads (axioms/limits/idn), bounded.
+    assert "alfred" in identity["contracts"].get("IDN", [])
+    # The raw file body must NOT be embedded in the payload.
+    assert "IDN:alfred{" not in str(identity)
+
+
+def test_bootstrap_identity_bounded_payload(tmp_path: Path) -> None:
+    """The identity reference stays small even for a large contract file."""
+    proj_root = _bootstrap_env(tmp_path)
+
+    alfred_ctx = PermissionContext(agent_id="alfred", role="governor")
+    result = bootstrap(path=str(proj_root), agent_id="alfred", ctx=alfred_ctx)
+    identity = result.fields["cortex_context"]["identity"]
+    import json
+
+    assert len(json.dumps(identity)) < 4096, (
+        "identity reference must stay bounded (raw file is several KB)"
+    )
 
 
 def test_bootstrap_project_only(tmp_path: Path) -> None:

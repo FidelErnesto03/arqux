@@ -211,6 +211,10 @@ def how_to(
     candidates (never guesses). No-match returns the available topics
     plus references to ``handler.list`` and ``skill.get``.
 
+    ``intent`` is optional (ergonomics issue): when omitted the handler is
+    self-describing — it returns the available guide topics and how to
+    call it, instead of an INVALID_ARGS error.
+
     ``content`` accepts a CORTEX entry string with key ``intent``
     (BLP-010 meta-handler pattern — parsed value overrides the param).
     """
@@ -222,9 +226,6 @@ def how_to(
         if parsed:
             intent = parsed.get("intent", intent)
 
-    if not intent:
-        return CortexOUT.error("intent is required", code="INVALID_ARGS")
-
     guides = _load_guides()
     if not guides:
         return CortexOUT.error(
@@ -233,8 +234,22 @@ def how_to(
             hint="Reinstall the package; guides.cortex travels with the wheel.",
         )
 
-    guide, candidates = _match_guide(guides, intent)
     topics = [g.get("topic") for g in guides]
+
+    if not intent:
+        return CortexOUT.work(
+            "handler.how_to ok — self-describing help (no intent given)",
+            available_topics=topics,
+            usage=(
+                "handler.how_to(intent='<what you want to do>') — intent may "
+                "be a topic name, an alias or free text, e.g. "
+                "handler.how_to(intent='cambiar de identidad')."
+            ),
+            hint="Use handler.list(tier=...) for capability discovery or "
+                 "skill.get(<name>) to read a full skill.",
+        )
+
+    guide, candidates = _match_guide(guides, intent)
 
     if guide is None:
         return CortexOUT.error(
@@ -292,7 +307,8 @@ handler_schemas: list[dict[str, Any]] = [
         "description": (
             "Usage guide by intent (BLP-012): curated how-to from the "
             "packaged guides.cortex corpus — exact handler sequence with "
-            "example. No-match returns available topics + hints to "
+            "example. Omit intent for self-describing help (available "
+            "topics + usage). No-match returns available topics + hints to "
             "handler.list / skill.get. Read-only; accepts content CORTEX "
             "with key intent (BLP-010)."
         ),
@@ -301,12 +317,11 @@ handler_schemas: list[dict[str, Any]] = [
             "properties": {
                 "intent": {
                     "type": "string",
-                    "description": "What you want to do (e.g. 'cambiar de identidad', 'crear un blueprint').",
+                    "description": "What you want to do (e.g. 'cambiar de identidad', 'crear un blueprint'). Optional: omit for the topic list + usage.",
                 },
                 "content": {"type": "string", "description": "CORTEX content with key intent (BLP-010)."},
                 "path": {"type": "string"},
             },
-            "required": ["intent"],
         },
     },
 ]

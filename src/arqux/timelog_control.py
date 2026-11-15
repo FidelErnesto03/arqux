@@ -470,7 +470,7 @@ def _apply_tombstone(project_root: Path | str, session_id: str,
 
         crud_update(
             brain_path(project_root),
-            f"$4/SES:{session_id}",
+            f"$5/SES:{session_id}",
             set_={"suppressed": "true", "timelog": "", "summary": "",
                   "purged_ref": authorization_ref, "purged_at": _now()},
             force=True,

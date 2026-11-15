@@ -61,10 +61,19 @@ def test_no_match_lists_topics_and_hints() -> None:
     assert "handler.list" in out.fields.get("hint", "")
 
 
-def test_missing_intent_invalid_args() -> None:
+def test_missing_intent_returns_self_describing_help() -> None:
+    """No intent → topic list + usage (self-describing help, not an error)."""
     out = how_to()
-    assert out.profile == "OUT-ERROR"
-    assert out.fields.get("code") == "INVALID_ARGS"
+    assert out.profile == "OUT-WORK"
+    assert set(out.fields.get("available_topics", [])) == _TOPICS
+    assert "handler.how_to(intent=" in out.fields.get("usage", "")
+    assert "handler.list" in out.fields.get("hint", "")
+
+
+def test_missing_intent_via_empty_string_is_self_describing() -> None:
+    out = how_to("")
+    assert out.profile == "OUT-WORK"
+    assert set(out.fields.get("available_topics", [])) == _TOPICS
 
 
 # ---------------------------------------------------------------------------

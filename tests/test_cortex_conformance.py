@@ -16,17 +16,27 @@ Acceptance criteria
 - AC-06: CORTEX 0.2 slots evaluation documented
 """
 
+import re
 import sys
 from pathlib import Path
 
 import pytest
 from _governance_paths import governance_artifact
 
+from arqux.cortex.model import parse_native
 from arqux.cortex.reader import cortex_to_dict
 from arqux.cortex.writer import write_cortex_from_json
 
 ARQUX_ROOT = Path(__file__).resolve().parent.parent
 CODEC_ROOT = Path("/home/vatrox/workspace/CODEC-CORTEX")
+
+# Legacy 0.6.x codec — kept as an optional equivalence oracle. Under the
+# codec-cortex>=1.0 pin ``cortex.core`` no longer exists; tests assert the
+# v1 boundary unconditionally and only compare with legacy when importable.
+try:
+    from cortex.core.parser import parse_cortex as _legacy_parse  # type: ignore
+except ImportError:
+    _legacy_parse = None
 
 # Files required for workspace-dependent tests
 _BRAIN_CORTEX = governance_artifact("brain.cortex")
@@ -50,42 +60,73 @@ def _ensure_codec_v1_importable() -> None:
         sys.path.insert(0, codec_path)
 
 
+@pytest.fixture(autouse=True)
+def _isolate_codec_v1_path():
+    """Keep the rc1 sys.path injection from leaking into later test modules.
+
+    ``_ensure_codec_v1_importable`` mutates process-global ``sys.path``;
+    without cleanup, ``codec_cortex`` stays importable for the rest of the
+    session and ``test_cortex_v1_conformance`` activates against a stale
+    (legacy) binding. Snapshot and restore both ``sys.path`` and any
+    ``codec_cortex*`` modules imported while the test ran.
+    """
+    path_snapshot = list(sys.path)
+    module_snapshot = {
+        name: mod for name, mod in sys.modules.items()
+        if name == "codec_cortex" or name.startswith("codec_cortex.")
+    }
+    yield
+    sys.path[:] = path_snapshot
+    for name in [n for n in sys.modules
+                 if n == "codec_cortex" or n.startswith("codec_cortex.")]:
+        sys.modules.pop(name, None)
+    sys.modules.update(module_snapshot)
+
+
 # ---------------------------------------------------------------------------
 # AC-01: CODEC-CORTEX 0.6.2 (installed) — primary conformance
 # ---------------------------------------------------------------------------
 
 class TestConformanceCodec062:
-    """AC-01: ArqUX CORTEX output is parseable by CODEC 0.6.2 (installed)."""
+    """AC-01: ArqUX CORTEX output is parseable by the pinned CORTEX codec.
+
+    Primary check: the codec-cortex 1.0.x boundary
+    (``arqux.cortex.model.parse_native`` — the dispatcher under the hood).
+    The legacy 0.6.x parse is kept as an equivalence check behind
+    ``pytest.importorskip`` for environments where ``cortex.core`` is still
+    installed.
+    """
 
     @_skip_no_workspace
     def test_brain_cortex_parseable(self):
-        """brain.cortex → ArqUX reader → ArqUX writer → parse with CODEC 0.6.2."""
-        from cortex.core.parser import parse_cortex
-
+        """brain.cortex → ArqUX reader → ArqUX writer → parse with the codec."""
         text = _BRAIN_CORTEX.read_text(encoding="utf-8")
         doc = cortex_to_dict(text)
         output = write_cortex_from_json(doc)
 
         # Must parse without errors
-        parsed = parse_cortex(output)
+        parsed = parse_native(output)
         assert len(parsed.sections) > 0
         total = sum(len(s.entries) for s in parsed.sections)
         assert total > 100
 
+        # Legacy 0.6.x equivalence — only when cortex.core is installed.
+        if _legacy_parse is not None:
+            legacy = _legacy_parse(output)
+            assert sum(len(s.entries) for s in legacy.sections) > 100
+
     @_skip_no_workspace
     def test_brain_cortex_parseable_with_content(self):
-        """brain.cortex → ArqUX writer → parse with CODEC 0.6.2 → verify content.
+        """brain.cortex → ArqUX writer → parse with the codec → verify content.
 
         Beyond merely parsing, verify that content survives the round trip:
         the LNG section (``$7``) entries must match in count, sigil and name.
         """
-        from cortex.core.parser import parse_cortex
-
         text = _BRAIN_CORTEX.read_text(encoding="utf-8")
         doc = cortex_to_dict(text)
         output = write_cortex_from_json(doc)
 
-        parsed = parse_cortex(output)
+        parsed = parse_native(output)
 
         # Find LNG entries in both and compare
         original_lng = [s for s in doc["sections"] if s.get("id") == "$7"]
@@ -101,22 +142,27 @@ class TestConformanceCodec062:
                     assert parsed_entries[0].sigil == orig_entries[0]["sigil"]
                     assert parsed_entries[0].name == orig_entries[0]["name"]
 
+        # Legacy 0.6.x equivalence — only when cortex.core is installed.
+        if _legacy_parse is not None:
+            _legacy_parse(output)
+
     @_skip_no_workspace
     def test_identity_parseable(self):
-        """Identity file → ArqUX reader → ArqUX writer → parse with CODEC 0.6.2."""
-        from cortex.core.parser import parse_cortex
-
+        """Identity file → ArqUX reader → ArqUX writer → parse with the codec."""
         text = _JARVIS_CORTEX.read_text(encoding="utf-8")
         doc = cortex_to_dict(text)
         output = write_cortex_from_json(doc)
 
-        parsed = parse_cortex(output)
+        parsed = parse_native(output)
         assert len(parsed.sections) > 0
 
-    def test_simple_doc_parseable(self):
-        """Simple ArqUX-generated doc → parse with CODEC 0.6.2."""
-        from cortex.core.parser import parse_cortex
+        # Legacy 0.6.x equivalence — only when cortex.core is installed.
+        if _legacy_parse is not None:
+            legacy = _legacy_parse(output)
+            assert len(legacy.sections) > 0
 
+    def test_simple_doc_parseable(self):
+        """Simple ArqUX-generated doc → parse with the codec."""
         doc = {
             "glossary": {"header": "$0", "comments": ["# test glossary"]},
             "sections": [
@@ -134,11 +180,16 @@ class TestConformanceCodec062:
             ],
         }
         output = write_cortex_from_json(doc)
-        parsed = parse_cortex(output)
-        # 0.6.2 includes $0 glossary as a section — find the TEST section
+        parsed = parse_native(output)
+        # The v1 glossary is metadata, not a section — find the TEST section
         test_sections = [s for s in parsed.sections if s.id == "$1"]
         assert len(test_sections) == 1
         assert len(test_sections[0].entries) == 1
+
+        # Legacy 0.6.x equivalence — only when cortex.core is installed.
+        if _legacy_parse is not None:
+            legacy = _legacy_parse(output)
+            assert len([s for s in legacy.sections if s.id == "$1"]) == 1
 
 
 # ---------------------------------------------------------------------------
@@ -181,11 +232,12 @@ class TestConformanceCodec100rc1:
                 }
             ],
         }
-        # rc.1 conformance is the strict path's contract (BUG-1): the default
-        # writer targets the pinned codec-cortex 0.6.2 dialect.
+        # The strict path emits the dispatcher-facing dialect declaration
+        # (codec-cortex>=1.0 pin: ``cortex:1.0`` — accepted alongside 0.1).
         output = write_cortex_from_json(doc, strict=True)
 
-        assert '$0:format{cortex:"0.1", encoding:"UTF-8"}' in output
+        assert re.search(
+            r'\$0:format\{cortex:"?(0\.1|1\.0)"?, encoding:"?UTF-8"?', output)
         parsed = parse_v1(output)
         assert [(section.id, len(section.ideas)) for section in parsed.sections] == [(1, 1)]
 
@@ -260,37 +312,72 @@ class TestConformanceCodec100rc1:
 # ---------------------------------------------------------------------------
 
 class TestFormatDifferences:
-    """AC-03: Document differences between CODEC 0.6.2 and 1.0.0-rc.1."""
+    """AC-03: Document differences between CODEC 0.6.x and 1.0.x.
+
+    Each test asserts the pinned codec-cortex 1.0.x behaviour directly and
+    keeps the legacy 0.6.x side as a conditional comparison when
+    ``cortex.core`` is importable.
+    """
 
     def test_glossary_header_difference(self):
-        """0.6.2 uses $0, 1.0.0-rc.1 uses $0:KERNEL."""
-        # 0.6.2 accepts bare $0
-        from cortex.core.parser import parse_cortex
-
+        """Legacy accepts a bare ``$0`` header; v1 accepts ``$0``/``$0:KERNEL``
+        but only inside a document that declares ``$0:format``."""
         text = '$0\n\n$1: TEST\n\nLNG:test{type:"process"}\n'
-        doc = parse_cortex(text)
-        assert doc is not None
+        # Legacy 0.6.x accepts bare $0 with undeclared sigils.
+        if _legacy_parse is not None:
+            assert _legacy_parse(text) is not None
 
-        # 1.0.0-rc.1 requires $0:KERNEL and $0:format
-        # (documented in test_arqux_output_needs_format_declaration)
+        _ensure_codec_v1_importable()
+        dispatcher = pytest.importorskip("codec_cortex.dispatcher")
+        # The same document is not a valid 1.0.x artifact: $0:format missing.
+        scalars = pytest.importorskip("codec_cortex.scalars")
+        with pytest.raises(scalars.ParseError, match="G010"):
+            dispatcher.parse_cortex(text)
+        # ``$0:KERNEL`` (capa) is accepted once the dialect is declared.
+        v1_text = (
+            "$0:KERNEL\n"
+            "$0:format{cortex:0.1,encoding:UTF-8}\n"
+            'LNG:lesson{type:attrs,weight:M,fields:"type:text|lesson:text",'
+            'focus:type,desc:"Learned lesson"}\n'
+            "\n$1: TEST\n\n"
+            'LNG:test{type:"process", lesson:"x"}\n'
+        )
+        doc = dispatcher.parse_cortex(v1_text)
+        assert doc.glossary.capa == "KERNEL"
+        assert len(doc.sections) == 1
 
     def test_format_declaration_difference(self):
-        """0.6.2 doesn't require $0:format, 1.0.0-rc.1 does."""
-        from cortex.core.parser import parse_cortex
-
-        # 0.6.2 parses without $0:format
+        """0.6.x doesn't require $0:format; the 1.0.x dispatcher does (G010)."""
         text = '$0\n\n$1: TEST\n\nLNG:test{type:"process"}\n'
-        doc = parse_cortex(text)
-        assert doc is not None  # No error
+        # 0.6.x parses without $0:format.
+        if _legacy_parse is not None:
+            assert _legacy_parse(text) is not None
+
+        _ensure_codec_v1_importable()
+        dispatcher = pytest.importorskip("codec_cortex.dispatcher")
+        scalars = pytest.importorskip("codec_cortex.scalars")
+        with pytest.raises(scalars.ParseError, match="G010_FORMAT_REQUIRED"):
+            dispatcher.parse_cortex(text)
 
     def test_sigil_declaration_difference(self):
-        """0.6.2 allows undeclared sigils, 1.0.0-rc.1 requires declared sigils."""
-        from cortex.core.parser import parse_cortex
-
-        # 0.6.2 parses undeclared sigils
+        """0.6.x allows undeclared sigils; 1.0.x requires them (I001)."""
         text = '$0\n\n$1: TEST\n\nLNG:test{type:"process"}\n'
-        doc = parse_cortex(text)
-        assert doc is not None  # No error, undeclared LNG is OK
+        # 0.6.x parses undeclared sigils.
+        if _legacy_parse is not None:
+            assert _legacy_parse(text) is not None
+
+        _ensure_codec_v1_importable()
+        dispatcher = pytest.importorskip("codec_cortex.dispatcher")
+        scalars = pytest.importorskip("codec_cortex.scalars")
+        # With $0:format present but no glossary declaration → I001.
+        v1_text = (
+            "$0\n"
+            "$0:format{cortex:1.0,encoding:UTF-8}\n"
+            "\n$1: TEST\n\n"
+            'LNG:test{type:"process"}\n'
+        )
+        with pytest.raises(scalars.ParseError, match="I001_UNDECLARED_SYMBOL"):
+            dispatcher.parse_cortex(v1_text)
 
     def test_1_0_0_rc1_rejects_bare_dollar_zero(self):
         """1.0.0-rc.1 rejects bare $0 (requires $0:KERNEL / $0:format)."""

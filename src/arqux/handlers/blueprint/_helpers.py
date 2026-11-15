@@ -508,17 +508,16 @@ def _record_to_brain(root: Path, bp_id: str, outcome: str, evidence: str) -> Non
         if not brain_path.exists():
             return
 
-        from cortex.core.parser import parse_cortex
-
+        from ...cortex.model import parse_native
         from ..state import crud_add
 
         text = brain_path.read_text(encoding="utf-8")
-        doc = parse_cortex(text)
+        doc = parse_native(text)
 
-        # Find PULSE section (usually $11 or latest section).
+        # Find PULSE section (title match first; $7 is the canon id).
         pulse_sec = None
         for sec in doc.sections:
-            if "PULSE" in sec.title.upper() or sec.id == "$11":
+            if "PULSE" in sec.title.upper() or sec.id == "$7":
                 pulse_sec = sec
                 break
         if pulse_sec is None:

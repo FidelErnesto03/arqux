@@ -261,6 +261,9 @@ CONDITIONAL_MUTATING: dict[str, tuple[str, ...]] = {
     # apply=False (default) returns a dry-run elevation diff; apply=True
     # writes the elevation into brain.cortex.
     "cortex.learn.elevate": ("apply",),
+    # apply=False (default) previews the AXM/LIM proposal; apply=True
+    # mutates the agent identity contract (requires confirm_hash).
+    "identity.elevate": ("apply",),
     # fix=False (default) only reports duplicates; fix=True renames them
     # via atomic rewrite.
     "cortex.file.validate": ("fix",),
@@ -273,6 +276,9 @@ CONDITIONAL_MUTATING: dict[str, tuple[str, ...]] = {
     # dry_run defaults False — writes the target file by default;
     # dry_run=True is a preview.
     "cortex.migrate": (),
+    # dry_run defaults False — sweeps PULSE AUDs into the rolling archive
+    # by default; dry_run=True is a preview.
+    "session.pulse.gc": (),
     # apply=False (default) shows the proposed ADA change; apply=True
     # marks it applied in the skill file.
     "skill.evolve": ("apply",),

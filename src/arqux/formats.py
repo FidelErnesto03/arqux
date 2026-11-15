@@ -37,10 +37,7 @@ import re
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
-
-if TYPE_CHECKING:
-    from cortex.core.ast import Entry
+from typing import Any
 
 from .constants import (
     W001_NO_METADATA,
@@ -99,6 +96,13 @@ _ARQUX_META_TITLE = "ARQUX METADATA"
 _ARQUX_META_SIGIL = "ARQX"
 _ARQUX_META_ENTRY = "artifact"
 
+#: Lookup priority for ``ARQX:artifact`` across sections.  ``$0.1`` is the
+#: BLP-041 location (pre-1.0), ``$1`` the canonical identity slot, ``$15``
+#: the brain-canon slot (cortex-brain-section-canon) and ``$19`` the slot
+#: writers emit for non-brain artifacts.  Any other section is still
+#: scanned last — metadata resolution is by sigil, never by position.
+_ARQUX_META_PRIORITY = {"$0.1": 0, "$1": 1, "$15": 2, "$19": 3}
+
 
 @dataclass
 class CortexArtifact:
@@ -127,26 +131,32 @@ class CortexArtifact:
 
 
 def _read_arqux_from_ast(text: str) -> dict[str, Any] | None:
-    """Parse ``text`` with CODEC-CORTEX and extract ARQX:artifact attrs.
+    """Parse ``text`` and extract ARQX:artifact attrs.
 
-    The metadata is looked up in ``_ARQUX_META_SECTION`` (``$0.1``, the BLP-041
-    location) and, since CORTEX 1.0, also in the canonical identity section: the
-    1.0 grammar rejects a sub-section of the glossary (G004), so migrated
-    artifacts carry ``ARQX:artifact`` in ``$1``.
+    Resolution is sigil-driven: ``ARQX:artifact`` is accepted in any section,
+    preferring canonical slots in ``_ARQUX_META_PRIORITY`` order
+    (``$0.1`` legacy → ``$1`` identity → ``$15`` brain canon → ``$19`` writer
+    slot). Position-fixed lookup was the silent-degradation trap of audit
+    H-08: writers emit ``$15``/``$19``, so a ``$0.1``/``$1``-only reader
+    degraded every governed artifact to NIVEL 0.
 
-    Both locations are accepted, and the legacy one is tried first so an
-    artifact that was not migrated keeps resolving its level. Returning None
-    degrades the artifact to NIVEL 0 (W001_NO_METADATA), so a silent miss here
-    is a governance failure: BLP-001 T-1.17.
+    Returning None degrades the artifact to NIVEL 0 (W001_NO_METADATA), so a
+    silent miss here is a governance failure: BLP-001 T-1.17.
+
+    BLP-005: parsing goes through the ArqUX-owned model
+    (:func:`arqux.cortex.model.parse_native`), which binds codec 1.0.x when
+    installed and the legacy 0.6.x shape otherwise — metadata resolution is
+    governance semantics, never codec-dependent.
     """
     try:
-        from cortex.core.parser import parse_cortex
-        doc = parse_cortex(text)
-        sections = {sec.id: sec for sec in doc.sections}
-        for section_id in (_ARQUX_META_SECTION, _ARQUX_META_SECTION_V1):
-            sec = sections.get(section_id)
-            if sec is None:
-                continue
+        from .cortex.model import parse_native
+        doc = parse_native(text)
+        ordered = sorted(
+            doc.sections,
+            key=lambda sec: _ARQUX_META_PRIORITY.get(
+                sec.id, len(_ARQUX_META_PRIORITY)),
+        )
+        for sec in ordered:
             for entry in sec.entries:
                 if (
                     entry.sigil == _ARQUX_META_SIGIL
@@ -154,6 +164,32 @@ def _read_arqux_from_ast(text: str) -> dict[str, Any] | None:
                     and isinstance(entry.value, dict)
                 ):
                     return entry.value
+    except Exception:
+        pass
+    # Strict parse failed (e.g. pre-1.0 artifacts carrying ``$0.1``, which the
+    # v1 grammar rejects as G004). Fall back to the lenient reader — a
+    # malformed-but-metadata-bearing artifact must still resolve its level.
+    try:
+        from .cortex.reader import cortex_to_dict
+        doc = cortex_to_dict(text)
+        ordered = sorted(
+            doc.get("sections", []),
+            key=lambda sec: _ARQUX_META_PRIORITY.get(
+                str(sec.get("id")), len(_ARQUX_META_PRIORITY)),
+        )
+        for sec in ordered:
+            if not isinstance(sec, dict):
+                continue
+            for entry in sec.get("entries", []):
+                if not isinstance(entry, dict):
+                    continue
+                value = entry.get("attrs") or entry.get("value")
+                if (
+                    entry.get("sigil") == _ARQUX_META_SIGIL
+                    and entry.get("name") == _ARQUX_META_ENTRY
+                    and isinstance(value, dict)
+                ):
+                    return value
     except Exception:
         return None
     return None
@@ -355,6 +391,7 @@ _SIGIL_DEFS: list[dict[str, str]] = [
 _ARQUX_GLOSSARY_TEXT = """# -- $0: ARQUX GOVERNANCE GLOSSARY --
 # Sigil | Name | Type | Risk | Cognitive Layer | Description
 # ARQX  | artifact  | attrs      | B | Semantic       | ArqUX artifact metadata
+# AXM   | axiom      | attrs      | H | Prefrontal     | Project behavioral axiom
 # IDN   | identity   | attrs      | B | Semantic       | Actor identity
 # FCS   | focus      | attrs      | H | Working        | Active attention anchor
 # OBJ   | objective  | attrs      | H | Working        | Active goal with success criterion
@@ -388,9 +425,53 @@ _ARQUX_GLOSSARY_TEXT = """# -- $0: ARQUX GOVERNANCE GLOSSARY --
 
 # --- Helpers -----------------------------------------------------------------
 
+#: Executable sigil declarations generated from ``_SIGIL_DEFS`` (CORTEX 1.0).
+#: The strict parser rejects any ``SIGIL:name`` whose sigil is not declared
+#: in ``$0`` (I001_UNDECLARED_SYMBOL), and requires the ``$0:format``
+#: dialect line (G010_FORMAT_REQUIRED). Builders that emit fresh artifacts
+#: must include both — the comment table alone is documentation, not grammar.
+_ARQUX_FORMAT_DECL = "$0:format{cortex:1.0, encoding:UTF-8}"
+
+
+def _sigil_declarations() -> str:
+    """Render executable ``SIGIL:name{...}`` declarations for ``_SIGIL_DEFS``.
+
+    Same shape as migrated artifacts carry (e.g. brain.cortex ``$0``):
+    ``FCS:focus{type:"attrs", weight:"H", fields:"value:any?", ...}``.
+    """
+    lines: list[str] = []
+    for sdef in _SIGIL_DEFS:
+        decl = (
+            f'{sdef["sigil"]}:{sdef["name"]}'
+            f'{{type:"{sdef["type"]}", weight:"{sdef["risk"]}", '
+            f'fields:"value:any?", focus:"value", desc:"{sdef["desc"]}", '
+            f'open:true}}'
+        )
+        if sdef["type"] == "attrs-pos":
+            # G022: attrs-pos declarations must carry the positional
+            # contract, and focus must name a pos field (G025). HDL
+            # entries are emitted as ``HDL:hNNN{from|to|task|desc|date}``.
+            decl = decl[:-1] + ', pos:"from:text|to:text|task:text|desc:text|date:text"}'
+            decl = decl.replace('focus:"value"', 'focus:"desc"')
+        lines.append(decl)
+    return "\n\n".join(lines)
+
+
 def _build_glossary() -> str:
-    """Build $0 glossary section text (injected comment-style)."""
-    return _ARQUX_GLOSSARY_TEXT
+    """Build the full ``$0`` body: format decl + comments + declarations.
+
+    BLP-005: under the CORTEX 1.0 grammar a ``$0`` carrying only the comment
+    table produces artifacts the strict parser cannot read back — every
+    sigil used must be declared (I001) and the dialect line must be present
+    (G010). Fresh governance files now satisfy both requirements.
+    """
+    return (
+        _ARQUX_FORMAT_DECL
+        + "\n\n"
+        + _ARQUX_GLOSSARY_TEXT
+        + "\n\n"
+        + _sigil_declarations()
+    )
 
 
 def _e(name: str, attrs: dict[str, Any]) -> str:
@@ -523,279 +604,6 @@ def render_governance_cortex(stem: str, frontmatter: dict, body: str | dict) -> 
     return _build_fallback(stem, frontmatter, body)
 
 
-def _build_doc(stem: str, frontmatter: dict, body):
-    """Build a CortexDocument from Arqux model data.
-
-    Returns a document that, when passed to write_cortex(), produces
-    canonical single-line attrs with valid $0 glossary.
-    """
-    from cortex.core.ast import CortexDocument, Section, SigilDef
-
-    doc = CortexDocument()
-
-    # $0 MUST be the first section — write_cortex requires it.
-    sec0 = Section(id="$0", title="")
-    doc.sections.append(sec0)
-
-    # Populate glossary from Arqux sigil definitions.
-    for sdef in _SIGIL_DEFS:
-        doc.glossary.add_sigil(SigilDef(
-            sigil=sdef["sigil"], name=sdef["name"], type=sdef["type"],
-            risk=sdef["risk"], layer=sdef["layer"],
-            description=sdef["desc"],
-        ))
-
-    # $0.1: ARQUX METADATA — inject ARQX:artifact from frontmatter
-    level = frontmatter.get("level", 2)
-    name = frontmatter.get("name", stem)
-    usage = frontmatter.get("usage", "state")
-    kind = frontmatter.get("kind", "native")
-    _add_section(doc, "$19", "ARQUX METADATA", [
-        _entry("$19", "ARQX", "artifact", {
-            "level": level,
-            "name": name,
-            "usage": usage,
-            "kind": kind,
-        }),
-    ])
-
-    if stem == "brain":
-        _build_brain_doc(doc, frontmatter, body)
-    elif stem == "manifest":
-        _build_manifest_doc(doc, frontmatter)
-    elif stem == "meta-brain":
-        _build_meta_brain_doc(doc, frontmatter)
-    elif stem == "projects":
-        _build_projects_doc(doc, frontmatter)
-    elif stem.startswith("T-"):
-        _build_task_doc(doc, frontmatter, body)
-    elif stem == "cycle":
-        _build_cycle_doc(doc, frontmatter)
-    else:
-        return None
-    return doc
-
-
-def _add_section(doc, sec_id: str, title: str, entries: list[Entry]):
-    """Add a section to the document."""
-    from cortex.core.ast import Section
-    sec = Section(id=sec_id, title=title)
-    if entries:
-        sec.entries = entries
-    doc.sections.append(sec)
-
-
-def _entry(section_id: str, sigil: str, name: str,
-           value: dict[str, Any] | str) -> Entry:
-    """Create an Entry with proper section reference."""
-    from cortex.core.ast import Entry
-    if isinstance(value, str):
-        # cuerpo type / body
-        return Entry(section=section_id, sigil=sigil, name=name,
-                     type="cuerpo", value=value)
-    return Entry(section=section_id, sigil=sigil, name=name,
-                 type="attrs", value=value)
-
-
-# --- Builders per stem -------------------------------------------------------
-
-
-def _build_brain_doc(doc, frontmatter, sections_input):
-    # Normalize input: accept either sections dict or body string.
-    if isinstance(sections_input, str):
-        from .state import parse_brain_sections
-        sections_input = parse_brain_sections(sections_input) or {}
-    sections = sections_input or {}
-    now = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
-
-    # $1: IDENTITY
-    _add_section(doc, "$1", "IDENTITY", [
-        _entry("$1", "IDN", "governor", {
-            "level": str(frontmatter.get("level", 2)),
-            "project": frontmatter.get("project", "unknown"),
-            "path": frontmatter.get("path", ""),
-            "governor": frontmatter.get("governor",
-                       frontmatter.get("brain_last_writer", "anonymous")),
-            "created": frontmatter.get("brain_updated", now),
-        }),
-    ])
-
-    # $2: FOCUS
-    focus = (sections or {}).get("FOCUS", "").strip()
-    focus_val = (focus if focus and focus != "(one-sentence current focus of the project)"
-                 else "Project governance and development")
-    _add_section(doc, "$2", "FOCUS", [
-        _entry("$2", "FCS", "current", {
-            "what": focus_val, "priority": "medium",
-            "status": "current", "survive": "work",
-        }),
-    ])
-
-    # $3: OBJECTIVES
-    obj_entries = []
-    for line in (sections or {}).get("OBJECTIVES", "").splitlines():
-        line = line.strip()
-        if line and not line.startswith("(") and not line.startswith("#"):
-            name = re.sub(r'[^a-z0-9]', '_',
-                          line.split(":")[0].split(" ")[0].lower())[:20] or "obj"
-            obj_entries.append(
-                _entry("$3", "OBJ", name, {
-                    "goal": line, "status": "current",
-                    "success": "", "survive": "work",
-                }))
-    _add_section(doc, "$3", "OBJECTIVES", obj_entries or [
-        _entry("$3", "OBJ", "default", {
-            "goal": "Default project objective",
-            "status": "current", "success": "verified", "survive": "work",
-        }),
-    ])
-
-    # $4: SESSIONS
-    ses_entries = []
-    for line in (sections or {}).get("SESSIONS", "").splitlines():
-        m = re.match(r"^-\s*\[([^\]]+)\]\s*agent=(\S+)\s+role=(\S+)(.*)", line)
-        if not m:
-            continue
-        date_val = m.group(1).split("T")[0] if "T" in m.group(1) else m.group(1)
-        agent_name = m.group(2).replace("-", "_")
-        ses_entries.append(
-            _entry("$4", "SES", agent_name, {
-                "input": f"session start for {m.group(2)}", "output": "",
-                "role": m.group(3),
-                "outcome": "active" if "released" not in line else "released",
-                "date": date_val,
-            }))
-    _add_section(doc, "$4", "SESSIONS", ses_entries)
-
-    # $5: HANDOFFS
-    hdl_entries = []
-    for i, line in enumerate((sections or {}).get("HANDOFFS", "").splitlines()):
-        m = re.match(r"^-\s*\[([^\]]+)\]\s*(\S+)\s*->\s*(\S+)\s*task=(\S+)\s*::\s*(.*)", line)
-        if m:
-            hdl_entries.append(
-                _entry("$5", "HDL", f"h{i+1:03d}", {
-                    "from": m.group(2), "to": m.group(3),
-                    "task": m.group(4), "note": m.group(5),
-                    "ts": m.group(1),
-                }))
-    _add_section(doc, "$5", "HANDOFFS", hdl_entries)
-
-    # $6: PULSE
-    pulse_entries = []
-    for line in (sections or {}).get("PULSE", "").splitlines():
-        m = re.match(
-            r"^-\s*\[([^\]]+)\]\s*id=(\S+)\s*task=(\S+)\s*kind=(\S+)"
-            r"(?:\s*cycle=(\S+))?\s*agent=(\S+)\s*::\s*(.*)", line)
-        if m:
-            pulse_entries.append(
-                _entry("$6", "AUD", m.group(2).replace("-", "_"), {
-                    "event": m.group(2), "evidence": m.group(7),
-                    "task": m.group(3), "kind": m.group(4),
-                    "agent": m.group(6), "result": m.group(7),
-                    "date": (m.group(1).split("T")[0]
-                             if "T" in m.group(1) else m.group(1)),
-                }))
-    _add_section(doc, "$6", "PULSE", pulse_entries)
-
-    # $7: LESSONS
-    lng_entries = []
-    seen_lessons: dict[str, int] = {}
-    for line in (sections or {}).get("LESSONS", "").splitlines():
-        line = line.strip()
-        if not line or line.startswith("(") or line.startswith("#"):
-            continue
-        name = _legacy_entry_name(line, "lesson", seen_lessons)
-        if not name:
-            continue
-        lng_entries.append(
-            _entry("$7", "LNG", name, {
-                "type": "contextual", "cause": "", "lesson": line,
-            }))
-    _add_section(doc, "$7", "LESSONS", lng_entries)
-
-    # $8: ACTIVE_CONTEXT
-    active = (sections or {}).get("ACTIVE_CONTEXT", "").strip()
-    _add_section(doc, "$8", "ACTIVE_CONTEXT", [
-        _entry("$8", "WRK", "current", {
-            "phase": "active",
-            "current": active if active and not active.startswith("(") else "Initial cycle",
-            "blocked": "no", "survive": "work",
-        }),
-    ])
-
-    # $9: RISKS
-    rsk_entries = []
-    seen_risks: dict[str, int] = {}
-    for line in (sections or {}).get("RISKS", "").splitlines():
-        if not line.strip() or line.strip().startswith("("):
-            continue
-        name = _legacy_entry_name(line, "risk", seen_risks)
-        if not name:
-            continue
-        rsk_entries.append(
-            _entry("$9", "RSK", name, {
-                "description": line.strip(),
-                "mitigation": "", "severity": "medium",
-            }))
-    _add_section(doc, "$9", "RISKS", rsk_entries)
-
-    # $10: KNOWLEDGE
-    knw_lines = (sections or {}).get("KNOWLEDGE", "").strip()
-    knw_entries = []
-    if knw_lines:
-        knw_entries.append(
-            _entry("$10", "KNW", "knowledge", {
-                "topic": "project_knowledge",
-                "content": knw_lines,
-                "status": "active",
-            }))
-    _add_section(doc, "$10", "KNOWLEDGE", knw_entries)
-
-    # $11: CONCURRENCY
-    version = frontmatter.get("brain_version", "0")
-    _add_section(doc, "$11", "CONCURRENCY", [
-        _entry("$11", "ERR", "concurrency", {
-            "version": str(version),
-            "last_writer": frontmatter.get("brain_last_writer", ""),
-            "updated": frontmatter.get("brain_updated", now),
-        }),
-    ])
-
-
-def _build_manifest_doc(doc, manifest):
-    _add_section(doc, "$1", "WORKSPACE", [
-        _entry("$1", "IDN", "workspace", {
-            "version": manifest.get("version", "1.0.0"),
-            "product": manifest.get("product", "arqux"),
-            "governor": manifest.get("governor", "anonymous"),
-            "created": manifest.get("created", ""),
-            "status": manifest.get("status", "active"),
-        }),
-    ])
-
-
-def _build_meta_brain_doc(doc, brain):
-    lessons = brain.get("lessons", [])
-    _add_section(doc, "$1", "META-BRAIN", [
-        _entry("$1", "KNW", "meta", {
-            "topic": "cross-project knowledge",
-            "content": (f"{len(lessons)} lessons, "
-                        f"{len(brain.get('knowledge', []))} knowledge items"),
-            "status": "active",
-        }),
-    ])
-
-
-def _build_projects_doc(doc, projects):
-    entries = []
-    for i, p in enumerate(projects or []):
-        entries.append(
-            _entry("$1", "DOM", f"p{i+1:03d}", {
-                "name": p.get("name", "?"), "path": p.get("path", "?"),
-            }))
-    _add_section(doc, "$1", "PROJECTS", entries)
-
-
 def _strip_attr_prefix(value: str, key: str) -> str:
     """Strip a repeated serialized-attr prefix from a value.
 
@@ -821,106 +629,6 @@ def _strip_attr_prefix(value: str, key: str) -> str:
     return value
 
 
-def _build_task_doc(doc, fm, body):
-    _add_section(doc, "$1", "TASK", [
-        _entry("$1", "WRK", "task", {
-            "id": fm.get("id", ""), "status": fm.get("status", "draft"),
-            "governor": fm.get("governor", ""),
-            "assignee": fm.get("assignee", ""),
-            "priority": fm.get("priority", "medium"),
-            "complexity": fm.get("complexity", "standard"),
-            "cycle": fm.get("cycle", ""),
-            "created": fm.get("created", ""),
-            "updated": fm.get("updated", ""),
-        }),
-    ])
-
-    sections = _parse_task_body(body)
-    sec_num = 2
-    sec_map = {
-        "OBJ": ("OBJECTIVE", "OBJ"),
-        "PRE": ("PRECONDITIONS", "CNST"),
-        "PROC": ("PROCEDURE", "STP"),
-        "AC": ("ACCEPTANCE", "CLAIM"),
-        "BLK": ("BLOCKERS", "BLK"),
-    }
-
-    for key, (title, sigil) in sec_map.items():
-        content = sections.get(key, "")
-        if not content:
-            continue
-        entries = []
-        sid = f"${sec_num}"
-        if sigil == "OBJ":
-            # OBJ may be a single paragraph or a bulleted list; normalize
-            # by stripping bullets and repeated 'text=' prefixes per line.
-            obj_lines = []
-            for line in content.splitlines():
-                line = line.strip()
-                if not line:
-                    continue
-                obj_lines.append(_strip_attr_prefix(line.lstrip("-* "), "text"))
-            obj_text = " ".join(obj_lines)
-            entries.append(_entry(sid, sigil, "objective", {"text": obj_text}))
-        elif sigil == "STP":
-            for i, line in enumerate(content.splitlines()):
-                line = line.strip()
-                if line and re.match(r'^\d+\.', line):
-                    action = re.sub(r'^\d+\.\s*', '', line)
-                    action = _strip_attr_prefix(action, "action")
-                    entries.append(_entry(sid, sigil, f"step{i+1}",
-                                          {"action": action}))
-        elif sigil == "CNST":
-            for i, line in enumerate(content.splitlines()):
-                line = line.strip()
-                if line and line.startswith("-"):
-                    val = line.lstrip("- ")
-                    val = _strip_attr_prefix(val, "text")
-                    entries.append(_entry(sid, sigil, f"pre{i+1}",
-                                          {"text": val}))
-        elif sigil == "CLAIM":
-            for i, line in enumerate(content.splitlines()):
-                line = line.strip()
-                if line and line.startswith("-"):
-                    val = line.lstrip("- ")
-                    val = _strip_attr_prefix(val, "criterion")
-                    entries.append(_entry(sid, sigil, f"ac{i+1}",
-                                          {"criterion": val}))
-        elif sigil == "BLK":
-            for i, line in enumerate(content.splitlines()):
-                line = line.strip()
-                if line and line.startswith("-"):
-                    cond = _strip_attr_prefix(line.lstrip("- "), "condition")
-                    entries.append(_entry(sid, sigil, f"b{i+1}", {
-                        "condition": cond,
-                        "action": "HALT_AND_REPORT",
-                    }))
-        if entries:
-            _add_section(doc, sid, title, entries)
-            sec_num += 1
-
-    for key in ("NOTE", "EVIDENCE"):
-        content = sections.get(key, "")
-        if content:
-            sid = f"${sec_num}"
-            _add_section(doc, sid, key, [
-                _entry(sid, "AUD", key.lower(),
-                       {"text": _strip_attr_prefix(content, "text")}),
-            ])
-            sec_num += 1
-
-
-def _build_cycle_doc(doc, cycle):
-    _add_section(doc, "$1", "CYCLE", [
-        _entry("$1", "WRK", "cycle", {
-            "id": cycle.get("id", ""), "name": cycle.get("name", "?"),
-            "status": cycle.get("status", "open"),
-            "created": cycle.get("created", ""),
-            "description": cycle.get("description", ""),
-        }),
-    ])
-
-
 def _build_fallback(stem: str, frontmatter: dict, body: str) -> str:
     """Fallback string-based builder when write_cortex is unavailable."""
     if stem == "brain":
@@ -942,9 +650,11 @@ def _build_fallback(stem: str, frontmatter: dict, body: str) -> str:
 
 
 def _add_arqux_meta_section(parts: list[str], frontmatter: dict, default_name: str = "artifact") -> None:
-    """Append ``$0.1: ARQUX METADATA`` + ``ARQX:artifact{...}`` to parts list.
+    """Append ``$19: ARQUX METADATA`` + ``ARQX:artifact{...}`` to parts list.
 
     Reads level/name/usage/kind from frontmatter, falls back to defaults.
+    ``$19`` is the far-from-zero operational slot (section ordering
+    principle); the metadata reader resolves ARQX by sigil regardless.
     """
     level = frontmatter.get("level", 2)
     name = frontmatter.get("name", default_name)
@@ -964,8 +674,7 @@ def _add_arqux_meta_section(parts: list[str], frontmatter: dict, default_name: s
 
 def brain_from_model(frontmatter: dict, sections: dict[str, str]) -> str:
     now = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
-    parts = ["$0", "", _ARQUX_GLOSSARY_TEXT, ""]
-    _add_arqux_meta_section(parts, frontmatter, "brain")
+    parts = ["$0", "", _build_glossary(), ""]
     id_attrs = {
         "level": str(frontmatter.get("level", 2)),
         "project": frontmatter.get("project", "unknown"),
@@ -974,16 +683,31 @@ def brain_from_model(frontmatter: dict, sections: dict[str, str]) -> str:
         "created": frontmatter.get("brain_updated", now),
     }
     parts.append(_fmt_section(1, "IDENTITY", [_fmt_entry("IDN", "governor", id_attrs)]))
+    # $2: AXIOMS — project behavioral axioms (canon
+    # docs/reference/cortex-brain-section-canon.md).
+    axm_lines = []
+    seen_axioms: dict[str, int] = {}
+    for line in sections.get("AXIOMS", "").splitlines():
+        line = line.strip()
+        if not line or line.startswith("(") or line.startswith("#"):
+            continue
+        name = _legacy_entry_name(line, "axiom", seen_axioms)
+        if not name:
+            continue
+        axm_lines.append(_fmt_entry("AXM", name, {
+            "rule": line, "severity": "blocking", "survive": "min",
+        }))
+    parts.append(_fmt_section(2, "AXIOMS", axm_lines))
     focus = sections.get("FOCUS", "").strip()
     focus_val = focus if focus and focus != "(one-sentence current focus of the project)" else ""
-    parts.append(_fmt_section(2, "FOCUS", [_fmt_entry("FCS", "current", {"what": focus_val, "priority": "medium", "status": "current", "survive": "min"})]))
+    parts.append(_fmt_section(3, "FOCUS", [_fmt_entry("FCS", "current", {"what": focus_val, "priority": "medium", "status": "current", "survive": "min"})]))
     obj_lines = []
     for line in sections.get("OBJECTIVES", "").splitlines():
         line = line.strip()
         if line and not line.startswith("(") and not line.startswith("#"):
             name = re.sub(r'[^a-z0-9]', '_', line.split(":")[0].split(" ")[0].lower())[:20] or "obj"
             obj_lines.append(_fmt_entry("OBJ", name, {"goal": line, "status": "current", "success": "", "survive": "work"}))
-    parts.append(_fmt_section(3, "OBJECTIVES", obj_lines))
+    parts.append(_fmt_section(4, "OBJECTIVES", obj_lines))
     ses_lines = []
     for line in sections.get("SESSIONS", "").splitlines():
         m = re.match(r"^-\s*\[([^\]]+)\]\s*agent=(\S+)\s+role=(\S+)(.*)", line)
@@ -997,14 +721,14 @@ def brain_from_model(frontmatter: dict, sections: dict[str, str]) -> str:
             "outcome": "active" if "released" not in line else "released",
             "date": date_val,
         }))
-    parts.append(_fmt_section(4, "SESSIONS", ses_lines))
+    parts.append(_fmt_section(5, "SESSIONS", ses_lines))
     hdl_lines = []
     for i, line in enumerate(sections.get("HANDOFFS", "").splitlines()):
         m = re.match(r"^-\s*\[([^\]]+)\]\s*(\S+)\s*->\s*(\S+)\s*task=(\S+)\s*::\s*(.*)", line)
         if m:
             parts_val = [m.group(2), m.group(3), m.group(4), m.group(5), m.group(1)]
             hdl_lines.append(f"HDL:h{i+1:03d}{{{' | '.join(parts_val)}}}")
-    parts.append(_fmt_section(5, "HANDOFFS", hdl_lines))
+    parts.append(_fmt_section(6, "HANDOFFS", hdl_lines))
     pulse_lines = []
     for line in sections.get("PULSE", "").splitlines():
         m = re.match(r"^-\s*\[([^\]]+)\]\s*id=(\S+)\s*task=(\S+)\s*kind=(\S+)(?:\s*cycle=(\S+))?\s*agent=(\S+)\s*::\s*(.*)", line)
@@ -1014,7 +738,7 @@ def brain_from_model(frontmatter: dict, sections: dict[str, str]) -> str:
                 "kind": m.group(4), "agent": m.group(6), "result": m.group(7),
                 "date": m.group(1).split("T")[0] if "T" in m.group(1) else m.group(1),
             }))
-    parts.append(_fmt_section(6, "PULSE", pulse_lines))
+    parts.append(_fmt_section(7, "PULSE", pulse_lines))
     lng_lines = []
     seen_lessons: dict[str, int] = {}
     for line in sections.get("LESSONS", "").splitlines():
@@ -1025,9 +749,9 @@ def brain_from_model(frontmatter: dict, sections: dict[str, str]) -> str:
         if not name:
             continue
         lng_lines.append(_fmt_entry("LNG", name, {"type": "contextual", "cause": "", "lesson": line}))
-    parts.append(_fmt_section(7, "LESSONS", lng_lines))
+    parts.append(_fmt_section(8, "LESSONS", lng_lines))
     active = sections.get("ACTIVE_CONTEXT", "").strip()
-    parts.append(_fmt_section(8, "ACTIVE_CONTEXT", [
+    parts.append(_fmt_section(9, "ACTIVE_CONTEXT", [
         _fmt_entry("WRK", "current", {"phase": "active", "current": active if active and not active.startswith("(") else "", "blocked": "no", "survive": "work"})
     ]))
     rsk_lines = []
@@ -1039,23 +763,40 @@ def brain_from_model(frontmatter: dict, sections: dict[str, str]) -> str:
         if not name:
             continue
         rsk_lines.append(_fmt_entry("RSK", name, {"description": line.strip(), "mitigation": "", "severity": "medium"}))
-    parts.append(_fmt_section(9, "RISKS", rsk_lines))
-    # $10: KNOWLEDGE (matches _build_brain_doc section numbering)
+    parts.append(_fmt_section(10, "RISKS", rsk_lines))
+    # $11: KNOWLEDGE (matches _build_brain_doc section numbering)
     knw_lines_str = sections.get("KNOWLEDGE", "").strip()
     knw_entries = []
     if knw_lines_str:
         knw_entries.append(_fmt_entry("KNW", "knowledge", {"topic": "project_knowledge", "content": knw_lines_str, "status": "active"}))
-    parts.append(_fmt_section(10, "KNOWLEDGE", knw_entries))
-    # $11: CONCURRENCY (matches _build_brain_doc section numbering)
+    parts.append(_fmt_section(11, "KNOWLEDGE", knw_entries))
+    # $12: CONCURRENCY (matches _build_brain_doc section numbering)
     version = frontmatter.get("brain_version", "0")
-    parts.append(_fmt_section(11, "CONCURRENCY", [
+    parts.append(_fmt_section(12, "CONCURRENCY", [
         _fmt_entry("ERR", "concurrency", {"version": str(version), "last_writer": frontmatter.get("brain_last_writer", ""), "updated": frontmatter.get("brain_updated", now)})
     ]))
+    # $13: ISSUES / $14: LOOPS — canon slots kept gap-free even when empty.
+    parts.append(_fmt_section(13, "ISSUES", []))
+    parts.append(_fmt_section(14, "LOOPS", []))
+    # $15: ARQUX_METADATA — canon metadata slot, always LAST.
+    level = frontmatter.get("level", 2)
+    meta_name = frontmatter.get("name", "brain")
+    meta_vals = [
+        f"level:{level}",
+        f'name:"{meta_name}"',
+        f'usage:"{frontmatter.get("usage", "state")}"',
+        f'kind:"{frontmatter.get("kind", "native")}"',
+    ]
+    parts.append("")
+    parts.append("$15: ARQUX_METADATA")
+    parts.append("")
+    parts.append(f"ARQX:artifact{{{', '.join(meta_vals)}}}")
+    parts.append("")
     return "\n".join(parts) + "\n"
 
 
 def manifest_to_cortex(manifest: dict) -> str:
-    parts = ["$0", "", _ARQUX_GLOSSARY_TEXT, ""]
+    parts = ["$0", "", _build_glossary(), ""]
     _add_arqux_meta_section(parts, manifest, "manifest")
     parts.append(_fmt_section(1, "WORKSPACE", [_fmt_entry("IDN", "workspace", {
         "version": manifest.get("version", "1.0.0"),
@@ -1068,7 +809,7 @@ def manifest_to_cortex(manifest: dict) -> str:
 
 
 def meta_brain_to_cortex(brain: dict) -> str:
-    parts = ["$0", "", _ARQUX_GLOSSARY_TEXT, ""]
+    parts = ["$0", "", _build_glossary(), ""]
     _add_arqux_meta_section(parts, brain, "meta-brain")
     lessons = brain.get("lessons", [])
     parts.append(_fmt_section(1, "META-BRAIN", [_fmt_entry("KNW", "meta", {
@@ -1080,7 +821,7 @@ def meta_brain_to_cortex(brain: dict) -> str:
 
 
 def projects_to_cortex(projects: list[dict]) -> str:
-    parts = ["$0", "", _ARQUX_GLOSSARY_TEXT, ""]
+    parts = ["$0", "", _build_glossary(), ""]
     _add_arqux_meta_section(parts, {"name": "projects", "usage": "state", "kind": "native", "level": 2}, "projects")
     entries = []
     for i, p in enumerate(projects):
@@ -1092,7 +833,7 @@ def projects_to_cortex(projects: list[dict]) -> str:
 
 
 def task_to_cortex(frontmatter: dict, body: str) -> str:
-    parts = ["$0", "", _ARQUX_GLOSSARY_TEXT, ""]
+    parts = ["$0", "", _build_glossary(), ""]
     _add_arqux_meta_section(parts, frontmatter, frontmatter.get("id", "task"))
     parts.append(_fmt_section(1, "TASK", [_fmt_entry("WRK", "task", {
         "id": frontmatter.get("id", ""), "status": frontmatter.get("status", "draft"),
@@ -1163,7 +904,7 @@ def task_to_cortex(frontmatter: dict, body: str) -> str:
 
 
 def cycle_to_cortex(cycle: dict) -> str:
-    parts = ["$0", "", _ARQUX_GLOSSARY_TEXT, ""]
+    parts = ["$0", "", _build_glossary(), ""]
     _add_arqux_meta_section(parts, cycle, cycle.get("id", "cycle"))
     parts.append(_fmt_section(1, "CYCLE", [_fmt_entry("WRK", "cycle", {
         "id": cycle.get("id", ""), "name": cycle.get("name", "?"),

@@ -38,8 +38,12 @@ def _find_cortex_files():
     files = []
     # ARQUX .cortex files
     for p in ARQUX_ROOT.rglob("*.cortex"):
-        if ".venv" not in str(p) and "__pycache__" not in str(p):
-            files.append(p)
+        # .tmp/ holds pytest sandboxes (tens of thousands of generated
+        # .cortex artifacts); scanning it breaks suite hermeticity.
+        parts = set(p.relative_to(ARQUX_ROOT).parts)
+        if parts & {".venv", ".tmp", "__pycache__", ".git"}:
+            continue
+        files.append(p)
     # Identity files
     for p in IDENTITIES.glob("*.cortex"):
         files.append(p)

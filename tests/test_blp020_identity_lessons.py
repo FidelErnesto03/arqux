@@ -118,15 +118,16 @@ def test_gate_rejects_behavioral_lng_in_nonidentity_contract(tmp_path):
 # --- Routing: record_lesson_handler_legacy -----------------------------------
 
 
-def test_behavioral_lesson_lands_in_identity_lessons_section(tmp_path):
-    """kind=behavioral → destination=identity, LNG inside BEHAVIORAL LESSONS,
-    every GSIG preserved and no brain write attempted."""
+def test_behavioral_lesson_lands_in_brain_lessons_section(tmp_path):
+    """Architect rule 2026-11-15 (supersedes BLP-020 Option A):
+    kind=behavioral → destination=brain $8, the identity stays untouched,
+    the originating agent is preserved as a field of the LNG."""
     from arqux.handlers.cortex.learning import record_lesson_handler_legacy
 
     ident = _write_identity(tmp_path)
+    ident_before = ident.read_bytes()
     brain = tmp_path / ".arqux" / "brain.cortex"
-    brain.write_text(LEVEL3_BRAIN, encoding="utf-8")
-    brain_before = brain.read_bytes()
+    brain.write_text(LEVEL3_BRAIN + "\n$8: LESSONS\n\n", encoding="utf-8")
 
     result = record_lesson_handler_legacy(
         lesson="Confirmar el destino antes de escribir una leccion",
@@ -135,15 +136,15 @@ def test_behavioral_lesson_lands_in_identity_lessons_section(tmp_path):
     )
 
     assert result.profile == "OUT-WORK", result.to_text()
-    assert result.fields["destination"] == "identity"
+    assert result.fields["destination"] == "brain"
 
-    text = ident.read_text(encoding="utf-8")
-    lessons = text.split("$5: BEHAVIORAL LESSONS", 1)[1]
+    text = brain.read_text(encoding="utf-8")
+    lessons = text.split("$8: LESSONS", 1)[1]
     assert re.search(r"^LNG:", lessons, re.M)
-    assert "type:" in lessons and "behavioral" in lessons
-    assert len(re.findall(r"(?m)^GSIG:", text)) == 5
-    # No dual write: a behavioral lesson never touches the project brain.
-    assert brain.read_bytes() == brain_before
+    assert 'type:"behavioral"' in lessons or "type:behavioral" in lessons
+    assert 'agent:"alfred"' in lessons or "agent:alfred" in lessons
+    # The identity contract is never touched by lesson capture.
+    assert ident.read_bytes() == ident_before
 
 
 def test_nonbehavioral_lesson_lands_in_brain_only(tmp_path):
@@ -153,7 +154,7 @@ def test_nonbehavioral_lesson_lands_in_brain_only(tmp_path):
     ident = _write_identity(tmp_path)
     before = ident.read_bytes()
     (tmp_path / ".arqux" / "brain.cortex").write_text(
-        LEVEL3_BRAIN, encoding="utf-8"
+        LEVEL3_BRAIN + "\n$8: LESSONS\n\n", encoding="utf-8"
     )
 
     result = record_lesson_handler_legacy(

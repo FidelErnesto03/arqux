@@ -63,7 +63,7 @@ class TestResumeAnyOpenSession:
 
     def test_a_session_from_yesterday_is_still_resumable(self, env):
         first = _open(env)
-        crud_update(brain_path(env.proj_root), f"$4/SES:{first['session_id']}",
+        crud_update(brain_path(env.proj_root), f"$5/SES:{first['session_id']}",
                     set_={"date": "2026-10-20T09:00:00Z"}, force=True)
 
         resumed = open_session(env.proj_root, agent="test-governor", project="test-proj",
@@ -107,7 +107,7 @@ class TestNewSessionRequiresClosingOrResuming:
     def test_legacy_residue_lists_every_open_session(self, env):
         first = _open(env)
         base = get_session(env.proj_root, first["session_id"])
-        crud_update(brain_path(env.proj_root), f"$4/SES:{first['session_id']}",
+        crud_update(brain_path(env.proj_root), f"$5/SES:{first['session_id']}",
                     set_={}, force=True)
         from arqux.session_identity import SESSION_SECTION, SESSION_SIGIL
         from arqux.state import crud_add

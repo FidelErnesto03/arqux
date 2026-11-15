@@ -100,11 +100,12 @@ def check_meta_brain_integrity(arqux_dir: Path) -> CheckResult:
 
 
 def check_metadata_section(arqux_dir: Path) -> CheckResult:
-    """Verify .cortex files use $19 (not $0.1) for ARQUX METADATA.
+    """Verify .cortex files do not use the deprecated ``$0.1`` marker.
 
-    Checks brain.cortex and meta-brain.cortex for the correct
-    metadata section identifier. $0.1 was deprecated (causes E033
-    in codec-cortex 0.5.0+). All files must use $19.
+    Checks brain.cortex and meta-brain.cortex for the deprecated
+    ``$0.1`` section identifier (removed in codec-cortex 0.5.0+; the
+    canonical metadata slot is ``$15`` for project brains per
+    docs/reference/cortex-brain-section-canon.md).
     """
     cortex_files = [
         ("meta-brain.cortex", arqux_dir / META_BRAIN_CORTEX, "workspace"),
@@ -120,7 +121,7 @@ def check_metadata_section(arqux_dir: Path) -> CheckResult:
             # legitimately mention "$0.1" inside entry payloads (the
             # migration lessons themselves do).
             if re.search(r"^\$0\.1[:\s]", text, re.MULTILINE):
-                issues.append(f"{name} uses $0.1 (should be $19)")
+                issues.append(f"{name} uses deprecated $0.1 marker")
         except Exception:
             issues.append(f"{name} unreadable")
 
@@ -135,7 +136,7 @@ def check_metadata_section(arqux_dir: Path) -> CheckResult:
     return CheckResult(
         name="metadata-section",
         status="pass",
-        message="All .cortex files use $19 for ARQUX METADATA",
+        message="No .cortex files use the deprecated $0.1 marker",
         context="both",
     )
 
@@ -213,6 +214,51 @@ def check_brain_integrity(arqux_dir: Path) -> CheckResult:
             fixable=False,
             context="project",
         )
+
+
+def check_pulse_density(arqux_dir: Path) -> CheckResult:
+    """PULSE hot-window density (T1): warn when AUD count exceeds the
+    sweep trigger — the write-path sweep should have kept it bounded."""
+    brain = arqux_dir / BRAIN_CORTEX
+    if not brain.exists():
+        return CheckResult(
+            name="pulse density",
+            status="pass",
+            message="no brain.cortex — skipped",
+            context="project",
+        )
+    try:
+        content = brain.read_text(encoding="utf-8")
+    except OSError as exc:
+        return CheckResult(
+            name="pulse density",
+            status="warn",
+            message=f"brain.cortex unreadable: {exc}",
+            context="project",
+        )
+    from .pulse import PULSE_SWEEP_AT, count_aud_entries
+
+    aud_count = count_aud_entries(content)
+
+    threshold = PULSE_SWEEP_AT * 2
+    if aud_count > threshold:
+        return CheckResult(
+            name="pulse density",
+            status="warn",
+            message=(
+                f"PULSE dense: {aud_count} AUD entries "
+                f"(hot window is {PULSE_SWEEP_AT})"
+            ),
+            detail="Run session.pulse.gc to force a sweep; the write path sweeps automatically past the trigger.",
+            fixable=True,
+            context="project",
+        )
+    return CheckResult(
+        name="pulse density",
+        status="pass",
+        message=f"PULSE ok ({aud_count} AUD entries)",
+        context="project",
+    )
 
 
 def check_readme_badge(arqux_dir: Path) -> CheckResult:
@@ -306,8 +352,8 @@ def check_nested_arqux(arqux_dir: Path) -> CheckResult:
 _WS_DIRS = {"archive", "contexts", "identities", "issues", "packages", "skills", "templates"}
 _PROJ_DIRS = {
     "archive", "audits", "backups", "blueprints", "contexts", "cycles",
-    "handoffs", "identities", "issues", "packages", "reports", "scripts",
-    "skills", "templates", "timelog",
+    "handoffs", "identities", "issues", "loops", "packages", "reports",
+    "scripts", "skills", "templates", "timelog",
 }
 _RESIDUE_ALWAYS = (".bck", ".pre-")
 _RESIDUE_ORPHAN = (".bak", ".lock")  # residue only when the target is gone
@@ -354,6 +400,11 @@ def check_residue(arqux_dir: Path) -> CheckResult:
             continue
         for suffix in _RESIDUE_ORPHAN:
             if name.endswith(suffix):
+                # Hidden sidecar locks (``.<name>.lock``) are concurrency
+                # infrastructure — the lock itself is the file; there is no
+                # ``.<name>`` target to orphan (concurrency.py contract).
+                if suffix == ".lock" and name.startswith("."):
+                    break
                 # A live atomic rotation sits next to its target — only an
                 # orphan (target deleted/never existed) is residue.
                 target = f.with_name(name[: -len(suffix)])
@@ -396,6 +447,16 @@ def check_gitignore(arqux_dir: Path) -> CheckResult:
     (issue 2026-11-01, E-2078).
     """
     gitignore = arqux_dir.parent / ".gitignore"
+    # A non-git workspace/project has no untracked-noise surface — the
+    # residue patterns exist to keep `git status` clean, which does not
+    # apply without a repository.
+    if not (arqux_dir.parent / ".git").exists():
+        return CheckResult(
+            name=".gitignore residue patterns",
+            status="pass",
+            message="not a git repository — residue patterns not required",
+            context="both",
+        )
     if not gitignore.exists():
         return CheckResult(
             name=".gitignore residue patterns",
@@ -576,6 +637,7 @@ def run_all(path: str | None = None, fix: bool = False) -> CortexOUT:
         fixes["fix_bak_files"] = fix_bak_files
     elif ctx == "project":
         checks.append(check_brain_integrity(arqux_dir))
+        checks.append(check_pulse_density(arqux_dir))
         checks.append(check_bak_files(arqux_dir))
         checks.append(check_readme_badge(arqux_dir))
         fixes["fix_bak_files"] = fix_bak_files

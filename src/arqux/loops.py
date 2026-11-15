@@ -65,6 +65,12 @@ def load_loops(brain_path: str | Path) -> list[dict]:
         text = Path(brain_path).read_text(encoding="utf-8")
     except OSError:
         return []
+    # Skip the $0 glossary block: executable sigil declarations such as
+    # ``LOOP:loop_contract{...}`` live there and are contracts, not loops.
+    for hdr in re.finditer(r"(?m)^\$(\d+)", text):
+        if hdr.group(1) != "0":
+            text = text[hdr.start():]
+            break
     loops = []
     for m in _LOOP_RE.finditer(text):
         f = _fields(m.group(2))

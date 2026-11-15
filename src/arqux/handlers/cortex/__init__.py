@@ -400,6 +400,10 @@ handler_schemas = [
         "fn": entry_list_handler,
         "description": (
             "List entries in a .cortex file, optionally filtered. "
+            "Filters: section/sigil params, or a 'selector' in the "
+            "cortex.entry.get vocabulary ('$N', '$N/SIGIL', "
+            "'$N/SIGIL:name' or 'SIGIL[:name]'); explicit section/sigil "
+            "params override the selector-derived components. "
             "format='cortex' returns raw CORTEX entries (canal I); "
             "format='hcortex' (default) returns parsed dicts (canal E); "
             "format='compact' returns one raw entry per line. "
@@ -412,6 +416,15 @@ handler_schemas = [
                 "path": {"type": "string", "description": "Path to .cortex file"},
                 "section": {"type": "string", "description": "Filter by section ID"},
                 "sigil": {"type": "string", "description": "Filter by sigil"},
+                "selector": {
+                    "type": "string",
+                    "description": (
+                        "CORTEX selector filter: '$N', '$N/SIGIL', "
+                        "'$N/SIGIL:name' or 'SIGIL[:name]'. Explicit "
+                        "section/sigil params override selector-derived "
+                        "components."
+                    ),
+                },
                 "format": {
                     "type": "string",
                     "enum": ["cortex", "hcortex", "compact"],

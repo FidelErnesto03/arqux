@@ -60,8 +60,12 @@ class TestAc01Schema:
         _send(session)
         path = canonical_path(session.proj_root, session.sid, session.opened)
         doc = cortex_read(str(path))
+        # codec-cortex 1.0 keeps the $0 glossary out of ``sections`` (it
+        # lands in ``doc["glossary"]``); the file still leads with $0.
+        assert doc["content"].lstrip().startswith("$0"), doc["content"][:160]
+        assert doc["glossary"].get("sigil_count", 0) >= 1, doc["glossary"]
         ids = [s["id"] for s in doc["sections"]]
-        assert ids == ["$0", "$1", "$2", "$3", "$4"], ids
+        assert ids == ["$1", "$2", "$3", "$4"], ids
 
     def test_round_trip_is_lossless_with_a_mark(self, session):
         from arqux.timelog_store import _parse, _serialize

@@ -12,7 +12,14 @@ from arqux.permissions import PermissionContext
 def _workspace(tmp_path: Path, agent: str = "jarvis") -> Path:
     arqux = tmp_path / ".arqux"
     (arqux / "identities").mkdir(parents=True)
-    (arqux / "brain.cortex").write_text("$0\n$6: PULSE\n", encoding="utf-8")
+    (arqux / "brain.cortex").write_text(
+        "$0\n\n"
+        "$2: FOCUS\n"
+        'FCS:current{what:"tests", priority:"high", survive:"work", status:"current"}\n\n'
+        'OBJ:current{goal:"tests", success:"ok", survive:"work", status:"current"}\n\n'
+        "$7: PULSE\n\n$8: LESSONS\n",
+        encoding="utf-8",
+    )
     (arqux / "identities" / f"{agent}.cortex").write_text(
         f"$0\n$1: IDENTITY\nIDN:{agent}{{name:\"{agent}\"}}\n",
         encoding="utf-8",
@@ -38,7 +45,12 @@ def test_bootstrap_uses_authenticated_identity_case_insensitively(tmp_path: Path
 
     assert result.profile == "OUT-WORK"
     assert result.fields["agent_id"] == "jarvis"
-    assert "IDN:jarvis" in result.fields["cortex_context"]["identity"]
+    # cortex_context['identity'] is a bounded reference (agent_id + path +
+    # contract summary) — not the raw .cortex text (session-bootstrap-embeds).
+    identity = result.fields["cortex_context"]["identity"]
+    assert identity["agent_id"] == "jarvis"
+    assert identity["path"].endswith("jarvis.cortex")
+    assert "jarvis" in identity["contracts"].get("IDN", [])
 
 
 def test_identity_record_rejects_cross_agent_attribution(tmp_path: Path) -> None:

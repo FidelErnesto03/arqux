@@ -35,8 +35,8 @@ GSIG:IDN:identity|attrs|B|Semantic|Actor identity
 $1: IDENTITY
 IDN:governor{project:"test"}
 
-$2: KNOWLEDGE
-KNW:meta{content:"project knowledge"}
+$2: AXIOMS
+AXM:brain_first{status:"current"}
 
 $3: FOCUS
 FCS:current{status:"current", what:"shipping v1"}
@@ -44,29 +44,38 @@ FCS:current{status:"current", what:"shipping v1"}
 $4: OBJECTIVES
 OBJ:v1{status:"active", goal:"ship v1"}
 
-$5: STATE
-WRK:current{cycle:"CYCLE-01"}
+$5: SESSIONS
+SES:s1{agent:"alfred"}
 
-$6: LESSONS
-LNG:lesson1{detail:"refactor before adding features"}
-
-$7: DECISIONS
-DEC:d1{decision:"use codec-cortex for parsing"}
-
-$8: AXIOMS
-AXM:architect_first{status:"current"}
-
-$9: LIMITS
-LIM:no_direct_edit{status:"current"}
-
-$10: HANDOFF
+$6: HANDOFFS
 HDL:1{from:"alfred", to:"jarvis"}
 
-$11: CONCURRENCY
+$7: PULSE
+AUD:e1{event:"boot"}
+
+$8: LESSONS
+LNG:lesson1{detail:"refactor before adding features"}
+
+$9: ACTIVE_CONTEXT
+WRK:current{cycle:"CYCLE-01"}
+
+$10: RISKS
+RSK:r1{risk:"delay"}
+
+$11: KNOWLEDGE
+KNW:meta{content:"project knowledge"}
+
+$12: CONCURRENCY
 ERR:concurrency{version:"1"}
 
-$12: ISSUES
+$13: ISSUES
 ISS:1{description:"none"}
+
+$14: LOOPS
+LOOP:main{state:"active"}
+
+$15: ARQUX_METADATA
+ARQX:artifact{level:"2", name:"brain"}
 """
 
 # Brain with only 4 sections — should trigger W002_INCOMPLETE_BRAIN.
@@ -119,11 +128,11 @@ class TestBrainStructureValidator:
         # But still is_valid=True (lenient).
         assert result.is_valid is True
 
-    def test_empty_brain_emits_13_warnings(self) -> None:
+    def test_empty_brain_emits_16_warnings(self) -> None:
         art = _make_brain(EMPTY_BRAIN_BODY)
         result = BrainStructureValidator().validate(art)
         e026_warnings = [w for w in result.warnings if w.code == E026_MISSING_SECTION]
-        assert len(e026_warnings) == 13
+        assert len(e026_warnings) == 16
         # W002 also emitted because 0 < 8.
         assert any(w.code == W002_INCOMPLETE_BRAIN for w in result.warnings)
 

@@ -161,12 +161,10 @@ def test_both_columns_agree_on_the_same_fixture_set(column: str, codec_path: str
 def test_fallback_column_is_the_one_the_environment_actually_runs() -> None:
     """Record the pin and that the suite really exercises the fallback engine.
 
-    The pin used to declare ``codec-cortex==1.0.0rc1`` while the suite ran
-    against 0.6.2 — and the pin was worse than useless, because the rc1
-    candidate ships no validator and no HCORTEX read renderer, so
-    installing it disabled the whole CORTEX layer (89 failures against a
-    15-failure baseline). The pin now declares the 0.6.x line, the one that
-    provides the full surface.
+    The pin moved again under BLP-005: it now declares the ``codec-cortex``
+    1.0.x line (``>=1.0,<1.1``), which supplies parsing/canonicalization
+    while ArqUX owns the governance semantics natively. The 0.6.2 fallback
+    column remains the stable reference engine for corpus conformance.
 
     This test used to assert that the resolved import path contained the
     literal string "codec-cortex-legacy", i.e. it asserted the NAME OF A LOCAL
@@ -174,11 +172,11 @@ def test_fallback_column_is_the_one_the_environment_actually_runs() -> None:
     fetched by ``scripts/fetch_conformance_columns.py`` the engine is the
     same code from a different directory and the assertion was false for the
     wrong reason. It now asserts what actually matters — the engine layout is
-    the legacy one and the declared pin matches it.
+    the legacy one and the declared pin matches the BLP-005 frontier.
     """
     declared = (REPO_ROOT / "pyproject.toml").read_text(encoding="utf-8")
 
-    assert "codec-cortex>=0.6.2,<0.7" in declared, (
+    assert "codec-cortex>=1.0,<1.1" in declared, (
         "the declared pin changed; update §4 and re-check the frontier"
     )
     assert "codec-cortex==1.0.0rc1" not in declared, (

@@ -14,17 +14,19 @@ GSIG:WRK{name:"work", type:"attrs", risk:"B", layer:"Working", description:"w"}
 GSIG:FCS{name:"focus", type:"attrs", risk:"H", layer:"Working", description:"f"}
 GSIG:KNW{name:"knowledge", type:"attrs", risk:"B", layer:"Semantic", description:"k"}
 
-$2: FOCUS
+$3: FOCUS
 
 FCS:current{name:"current", what:"Initial focus", priority:"medium", status:"current", survive:"work"}
 
-$6: PULSE
+$7: PULSE
 
-KNW:tasks_active{name:"tasks_active", value:"1", updated:"old", topic:"metrics", content:"metric tasks_active=1", status:"current"}
-
-$8: ACTIVE_CONTEXT
+$9: ACTIVE_CONTEXT
 
 WRK:current{name:"current", phase:"active", current:"initial", blocked:"no", survive:"work"}
+
+$11: KNOWLEDGE
+
+KNW:tasks_active{name:"tasks_active", value:"1", updated:"old", topic:"metrics", content:"metric tasks_active=1", status:"current"}
 """
 
 
@@ -40,7 +42,7 @@ def _read_knw(brain: Path, name: str) -> list[dict]:
     from arqux.core.state import crud_read
 
     return [
-        e for e in crud_read(brain, f"$6/KNW:{name}")["entries"]
+        e for e in crud_read(brain, f"$11/KNW:{name}")["entries"]
         if e["name"] == name
     ]
 
@@ -75,20 +77,20 @@ def test_metrics_upsert_appends_only_new_metrics(tmp_path: Path) -> None:
 
 
 def test_metrics_skipped_when_section_absent(tmp_path: Path) -> None:
-    """create_section=False semantics: no $6 → metrics skipped, no crash."""
+    """create_section=False semantics: no $11 → metrics skipped, no crash."""
     from arqux.sync import sync_brain
 
     brain = _brain(tmp_path)
     text = brain.read_text(encoding="utf-8")
     text = text.replace(
-        "$6: PULSE\n\nKNW:tasks_active{name:\"tasks_active\", value:\"1\", updated:\"old\", topic:\"metrics\", content:\"metric tasks_active=1\", status:\"current\"}\n\n",
+        "$11: KNOWLEDGE\n\nKNW:tasks_active{name:\"tasks_active\", value:\"1\", updated:\"old\", topic:\"metrics\", content:\"metric tasks_active=1\", status:\"current\"}\n",
         "",
     )
-    assert "$6" not in text
+    assert "$11: KNOWLEDGE" not in text
     brain.write_text(text, encoding="utf-8")
 
     sync_brain(brain.parent, "event.one", metrics={"tasks_active": 5})
-    assert "$6" not in brain.read_text(encoding="utf-8")
+    assert "$11: KNOWLEDGE" not in brain.read_text(encoding="utf-8")
 
 
 def test_sync_brain_single_rewrite_per_event(tmp_path: Path, monkeypatch) -> None:
@@ -116,9 +118,9 @@ def test_sync_brain_single_rewrite_per_event(tmp_path: Path, monkeypatch) -> Non
 
     from arqux.core.state import crud_read
 
-    wrk = crud_read(brain, "$8/WRK:current")["entries"][0]["value"]
+    wrk = crud_read(brain, "$9/WRK:current")["entries"][0]["value"]
     assert wrk["event"] == "batch.event"
-    fcs = crud_read(brain, "$2/FCS:current")["entries"][0]["value"]
+    fcs = crud_read(brain, "$3/FCS:current")["entries"][0]["value"]
     assert fcs["what"] == "Batched focus"
     knw = _read_knw(brain, "tasks_active")
     assert len(knw) == 1
@@ -140,14 +142,14 @@ def test_sync_brain_batch_preserves_focus_create_only(tmp_path: Path) -> None:
 
     from arqux.core.state import crud_read
 
-    fcs = crud_read(brain, "$2/FCS:current")["entries"][0]["value"]
+    fcs = crud_read(brain, "$3/FCS:current")["entries"][0]["value"]
     assert fcs["what"] == "Initial focus"
     assert fcs["event"] == "batch.event"
     assert len(_read_knw(brain, "tasks_active")) == 1
 
 
 def test_meta_brain_synced_even_when_brain_mutations_fail(tmp_path: Path) -> None:
-    """C2: all brain mutations fail ($2/$6/$8 absent) but metrics were passed —
+    """C2: all brain mutations fail ($3/$9/$11 absent) but metrics were passed —
     the meta-brain DOM must still be synced."""
     from arqux.core.state import crud_read
     from arqux.handlers import project, workspace

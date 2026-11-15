@@ -123,7 +123,7 @@ def _entry_worker(brain_path: str, entries: list[str], queue) -> None:  # pragma
 
     for name in entries:
         result = entry_add_handler(
-            path=brain_path, section="$7", sigil="LNG", name=name,
+            path=brain_path, section="$8", sigil="LNG", name=name,
             value=f"note {name}", force=True,
         )
         queue.put("ok" if result.profile != "OUT-ERROR" else str(result.fields))
@@ -139,7 +139,7 @@ class TestGovernedArtifactExclusion:
         assert set(results) == {"ok"}, results
         from arqux.state import crud_read
 
-        stored = crud_read(str(arqux_env.proj_root / ".arqux" / "brain.cortex"), "$7/LNG:*")
+        stored = crud_read(str(arqux_env.proj_root / ".arqux" / "brain.cortex"), "$8/LNG:*")
         names = {e["name"] for e in stored["entries"]}
         for batch in batches:
             assert set(batch) <= names, "a governed write was silently lost"
@@ -168,6 +168,6 @@ class TestGovernedArtifactExclusion:
         for _ in range(4):
             compact_session_pulse(root, session_id=event_id, agent_id="test-governor",
                                   ses_ref=session["session_id"])
-        stored = crud_read(str(root / ".arqux" / "brain.cortex"), "$7/LNG:*")
+        stored = crud_read(str(root / ".arqux" / "brain.cortex"), "$8/LNG:*")
         names = [e["name"] for e in stored["entries"]]
         assert len(names) == len(set(names)), f"duplicate lessons: {names}"

@@ -1,0 +1,20 @@
+$0
+
+$1: IDENTITY
+FCS:current{status:"current", summary:"fixture current state"}
+CSN:gate{status:"open", note:"example contract sigil"}
+
+$2: ACTIVE WORK
+WRK:stalled{blocked:"true", task:"cleanup", attempts:"3", what:"authority fix"}
+WRK:done{phase:"static"}
+
+$4: SESSIONS
+SES:first{input:"review", output:"conclusion", outcome:"ok", decision:"keep_scope"}
+SES:second{input:"rerun", output:"conclusion", outcome:"rework", decision:"tighten_rules"}
+
+$5: LESSONS
+LNG:known{type:"process", cause:"repeated mistake", lesson:"stop and check", prevention:"verify before retrying", user_validated:true}
+LNG:cold{type:"rule", cause:"unknown", lesson:"stale", prevention:"n/a"}
+
+$6: KNOWLEDGE
+KNW:fact{topic:"native engine", content:"synthetic fixture", status:"active"}

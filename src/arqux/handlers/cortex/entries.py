@@ -10,8 +10,10 @@ from typing import Any
 
 # BLP-005: Use ArqUX's own atomic writer instead of CODEC-CORTEX transactions.
 from ...cortex.atomic import atomic_write_json
+from ...cortex.crud import _entry_matches
 from ...cortex.parse_content import parse_content_entry
 from ...cortex.reader import cortex_to_dict
+from ...cortex.selectors import parse_selector as _parse_selector
 from ...cortex.transaction import guard_write
 from ...cortex_out import CortexOUT
 from ...permissions import PermissionContext
@@ -594,17 +596,59 @@ def entry_move_handler(
     )
 
 
+def _parse_list_selector(selector: str) -> tuple[str | None, str | None, str | None]:
+    """Parse an ``entry.list`` selector into (section, sigil, name) filters.
+
+    Selector-vocab parity with ``cortex.entry.get`` (ergonomics issue):
+    accepts ``$N`` (whole section), ``$N/SIGIL:name`` and the section-less
+    ``SIGIL[:name]`` forms — plus the ergonomic middle form ``$N/SIGIL``
+    (sigil filter across all names, which ``entry.get``'s grammar does not
+    cover). ``*`` wildcards any component. The deprecated name ``_`` is
+    rejected (T-022), matching the rest of the ``entry.*`` family.
+    """
+    s = selector.strip()
+    if not s:
+        raise ValueError("empty selector")
+    if s == "*":
+        return None, None, None
+    # Bare "$N" — a whole-section selector. Deferred to the explicit check:
+    # the codec selector grammar (selectors.py) reads "$8" as a *sigil*,
+    # while entry.get treats it as "all entries in $8".
+    if _re.fullmatch(r"\$\d+(?:\.\d+)*", s):
+        return s, None, None
+    sel = _parse_selector(s)
+    name = None if sel.name == "*" else sel.name
+    if name == "_":
+        raise ValueError(
+            f"Selector name '_' is deprecated and rejected (T-022): {selector!r}. "
+            f"Use the exact entry name or '*'."
+        )
+    return (
+        None if sel.section in (None, "*") else sel.section,
+        None if sel.sigil == "*" else sel.sigil,
+        name,
+    )
+
+
 def entry_list_handler(
     path: str,
     *,
     section: str | None = None,
     sigil: str | None = None,
+    selector: str | None = None,
     format: str = "hcortex",
     limit: int | None = None,
     offset: int = 0,
     ctx: PermissionContext | None = None,
 ) -> CortexOUT:
     """List entries in a .cortex file, optionally filtered by section or sigil.
+
+    ``selector`` is an alternative way to express the same filters, in the
+    ``cortex.entry.get`` vocabulary: ``$N``, ``$N/SIGIL``, ``$N/SIGIL:name``
+    or ``SIGIL[:name]``. Explicit ``section``/``sigil`` params override the
+    selector-derived components; the selector's name component (which has
+    no dedicated param) filters listed entries by exact name or ``x*``
+    prefix — the same matching rule as ``entry.get``.
 
     BLP-005: ``format`` selects the output representation:
 
@@ -626,6 +670,17 @@ def entry_list_handler(
             code="INVALID_ARGS",
         )
 
+    name_filter: str | None = None
+    if selector is not None:
+        try:
+            sel_section, sel_sigil, name_filter = _parse_list_selector(selector)
+        except ValueError as exc:
+            return CortexOUT.error(str(exc), code="INVALID_ARGS")
+        if section is None:
+            section = sel_section
+        if sigil is None:
+            sigil = sel_sigil
+
     try:
         limit_i = DEFAULT_LIST_LIMIT if limit is None else int(limit)
         offset_i = int(offset)
@@ -646,6 +701,10 @@ def entry_list_handler(
         return CortexOUT.error(str(exc), code="LIST_ERROR")
 
     entries = result.get("entries", [])
+    if name_filter is not None:
+        # The selector's name component has no dedicated param — apply the
+        # same matching rule as entry.get ('*' any, 'x*' prefix, else exact).
+        entries = [e for e in entries if _entry_matches(e, None, name_filter)]
     total = len(entries)
     page = entries[offset_i : offset_i + limit_i]
     next_offset = offset_i + limit_i if offset_i + limit_i < total else None
@@ -656,11 +715,17 @@ def entry_list_handler(
         "next_offset": next_offset,
     }
 
+    # Echo the effective filters (selector included) so callers can verify
+    # which constraints were actually applied.
+    filter_fields: dict[str, Any] = {
+        "section": section, "sigil": sigil, "selector": selector,
+    }
+
     if format == "compact":
         content = "\n".join(_entry_to_cortex(e) for e in page)
         return CortexOUT.work(
             f"entry.list ok path={path} count={len(page)} format=compact",
-            path=path, section=section, sigil=sigil,
+            path=path, **filter_fields,
             format="compact",
             count=len(page),
             content=content,
@@ -671,7 +736,7 @@ def entry_list_handler(
         entries_out = [_entry_to_cortex(e) for e in page]
         return CortexOUT.work(
             f"entry.list ok path={path} count={len(entries_out)} format=cortex",
-            path=path, section=section, sigil=sigil,
+            path=path, **filter_fields,
             format="cortex",
             count=len(entries_out),
             entries=entries_out,
@@ -680,7 +745,7 @@ def entry_list_handler(
 
     return CortexOUT.work(
         f"entry.list ok path={path} count={len(page)}",
-        path=path, section=section, sigil=sigil,
+        path=path, **filter_fields,
         format="hcortex",
         count=len(page),
         entries=page,

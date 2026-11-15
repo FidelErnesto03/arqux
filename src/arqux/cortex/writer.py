@@ -172,6 +172,10 @@ def _symbol_declaration(sigil: str, entries: list[dict[str, Any]]) -> dict[str, 
             "fields": contract,
             "focus": fields[0],
             "desc": description,
+            # ArqUX brains are intentionally open records: entries may carry
+            # fields beyond the declared contract. Without open:true the 1.0
+            # parser rejects every real entry as I005_UNKNOWN_FIELD.
+            "open": True,
         },
     }
 
@@ -252,6 +256,13 @@ def write_cortex_from_json(doc: dict, *, strict: bool = False) -> str:
             format_decl = f"$0:format{{{format_decl}}}"
         lines.append(str(format_decl))
         lines.append("")
+    else:
+        # BLP-005: the pinned codec is now >=1.0 — every artifact the writer
+        # emits must carry the dialect line (G010_FORMAT_REQUIRED). This was
+        # previously strict-only because the 0.6.x pinned validator rejected
+        # it (BUG-1); that constraint is gone with the new pin.
+        lines.append("$0:format{cortex:1.0, encoding:UTF-8}")
+        lines.append("")
     lines.append("")  # blank line after header
     for comment in comments:
         lines.append(comment)
@@ -280,7 +291,12 @@ def write_cortex_from_json(doc: dict, *, strict: bool = False) -> str:
                 f"Glossary symbol must be a dict, got {type(entry).__name__}"
             )
         attrs = entry.get("attrs")
-        if strict and str(entry.get("sigil")) == "GSIG" and isinstance(attrs, dict):
+        # BLP-005: ``GSIG:name{...}`` was the pre-1.0 declaration sigil — the
+        # 1.0 grammar has no GSIG sigil, so re-emitting it verbatim produced
+        # output that declared cortex:1.0 yet failed its own parse (G018/I001).
+        # Conversion to an executable declaration is unconditional now that
+        # every write declares the 1.0 dialect.
+        if str(entry.get("sigil")) == "GSIG" and isinstance(attrs, dict):
             target = str(attrs.get("sigil") or entry.get("name") or "")
             if target:
                 strict_symbols.append(_symbol_declaration(target, [entry]))
@@ -291,9 +307,6 @@ def write_cortex_from_json(doc: dict, *, strict: bool = False) -> str:
             legacy_glossary_data.append(entry)
             continue
         strict_symbols.append(entry)
-
-    if not strict:
-        strict_symbols = list(symbols)
 
     # T-024: glossary entries serialize after the comments.
     for entry in strict_symbols:
@@ -315,13 +328,16 @@ def write_cortex_from_json(doc: dict, *, strict: bool = False) -> str:
         attrs = entry["attrs"]
         if {"type", "weight", "focus", "desc"}.issubset(attrs):
             declared.add(str(entry.get("sigil")))
-    if strict:
-        for entry in _generated_symbols(sections):
-            if entry["sigil"] in declared:
-                continue
-            lines.append(_format_entry(entry))
-            lines.append("")
-            declared.add(entry["sigil"])
+    # BLP-005: under the 1.0 pin every sigil used outside the glossary must be
+    # declared (I001_UNDECLARED_SYMBOL). Auto-generate declarations for any
+    # sigil the sections use that has not been declared above — no longer
+    # gated on strict, since non-strict output was unparseable under v1.
+    for entry in _generated_symbols(sections):
+        if entry["sigil"] in declared:
+            continue
+        lines.append(_format_entry(entry))
+        lines.append("")
+        declared.add(entry["sigil"])
 
     if strict and legacy_glossary_data:
         sections = list(sections)
@@ -337,29 +353,38 @@ def write_cortex_from_json(doc: dict, *, strict: bool = False) -> str:
             "entries": legacy_glossary_data,
         })
 
-    if strict:
-        normalized_sections: list[dict[str, Any]] = []
-        metadata_section: dict[str, Any] | None = None
-        for section in sections:
-            sid = str(section.get("id", ""))
-            if sid == "$0.1":
-                if metadata_section is None:
-                    metadata_section = {
-                        "id": "$19",
-                        "title": "ARQUX METADATA",
-                        "comments": list(section.get("comments", [])),
-                        "entries": list(section.get("entries", [])),
-                    }
-                    normalized_sections.append(metadata_section)
-                else:
-                    metadata_section.setdefault("entries", []).extend(section.get("entries", []))
-                continue
-            if sid == "$19" and metadata_section is not None:
-                metadata_section.setdefault("entries", []).extend(section.get("entries", []))
-                continue
+    # BLP-005: ``$0.1`` can never be emitted as a section header under the
+    # 1.0 grammar — inside the glossary span it parses as a malformed
+    # declaration (G004). Normalizing legacy ``$0.1`` metadata into ``$19``
+    # (BLP-041) is therefore unconditional, not strict-only.
+    normalized_sections: list[dict[str, Any]] = []
+    metadata_section: dict[str, Any] | None = None
+    for section in sections:
+        if not isinstance(section, dict):
+            # Leave malformed sections untouched — the structural validator
+            # in the sections pass below raises the proper ValueError.
             normalized_sections.append(section)
-        sections = normalized_sections
+            continue
+        sid = str(section.get("id", ""))
+        if sid == "$0.1":
+            if metadata_section is None:
+                metadata_section = {
+                    "id": "$19",
+                    "title": "ARQUX METADATA",
+                    "comments": list(section.get("comments", [])),
+                    "entries": list(section.get("entries", [])),
+                }
+                normalized_sections.append(metadata_section)
+            else:
+                metadata_section.setdefault("entries", []).extend(section.get("entries", []))
+            continue
+        if sid == "$19" and metadata_section is not None:
+            metadata_section.setdefault("entries", []).extend(section.get("entries", []))
+            continue
+        normalized_sections.append(section)
+    sections = normalized_sections
 
+    if strict:
         # Recompute declarations after legacy glossary data has been moved
         # into a numeric section.
         #
@@ -377,18 +402,6 @@ def write_cortex_from_json(doc: dict, *, strict: bool = False) -> str:
             lines.append(_format_entry(entry))
             lines.append("")
             declared.add(entry["sigil"])
-
-    # The dispatcher in CODEC-CORTEX 1.0.0-rc.1 requires an explicit version
-    # declaration. The PINNED codec-cortex (0.6.2) does not: it parses bare
-    # ``$0`` and tolerates undeclared sigils. Emitting the rc.1 dialect
-    # unconditionally made every ``cortex.entry.add`` / ``entry.update`` write
-    # inject a ``$0:format{...}`` line plus a sigil-schema dictionary into
-    # ``$0`` of documents that never asked for it, which the pinned validator
-    # then reported as E033/E032 (BUG-1). The declaration is therefore emitted
-    # only on the explicit strict path used by the migration handlers.
-    if strict and not header.startswith("$0:format") and not format_decl:
-        lines.append('$0:format{cortex:"0.1", encoding:"UTF-8"}')
-        lines.append("")
 
     # --- Sections ---
     for i, section in enumerate(sections):

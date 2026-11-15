@@ -35,11 +35,11 @@ fila lleva el comando que la comprueba. Una fila sin comando no entra.
 
 | Indicador | Hoy | G1 exige | Comando |
 |---|---|---|---|
-| Suite | `2708 passed · 2 skipped · 3 xfailed · 0 failed` | 0 failed | `pytest tests/ -q` |
-| **Brechas declaradas (`xfail`)** | **3** | **0** | `pytest tests/ -q \| grep -c XFAIL` |
+| Suite | `2924 passed · 12 skipped · 0 xfailed · 0 failed` | 0 failed | `pytest tests/ -q` |
+| **Brechas declaradas (`xfail`)** | **0** | **0** | `pytest tests/ -q \| grep -c XFAIL` |
 | Ajustes abiertos | 11 | 0 | ver §2 |
 
-Los 2 `skipped` son `faster_whisper` (extra opcional de voz, no defecto).
+Los `skipped` son `faster_whisper` (extra opcional de voz) + guards de import legacy `cortex.*` — no defectos.
 
 ---
 
@@ -69,9 +69,9 @@ A-03…A-10 sin verificar". La realidad medida es 9/10. *El reporte no midió el
 
 | ID | Ajuste | Verificación | Estado |
 |---|---|---|---|
-| A-11 | Toda cifra del README resuelve a hecho | `arqux handlers \| wc -l` = **111**; `ARCHITECTURE.md` dice **73** (5 lugares); `SECURITY.md` soporta **0.4.x** y la vigente es **0.9.0** | ⛔ **roto** |
-| A-12 | Flags de release coherentes | `gh release view` → `prerelease: false`; README dice `status-beta` | ⛔ **roto** |
-| A-13 | Quickstart reproducible en CI | Verificado **a mano** hoy (venv limpio + init OK); **no hay job** | ⬜ |
+| A-11 | Toda cifra del README resuelve a hecho | `python scripts/gate_status.py --only A-11` → PASS (`handlers=115`, docs coherentes) | ✅ |
+| A-12 | Flags de release coherentes | `python scripts/gate_status.py --only A-12` → PASS (sin release publicado; README=beta ≙ pyproject 0.9.0) | ✅ |
+| A-13 | Quickstart reproducible en CI | `.github/workflows/quickstart.yml` + `gate_status.py --only QUICKSTART` → PASS | ✅ |
 
 ### 2.3 · Deuda de diseño (bloque A-14…A-21)
 
@@ -90,9 +90,16 @@ A-03…A-10 sin verificar". La realidad medida es 9/10. *El reporte no midió el
 
 | ID | Ajuste | Verificación | Estado |
 |---|---|---|---|
-| **A-22** | **Absorber el motor de aprendizaje como componente nativo de ARQUX** | `arqux call cortex.learn` en venv **sin codec** → debe funcionar | ⛔ **roto hoy** |
+| **A-22** | **Absorber el motor de aprendizaje como componente nativo de ARQUX** | `arqux call cortex.learn` en venv **sin codec** → debe funcionar | ✅ **resuelto por BLP-005** |
 
-**Evidencia del defecto, medida:**
+**Estado actual, medido (BLP-005, 2026-11-15):**
+
+| Instalación | `cortex.verify` | `cortex.learn` |
+|---|---|---|
+| Sin `[codec]` | ✅ nativo | ✅ nativo |
+| Con `[codec]` → codec **1.0.1** | ✅ | ✅ (suite 2924, delta 0) |
+
+**Evidencia histórica del defecto (al reportarse):**
 
 | Instalación | `cortex.verify` | `cortex.learn` |
 |---|---|---|
@@ -159,13 +166,13 @@ El roadmap **es la fuente** de los blueprints. Ningún BLP nace sin fila aquí.
 |---|---|---|---|---|
 | **A-22** · Absorber CLE | **BLP-025** | CYCLE-15 | draft | Learning nativo, sin dependencia de `cortex.learning` |
 | Codec 1.0 (parse/validate/render/select) | BLP-021 | CYCLE-15 | draft | Adopción de la superficie plana v1.0 — **hermano de A-22**, comparte el principio |
-| Gap 2.6 · corpus query | *por crear* | — | — | Consulta transversal |
-| Gap 2.9 · migración que repara | *por crear* | — | — | `plan_repairs` |
-| Gap 2.12/U4 · emisión ideática | *por crear* | — | — | `emit_ideatic` público |
-| A-02 · nivel I | *por crear* | — | — | Familia de diagnósticos informativos |
-| A-11 · verdad del repo | *por crear* | — | — | Reconciliar ARCHITECTURE/SECURITY/README |
-| A-12 · flags de release | *por crear* | — | — | `prerelease` coherente con madurez |
-| A-13 · quickstart CI | *por crear* | — | — | Job que instala desde PyPI y valida árbol |
+| Gap 2.6 · corpus query | **BLP-006** | CYCLE-16 | done | `cortex.corpus.list`/`query` + tests |
+| Gap 2.9 · migración que repara | **BLP-006** | CYCLE-16 | done | `plan_repairs` + tests |
+| Gap 2.12/U4 · emisión ideática | **BLP-006** | CYCLE-16 | done | `emit_ideatic` + tests |
+| A-02 · nivel I | **BLP-006** | CYCLE-16 | done | Familia I en `cortex.verify` |
+| A-11 · verdad del repo | **BLP-006** | CYCLE-16 | done | Reconciliación ARCHITECTURE/SECURITY/README/HANDLERS |
+| A-12 · flags de release | **BLP-006** | CYCLE-16 | done | Fila A-12 en `gate_status.py` |
+| A-13 · quickstart CI | **BLP-006** | CYCLE-16 | done | `quickstart.yml` + fila QUICKSTART |
 | A-14 · directrices locales | *por crear* | — | — | Versionado, adaptadores, reversión |
 | A-15 · pipeline de aprendizaje | *por crear* | — | — | **Depende de BLP-025** |
 | A-17 · caso multi-actor | *por crear* | — | — | ≥2 agentes, ≥2 harness |
@@ -179,11 +186,11 @@ nativo, la adopción de codec 1.0 deja `cortex.learn` muerto y A-15 no tiene bas
 ## 5. Ruta crítica
 
 ```
-A-22 / BLP-025 (learning nativo)
+A-22 / BLP-025 (learning nativo) ✅ absorbido (CYCLE-16)
     │
     ├──► A-02 (nivel I) ──► A-15 (pipeline) ──► A-16 (escalera NANO)
     │
-    ├──► BLP-021 (codec 1.0)  ← deja de ser crítico: solo parse/render
+    ├──► BLP-021 (codec 1.0) ✅ adoptado en BLP-005 (pin >=1.0,<1.1, parse/render)
     │
     └──► gaps 2.6 / 2.9 / 2.12  →  xfail = 0
 
@@ -192,9 +199,10 @@ A-11 (repo) ──► A-12 (flags) ──► A-13 (CI) ──► A-18 (confianza
 A-14 (directrices) ──► A-17 (multi-actor) ──────────────────────┘
 ```
 
-**Primer movimiento:** A-22 / BLP-025. Es el que desbloquea el aprendizaje, alinea el
-principio de propiedad con el código, y elimina el riesgo de que cualquier actualización del
-codec apague `cortex.learn`.
+**Primer movimiento (completado):** A-22 / BLP-025 desbloqueó el aprendizaje nativo y
+BLP-005 cerró la frontera codec — codec 1.0.x queda ligado a parse/canonicalización y la
+semántica de gobierno (learning, validación, selectores, render) es nativa. Siguiente frente:
+A-02 (nivel I) → A-15 (pipeline).
 
 ---
 

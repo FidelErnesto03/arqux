@@ -343,6 +343,10 @@ def test_timelog_is_valid_cortex_with_glossary_first(session):
 
     path = canonical_path(session.proj_root, session.session_id, session.opened_at)
     doc = cortex_read(str(path))
+    # codec-cortex 1.0 keeps the $0 glossary out of ``sections`` — it lands
+    # in ``doc["glossary"]`` — so assert the file still leads with a real
+    # $0 section (not only a comment) and that its declarations parse.
+    assert doc["content"].lstrip().startswith("$0"), doc["content"][:160]
+    assert doc["glossary"].get("sigil_count", 0) >= 1, doc["glossary"]
     ids = [s["id"] for s in doc["sections"]]
-    assert ids[0] == "$0", ids
-    assert ids == ["$0", "$1", "$2", "$3", "$4"], ids
+    assert ids == ["$1", "$2", "$3", "$4"], ids

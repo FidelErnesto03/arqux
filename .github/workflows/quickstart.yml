@@ -1,0 +1,54 @@
+name: Quickstart
+
+# BLP-006 / T-6.6: validate the path a brand-new user actually takes —
+# install the PUBLISHED package from PyPI into a clean venv, run
+# `arqux init`, and verify the governed tree it produces. The repo CI
+# installs from source; this job installs the artifact.
+
+on:
+  pull_request:
+    branches: [master, main]
+  workflow_dispatch:
+
+jobs:
+  quickstart:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v10.3.3
+        with:
+          version: "latest"
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+
+      - name: Fresh venv + install arqux from PyPI
+        run: |
+          uv venv /tmp/qs-venv
+          uv pip install --python /tmp/qs-venv/bin/python arqux
+          /tmp/qs-venv/bin/arqux --version
+
+      - name: arqux init produces the governed tree
+        run: |
+          /tmp/qs-venv/bin/arqux init --path /tmp/qs-ws
+          test -f /tmp/qs-ws/AGENTS.md
+          test -d /tmp/qs-ws/.arqux
+          test -d /tmp/qs-ws/.arqux/skills
+          test -f /tmp/qs-ws/.arqux/meta-brain.cortex
+          grep -q "DOM:arqux" /tmp/qs-ws/.arqux/meta-brain.cortex
+
+      - name: handler surface is alive
+        run: |
+          COUNT=$(/tmp/qs-venv/bin/arqux handlers | wc -l)
+          # Floor, not exact match: PyPI lags the repo between releases, so
+          # pinning the count to the declared surface would fail every PR
+          # until the next publish. The gate catches surface collapse.
+          test "$COUNT" -ge 80 || {
+            echo "handler surface collapsed: $COUNT"
+            exit 1
+          }
+          echo "handlers: $COUNT"

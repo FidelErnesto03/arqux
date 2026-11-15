@@ -381,7 +381,7 @@ def project(
         from .state import crud_read
 
         current = crud_read(timelog_store.brain_path(project_root),
-                            f"$4/SES:{session_id}")
+                            f"$5/SES:{session_id}")
         entries = current.get("entries", [])
         if entries and str((entries[0].get("value") or {}).get("suppressed", "")).lower() in (
             "true", "1", "yes"

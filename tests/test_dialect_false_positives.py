@@ -17,8 +17,6 @@ Two regressions are covered here:
 
 from __future__ import annotations
 
-from pathlib import Path
-
 import pytest
 
 from arqux.core.state import _crud
@@ -26,45 +24,64 @@ from arqux.core.state import _crud
 pytest.importorskip("arqux.core.state._crud")
 
 
-_DECLARATIONS = """$0
+# codec-cortex 1.0 keeps the $0 glossary out of ``doc.sections`` (it lands
+# in ``doc.glossary``) and rejects non-declaration entries parked in $0 at
+# parse time — the dialect-false-positive scenario this shim guards can no
+# longer be produced by parsing through ``_cc_parser``. The shim's contract
+# is unchanged, though, so the docs below are built through the real model
+# classes (the same strategy the fake-object tests further down already
+# use): any $0 entry shaped like a declaration must be exempted, anything
+# else must keep its diagnostic.
+from arqux.cortex.model import CortexDocument, Entry, Section
 
-# -- $0: ARQUX GOVERNANCE GLOSSARY --
-# Sigil | Name | Type | Risk | Cognitive Layer | Description
-# FCS   | focus      | attrs      | H | Working        | Active attention anchor
-# OBJ   | objective  | attrs      | H | Working        | Active goal
-
-FCS:focus{type:"attrs", weight:"H", fields:"value:any?", focus:"value", desc:"Active attention anchor"}
-OBJ:objective{type:"attrs", weight:"H", fields:"value:any?", focus:"value", desc:"Active goal"}
-
-$19: ARQUX METADATA
-
-ARQX:artifact{level:2, name:"brain", usage:"state", kind:"native"}
-
-$1: IDENTITY
-
-IDN:governor{level:"2", project:"", path:"", governor:"alfred", created:"2026-09-03T14:15:00Z"}
-
-$2: FOCUS
-
-FCS:current{what:"sustain the test fixture", priority:"medium", status:"current", survive:"work"}
-
-$3: OBJECTIVES
-
-OBJ:goal{goal:"keep the fixture valid", success:"fixture verifies clean", status:"current", survive:"work"}
-"""
+_DECL_FCS = {
+    "type": "attrs", "weight": "H", "fields": "value:any?",
+    "focus": "value", "desc": "Active attention anchor",
+}
+_DECL_OBJ = {
+    "type": "attrs", "weight": "H", "fields": "value:any?",
+    "focus": "value", "desc": "Active goal",
+}
 
 
-def test_declarations_in_zero_do_not_trip_e033(tmp_path: Path) -> None:
-    f = tmp_path / "brain.cortex"
-    f.write_text(_DECLARATIONS, encoding="utf-8")
-    text = _crud.Path(f).read_text(encoding="utf-8")
-    doc = _crud._cc_parser.parse_cortex(text, path=str(f))
+def _entry(section: str, sigil: str, name: str, value: dict) -> Entry:
+    return Entry(section=section, sigil=sigil, name=name,
+                 type="attrs", value=dict(value))
+
+
+def _fixture_doc(zero_entries: list) -> CortexDocument:
+    """Brain-shaped doc: $0 carries *zero_entries*; $2/$3 keep a valid
+    active FCS/OBJ pair so level policy stays quiet outside the shim's
+    scope."""
+    doc = CortexDocument(meta={"path": "brain.cortex"})
+    zero = Section(id="$0")
+    zero.entries.extend(zero_entries)
+    focus = Section(id="$2", title="FOCUS", entries=[
+        _entry("$2", "FCS", "current", {
+            "what": "sustain the test fixture", "priority": "medium",
+            "status": "current", "survive": "work"}),
+    ])
+    objectives = Section(id="$3", title="OBJECTIVES", entries=[
+        _entry("$3", "OBJ", "goal", {
+            "goal": "keep the fixture valid",
+            "success": "fixture verifies clean",
+            "status": "current", "survive": "work"}),
+    ])
+    doc.sections.extend([zero, focus, objectives])
+    return doc
+
+
+def test_declarations_in_zero_do_not_trip_e033() -> None:
+    doc = _fixture_doc([
+        _entry("$0", "FCS", "focus", _DECL_FCS),
+        _entry("$0", "OBJ", "objective", _DECL_OBJ),
+    ])
     raw = _crud._cc_validator.validate(doc)
     raw_errors = [d for d in raw if d.get("severity") == "error"]
 
-    # Precondition: the codec really does flag these. If a future codec
-    # release stops doing so, the shim becomes a no-op and this test would
-    # otherwise pass vacuously.
+    # Precondition: the validator really does flag these. If a future
+    # validator stops doing so, the shim becomes a no-op and this test
+    # would otherwise pass vacuously.
     assert any(
         d.get("code") in _crud._DIALECT_FALSE_POSITIVES for d in raw_errors
     ), "fixture no longer reproduces the dialect false positive"
@@ -73,33 +90,26 @@ def test_declarations_in_zero_do_not_trip_e033(tmp_path: Path) -> None:
     assert [d for d in kept if d.get("severity") == "error"] == []
 
 
-def test_operational_entry_in_zero_is_still_reported(tmp_path: Path) -> None:
+def test_operational_entry_in_zero_is_still_reported() -> None:
     """A real FCS parked in $0 has no declaration shape and must survive."""
-    poisoned = _DECLARATIONS.replace(
-        'OBJ:objective{type:"attrs", weight:"H", fields:"value:any?", '
-        'focus:"value", desc:"Active goal"}',
-        'OBJ:objective{type:"attrs", weight:"H", fields:"value:any?", '
-        'focus:"value", desc:"Active goal"}\n\n'
-        'FCS:current{what:"orphan focus parked in zero", '
-        'priority:"medium", status:"current", survive:"work"}',
-    )
-    f = tmp_path / "poisoned.cortex"
-    f.write_text(poisoned, encoding="utf-8")
-    text = f.read_text(encoding="utf-8")
-    doc = _crud._cc_parser.parse_cortex(text, path=str(f))
+    orphan = _entry("$0", "FCS", "current", {
+        "what": "orphan focus parked in zero", "priority": "medium",
+        "status": "current", "survive": "work"})
+    doc = _fixture_doc([
+        _entry("$0", "OBJ", "objective", _DECL_OBJ),
+        orphan,
+    ])
     raw = _crud._cc_validator.validate(doc)
     kept = _crud.filter_dialect_false_positives(doc, raw)
 
     zero_entries = [
-        (getattr(e, "sigil", ""), getattr(e, "name", ""))
-        for s in getattr(doc, "sections", [])
-        if getattr(s, "id", "") == "$0"
-        for e in getattr(s, "entries", [])
+        (e.sigil, e.name) for s in doc.sections if s.id == "$0"
+        for e in s.entries
     ]
     assert ("FCS", "current") in zero_entries, "fixture must park FCS:current in $0"
 
-    # The declaration (FCS:focus) is filtered out; the orphan (FCS:current)
-    # is a real operational entry and must keep its E033.
+    # The declaration (OBJ:objective) is filtered out; the orphan
+    # (FCS:current) is a real operational entry and must keep its E033.
     survivors = [
         d for d in kept
         if d.get("code") in _crud._DIALECT_FALSE_POSITIVES
