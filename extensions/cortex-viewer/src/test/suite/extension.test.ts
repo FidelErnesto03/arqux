@@ -430,6 +430,7 @@ describe('canonicalize (format document)', () => {
 
 // ── 0.3.0: cortex-ls core (transport-free handlers) ─────────────────
 import * as lsp from '../../server/core';
+import * as wsidx from '../../server/workspaceIndex';
 import { Position } from 'vscode-languageserver-types';
 
 const LS_DOC =
@@ -573,5 +574,172 @@ describe('preview polish 0.3.0', () => {
     });
     assert.ok(shell.includes('id="hc-filter"'));
     assert.ok(shell.includes('id="hc-goto"'));
+  });
+});
+
+describe('cortex-ls 0.4.0-A — info comes to you', () => {
+  it('inlayHints: type/weight junto a sigilo y tipo junto a field key', () => {
+    const hints = lsp.inlayHints(LS_DOC);
+    // uso OBJ:item en línea 6 → hint '·attrs·H' tras el token
+    const sig = hints.find((h) => h.position.line === 6)!;
+    assert.ok(sig && String(sig.label).includes('attrs')
+      && String(sig.label).includes('H'));
+    // field key `name:` dentro de {} → hint ':text'
+    const key = hints.find((h) => String(h.label) === ':text');
+    assert.ok(key, 'field type hint');
+    // la línea de la decl (2) no recibe hint de sigilo
+    assert.ok(!hints.some((h) => h.position.line === 2
+      && String(h.label).includes('·')));
+    // doc inválido no rompe
+    assert.ok(Array.isArray(lsp.inlayHints(INVALID_DOC)));
+  });
+
+  it('codeLenses: usos sobre decl, conteo sobre §N, badge sobre $0', () => {
+    const uri = 'file:///x.cortex';
+    const lenses = lsp.codeLenses(uri, LS_DOC);
+    const decl = lenses.find((l) => l.range.start.line === 2)!;
+    assert.strictEqual(decl.command?.title, '1 uso(s)');
+    assert.strictEqual(decl.command?.command, 'editor.action.showReferences');
+    assert.strictEqual(decl.command?.arguments?.[0], uri);
+    const sec = lenses.find((l) => l.range.start.line === 5)!;
+    assert.strictEqual(sec.command?.title, '§1 · 1 sigilo(s)');
+    const kernel = lenses.find((l) => l.range.start.line === 0)!;
+    assert.ok(kernel.command?.title.includes('C14N'));
+  });
+
+  it('signatureHelp: firma del contrato dentro de {}', () => {
+    // dentro de OBJ:item{…} en línea 6
+    const help = lsp.signatureHelp(LS_DOC, Position.create(6, 14));
+    assert.ok(help, 'help presente');
+    assert.strictEqual(help!.signatures[0].label,
+      'OBJ:item{name}');
+    // fuera de {} → null
+    assert.strictEqual(
+      lsp.signatureHelp(LS_DOC, Position.create(0, 2)), null);
+    // sigilo no declarado → firma estándar
+    const std = lsp.signatureHelp(
+      INVALID_DOC + 'FOO:x{a:1,', Position.create(4, 10));
+    assert.ok(std && std.signatures[0].label.includes('type'));
+    assert.strictEqual(std!.activeParameter, 1);
+  });
+
+  it('selectionRanges: token → attrs → línea → sección → doc', () => {
+    const [sel] = lsp.selectionRanges(
+      LS_DOC, [Position.create(6, 10)]);
+    assert.strictEqual(sel.range.start.line, 6);
+    const blk = sel.parent!;           // dentro de {} → attr-block
+    assert.strictEqual(blk.range.start.line, 6);
+    const line = blk.parent!;
+    assert.strictEqual(line.range.start.character, 0);
+    const sec = line.parent!;
+    assert.strictEqual(sec.range.start.line, 5, 'padre = §1');
+    const doc = sec.parent!;
+    assert.strictEqual(doc.range.start.line, 0);
+  });
+
+  it('inlineDecorationOptions: filtra codec-cortex y mapea severidad', () => {
+    const diags = lsp.diagnosticsFromCodec(
+      'I001_UNDECLARED_SYMBOL @ 6:0 — Undeclared sigil: FOO\n' +
+      'W001_INFO @ 1:0 — aviso', 10);
+    const other = {
+      range: diags[0].range, message: 'otro', source: 'otro-ls',
+      severity: 1 as const,
+    };
+    const specs = lsp.inlineDecorationOptions([...diags, other]);
+    assert.strictEqual(specs.length, 2, 'solo codec-cortex');
+    assert.strictEqual(specs[0].line, 5);
+    assert.strictEqual(specs[0].severity, 'error');
+    assert.strictEqual(specs[1].severity, 'warning');
+    assert.ok(specs[0].message.includes('Undeclared sigil: FOO'));
+  });
+});
+
+describe('cortex-ls 0.4.1 — workspace intelligence', () => {
+  const DOC_A =
+    '$0:KERNEL\n' +
+    '$0:format{cortex:1.0,encoding:UTF-8}\n' +
+    'OBJ:item{type:attrs,weight:H,focus:name,desc:"I",fields:"name:text"}\n' +
+    '$0:enum_capa{values:"CORE|UI"}\n' +
+    '$1: META\n' +
+    'OBJ:item{name:"a %CORE"}\n';
+  const DOC_B =
+    '$0:KERNEL\n' +
+    '$1: WORK\n' +
+    'OBJ:item{name:"b"}\n' +
+    'WK:task{note:"x %UI"}\n';
+
+  it('workspaceIndex indexa sigilos+secciones por uri', () => {
+    const idx = new wsidx.WorkspaceIndex([]);
+    idx.set('file:///a.cortex', DOC_A);
+    idx.set('file:///b.cortex', DOC_B);
+    const sigs = idx.sigilIndex();
+    assert.ok(sigs.some((s) => s.token === 'OBJ:item'
+      && s.uri === 'file:///a.cortex' && s.isDecl));
+    assert.ok(sigs.some((s) => s.token === 'WK:task'
+      && s.uri === 'file:///b.cortex' && !s.isDecl));
+    const secs = idx.sectionIndex();
+    assert.strictEqual(secs.length, 2);
+    assert.ok(secs.some((s) => s.id === '1' && s.uri === 'file:///b.cortex'));
+  });
+
+  it('workspaceSymbols devuelve matches multi-doc con Location', () => {
+    const idx = new wsidx.WorkspaceIndex([]);
+    idx.set('file:///a.cortex', DOC_A);
+    idx.set('file:///b.cortex', DOC_B);
+    const syms = lsp.workspaceSymbols(idx, 'obj');
+    assert.ok(syms.length >= 2);
+    assert.ok(syms.every((s) => s.location.uri.startsWith('file:///')));
+    const secs = lsp.workspaceSymbols(idx, '§1');
+    assert.strictEqual(secs.length, 2, '§1 META + §1 WORK');
+    assert.strictEqual(lsp.workspaceSymbols(idx, 'ZZZ').length, 0);
+  });
+
+  it('documentLinks: %enum apunta a $0:enum_* intra-doc', () => {
+    const links = lsp.documentLinks(DOC_A);
+    assert.strictEqual(links.length, 1);
+    assert.strictEqual(links[0].target, '#enum-capa');
+    assert.strictEqual(links[0].range.start.line, 5);
+    // % fuera de string no linkea (línea de decl no cuenta)
+    assert.strictEqual(lsp.documentLinks('$0:KERNEL\n%FOO\n').length, 0);
+  });
+
+  it('index invalidación: delete/set ante cambios de watcher', () => {
+    const idx = new wsidx.WorkspaceIndex([]);
+    idx.set('file:///x.cortex', DOC_A);
+    assert.ok(idx.get('file:///x.cortex'));
+    idx.delete('file:///x.cortex');      // FileChangeType.Deleted
+    assert.strictEqual(idx.get('file:///x.cortex'), undefined);
+    idx.set('file:///x.cortex', DOC_B);  // Changed → re-index
+    assert.ok(idx.get('file:///x.cortex')!.sections
+      .some((s) => s.title === 'WORK'));
+  });
+
+  it('path-safety: fuera de root y symlinks rechazados (H-02)', () => {
+    const fs = require('fs');
+    const os = require('os');
+    const path = require('path');
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'ws-'));
+    const outside = fs.mkdtempSync(path.join(os.tmpdir(), 'out-'));
+    fs.writeFileSync(path.join(root, 'ok.cortex'), DOC_A);
+    fs.writeFileSync(path.join(outside, 'bad.cortex'), DOC_B);
+    // symlink dentro del root → fuera
+    fs.symlinkSync(path.join(outside, 'bad.cortex'),
+      path.join(root, 'link.cortex'));
+    // subdir con symlink dir → fuera
+    fs.symlinkSync(outside, path.join(root, 'dirlink'));
+
+    const idx = new wsidx.WorkspaceIndex([
+      wsidx.pathToFileUri(root)]);
+    assert.ok(idx.isUnderRoot(path.join(root, 'ok.cortex')));
+    assert.ok(!idx.isUnderRoot(path.join(outside, 'bad.cortex')));
+    assert.strictEqual(
+      idx.uriToPath(wsidx.pathToFileUri(
+        path.join(outside, 'bad.cortex'))), null);
+
+    const found = wsidx.scanCortexFiles(root);
+    assert.strictEqual(found.length, 1, 'solo ok.cortex — symlinks skipped');
+    assert.ok(found[0].fsPath.endsWith('ok.cortex'));
+    fs.rmSync(root, { recursive: true, force: true });
+    fs.rmSync(outside, { recursive: true, force: true });
   });
 });

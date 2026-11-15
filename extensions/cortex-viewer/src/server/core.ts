@@ -9,11 +9,15 @@
  * declared surface; diagnostics come from `validate` via the bridge.
  */
 import {
-  CodeAction, CodeActionKind, CompletionItem, CompletionItemKind,
-  Diagnostic, DiagnosticSeverity, DocumentSymbol, FoldingRange,
-  FoldingRangeKind, InsertTextFormat, Location, Position, Range,
-  SymbolKind, TextEdit, WorkspaceEdit,
+  CodeAction, CodeActionKind, CodeLens, Command, CompletionItem,
+  CompletionItemKind, Diagnostic, DiagnosticSeverity, DocumentSymbol,
+  FoldingRange, FoldingRangeKind, InlayHint, InlayHintKind,
+  InsertTextFormat, Location, Position, Range, SelectionRange,
+  SignatureHelp, SignatureInformation, SymbolInformation, SymbolKind,
+  TextEdit, WorkspaceEdit,
 } from 'vscode-languageserver-types';
+import { DocumentLink } from 'vscode-languageserver-types';
+import type { WorkspaceIndex } from './workspaceIndex';
 import {
   buildSigilDecl, collectSemanticTokens, errorCodeAt, findSigilRefs,
   formatDeclText, glossaryInsertLine, parseAttrs, parseDoc,
@@ -395,4 +399,285 @@ export function foldingRanges(text: string): FoldingRange[] {
       endLine: r.end === -1 ? lineCount - 1 : r.end,
       kind: FoldingRangeKind.Region,
     }));
+}
+
+// ═══════════════════════ 0.4.0 — info comes to you ═══════════════════════
+
+/** field types map from `fields:"name:text|capa:ref"`. */
+function fieldTypes(fieldsAttr: string | undefined): Map<string, string> {
+  const out = new Map<string, string>();
+  if (!fieldsAttr) { return out; }
+  for (const f of fieldsAttr.split('|')) {
+    const [k, t] = f.split(':').map((s) => s.trim());
+    if (k) { out.set(k, t ?? 'any'); }
+  }
+  return out;
+}
+
+/**
+ * Inlay hints (rust-analyzer style):
+ * - after a declared `SIGIL:inst` usage → `·type·weight` ghost label
+ * - after a `key:` inside `{…}` of a declared sigil → `:fieldType`
+ */
+export function inlayHints(text: string): InlayHint[] {
+  const model = parseDoc(text);
+  const lines = text.split(/\r?\n/);
+  const hints: InlayHint[] = [];
+  const sigilRe = /([A-Z][A-Z0-9_]*:[A-Za-z_][\w-]*)/g;
+
+  for (let i = 0; i < lines.length; i++) {
+    const l = lines[i];
+    if (!l.trim() || l.trimStart().startsWith('#')) { continue; }
+    sigilRe.lastIndex = 0;
+    let m: RegExpExecArray | null;
+    while ((m = sigilRe.exec(l)) !== null) {
+      const decl = model.sigilByInst.get(m[1]);
+      if (!decl || decl.line === i) { continue; } // skip the decl itself
+      const parts = [decl.attrs.type, decl.attrs.weight].filter(Boolean);
+      if (parts.length) {
+        hints.push({
+          position: Position.create(i, m.index + m[1].length),
+          label: ` ·${parts.join('·')}`,
+          kind: InlayHintKind.Type,
+          paddingLeft: false,
+          paddingRight: true,
+        });
+      }
+      // field key hints inside this sigil's braces (same line)
+      const braceOpen = l.indexOf('{', m.index + m[1].length);
+      if (braceOpen < 0) { continue; }
+      const ftypes = fieldTypes(decl.attrs.fields);
+      const keyRe = /([A-Za-z_][\w-]*)\s*:/g;
+      keyRe.lastIndex = braceOpen + 1;
+      let km: RegExpExecArray | null;
+      while ((km = keyRe.exec(l)) !== null) {
+        if (km.index > (l.indexOf('}', braceOpen) < 0 ? l.length : l.indexOf('}', braceOpen))) { break; }
+        const t = ftypes.get(km[1]);
+        if (!t) { continue; }
+        hints.push({
+          position: Position.create(i, km.index + km[1].length),
+          label: `:${t}`,
+          kind: InlayHintKind.Type,
+          paddingLeft: false,
+          paddingRight: false,
+        });
+      }
+    }
+  }
+  return hints;
+}
+
+/**
+ * CodeLens (GitLens style):
+ * - over each glossary decl → `N uso(s)` → opens native references
+ * - over each §N section → `M sigilos`
+ * - over $0 → canon badge
+ */
+export function codeLenses(uri: string, text: string): CodeLens[] {
+  const model = parseDoc(text);
+  const lines = text.split(/\r?\n/);
+  const lenses: CodeLens[] = [];
+  const sigilRe = /[A-Z][A-Z0-9_]*:[A-Za-z_][\w-]*/g;
+
+  for (const s of model.sigils) {
+    const refs = findSigilRefs(text, `${s.sigil}:${s.inst}`)
+      .map((r) => Location.create(
+        uri, Range.create(r.line, r.start, r.line, r.end)));
+    const uses = refs.filter((r) => r.range.start.line !== s.line).length;
+    lenses.push({
+      range: Range.create(s.line, 0, s.line, 0),
+      command: Command.create(
+        `${uses} uso(s)`, 'editor.action.showReferences',
+        uri, Position.create(s.line, 0), refs),
+    });
+  }
+
+  for (let i = 0; i < model.sections.length; i++) {
+    const sec = model.sections[i];
+    const end = model.sections[i + 1]?.line ?? lines.length;
+    let count = 0;
+    for (let ln = sec.line; ln < end; ln++) {
+      sigilRe.lastIndex = 0;
+      const seg = lines[ln] ?? '';
+      if (seg.trimStart().startsWith('#')) { continue; }
+      let mm: RegExpExecArray | null;
+      while ((mm = sigilRe.exec(seg)) !== null) { count++; void mm; }
+    }
+    lenses.push({
+      range: Range.create(sec.line, 0, sec.line, 0),
+      command: Command.create(`§${sec.id} · ${count} sigilo(s)`, ''),
+    });
+  }
+
+  if (model.kernelLine >= 0) {
+    lenses.push({
+      range: Range.create(model.kernelLine, 0, model.kernelLine, 0),
+      command: Command.create('CORTEX 1.0 · C14N', ''),
+    });
+  }
+  return lenses;
+}
+
+/** Signature help inside `SIGIL:inst{…}` — contract attrs signature. */
+export function signatureHelp(text: string, pos: Position): SignatureHelp | null {
+  const line = text.split(/\r?\n/)[pos.line] ?? '';
+  const before = line.slice(0, pos.character);
+  const open = before.lastIndexOf('{');
+  if (open < 0 || before.lastIndexOf('}') > open) { return null; }
+  const head = /([A-Z][A-Z0-9_]*:[A-Za-z_][\w-]*)\s*$/.exec(line.slice(0, open));
+  if (!head) { return null; }
+  const model = parseDoc(text);
+  const decl = model.sigilByInst.get(head[1])
+    ?? model.sigils.find((s) => s.sigil === head[1].split(':')[0]);
+  const keys = decl?.fields.length
+    ? decl.fields
+    : ['type', 'weight', 'focus', 'desc', 'fields'];
+  const inner = before.slice(open + 1);
+  const active = inner.split(',').length - 1;
+  const sig: SignatureInformation = {
+    label: `${head[1]}{${keys.join(', ')}}`,
+    documentation: decl?.attrs.desc ?? 'contract attrs',
+    parameters: keys.map((k) => ({ label: k })),
+  };
+  return {
+    signatures: [sig],
+    activeSignature: 0,
+    activeParameter: Math.min(active, keys.length - 1),
+  };
+}
+
+/**
+ * Selection ranges (smart expand): token → attr-block → line →
+ * containing section → whole document.
+ */
+export function selectionRanges(text: string, positions: Position[]): SelectionRange[] {
+  const lines = text.split(/\r?\n/);
+  const model = parseDoc(text);
+  const docRange = Range.create(0, 0, lines.length - 1, (lines.at(-1) ?? '').length);
+
+  const build = (pos: Position): SelectionRange => {
+    const line = lines[pos.line] ?? '';
+    let tokenRange = Range.create(pos.line, pos.character, pos.line, pos.character + 1);
+    const tok = sigilTokenAt(text, pos.line, pos.character);
+    if (tok) {
+      tokenRange = Range.create(pos.line, tok.start, pos.line, tok.end);
+    }
+    // attr-block {…} on the line, if it spans the cursor
+    const open = line.indexOf('{');
+    const close = line.lastIndexOf('}');
+    let inner = Range.create(pos.line, 0, pos.line, line.length);
+    if (open >= 0 && close > open && pos.character > open && pos.character <= close) {
+      inner = Range.create(pos.line, open + 1, pos.line, close);
+    }
+    const lineRange = Range.create(pos.line, 0, pos.line, line.length);
+    // containing section range
+    let secRange = docRange;
+    for (let i = model.sections.length - 1; i >= 0; i--) {
+      const s = model.sections[i];
+      if (s.line <= pos.line) {
+        const end = model.sections[i + 1]?.line ?? lines.length;
+        secRange = Range.create(s.line, 0, end - 1, (lines[end - 1] ?? '').length);
+        break;
+      }
+    }
+    const doc: SelectionRange = { range: docRange };
+    const sec: SelectionRange = { range: secRange, parent: doc };
+    const lin: SelectionRange = { range: lineRange, parent: sec };
+    const blk: SelectionRange = { range: inner, parent: lin };
+    void blk;
+    return { range: tokenRange, parent: inner === lineRange ? lin : { range: inner, parent: lin } };
+  };
+  return positions.map(build);
+}
+
+// ---------------- inline diagnostics (Error Lens style) ----------------
+
+/** Pure shape consumed by the client's decoration pass (AC-05). */
+export interface InlineDecoSpec {
+  line: number;
+  severity: 'error' | 'warning';
+  message: string;
+}
+
+/** Structural minimum — accepts LSP and vscode Diagnostics alike. */
+export interface DiagLike {
+  range: { start: { line: number } };
+  message: string;
+  severity?: number;
+  source?: string;
+}
+
+/** Diagnostics → minimal inline decoration specs (end-of-line hints). */
+export function inlineDecorationOptions(diags: DiagLike[]): InlineDecoSpec[] {
+  return diags
+    .filter((d) => d.source === 'codec-cortex')
+    .map((d) => ({
+      line: d.range.start.line,
+      severity: d.severity === DiagnosticSeverity.Warning ? 'warning' : 'error',
+      message: d.message,
+    }));
+}
+
+// ═══════════════════ 0.4.1 — workspace intelligence ═══════════════════
+
+/** Ctrl+T: sigil tokens (decl+uso) and §N sections across the corpus. */
+export function workspaceSymbols(
+  index: WorkspaceIndex, query: string
+): SymbolInformation[] {
+  const q = query.toLowerCase();
+  const match = (s: string) =>
+    q === '' || s.toLowerCase().includes(q);
+  const out: SymbolInformation[] = [];
+
+  for (const s of index.sigilIndex()) {
+    if (!match(s.token)) { continue; }
+    out.push(SymbolInformation.create(
+      s.token,
+      s.isDecl ? SymbolKind.Interface : SymbolKind.Variable,
+      Range.create(s.line, 0, s.line, 0),
+      s.uri,
+      s.isDecl ? 'glosario' : 'uso'));
+  }
+  for (const sec of index.sectionIndex()) {
+    const label = `§${sec.id} ${sec.title}`;
+    if (!match(label) && !match(`§${sec.id}`)) { continue; }
+    out.push(SymbolInformation.create(
+      label, SymbolKind.Namespace,
+      Range.create(sec.line, 0, sec.line, 0),
+      sec.uri, 'sección'));
+  }
+  return out;
+}
+
+/**
+ * %token references → link to the `$0:enum_*` declaration carrying it.
+ * Intra-doc only in this phase (cross-doc pending format refs).
+ */
+export function documentLinks(text: string): DocumentLink[] {
+  const model = parseDoc(text);
+  const lines = text.split(/\r?\n/);
+  const links: DocumentLink[] = [];
+  const pctRe = /%([A-Z][A-Z0-9_]*)/g;
+  const inString = (l: string, col: number): boolean => {
+    let open = false;
+    for (let i = 0; i < col && i < l.length; i++) {
+      if (l[i] === '"' && (i === 0 || l[i - 1] !== '\\')) { open = !open; }
+    }
+    return open;
+  };
+  for (let i = 0; i < lines.length; i++) {
+    const l = lines[i];
+    if (l.trimStart().startsWith('#')) { continue; }
+    pctRe.lastIndex = 0;
+    let m: RegExpExecArray | null;
+    while ((m = pctRe.exec(l)) !== null) {
+      if (!inString(l, m.index)) { continue; } // % lives inside strings
+      const target = model.enums.find((e) => e.values.includes(m![1]));
+      if (!target) { continue; }
+      links.push(DocumentLink.create(
+        Range.create(i, m.index, i, m.index + m[0].length),
+        `#enum-${target.name}`));
+    }
+  }
+  return links;
 }

@@ -9,11 +9,13 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
 import {
-  LanguageClient, LanguageClientOptions, ServerOptions, TransportKind,
+  ExecuteCommandRequest, LanguageClient, LanguageClientOptions,
+  ServerOptions, TransportKind,
 } from 'vscode-languageclient/node';
 import { CodecBridge, INSTALL_HINT, parseHash, parseLossReport } from './codecBridge';
 import { lineOfSection, parseCodecErrors, sectionAtLine } from './diagnostics';
 import { sigilTokenAt } from './cortexModel';
+import { inlineDecorationOptions } from './server/core';
 import { PreviewPanel } from './previewPanel';
 import { renderHcortexBody } from './webviewKit';
 
@@ -30,6 +32,147 @@ let lspClient: LanguageClient | undefined;
 /** The document whose HCORTEX the preview is showing right now. */
 let previewedDoc: vscode.TextDocument | undefined;
 const debounceTimers = new Map<string, ReturnType<typeof setTimeout>>();
+/** Last inspect() badges — surfaced by cortex.statusMenu quickpick. */
+let lastBadges: {
+  valid: boolean; hashShort: string; hashFull: string;
+  lossCount: number; runtime: string;
+} | undefined;
+
+// ---- 0.4.0-A: inline diagnostics (Error Lens style, client-side) ----
+const decoError = vscode.window.createTextEditorDecorationType({
+  after: { margin: '0 0 0 2em', color: '#f14c4c', fontStyle: 'italic' },
+});
+const decoWarning = vscode.window.createTextEditorDecorationType({
+  after: { margin: '0 0 0 2em', color: '#cca700', fontStyle: 'italic' },
+});
+
+function inlineDiagnosticsEnabled(): boolean {
+  return vscode.workspace.getConfiguration('cortex')
+    .get<boolean>('inlineDiagnostics', true);
+}
+
+/** Apply EOL decorations from the LS-published diagnostics (filtered). */
+function applyInlineDecorations(): void {
+  const enabled = inlineDiagnosticsEnabled();
+  for (const editor of vscode.window.visibleTextEditors) {
+    if (editor.document.languageId !== 'cortex'
+        || editor.document.uri.scheme !== 'file') { continue; }
+    if (!enabled) {
+      editor.setDecorations(decoError, []);
+      editor.setDecorations(decoWarning, []);
+      continue;
+    }
+    const diags = vscode.languages.getDiagnostics(editor.document.uri);
+    const errors: vscode.DecorationOptions[] = [];
+    const warnings: vscode.DecorationOptions[] = [];
+    for (const spec of inlineDecorationOptions(diags)) {
+      if (spec.line >= editor.document.lineCount) { continue; }
+      const eol = editor.document.lineAt(spec.line).range.end;
+      const opt: vscode.DecorationOptions = {
+        range: new vscode.Range(eol, eol),
+        renderOptions: {
+          after: { contentText: `  ◈ ${spec.message}` },
+        },
+      };
+      (spec.severity === 'error' ? errors : warnings).push(opt);
+    }
+    editor.setDecorations(decoError, errors);
+    editor.setDecorations(decoWarning, warnings);
+  }
+}
+
+// ---- 0.4.1: workspace-wide validation (BLP-004) ----
+const wsDiagCollection =
+  vscode.languages.createDiagnosticCollection('cortex-workspace');
+let wsOutput: vscode.OutputChannel | undefined;
+
+/**
+ * cortex.validateWorkspace — asks cortex-ls to validate every indexed
+ * .cortex (open docs shadow disk) and aggregates results into Problems
+ * + an output report.
+ */
+async function validateWorkspace(): Promise<void> {
+  if (!lspClient) {
+    void vscode.window.showWarningMessage('cortex-ls no está activo.');
+    return;
+  }
+  wsOutput ??= vscode.window.createOutputChannel('CORTEX Workspace');
+  wsOutput.clear();
+  wsOutput.appendLine('cortex.validateWorkspace — validando corpus…');
+  const res = await lspClient.sendRequest(ExecuteCommandRequest.type, {
+    command: 'cortex/validateWorkspace', arguments: [],
+  }) as {
+    results: { uri: string; diagnostics: unknown[] }[];
+    truncated?: boolean;
+  };
+  wsDiagCollection.clear();
+  let total = 0;
+  for (const r of res.results ?? []) {
+    const diags = (r.diagnostics as Parameters<
+      typeof lspClient.protocol2CodeConverter.asDiagnostic>[0][])
+      .map((d) => lspClient!.protocol2CodeConverter.asDiagnostic(d));
+    wsDiagCollection.set(vscode.Uri.parse(r.uri), diags);
+    total += diags.length;
+    wsOutput.appendLine(`${vscode.Uri.parse(r.uri).fsPath}: ${diags.length}`);
+    for (const d of diags) {
+      wsOutput.appendLine(
+        `  L${d.range.start.line + 1}: ${d.message}`);
+    }
+  }
+  wsOutput.appendLine(
+    `— ${res.results?.length ?? 0} doc(s) con problemas, ${total} total` +
+    (res.truncated ? ' (TRUNCADO a 200 docs)' : ''));
+  wsOutput.show(true);
+  void vscode.window.showInformationMessage(
+    `CORTEX workspace: ${total} problema(s) en ` +
+    `${res.results?.length ?? 0} documento(s).`);
+}
+
+/** cortex.statusMenu — enriched status bar quickpick. */
+async function statusMenu(): Promise<void> {
+  const diags = vscode.window.activeTextEditor
+    ? vscode.languages.getDiagnostics(vscode.window.activeTextEditor.document.uri)
+    : [];
+  const codecDiags = diags.filter((d) => d.source === 'codec-cortex');
+  const items: vscode.QuickPickItem[] = [
+    {
+      label: `$(error) Diagnósticos: ${codecDiags.length}`,
+      description: codecDiags.length
+        ? codecDiags[0].message.slice(0, 60) : 'sin errores',
+    },
+    {
+      label: `$(server) Runtime: ${lastBadges?.runtime ?? 'desconocido'}`,
+      description: 'cadena de resolución del toolchain',
+    },
+    {
+      label: `$(key) Hash: ${lastBadges?.hashFull ?? '—'}`,
+      description: 'sha256 C14N completo',
+    },
+    { label: '', kind: vscode.QuickPickItemKind.Separator },
+    {
+      label: '$(gear) Configurar toolchainPath…',
+      description: 'abre Settings (cortex.toolchainPath)',
+      alwaysShow: true,
+    },
+    {
+      label: `$(eye) Inline diagnostics: ${inlineDiagnosticsEnabled() ? 'on' : 'off'}`,
+      description: 'toggle cortex.inlineDiagnostics',
+      alwaysShow: true,
+    },
+  ];
+  const pick = await vscode.window.showQuickPick(items, {
+    placeHolder: 'CORTEX — estado del documento',
+  });
+  if (!pick) { return; }
+  if (pick.label.includes('toolchainPath')) {
+    void vscode.commands.executeCommand(
+      'workbench.action.openSettings', 'cortex.toolchainPath');
+  } else if (pick.label.includes('Inline diagnostics')) {
+    const cfg = vscode.workspace.getConfiguration('cortex');
+    void cfg.update('inlineDiagnostics',
+      !inlineDiagnosticsEnabled(), vscode.ConfigurationTarget.Global);
+  }
+}
 
 export function activate(context: vscode.ExtensionContext): void {
   bridge = new CodecBridge();
@@ -47,7 +190,12 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.commands.registerCommand('cortex.verifyHash', verifyHash),
     vscode.commands.registerCommand('cortex.applyHumanEdit', applyHumanEditCommand),
     vscode.commands.registerCommand('cortex.exportPreview', exportPreview),
+    vscode.commands.registerCommand('cortex.statusMenu', statusMenu),
+    vscode.commands.registerCommand(
+      'cortex.validateWorkspace', validateWorkspace),
+    decoError, decoWarning, wsDiagCollection,
   );
+  statusBar.command = 'cortex.statusMenu';
 
   context.subscriptions.push(
     vscode.workspace.onDidChangeTextDocument((e) => {
@@ -76,7 +224,12 @@ export function activate(context: vscode.ExtensionContext): void {
     }),
     vscode.workspace.onDidChangeConfiguration((e) => {
       if (e.affectsConfiguration('cortex')) { applySettings(); }
+      if (e.affectsConfiguration('cortex.inlineDiagnostics')) {
+        applyInlineDecorations();
+      }
     }),
+    vscode.languages.onDidChangeDiagnostics(() => applyInlineDecorations()),
+    vscode.window.onDidChangeVisibleTextEditors(() => applyInlineDecorations()),
     vscode.workspace.onWillSaveTextDocument((e) => {
       if (e.document.languageId !== 'cortex') { return; }
       const on = vscode.workspace.getConfiguration('cortex')
@@ -122,7 +275,11 @@ function startLanguageServer(context: vscode.ExtensionContext): void {
   const cfg = vscode.workspace.getConfiguration('cortex');
   const clientOptions: LanguageClientOptions = {
     documentSelector: [{ language: 'cortex', scheme: 'file' }],
-    synchronize: { configurationSection: 'cortex' },
+    synchronize: {
+      configurationSection: 'cortex',
+      // 0.4.1: feeds didChangeWatchedFiles → workspace index invalidation
+      fileEvents: vscode.workspace.createFileSystemWatcher('**/*.cortex'),
+    },
     initializationOptions: {
       toolchainPath: cfg.get<string>('toolchainPath', ''),
       debounceMs: cfg.get<number>('debounceMs', 250),
@@ -196,6 +353,7 @@ async function refreshDocument(
     lossCount,
     runtime: runtime ?? 'none',
   };
+  lastBadges = badges;
 
   statusBar.text = valid
     ? `$(pass) CORTEX ${badges.hashShort}`

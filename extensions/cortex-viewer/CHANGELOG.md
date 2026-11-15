@@ -1,5 +1,52 @@
 # Changelog
 
+## 0.4.1 — workspace-level intelligence
+
+Workspace pack (BLP-004, CYCLE-17): the unit of analysis moves from
+document to corpus.
+
+- **Workspace symbols** (`Ctrl+T`): sigil tokens (declaration + usage)
+  and `§N` sections across every `.cortex` in the workspace — fed by a
+  new in-memory `WorkspaceIndex` (`src/server/workspaceIndex.ts`).
+- **`cortex.validateWorkspace`**: validates the whole corpus through the
+  codec (open documents shadow disk state), aggregates results into the
+  Problems panel and a `CORTEX Workspace` output report. Capped at 200
+  docs / 30 s budget.
+- **Document links**: `%ENUM` references inside strings link to their
+  `$0:enum_*` declaration (intra-doc).
+- **File watching**: `**/*.cortex` watcher (`synchronize.fileEvents`)
+  invalidates and re-indexes files on disk changes; open documents
+  always win.
+- **Filesystem containment** (security audit H-02): the corpus scan
+  never follows symlinks, verifies every path under a declared
+  `workspaceFolders` root, and caps at 500 files / 1 MB per file.
+  Index is memory-only — zero persistence.
+
+## 0.4.0 — info comes to you
+
+Language-surface pack (BLP-003, CYCLE-17): contract knowledge renders
+ambiently — no invocation needed.
+
+- **Inlay hints** (`cortex-ls`): `·type·weight` ghost label after every
+  declared `SIGIL:inst` usage; `:type` after each contract field key
+  inside `{…}`.
+- **CodeLens**: over each glossary declaration `N uso(s)` → opens native
+  Find References; over each `§N` `M sigilo(s)` count; over `$0` the
+  `C14N` badge.
+- **Signature help** inside `SIGIL:inst{…}` — contract field signature
+  (`type, weight, focus, desc, fields` or declared `fields`), triggers
+  on `{` `,` `:`.
+- **Selection ranges** (smart expand): token → attr-block → line →
+  containing `§N` → document.
+- **Inline diagnostics** (Error Lens style, client-side): end-of-line
+  severity-colored messages driven by `cortex-ls` publishDiagnostics.
+  Toggle via `cortex.inlineDiagnostics` (default `true`) — also from the
+  status menu.
+- **Status bar quickpick**: clicking the CORTEX badge opens
+  `cortex.statusMenu` — diagnostics count, active runtime, full sha256
+  hash, and a settings shortcut for `toolchainPath` (opens Settings UI;
+  never writes settings silently).
+
 ## 0.3.0 — cortex-ls + preview polish
 
 - **`cortex-ls`: dedicated LSP server** (ADR-0.3.0). All language

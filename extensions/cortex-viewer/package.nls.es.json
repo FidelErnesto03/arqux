@@ -1,0 +1,15 @@
+{
+  "displayName": "ArqUX CORTEX Viewer",
+  "description": "Preview HCORTEX 1.0 en vivo, validación CORTEX en tiempo real, hash canónico C14N y edición bidireccional segura — impulsado por el toolchain codec-cortex.",
+  "cmd.openPreview": "Abrir preview HCORTEX",
+  "cmd.openPreviewToSide": "Abrir preview HCORTEX al lado",
+  "cmd.verifyHash": "Verificar hash canónico",
+  "cmd.applyHumanEdit": "Aplicar edición humana HCORTEX",
+  "cmd.exportPreview": "Exportar preview",
+  "cmd.statusMenu": "Menú de estado",
+  "cmd.validateWorkspace": "Validar workspace",
+  "cfg.toolchainPath": "Comando explícito del toolchain codec-cortex (ej. /ruta/a/cortex). Vacío = cadena de prioridad automática.",
+  "cfg.debounceMs": "Debounce en ms para refrescar preview y diagnósticos tras cada edición.",
+  "cfg.formatOnSave": "Formatear a forma canónica (canonicalize) al guardar el documento.",
+  "cfg.inlineDiagnostics": "Mostrar diagnósticos inline al final de la línea (estilo Error Lens). Los mensajes provienen de cortex-ls."
+}

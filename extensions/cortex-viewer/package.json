@@ -1,8 +1,8 @@
 {
   "name": "arqux-cortex-viewer",
-  "displayName": "ArqUX CORTEX Viewer",
-  "description": "Live HCORTEX 1.0 preview, real-time CORTEX validation, C14N canonical hash and safe bidirectional editing — powered by the codec-cortex toolchain.",
-  "version": "0.3.0",
+  "displayName": "%displayName%",
+  "description": "%description%",
+  "version": "0.4.1",
   "publisher": "arqux",
   "license": "Apache-2.0",
   "icon": "media/icon.png",
@@ -77,33 +77,45 @@
     "commands": [
       {
         "command": "cortex.openPreview",
-        "title": "Open HCORTEX Preview",
+        "title": "%cmd.openPreview%",
         "category": "CORTEX",
         "icon": "$(open-preview)"
       },
       {
         "command": "cortex.openPreviewToSide",
-        "title": "Open HCORTEX Preview to the Side",
+        "title": "%cmd.openPreviewToSide%",
         "category": "CORTEX",
         "icon": "$(split-horizontal)"
       },
       {
         "command": "cortex.verifyHash",
-        "title": "Verify Canonical Hash",
+        "title": "%cmd.verifyHash%",
         "category": "CORTEX",
         "icon": "$(shield)"
       },
       {
         "command": "cortex.applyHumanEdit",
-        "title": "Apply HCORTEX Human Edit",
+        "title": "%cmd.applyHumanEdit%",
         "category": "CORTEX",
         "icon": "$(edit)"
       },
       {
         "command": "cortex.exportPreview",
-        "title": "Export Preview",
+        "title": "%cmd.exportPreview%",
         "category": "CORTEX",
         "icon": "$(export)"
+      },
+      {
+        "command": "cortex.statusMenu",
+        "title": "%cmd.statusMenu%",
+        "category": "CORTEX",
+        "icon": "$(info)"
+      },
+      {
+        "command": "cortex.validateWorkspace",
+        "title": "%cmd.validateWorkspace%",
+        "category": "CORTEX",
+        "icon": "$(checklist)"
       }
     ],
     "keybindings": [
@@ -132,18 +144,23 @@
         "cortex.toolchainPath": {
           "type": "string",
           "default": "",
-          "description": "Comando explícito del toolchain codec-cortex (ej. /ruta/a/cortex). Vacío = cadena de prioridad automática."
+          "description": "%cfg.toolchainPath%"
         },
         "cortex.debounceMs": {
           "type": "number",
           "default": 250,
           "minimum": 50,
-          "description": "Debounce en ms para refrescar preview y diagnósticos tras cada edición."
+          "description": "%cfg.debounceMs%"
         },
         "cortex.formatOnSave": {
           "type": "boolean",
           "default": false,
-          "description": "Formatear a forma canónica (canonicalize) al guardar el documento."
+          "description": "%cfg.formatOnSave%"
+        },
+        "cortex.inlineDiagnostics": {
+          "type": "boolean",
+          "default": true,
+          "description": "%cfg.inlineDiagnostics%"
         }
       }
     },

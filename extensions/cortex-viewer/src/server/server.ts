@@ -13,7 +13,7 @@
 import {
   createConnection, ProposedFeatures, TextDocuments,
   InitializeParams, InitializeResult, TextDocumentSyncKind,
-  DidChangeConfigurationNotification,
+  DidChangeConfigurationNotification, FileChangeType,
 } from 'vscode-languageserver/node';
 import { TextDocument } from 'vscode-languageserver-textdocument';
 import { readFileSync } from 'fs';
@@ -21,15 +21,21 @@ import { join } from 'path';
 import { CodecBridge } from '../codecBridge';
 import { parseErrorCatalog } from '../cortexModel';
 import * as core from './core';
+import { scanCortexFiles, WorkspaceIndex } from './workspaceIndex';
 
 const connection = createConnection(ProposedFeatures.all);
 const documents = new TextDocuments(TextDocument);
 const bridge = new CodecBridge();
+/** 0.4.1: in-memory uri → model index (BLP-004). */
+let wsIndex = new WorkspaceIndex([]);
 
 let debounceMs = 250;
 const diagTimers = new Map<string, ReturnType<typeof setTimeout>>();
 
 connection.onInitialize((params: InitializeParams): InitializeResult => {
+  // workspace index roots (containment for all fs access — H-02)
+  wsIndex = new WorkspaceIndex(
+    (params.workspaceFolders ?? []).map((f) => f.uri));
   const opts = (params.initializationOptions ?? {}) as {
     toolchainPath?: string;
     debounceMs?: number;
@@ -56,6 +62,13 @@ connection.onInitialize((params: InitializeParams): InitializeResult => {
         full: true,
       },
       foldingRangeProvider: true,
+      inlayHintProvider: { resolveProvider: false },
+      codeLensProvider: { resolveProvider: false },
+      signatureHelpProvider: { triggerCharacters: ['{', ',', ':'] },
+      selectionRangeProvider: true,
+      workspaceSymbolProvider: true,
+      documentLinkProvider: { resolveProvider: false },
+      executeCommandProvider: { commands: ['cortex/validateWorkspace'] },
     },
   };
 });
@@ -63,6 +76,31 @@ connection.onInitialize((params: InitializeParams): InitializeResult => {
 connection.onInitialized(() => {
   void connection.client.register(
     DidChangeConfigurationNotification.type, { section: 'cortex' });
+  // Initial corpus scan — contained to workspaceFolders (H-02).
+  for (const root of wsIndex.roots) {
+    for (const f of scanCortexFiles(root)) {
+      if (!wsIndex.get(f.uri)) { wsIndex.set(f.uri, f.text); }
+    }
+  }
+  connection.console.log(
+    `cortex-ls: workspace index populated (${wsIndex.size} docs)`);
+});
+
+/** File watcher invalidation — same containment as the scan. */
+connection.onDidChangeWatchedFiles((params) => {
+  for (const ch of params.changes) {
+    if (!ch.uri.endsWith('.cortex')) { continue; }
+    if (ch.type === FileChangeType.Deleted) {
+      wsIndex.delete(ch.uri);
+      continue;
+    }
+    const p = wsIndex.uriToPath(ch.uri);
+    if (!p) { continue; }                    // outside roots → skip
+    if (documents.get(ch.uri)) { continue; } // open doc is authority
+    try {
+      wsIndex.set(ch.uri, readFileSync(p, 'utf8'));
+    } catch { wsIndex.delete(ch.uri); }
+  }
 });
 
 connection.onDidChangeConfiguration((change) => {
@@ -91,8 +129,14 @@ function loadErrorCatalog(): void {
   }
 }
 
+// Open documents are the index authority — they shadow disk state.
+documents.onDidOpen((e) => {
+  wsIndex.set(e.document.uri, e.document.getText());
+});
+
 documents.onDidChangeContent((change) => {
   const uri = change.document.uri;
+  wsIndex.set(uri, change.document.getText());
   const prev = diagTimers.get(uri);
   if (prev) { clearTimeout(prev); }
   diagTimers.set(uri, setTimeout(() => {
@@ -182,6 +226,68 @@ connection.languages.semanticTokens.on((params) => {
 connection.onFoldingRanges((params) => {
   const text = docText(params.textDocument.uri);
   return text === null ? [] : core.foldingRanges(text);
+});
+
+// ---------------- 0.4.0-A — info comes to you ----------------
+
+connection.languages.inlayHint.on((params) => {
+  const text = docText(params.textDocument.uri);
+  return text === null ? [] : core.inlayHints(text);
+});
+
+connection.onCodeLens((params) => {
+  const text = docText(params.textDocument.uri);
+  return text === null ? []
+    : core.codeLenses(params.textDocument.uri, text);
+});
+
+connection.onSignatureHelp((params) => {
+  const text = docText(params.textDocument.uri);
+  return text === null ? null
+    : core.signatureHelp(text, params.position);
+});
+
+connection.onSelectionRanges((params) => {
+  const text = docText(params.textDocument.uri);
+  return text === null ? []
+    : core.selectionRanges(text, params.positions);
+});
+
+// ---------------- 0.4.1 — workspace intelligence ----------------
+
+connection.onWorkspaceSymbol((params) =>
+  core.workspaceSymbols(wsIndex, params.query));
+
+connection.onDocumentLinks((params) => {
+  const text = docText(params.textDocument.uri);
+  return text === null ? [] : core.documentLinks(text);
+});
+
+const VALIDATE_WS_MAX = 200;
+const VALIDATE_WS_BUDGET_MS = 30_000;
+
+connection.onExecuteCommand(async (params) => {
+  if (params.command !== 'cortex/validateWorkspace') {
+    return { results: [] };
+  }
+  const started = Date.now();
+  const results: { uri: string; diagnostics: ReturnType<
+    typeof core.diagnosticsFromCodec> }[] = [];
+  let n = 0;
+  for (const uri of wsIndex.uris()) {
+    if (n++ >= VALIDATE_WS_MAX || Date.now() - started > VALIDATE_WS_BUDGET_MS) {
+      break;
+    }
+    const text = wsIndex.text(uri);
+    if (text === undefined) { continue; }
+    const res = await bridge.invoke('validate', text);
+    const diags = res.exitCode === 0
+      ? []
+      : core.diagnosticsFromCodec(
+          res.stderr, text.split(/\r?\n/).length);
+    if (diags.length) { results.push({ uri, diagnostics: diags }); }
+  }
+  return { results, truncated: n >= VALIDATE_WS_MAX };
 });
 
 documents.listen(connection);

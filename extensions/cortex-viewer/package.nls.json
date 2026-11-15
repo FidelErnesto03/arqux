@@ -1,0 +1,15 @@
+{
+  "displayName": "ArqUX CORTEX Viewer",
+  "description": "Live HCORTEX 1.0 preview, real-time CORTEX validation, C14N canonical hash and safe bidirectional editing — powered by the codec-cortex toolchain.",
+  "cmd.openPreview": "Open HCORTEX Preview",
+  "cmd.openPreviewToSide": "Open HCORTEX Preview to the Side",
+  "cmd.verifyHash": "Verify Canonical Hash",
+  "cmd.applyHumanEdit": "Apply HCORTEX Human Edit",
+  "cmd.exportPreview": "Export Preview",
+  "cmd.statusMenu": "Status Menu",
+  "cmd.validateWorkspace": "Validate Workspace",
+  "cfg.toolchainPath": "Explicit codec-cortex toolchain command (e.g. /path/to/cortex). Empty = automatic priority chain.",
+  "cfg.debounceMs": "Debounce in ms to refresh preview and diagnostics after each edit.",
+  "cfg.formatOnSave": "Format to canonical form (canonicalize) when saving the document.",
+  "cfg.inlineDiagnostics": "Show diagnostics inline at end of line (Error Lens style). Messages come from cortex-ls."
+}
