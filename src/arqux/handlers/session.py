@@ -1614,19 +1614,69 @@ def handoff(
     # Canon (GRADIENT-12): a pending handoff is state, not a file — it lives
     # as HND:<to> in the brain's ACTIVE_CONTEXT. The handoffs/ directory is
     # retired; the receiver finds the entry on bootstrap.
+    # I002: HND:<to> is a fixed address. A second handoff to the same agent
+    # must UPDATE the pending entry, never add a second one under the same
+    # name — a duplicate blocks every later write to the brain with
+    # I002_DUPLICATE_IDEA_ADDRESS (AXM:silent_corruption).
     brain_path = root / BRAIN_CORTEX
     handoff_ref = ""
+    from ..core.state._crud import (
+        cortex_verify,
+        crud_read,
+        crud_section_id_for_title,
+        crud_update,
+    )
+    from ..state import _now_iso, crud_add
+    handoff_attrs = {
+        "date": _now_iso(), "from": agent_id, "to": target_agent,
+        "project": project_name, "summary": summary, "blps": blps,
+        "tasks": tasks,
+    }
     try:
-        from ..core.state._crud import crud_section_id_for_title
-        from ..state import _now_iso, crud_add
         ac = crud_section_id_for_title(brain_path, "ACTIVE_CONTEXT", fallback="$7")
-        crud_add(
-            brain_path, ac, "HND", target_agent,
-            {"date": _now_iso(), "from": agent_id, "to": target_agent,
-             "project": project_name, "summary": summary, "blps": blps,
-             "tasks": tasks},
-            create_section=True, force=True,
+        previous = (
+            brain_path.read_text(encoding="utf-8")
+            if brain_path.exists() else None
         )
+        # AXM:silent_corruption — no ok before validating what was written.
+        # Only NEW error diagnostics introduced by this write abort and roll
+        # back: a brain that was already malformed before the handoff must
+        # not make handoffs impossible (its errors are pre-existing state).
+        def _error_codes(diags: list[str]) -> set[str]:
+            return {
+                d.split("] ", 1)[1].rsplit(" (line", 1)[0]
+                for d in diags
+                if d.startswith("[") and not d.startswith("[I")
+            }
+
+        before = cortex_verify(brain_path) if previous is not None else {"diagnostics": []}
+        existing: dict | None = None
+        with suppress(Exception):
+            existing = crud_read(brain_path, f"{ac}/HND:{target_agent}")
+        if existing and existing.get("entries"):
+            crud_update(
+                brain_path, f"{ac}/HND:{target_agent}",
+                set_=handoff_attrs, force=True,
+            )
+        else:
+            crud_add(
+                brain_path, ac, "HND", target_agent, handoff_attrs,
+                create_section=True, force=True,
+            )
+        # AXM:silent_corruption — validate after the write; roll back and
+        # fail only when this write introduced NEW error diagnostics.
+        verdict = cortex_verify(brain_path)
+        new_errors = _error_codes(verdict.get("diagnostics", [])) - _error_codes(
+            before.get("diagnostics", [])
+        )
+        if new_errors:
+            if previous is not None:
+                brain_path.write_text(previous, encoding="utf-8")
+            return CortexOUT.error(
+                "handoff write produced a malformed brain; reverted",
+                code="WRITE_ERROR",
+                diagnostics=sorted(new_errors),
+            )
         handoff_ref = f"{ac}/HND:{target_agent}"
     except Exception as exc:
         return CortexOUT.error(f"handoff write failed: {exc}", code="WRITE_ERROR")

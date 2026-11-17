@@ -107,7 +107,7 @@ _ARQUX_META_ENTRY = "artifact"
 
 #: Lookup priority for ``ARQX:artifact`` across sections.  ``$0.1`` is the
 #: BLP-041 location (pre-1.0), ``$1`` the canonical identity slot, ``$15``
-#: the brain-canon slot (cortex-brain-section-canon) and ``$19`` the slot
+#: the brain-canon slot (brain-section-canon) and ``$19`` the slot
 #: writers emit for non-brain artifacts.  Any other section is still
 #: scanned last — metadata resolution is by sigil, never by position.
 _ARQUX_META_PRIORITY = {"$0.1": 0, "$1": 1, "$15": 2, "$19": 3}
@@ -519,6 +519,47 @@ def _fmt_section(num: int, title: str, entries: list[str]) -> str:
     return "\n".join(lines)
 
 
+_ATTR_ESCAPES = (
+    ("\\", "\\\\"),
+    ('"', '\\"'),
+    ("\n", "\\n"),
+    ("\r", "\\r"),
+    ("\t", "\\t"),
+    ("\b", "\\b"),
+    ("\f", "\\f"),
+)
+
+_ATTR_UNESCAPES = {
+    "n": "\n",
+    "r": "\r",
+    "t": "\t",
+    "b": "\b",
+    "f": "\f",
+    '"': '"',
+    "\\": "\\",
+}
+
+
+def _escape_attr_string(v: str) -> str:
+    """Escape a string for an attrs body — canonical CODEC-CORTEX escapes.
+
+    ``\\`` must be replaced first; the control-char escapes introduce
+    backslashes that must not be re-escaped.  A raw ``\\n`` in a value
+    would otherwise serialize into a multi-line attrs entry, which the
+    CODEC parser rejects (``I004_SHAPE_DELIMITER_MISMATCH``) — attrs
+    entries can never span lines (issue 2026-11-16, EXPERTA brain).
+    """
+    for old, new in _ATTR_ESCAPES:
+        v = v.replace(old, new)
+    return v
+
+
+def _unescape_attr_string(v: str) -> str:
+    """Inverse of :func:`_escape_attr_string` — sequential left-to-right
+    decode so ``\\\\n`` correctly becomes ``\\`` + ``n``, not a newline."""
+    return re.sub(r"\\(.)", lambda m: _ATTR_UNESCAPES.get(m.group(1), m.group(0)), v)
+
+
 def _serialise_attrs(d: dict[str, Any]) -> str:
     """Serialise a dict to attrs form: key:value, key2:\"string\"."""
     parts = []
@@ -530,15 +571,12 @@ def _serialise_attrs(d: dict[str, Any]) -> str:
         elif isinstance(v, (int, float)):
             parts.append(f"{k}:{v}")
         elif isinstance(v, str):
-            escaped = v.replace("\\", "\\\\").replace('"', '\\"')
-            parts.append(f'{k}:"{escaped}"')
+            parts.append(f'{k}:"{_escape_attr_string(v)}"')
         elif isinstance(v, (list, tuple)):
             import json
-            escaped = json.dumps(v, ensure_ascii=False).replace("\\", "\\\\").replace('"', '\\"')
-            parts.append(f'{k}:"{escaped}"')
+            parts.append(f'{k}:"{_escape_attr_string(json.dumps(v, ensure_ascii=False))}"')
         else:
-            escaped = str(v).replace("\\", "\\\\").replace('"', '\\"')
-            parts.append(f'{k}:"{escaped}"')
+            parts.append(f'{k}:"{_escape_attr_string(str(v))}"')
     return ", ".join(parts)
 
 
@@ -569,7 +607,7 @@ def _parse_attrs(text: str) -> dict[str, Any]:
                     break
                 i += 1
             value = text[val_start:i]
-            value = value.replace('\\"', '"').replace('\\\\', '\\')
+            value = _unescape_attr_string(value)
             i += 1
         else:
             val_start = i
@@ -723,7 +761,7 @@ def brain_from_model(frontmatter: dict, sections: dict[str, str]) -> str:
         _fmt_entry("IDN", "governor", id_attrs),
     ]))
     # $2: AXIOMS — project behavioral axioms (canon
-    # docs/reference/cortex-brain-section-canon.md).
+    # docs/es/especificacion/secciones-cerebro-canon.md).
     axm_lines = []
     seen_axioms: dict[str, int] = {}
     for line in sections.get("AXIOMS", "").splitlines():

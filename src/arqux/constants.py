@@ -130,7 +130,7 @@ BRAIN_SECTION_LOOPS: str = "LOOPS"
 BRAIN_SECTION_METADATA: str = "ARQUX_METADATA"
 
 #: All canonical brain sections in canon order (canon:
-#: docs/reference/cortex-brain-section-canon.md, $0..$15).
+#: docs/es/especificacion/secciones-cerebro-canon.md, $0..$15).
 ALL_BRAIN_SECTIONS: tuple[str, ...] = (
     "GLOSSARY",
     BRAIN_SECTION_IDENTITY,
@@ -271,7 +271,7 @@ def env(var: str, default: str | None = None) -> str | None:
 #   - CORTEX 1.0: the canonical identity section (``$1``). The 1.0 grammar rejects
 #              a sub-section of the glossary (G004_GLOSSARY_DECLARATION_MUST_BE_ATTRS),
 #              so migrated artifacts cannot keep ``$0.1``.
-#   - Brain canon: ``$15`` for brain.cortex (cortex-brain-section-canon); writers
+#   - Brain canon: ``$15`` for brain.cortex (brain-section-canon); writers
 #              emit ``$19`` for non-brain artifacts.
 #
 # ``arqux.formats.read_arqux_metadata`` resolves ARQX by sigil across all
@@ -382,7 +382,7 @@ class ArtifactMetadata:
 class BrainSection(Enum):
     """Canonical sections of a Level-3 Brain artifact ($0..$10).
 
-    Canon: GRADIENT-12 (``docs/cortex/brain-canon.md``). The enum value is
+    Canon: GRADIENT-12 (``docs/es/especificacion/brain-canon.md``). The enum value is
     the section identifier used in the .cortex file (with the leading
     ``$``). ``$0`` is the structural glossary; artifact metadata
     (``ARQX:artifact``) lives in ``$1 IDENTITY``. Retired sections

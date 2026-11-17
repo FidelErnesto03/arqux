@@ -662,6 +662,18 @@ def sweep_pulse_window(
     }
 
 
+def _logical_session_id(raw: str) -> str:
+    """``SES021``, ``SES021_20261029_204457(.cortex)`` or a path → ``SES021``.
+
+    The rest of the session handlers (session.status, timelog.*) accept the
+    logical id and the timelog file name; compaction must accept the same
+    forms (issue 2026-11-02: pulse.compact rejected the id session.status
+    resolves).
+    """
+    m = re.match(r"(SES\d{3})", Path(str(raw or "")).name)
+    return m.group(1) if m else str(raw or "")
+
+
 def compact_session_pulse(
     project_root: Path,
     *,
@@ -680,25 +692,42 @@ def compact_session_pulse(
     Without ``ses_ref`` the legacy positional rule applies unchanged (everything
     between this SES and the previous one), so brains written before real
     session identity keep their previous behaviour.
+
+    ``session_id`` accepts the close event's pulse id, the logical session id
+    (``SES021``) or the timelog file name (``SES021_20261029_204457.cortex``).
     """
+    from .session_identity import get_session
+
     brain_path = _brain_cortex_path(project_root)
     if not brain_path.exists():
         return {"error": "brain not found", "compacted": False}
 
+    logical = _logical_session_id(session_id)
+    ses_ref = _logical_session_id(ses_ref) if ses_ref else None
+
     all_entries = read_pulse_from_brain(project_root, limit=10000)
 
-    ses_entry = None
-    for e in all_entries:
-        if e["id"] == session_id and e.get("kind") == "session":
-            ses_entry = e
-            break
+    def _is_close(entry: dict) -> bool:
+        if entry.get("kind") != "session":
+            return False
+        return entry["id"] in (session_id, logical) or entry.get("ses_ref") == logical
+
+    ses_entry = next((e for e in all_entries if _is_close(e)), None)
+    if ses_entry is None and get_session(project_root, logical) is not None:
+        # GRADIENT-12: the close may exist only as a brain SESSIONS entry —
+        # the pulse stream is session-scoped by ses_ref. Select by membership
+        # instead of demanding a close event in the legacy PULSE section.
+        ses_entry = {"id": logical, "kind": "session", "ses_ref": logical}
+        ses_ref = ses_ref or logical
     if ses_entry is None:
         return {"error": f"SES {session_id} not found", "compacted": False}
 
     prev_ses_idx = -1
+    # Positional mode needs every session close (old behaviour) to locate the
+    # previous session, not just the one being compacted.
     ses_entries = [e for e in all_entries if e.get("kind") == "session"]
     for i, e in enumerate(ses_entries):
-        if e["id"] == session_id and i > 0:
+        if e["id"] == ses_entry["id"] and i > 0:
             prev_id = ses_entries[i - 1]["id"]
             for j, ae in enumerate(all_entries):
                 if ae["id"] == prev_id:
@@ -706,7 +735,7 @@ def compact_session_pulse(
                     break
             break
 
-    ses_idx = next((j for j, ae in enumerate(all_entries) if ae["id"] == session_id), len(all_entries) - 1)
+    ses_idx = next((j for j, ae in enumerate(all_entries) if _is_close(ae)), len(all_entries) - 1)
     if ses_ref:
         owner = ses_entry.get("ses_ref") or ""
         if owner != ses_ref:

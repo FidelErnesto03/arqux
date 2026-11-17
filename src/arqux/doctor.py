@@ -105,7 +105,7 @@ def check_metadata_section(arqux_dir: Path) -> CheckResult:
     Checks brain.cortex and meta-brain.cortex for the deprecated
     ``$0.1`` section identifier (removed in codec-cortex 0.5.0+; the
     canonical metadata slot is ``$15`` for project brains per
-    docs/reference/cortex-brain-section-canon.md).
+    docs/es/especificacion/secciones-cerebro-canon.md).
     """
     cortex_files = [
         ("meta-brain.cortex", arqux_dir / META_BRAIN_CORTEX, "workspace"),

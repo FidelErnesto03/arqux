@@ -270,3 +270,40 @@ def test_switch_is_reversible(tmp_path: Path) -> None:
     assert back.fields["header"] == "⬡ alfred | test-proj | CYCLE-01"
     after = context_get(path=str(proj_root), ctx=_ALFRED)
     assert after.fields["agent"] == "alfred"
+
+
+# ---------------------------------------------------------------------------
+# I002 — repeated switches must never duplicate HND:<to> entries
+# ---------------------------------------------------------------------------
+
+
+def test_switch_repeated_targets_do_not_duplicate_hnd(tmp_path: Path) -> None:
+    """I002: each switch to the same agent used to append a second HND:<to>,
+    which then blocked every later brain write with I002_DUPLICATE_IDEA_ADDRESS."""
+    _, proj_root = _bootstrap(tmp_path)
+    brain_path = proj_root / ARQUX_DIR / "brain.cortex"
+
+    for target in ("jarvis", "heimdall", "jarvis", "heimdall"):
+        out = switch(target, path=str(proj_root), ctx=_ALFRED)
+        assert out.profile == "OUT-WORK", out.to_text()
+
+    brain = brain_path.read_text(encoding="utf-8")
+    assert brain.count("HND:jarvis") == 1
+    assert brain.count("HND:heimdall") == 1
+
+    # The latest handoff for each target wins (pending handoff is state):
+    # exactly one entry per target, addressed as $7/HND:<to>.
+    from arqux.core.state._crud import crud_read
+
+    for target in ("jarvis", "heimdall"):
+        found = crud_read(brain_path, f"$7/HND:{target}")
+        assert len(found["entries"]) == 1, f"HND:{target} duplicated"
+
+    # The brain must stay addressable after the switches (the actual failure
+    # mode of I002: later writes/read selectors fail with
+    # I002_DUPLICATE_IDEA_ADDRESS). The fixture brain carries pre-existing
+    # E032 errors, so check for duplicate diagnostics specifically.
+    from arqux.core.state._crud import cortex_verify
+
+    diags = cortex_verify(brain_path).get("diagnostics", [])
+    assert not any("I002" in d or "Duplicate" in d for d in diags), diags

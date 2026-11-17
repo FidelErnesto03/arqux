@@ -16,7 +16,7 @@ import {
 import { parseCodecErrors, sectionAtLine, lineOfSection } from '../../diagnostics';
 import {
   buildCspMeta, buildHtmlShell, generateNonce, renderHcortexBody,
-  stripHcortexComments,
+  stripHcortexComments, takeDiagramQueue,
 } from '../../webviewKit';
 
 const VALID_DOC =
@@ -741,5 +741,50 @@ describe('cortex-ls 0.4.1 — workspace intelligence', () => {
     assert.ok(found[0].fsPath.endsWith('ok.cortex'));
     fs.rmSync(root, { recursive: true, force: true });
     fs.rmSync(outside, { recursive: true, force: true });
+  });
+});
+
+describe('diagrams 0.4.2 — preview render', () => {
+  const DGM_HC =
+    '<!-- HCORTEX v=1.0 t=canonical k=corpus -->\n' +
+    '<!-- glossary -->\n$0:KERNEL\nCTX:ctx{type:cuerpo,weight:M,focus:body,desc:"x",fields:"body:text"}\n<!-- /glossary -->\n' +
+    '## §1: TEST\n' +
+    '<!-- schema:1 -->\n### CTX:ctx\nbody:"```puml\\n@startuml\\nA --> B\\n@enduml\\n```"\nnote:"plain text, no diagram"\n<!-- /schema:1 -->\n';
+
+  it('attr con diagrama → figure + slot + spec en queue', () => {
+    const html = renderHcortexBody(DGM_HC);
+    assert.ok(html.includes('class="hc-diagram"'));
+    assert.ok(html.includes('dgm-slot" data-dgm="0"'));
+    assert.ok(html.includes('fuente puml'));
+    // el source escapado dentro de details
+    assert.ok(html.includes('@startuml'));
+    // la línea note sigue como texto normal
+    assert.ok(html.includes('plain text'));
+    const specs = takeDiagramQueue();
+    assert.strictEqual(specs.length, 1);
+    assert.strictEqual(specs[0].lang, 'puml');
+    assert.ok(specs[0].source.includes('@startuml'));
+    assert.ok(specs[0].source.includes('A --> B'));
+    // queue drenada
+    assert.strictEqual(takeDiagramQueue().length, 0);
+  });
+
+  it('@startuml suelto y ```mermaid también detectados', () => {
+    const hc =
+      '<!-- schema:1 -->\n### CTX:ctx\n' +
+      'body:"@startuml\\nX --> Y\\n@enduml"\n' +
+      'd2:"```mermaid\\ngraph LR\\na-->b\\n```"\n' +
+      '<!-- /schema:1 -->\n';
+    renderHcortexBody(hc);
+    const specs = takeDiagramQueue();
+    assert.strictEqual(specs.length, 2);
+    assert.strictEqual(specs[0].lang, 'puml');
+    assert.strictEqual(specs[1].lang, 'mermaid');
+  });
+
+  it('lineas sin diagrama no generan specs', () => {
+    renderHcortexBody(
+      '<!-- schema:1 -->\n### CTX:ctx\nbody:"solo texto"\n<!-- /schema:1 -->\n');
+    assert.strictEqual(takeDiagramQueue().length, 0);
   });
 });

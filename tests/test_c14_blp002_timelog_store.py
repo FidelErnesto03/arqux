@@ -28,6 +28,40 @@ from arqux.timelog_store import (
 )
 
 
+class TestIssue20261102LegacyDateWithoutTime:
+    """timelog.review rebuilt the canonical name without the timestamp when a
+    legacy SES entry stores the opening date without a time
+    (``SES016_20261026.cortex`` — MembershipError instead of the real file)."""
+
+    def test_load_falls_back_to_real_file_when_date_has_no_time(self, session):
+        open_block(session.proj_root, session.session_id,
+                   operation_ref="T-1.1", start="2026-10-26T12:37:46Z")
+        document = load(session.proj_root, session.session_id,
+                        opened_at="2026-10-26")
+        assert document is not None
+        assert document["ses"] == session.session_id
+
+    def test_update_falls_back_to_real_file_when_date_has_no_time(self, session):
+        open_block(session.proj_root, session.session_id,
+                   operation_ref="T-1.1", start="2026-10-26T12:37:46Z")
+        result = update(
+            session.proj_root, session.session_id,
+            operation_ref="review:legacy-date", opened_at="2026-10-26",
+            mutate=lambda doc: True,
+        )
+        assert result["applied"] is True
+
+    def test_membership_still_enforced_after_fallback(self, session):
+        open_block(session.proj_root, session.session_id,
+                   operation_ref="T-1.1", start="2026-10-26T12:37:46Z")
+        # A different session id must not adopt this file: the prefix search
+        # finds nothing for SES999 and the derived path does not exist.
+        with pytest.raises(MembershipError):
+            update(session.proj_root, "SES999",
+                   operation_ref="review:wrong-session", opened_at="2026-10-26",
+                   mutate=lambda doc: True)
+
+
 @pytest.fixture
 def session(arqux_env):
     """Open a real session; BLP-002 now creates its canonical timelog too."""

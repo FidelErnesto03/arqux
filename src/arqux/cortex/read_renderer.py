@@ -88,9 +88,8 @@ def resolve_profile(name: str | None = None) -> Profile:
 
 
 def _escape_string(s: str) -> str:
-    out = s.replace("\\", "\\\\").replace('"', '\\"')
-    out = out.replace("\n", "\\n").replace("\t", "\\t").replace("\r", "\\r")
-    return f'"{out}"'
+    from ..formats import _escape_attr_string
+    return f'"{_escape_attr_string(s)}"'
 
 
 def serialize_value(value: Any) -> str:

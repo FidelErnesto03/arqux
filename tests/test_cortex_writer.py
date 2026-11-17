@@ -309,6 +309,59 @@ def test_string_escaping_combined() -> None:
     assert r'val:"café \"hello\" \\ path"' in text
 
 
+def test_string_escaping_newlines() -> None:
+    """Newlines inside attr values escape as \\n — an attrs entry can
+    never span lines (I004_SHAPE_DELIMITER_MISMATCH; EXPERTA brain
+    corruption, issue 2026-11-16)."""
+    doc = {
+        "glossary": _glossary(),
+        "sections": [
+            {
+                "id": "$1",
+                "title": "ESCAPE",
+                "entries": [
+                    {
+                        "sigil": "ARQX",
+                        "name": "test",
+                        "attrs": {"val": "line one\nline two\nline three"},
+                    }
+                ],
+            }
+        ],
+    }
+    text = write_cortex_from_json(doc)
+    assert r'val:"line one\nline two\nline three"' in text
+    entry_line = next(l for l in text.splitlines() if l.startswith("ARQX:test"))
+    assert entry_line.count("\n") == 0 and entry_line.endswith("}")
+
+
+@requires_parser
+def test_roundtrip_newline_attr() -> None:
+    """A multi-line attr value round-trips through the CODEC parser —
+    the failure mode that left EXPERTA's brain.cortex unparseable."""
+    content = "para one\npara two\npara three"
+    doc = {
+        "glossary": _glossary(),
+        "sections": [
+            {
+                "id": "$1",
+                "title": "KNOWLEDGE",
+                "entries": [
+                    {
+                        "sigil": "ARQX",
+                        "name": "test",
+                        "attrs": {"topic": "k", "content": content, "status": "current"},
+                    }
+                ],
+            }
+        ],
+    }
+    text = write_cortex_from_json(doc)
+    parsed = _parse_cortex(text)
+    sec = next(s for s in parsed.sections if s.id == "$1")
+    assert sec.entries[0].value["content"] == content
+
+
 # ---------------------------------------------------------------------------
 # 4. Cuerpo entries (multi-line body)
 # ---------------------------------------------------------------------------

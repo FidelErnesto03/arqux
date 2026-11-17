@@ -99,7 +99,7 @@ def read_brain(project_root: Path) -> tuple[dict[str, Any], dict[str, str], str]
             sections: dict[str, str] = {}
 
             # Map section titles to Arqux brain section names.
-            # Canon (docs/reference/cortex-brain-section-canon.md): the
+            # Canon (docs/es/especificacion/secciones-cerebro-canon.md): the
             # project brain has 16 sections ($0..$15). Resolution is by
             # TITLE — section ids are physical ordering only. Legacy
             # brains with the pre-AXIOMS layout still resolve because

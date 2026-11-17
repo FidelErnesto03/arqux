@@ -33,6 +33,9 @@ _INTERNAL_REMAP = {
     "docs/ROADMAP.md": INTERNAL / "ROADMAP.md",
     "docs/cortex/nicho.md": INTERNAL / "spec" / "nicho.md",
     "FRAMEWORK_GOBERNANZA.md": INTERNAL / "framework" / "FRAMEWORK_GOBERNANZA.md",
+    # BLP-033 docs/es/ migration — same repo, canonical destinations.
+    "docs/TEST-SUITE-FRAMEWORK.md": ROOT / "docs/es/explicacion/test-suite-framework.md",
+    "docs/guides/GETTING_STARTED.md": ROOT / "docs/en/tutorial/inicio-rapido.md",
 }
 
 

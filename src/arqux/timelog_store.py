@@ -346,12 +346,17 @@ def _write(path: Path, text: str, *, keep_backup: bool = False) -> None:
 
 def _resolve(project_root: Path | str, session_id: str, opened_at: str | None) -> Path:
     """The canonical path for a session, searching when the start is unknown."""
-    if opened_at:
-        return canonical_path(project_root, session_id, opened_at)
+    exact = canonical_path(project_root, session_id, opened_at or "")
+    if opened_at and exact.exists():
+        return exact
+    # A legacy brain may record the opening date without a time, so the
+    # derived name misses the ``_HHMMSS`` part (SES016_20261026.cortex —
+    # issue 2026-11-02). Fall back to the session's real canonical file;
+    # membership is still verified against the document identity afterwards.
     for name in list_timelogs(project_root):
         if name.startswith(f"{session_id}_"):
             return timelog_dir(project_root) / name
-    return canonical_path(project_root, session_id, opened_at or "")
+    return exact
 
 
 def ensure_timelog(

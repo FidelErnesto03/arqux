@@ -213,6 +213,57 @@ function renderSchemaTable(rows: string[]): string {
 
 const WEIGHT_CLASS: Record<string, string> = { H: 'w-h', M: 'w-m', B: 'w-b' };
 
+// ---- diagrams (0.4.2): cuerpo strings → SVG slots + source fallback ----
+
+export interface DiagramSpec {
+  /** Unique marker in the emitted HTML — replaced post-render. */
+  id: number;
+  lang: 'puml' | 'mermaid';
+  source: string;
+}
+
+let diagramQueue: DiagramSpec[] = [];
+
+/** Drain the specs produced by the last renderHcortexBody call. */
+export function takeDiagramQueue(): DiagramSpec[] {
+  const q = diagramQueue;
+  diagramQueue = [];
+  return q;
+}
+
+/** Unescape a cortex quoted string: \n \t \" \\ — single pass. */
+function decodeAttrString(v: string): string {
+  return v.replace(/\\(.)/g, (_m, c: string) =>
+    c === 'n' ? '\n' : c === 't' ? '\t' : c === '"' ? '"' : c === '\\' ? '\\' : `\\${c}`);
+}
+
+/** Detect a diagram source inside a decoded attr value. */
+function detectDiagram(decoded: string): { lang: DiagramSpec['lang']; source: string } | null {
+  const fence = /```(puml|plantuml|mermaid)\s*\n([\s\S]*?)```/.exec(decoded);
+  if (fence) {
+    return {
+      lang: fence[1] === 'mermaid' ? 'mermaid' : 'puml',
+      source: fence[2].trim(),
+    };
+  }
+  const puml = /(@start\w+[\s\S]*?@end\w+)/.exec(decoded);
+  if (puml) { return { lang: 'puml', source: puml[1] }; }
+  if (/^\s*(sequenceDiagram|flowchart|graph|classDiagram|stateDiagram|erDiagram|gantt)\b/m.test(decoded)) {
+    return { lang: 'mermaid', source: decoded.trim() };
+  }
+  return null;
+}
+
+/** Emit a diagram card: SVG slot (filled post-render) + source details. */
+function emitDiagram(spec: DiagramSpec): string {
+  return (
+    `<figure class="hc-diagram">` +
+    `<div class="dgm-slot" data-dgm="${spec.id}"></div>` +
+    `<details class="dgm-src"><summary>fuente ${spec.lang}</summary>` +
+    `<pre><code>${escapeHtml(spec.source)}</code></pre></details>` +
+    `</figure>`);
+}
+
 /**
  * Render one `<!-- schema:N -->` block as a card per instance:
  *   <div class="hc-card w-X">  <head><code>SIGIL:inst</code> + type chip</head>
@@ -238,12 +289,26 @@ function renderSchema(
 
     const tableLines: string[] = [];
     const textLines: string[] = [];
+    const figures: string[] = [];
     for (const l of rest.split(/\r?\n/)) {
-      if (/^\s*\|/.test(l)) { tableLines.push(l); }
-      else if (l.trim()) { textLines.push(l); }
+      if (/^\s*\|/.test(l)) { tableLines.push(l); continue; }
+      if (!l.trim()) { continue; }
+      // 0.4.2: attr line whose decoded value carries a diagram → figure
+      const am = /^\s*[A-Za-z_][\w-]*\s*:\s*"((?:[^"\\]|\\.)*)"\s*$/.exec(l);
+      const dgm = am ? detectDiagram(decodeAttrString(am[1])) : null;
+      if (dgm) {
+        const spec: DiagramSpec = {
+          id: diagramQueue.length, lang: dgm.lang, source: dgm.source,
+        };
+        diagramQueue.push(spec);
+        figures.push(emitDiagram(spec));
+      } else {
+        textLines.push(l);
+      }
     }
     const content =
       (tableLines.length ? renderSchemaTable(tableLines) : '') +
+      figures.join('') +
       (textLines.length ? md.render(textLines.join('\n')) : '');
 
     out.push(
@@ -290,6 +355,7 @@ function emitMarkdownSegment(
 }
 
 export function renderHcortexBody(hcortex: string): string {
+  diagramQueue = []; // fresh queue per render — drained by the host
   const md = createRenderer();
   const out: string[] = [];
   const state = { chapterOpen: false };

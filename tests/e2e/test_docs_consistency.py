@@ -42,7 +42,7 @@ def test_handler_counts_match_registry():
 
 
 def test_entry_docs_have_no_stale_paths():
-    for name in ("README.md", "docs/guides/GETTING_STARTED.md", "PILOT_MODE.md"):
+    for name in ("README.md", "docs/en/tutorial/inicio-rapido.md", "PILOT_MODE.md"):
         text = (ROOT / name).read_text(encoding="utf-8")
         assert ".arqux/AGENTS.md" not in text, f"{name}: AGENTS.md lives at the root"
         assert "pulse.jsonl" not in text, f"{name}: PULSE lives inside brain.cortex"

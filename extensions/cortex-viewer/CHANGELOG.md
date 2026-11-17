@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.4.2 — diagramas en el preview
+
+- **Diagram rendering**: `body:"..."` (y cualquier string attr) cuyo
+  valor contiene ```` ```puml ````, `@startuml` o ```` ```mermaid ````
+  se renderiza como **SVG inline** dentro de su schema card.
+- Renderers **locales, sin red**: `plantuml -pipe -tsvg` y `mmdc`
+  (mermaid-cli) — spawn `shell:false`, timeout 15s, salida sanitizada
+  (sin `<script>`, sin handlers `on*`).
+- **Caché por sha256(lang+source)**: un diagrama se renderiza una vez
+  por contenido distinto, no por cada refresh.
+- **Fallback limpio**: sin binario o render fallido → el bloque
+  `fuente puml|mermaid` colapsable con el source decodificado (`\n`
+  reales), nunca texto escapado crudo.
+- La exportación `.html` incluye los SVG ya renderizados.
+
 ## 0.4.1 — workspace-level intelligence
 
 Workspace pack (BLP-004, CYCLE-17): the unit of analysis moves from

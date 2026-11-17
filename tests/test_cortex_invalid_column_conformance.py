@@ -73,7 +73,7 @@ COLUMN_B_PATH = _resolve("CODEC_RC1_PATH", str(CODEC_ROOT))
 REPORT_PATH = Path(
     os.environ.get(
         "CORTEX_INVALID_REPORT",
-        str(REPO_ROOT / "docs" / "conformance" / "invalid-column-report.json"),
+        str(REPO_ROOT / "tests" / "fixtures" / "conformance" / "invalid-column-report.json"),
     )
 )
 

@@ -288,3 +288,32 @@ details.hc-sec-block > summary h2 { border-bottom: none; }
   color: var(--vscode-symbolIcon-classForeground, inherit);
   text-decoration: none;
 }
+
+/* ── Diagrams (0.4.2): inline SVG slot + source fallback ── */
+figure.hc-diagram {
+  margin: 8px 0;
+  padding: 10px 12px;
+  border: 1px solid var(--vscode-widget-border, #4444);
+  border-radius: 6px;
+  background: var(--vscode-textCodeBlock-background, #0002);
+}
+.dgm-slot { display: none; }
+.dgm-slot.dgm-ok { display: block; }
+.dgm-slot svg {
+  max-width: 100%;
+  height: auto;
+  display: block;
+  margin: 0 auto;
+}
+details.dgm-src { margin-top: 6px; }
+details.dgm-src > summary {
+  cursor: pointer;
+  font-size: 0.8em;
+  opacity: 0.7;
+  user-select: none;
+}
+details.dgm-src pre {
+  overflow-x: auto;
+  font-size: 0.85em;
+  padding: 6px 8px;
+}

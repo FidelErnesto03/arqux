@@ -311,10 +311,11 @@ def _summary(fcs: str, limit: int = 120) -> str:
 
 def _write_wrk_entry(brain_path: Path, value: dict[str, str], ac_section: str = "$7") -> None:
     """Write WRK:current via cortex.patch (CODEC-CORTEX)."""
+    from ...formats import _escape_attr_string
     from ...state import cortex_write
 
     def _q(v: str) -> str:
-        return '"' + v.replace("\\", "\\\\").replace('"', '\\"') + '"'
+        return '"' + _escape_attr_string(v) + '"'
 
     line = (
         f"WRK:current{{fcs:{_q(value['fcs'])},obj:{_q(value['obj'])},"

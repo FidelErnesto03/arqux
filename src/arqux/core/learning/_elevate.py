@@ -72,9 +72,10 @@ def _validate_elevation_payload(
 
 
 def _quote_cortex_val(val: Any) -> str:
+    from ...formats import _escape_attr_string
     s = str(val)
-    if any(c in s for c in (" ", ",", '"', "'", "{", "}", "\n")):
-        return '"' + s.replace("\\", "\\\\").replace('"', '\\"') + '"'
+    if any(c in s for c in (" ", ",", '"', "'", "{", "}", "\n", "\r", "\t")):
+        return '"' + _escape_attr_string(s) + '"'
     return s
 
 

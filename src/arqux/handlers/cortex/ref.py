@@ -27,7 +27,7 @@ from ...cortex_out import CortexOUT
 from ...permissions import PermissionContext
 
 #: Standard brain.cortex section map (canon: GRADIENT-12,
-#: docs/cortex/brain-canon.md, $0..$10):
+#: docs/es/especificacion/brain-canon.md, $0..$10):
 #: section id → title → sigils that live in it.
 BRAIN_SECTION_MAP: dict[str, dict[str, Any]] = {
     "$0": {"title": "GLOSSARY", "sigils": []},
@@ -70,7 +70,7 @@ def ref_handler(
         return CortexOUT.work(
             f"cortex.ref ok sections={len(BRAIN_SECTION_MAP)}",
             sections=BRAIN_SECTION_MAP,
-            source="docs/reference/cortex-brain-section-canon.md (canon section map)",
+            source="docs/es/especificacion/secciones-cerebro-canon.md (canon section map)",
         )
 
     if not sigil or not isinstance(sigil, str):

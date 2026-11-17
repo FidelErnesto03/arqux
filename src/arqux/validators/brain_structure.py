@@ -2,7 +2,7 @@
 
 Validates that a Level-3 BRAIN artifact possesses the canonical GRADIENT-12
 sections ($0 GLOSSARY, $1 IDENTITY … $10 SESSIONS) per
-docs/reference/cortex-brain-section-canon.md.
+docs/es/especificacion/secciones-cerebro-canon.md.
 
 This validator is STRICTLY TOPOLOGICAL: it checks the CONTINENT (section
 presence), not the CONTENT (sigil semantics). Content validation is the

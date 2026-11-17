@@ -13,7 +13,7 @@ from typing import Any
 from ...constants import BRAIN_SECTION_TITLES, BrainSection
 
 # Canonical learning targets by meaning/title.
-# Canon: docs/reference/cortex-brain-section-canon.md §4 (sigil → section).
+# Canon: docs/es/especificacion/secciones-cerebro-canon.md §4 (sigil → section).
 _TITLE_FOR_SIGIL: dict[str, str] = {
     "AXM": "AXIOMS",
     "SES": "SESSIONS",

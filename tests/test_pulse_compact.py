@@ -226,6 +226,80 @@ def test_compact_ses_not_found(tmp_path) -> None:
 
 
 # ---------------------------------------------------------------------------
+# Issue 2026-11-02 — pulse.compact must resolve the identifiers of the
+# rest of the session handlers (SES021, timelog stem), not only the close
+# event's pulse id.
+# ---------------------------------------------------------------------------
+
+
+def _add_session_scoped_pulses(proj, ses: str = "SES001", count: int = 6) -> None:
+    from arqux.pulse import append_pulse_to_brain
+    for i in range(count):
+        append_pulse_to_brain(
+            proj, event_id=f"{ses}-E{i + 1:04d}", task_id="-",
+            kind="note", agent="test", payload=f"pulse {i}", ses_ref=ses,
+        )
+
+
+def test_compact_accepts_logical_ses_id(tmp_path) -> None:
+    """session_id=SES001 compacts a session whose close carries ses_ref."""
+    from arqux.pulse import append_pulse_to_brain, compact_session_pulse
+
+    proj = _bootstrap_project(tmp_path)
+    _add_session_scoped_pulses(proj)
+    append_pulse_to_brain(
+        proj, event_id="SES001-E0007", task_id="-",
+        kind="session", agent="test", payload="close", ses_ref="SES001",
+    )
+
+    result = compact_session_pulse(proj, session_id="SES001", agent_id="test")
+    assert result.get("compacted") is True, result
+    assert result.get("pruned") == 6
+
+
+def test_compact_accepts_timelog_stem(tmp_path) -> None:
+    """The timelog file stem (SES001_20261029_204457) resolves to SES001."""
+    from arqux.pulse import append_pulse_to_brain, compact_session_pulse
+
+    proj = _bootstrap_project(tmp_path)
+    _add_session_scoped_pulses(proj)
+    append_pulse_to_brain(
+        proj, event_id="SES001-E0007", task_id="-",
+        kind="session", agent="test", payload="close", ses_ref="SES001",
+    )
+
+    result = compact_session_pulse(
+        proj, session_id="SES001_20261029_204457", agent_id="test")
+    assert result.get("compacted") is True, result
+    assert result.get("pruned") == 6
+
+
+def test_compact_falls_back_to_sessions_registry(tmp_path) -> None:
+    """GRADIENT-12: the close may exist only as a brain SESSIONS entry.
+
+    Compaction then selects by membership (ses_ref) instead of failing with
+    'SES ... not found' — issue 2026-11-02, EXPERTA SES021.
+    """
+    from arqux.core.state._crud import crud_add, crud_section_id_for_title
+    from arqux.pulse import compact_session_pulse
+
+    proj = _bootstrap_project(tmp_path)
+    _add_session_scoped_pulses(proj)
+
+    brain = proj / ".arqux" / "brain.cortex"
+    sec = crud_section_id_for_title(brain, "SESSIONS", fallback="$10")
+    crud_add(
+        brain, sec, "SES", "SES001",
+        {"state": "closed", "project": "compact-test", "date": "2026-10-29T20:44:57Z"},
+        force=True,
+    )
+
+    result = compact_session_pulse(proj, session_id="SES001", agent_id="test")
+    assert result.get("compacted") is True, result
+    assert result.get("pruned") == 6
+
+
+# ---------------------------------------------------------------------------
 # compact_session_pulse — first session (no previous SES)
 # ---------------------------------------------------------------------------
 

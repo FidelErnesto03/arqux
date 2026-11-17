@@ -17,7 +17,8 @@ import { lineOfSection, parseCodecErrors, sectionAtLine } from './diagnostics';
 import { sigilTokenAt } from './cortexModel';
 import { inlineDecorationOptions } from './server/core';
 import { PreviewPanel } from './previewPanel';
-import { renderHcortexBody } from './webviewKit';
+import { renderDiagram } from './diagramRenderer';
+import { renderHcortexBody, takeDiagramQueue } from './webviewKit';
 
 function debounceMs(): number {
   return vscode.workspace.getConfiguration('cortex')
@@ -367,7 +368,7 @@ async function refreshDocument(
     panel.setDocumentTitle(doc.fileName);
     panel.update({
       bodyHtml: result.hcortex.ok
-        ? renderHcortexBody(result.hcortex.stdout)
+        ? await injectDiagrams(renderHcortexBody(result.hcortex.stdout))
         : `<p class="hc-error">${escapeHtml(result.hcortex.stderr || 'to-hcortex failed')}</p>`,
       hcortex: result.hcortex.stdout,
       badges,
@@ -464,7 +465,7 @@ async function exportPreview(): Promise<void> {
       `table{border-collapse:collapse}td,th{border:1px solid #999;padding:4px 8px}` +
       `.badge{display:inline-block;padding:2px 8px;border-radius:10px;background:#444;color:#fff;font-size:.8em}</style>` +
       `</head><body>\n<!-- HCORTEX source (tags preserved):\n${res.stdout.replace(/-->/g, '--\\>')}\n-->\n` +
-      `${renderHcortexBody(res.stdout)}</body></html>`
+      `${await injectDiagrams(renderHcortexBody(res.stdout))}</body></html>`
     : res.stdout;
   await vscode.workspace.fs.writeFile(uri, Buffer.from(content, 'utf8'));
   void vscode.window.showInformationMessage(`Preview exportada → ${uri.fsPath}`);
@@ -538,6 +539,25 @@ async function applyHcortexEdit(
   } else {
     panel?.reportEditResult(false, 'WorkspaceEdit rechazado por VS Code.');
   }
+}
+
+/**
+ * 0.4.2: render queued diagram specs (plantuml/mermaid via local CLIs)
+ * and fill each `.dgm-slot` with inline SVG. Failed/absent renderers
+ * leave the source-fallback details intact.
+ */
+async function injectDiagrams(bodyHtml: string): Promise<string> {
+  const specs = takeDiagramQueue();
+  if (!specs.length) { return bodyHtml; }
+  let out = bodyHtml;
+  for (const s of specs) {
+    const svg = await renderDiagram(s.lang, s.source);
+    if (!svg) { continue; }
+    out = out.replace(
+      `<div class="dgm-slot" data-dgm="${s.id}"></div>`,
+      `<div class="dgm-slot dgm-ok" data-dgm="${s.id}">${svg}</div>`);
+  }
+  return out;
 }
 
 function escapeHtml(s: string): string {
