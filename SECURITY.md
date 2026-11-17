@@ -1,93 +1,89 @@
-# Security Policy
+---
+doc_type: canon
+status: normative
+version: 1.0.0
+verified: 2026-11-15
+---
 
-## Supported Versions
+<!-- DOC-BRAND -->
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="./docs/assets/brand/arqux-logo-primary-dark.svg">
+    <img alt="ArqUX" src="./docs/assets/brand/arqux-logo-primary-light.svg" width="240">
+  </picture>
+</p>
+<p align="center"><sub>Canon · Normativo · ArqUX 1.0.0</sub></p>
+<!-- /DOC-BRAND -->
 
-| Version | Supported          |
-| ------- | ------------------ |
-| 0.9.x   | :white_check_mark: |
-| < 0.9   | :x:                |
+# Política de seguridad
 
-## Reporting a Vulnerability
+## Versiones soportadas
 
-To report a security vulnerability, please contact the maintainers directly:
+| Versión | Soportada |
+|---|---|
+| 1.0.x | ✅ |
+| ≤ 0.9.x | ❌ — actualiza a 1.0.x |
 
-- **Email**: security@arqux.dev
-- **PGP Key**: Available at `https://arqux.dev/pgp-key.txt`
+> Nota honesta: `pip install arqux` puede servir aún la serie 0.9.x desde PyPI mientras el repositorio declara 1.0.0. Solo la línea 1.0.x recibe correcciones de seguridad.
 
-You should receive an acknowledgment within **48 hours**. If you don\'t, please follow up.
+## Cómo reportar una vulnerabilidad
 
-### Disclosure SLA
+**Canal: GitHub Security Advisories (Private Vulnerability Reporting).**
 
-| Phase | Timeline |
-|-------|----------|
-| Acknowledgment | ≤ 48 hours |
-| Triage & impact assessment | ≤ 5 business days |
-| Patch release (CRITICAL) | ≤ 15 days |
-| Patch release (MODERATE) | ≤ 45 days |
-| Coordinated public disclosure | After patch release |
+1. Abre el repositorio [`FidelErnesto03/arqux`](https://github.com/FidelErnesto03/arqux).
+2. Pestaña **Security** → **Advisories** → **Report a vulnerability**.
+3. El reporte es privado por defecto: solo los mantenedores lo ven hasta la divulgación coordinada.
 
-## Security Model
+Incluye en el reporte:
 
-ArqUX implements a **three-role governance model** with optional HMAC-based identity verification:
+- Descripción del impacto y condiciones para dispararlo
+- Pasos de reproducción o PoC mínima
+- Versión afectada (`arqux --version` / `pyproject.toml`)
+- Archivos o handlers involucrados si los conoces
 
-- **GOVERNOR**: Full access to all handlers (Alfred). Can mutate state.
-- **EXECUTOR**: Universal access except `workspace.init` and `project.init` (Jarvis). Can mutate state.
-- **AUDITOR**: **Read-only** (Heimdall, Seshat). Denylist model — can call any handler except `GOVERNOR_ONLY`, `MUTATING_HANDLERS`, and `CONDITIONAL_MUTATING` invocations that actually mutate (dry-run previews and read modes stay allowed).
+**No uses issues públicos ni PRs** para vulnerabilidades sin divulgar.
 
-### MUTATING_HANDLERS (P0-B, reconciled T-020)
+## Qué esperar (ventanas honestas, best effort)
 
-The following handlers mutate state unconditionally (or by default) and are denied to AUDITOR role:
+Somos un proyecto pequeño; declaramos objetivos realistas, no SLA contractuales:
 
-- All `blueprint.*` except `blueprint.read`, `blueprint.list`
-- All `task.create`, `task.claim`, `task.update`, `task.complete`, `task.fail`, `task.run`
-- `cycle.create`, `cycle.close`, `cycle.synthesize`
-- `evidence.record`
-- `cortex.entry.add`, `cortex.entry.delete`, `cortex.entry.update`, `cortex.entry.move`, `cortex.write`, `cortex.checkpoint`
-- `session.context.set`, `session.close`, `session.bootstrap`, `session.handoff`, `session.pulse.compact` (`session.resume` is a pure read — auditor-allowed)
-- `project.bind`, `project.unbind`, `project.init`
-- `protocol.adopt`, `protocol.onboard`, `protocol.release`, `protocol.pause`, `protocol.resume`
-- `identity.record`
-- `skill.record`, `skill.import`, `skill.convert`, `skill.install`
-- `sync.run`, `sync.reconcile`, `setup.plantuml`
-- `workspace.init`
+| Fase | Ventana objetivo |
+|---|---|
+| Acuse de recibo | ~7 días |
+| Triaje y evaluación de severidad | ~14 días |
+| Corrección + release | Según severidad; las críticas se priorizan |
+| Divulgación coordinada | Tras el release del fix, acordada contigo |
 
-### CONDITIONAL_MUTATING (T-020)
+Si la ventana se excede, un bump en el advisory es bienvenido — no publicites antes del acuerdo de divulgación.
 
-Denied to AUDITOR only when the invocation mutates (all gate flags truthy AND `dry_run` falsy):
+## Alcance
 
-- `cortex.learn.elevate` (`apply`), `cortex.file.validate` (`fix`), `cortex.gc` (`force` + `dry_run=false`),
-  `cortex.patch` / `cortex.migrate` (mutate unless `dry_run=true`),
-  `skill.evolve` (`apply`), `skill.edit` (`content` provided)
+**Reporta (in-scope):**
 
-### HMAC Identity Verification
+- Bypass del modelo de permisos (un AUDITOR ejecutando handlers mutantes)
+- Bypass o debilidad de la verificación HMAC o de la frontera codec fail-closed
+- Firmas Ed25519 aceptadas inválidas / integridad SHA-256 eludida
+- Vulnerabilidades en dependencias core que afecten a ArqUX
+- Escrituras gobernadas que evaden el check `secret_pattern` u otras reglas `enforce:CODE`
 
-Handlers requiring explicit identity verification:
-- `identity.record`
-- `evidence.record`
-- `blueprint.re_delegate`
+**No reportes aquí (out-of-scope):**
 
-Set `ARQUX_STRICT_SECURITY=1` to enforce HMAC verification.
+- Comportamiento indeseado de agentes LLM de terceros (hallucinations, jailbreaks del modelo)
+- Vulnerabilidades de harness/clientes MCP externos, no del código de ArqUX
+- Problemas de tus propias reglas de política o configuración
+- Denegación de servicio por recursos del entorno del usuario
 
-### Cortex Integrity
+## Divulgación
 
-All `.cortex` files support SHA-256 integrity hashes via the `$INTEGRITY` header.
-Auto-signing is NOT applied on write; integrity is verified on demand via `arqux cortex-verify` (P1-P / P1-Q reconciliation — see BLP-014).
+Coordinada: publicamos el advisory junto con el fix, con crédito al reportero si lo desea. Pedimos no divulgar hasta entonces.
 
-Verify integrity with:
-```bash
-arqux cortex-verify <path-to-cortex-file>
-```
+## Práctica propia
 
-## Security Best Practices
+Este producto aplica a sí mismo lo que vende: políticas y evidencia de gobierno se firman con Ed25519 puro (REQ-12) y la integridad de archivos `.cortex` se verifica por SHA-256 (`arqux cortex-verify`). Si encuentras una forma de falsificar esa cadena de evidencia, es exactamente la clase de hallazgo que más nos interesa.
 
-1. Always run with `ARQUX_STRICT_ROLES=1` in production
-2. Use `ARQUX_STRICT_SECURITY=1` for HMAC enforcement
-3. Store agent secrets in `.arqux/secrets/` with mode 0600
-4. Rotate agent secrets periodically via `generate_secret()`
-5. Never commit `.key` files to version control
-6. Verify `.cortex` integrity regularly with `arqux cortex-verify`
-7. Use the AUDITOR role for any agent that should not mutate state — the enforcement is now strict (P0-B)
+Ver también: [`THREAT_MODEL.md`](THREAT_MODEL.md) — modelo de amenazas completo · [`PERMISSIONS.md`](PERMISSIONS.md) — modelo de autorización.
 
-## Threat Model
-
-See [THREAT_MODEL.md](THREAT_MODEL.md) for the full threat model.
+<!-- DOC-FOOT -->
+<hr>
+<p align="center"><sub>ArqUX 1.0.0 · verificado 2026-11-15 · <a href="./docs/es/README.md">índice de documentación</a></sub></p>
+<!-- /DOC-FOOT -->

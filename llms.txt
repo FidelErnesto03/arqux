@@ -1,0 +1,50 @@
+# ArqUX
+
+> Governance infrastructure for AI-agent teams: workspaces, sessions, cycles, blueprints, evidence, and memory — 115 MCP handlers over stdio.
+
+Primary human docs are Spanish (`docs/es/`); `docs/en/` is the complete 1:1 English mirror (same paths, English body), and `docs/en/root/` holds the English twins of the root documents. This index is curated by agent task, not by topic.
+
+## Install & first run
+
+- [README](README.md) — [Platform] use when: you need the 30-second product door, badges, and install note (`pip install arqux` currently serves 0.9.0).
+- [Quick start ES](docs/es/tutorial/inicio-rapido.md) — [Tutorial] use when: you want a governed workspace end-to-end (~10 min, verified commands).
+- [Getting started EN](docs/en/tutorial/inicio-rapido.md) — [Tutorial] use when: English quick start preferred.
+- [CLI reference](docs/es/referencia/cli.md) — [Reference] use when: checking whether an `arqux <cmd>` exists and its flags.
+- [Configuration](docs/es/referencia/configuracion.md) — [Reference] use when: setting env vars, `ARQUX_AGENT_ID`, `.arqux/` layout.
+- [Deployment](docs/es/guias/despliegue.md) — [Guide] use when: deploying ArqUX — modes, env vars, hardening, shared journal, measured perf.
+
+## Connect via MCP
+
+- [Agent boot](docs/es/guias/arranque-agente.md) — [Guide] use when: starting an agent session — `arqux wake`, identity, tier, bootstrap.
+- [Architecture](ARCHITECTURE.md) — [Explanation] use when: you need the real 1.0.0 layout — 18 handler modules, layers, codec boundary.
+- [Handlers reference](HANDLERS.md) — [Reference] use when: looking up a handler's params/types (generated from REGISTRY).
+
+## Operate governance
+
+- [Project to agents](docs/es/guias/proyectar-agentes.md) — [Guide] use when: generating `AGENTS.md`/`CLAUDE.md`/`GEMINI.md` via `sync-harnesses` and detecting drift.
+- [Sync a team](docs/es/guias/sincronizar-equipo.md) — [Guide] use when: pushing/pulling policies between teammates.
+- [Permissions](PERMISSIONS.md) — [Reference] use when: checking which role can call which handler (115-row generated table, HMAC flags).
+
+## Audit & verify
+
+- [Audit work](docs/es/guias/auditar-trabajo.md) — [Guide] use when: running `arqux review` and tamper-detection flows.
+- [Evidence & compliance](docs/es/guias/evidencia-y-cumplimiento.md) — [Guide] use when: preparing a CISO/compliance evidence package.
+- [Evidence catalog](EVIDENCE.md) — [Reference] use when: checking which evidence artifacts exist and how each is verified.
+- [Threat model](THREAT_MODEL.md) — [Reference] use when: mapping a security control to its mechanism and executable verification.
+- [Journal & order](docs/es/explicacion/journal-y-orden.md) — [Explanation] use when: understanding why the journal exists and how ordering works.
+- [Test suite](docs/es/explicacion/test-suite-framework.md) — [Explanation] use when: understanding the evidence-derived test suite.
+
+## Understand the design
+
+- [Codec boundary](docs/es/explicacion/frontera-codec.md) — [Explanation] use when: separating what ArqUX owns vs `codec-cortex` 1.0.x.
+- [Edge cases](docs/es/explicacion/casos-limite.md) — [Explanation] use when: concurrent access, empty brain, invalid cortex, missing handler/identity.
+- [CORTEX canon](docs/es/especificacion/README.md) — [Canon] use when: reading the normative `.cortex` format spec — 17 docs indexed at corpus level via this README.
+- [Failure catalog](docs/es/referencia/errores.md) — [Reference] use when: mapping an `ERR_*`/`POLICY_*` code to its meaning.
+- [Product formats](docs/es/referencia/formatos.md) — [Reference] use when: parsing artifact formats (evidence, brain, manifests).
+
+## Project
+
+- [Contributing](CONTRIBUTING.md) — [Guide] use when: setting up a dev env and submitting a change.
+- [Security policy](SECURITY.md) — [Policy] use when: reporting a vulnerability (GitHub Private Vulnerability Reporting).
+- [Code of conduct](CODE_OF_CONDUCT.md) — [Policy] use when: checking community norms.
+- [Changelog](CHANGELOG.md) — [History] use when: tracing what shipped per version.

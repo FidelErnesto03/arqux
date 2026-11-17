@@ -1,231 +1,106 @@
-# Evidence Model
-
-> **Document version:** 1.0 (2026-07-12)
-> **ArqUX version:** 0.4.3+
-
-This document describes the evidence model in ArqUX: what evidence is, how it is recorded, how it is verified, and its limitations.
-
+---
+doc_type: report
+status: normative
+version: 1.0.0
+verified: 2026-11-15
 ---
 
-## 1. Overview
+<!-- DOC-BRAND -->
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="./docs/assets/brand/arqux-logo-primary-dark.svg">
+    <img alt="ArqUX" src="./docs/assets/brand/arqux-logo-primary-light.svg" width="240">
+  </picture>
+</p>
+<p align="center"><sub>Reporte · Normativo · ArqUX 1.0.0</sub></p>
+<!-- /DOC-BRAND -->
 
-Evidence in ArqUX is the **append-only, tamper-evident** record of agent actions. Every state-mutating handler invocation generates an evidence entry that records who did what, when, and to what artifact.
+# Modelo de evidencia de ArqUX
 
-Evidence serves three purposes:
-1. **Auditability** — any stakeholder can review what happened and why
-2. **Non-repudiation** — agents cannot deny having performed an action (HMAC-signed)
-3. **Learning** — the learning engine mines evidence for patterns to elevate into lessons
+Qué constituye evidencia en ArqUX 1.0.0, con qué campos reales, quién la escribe, quién la verifica y qué queda explícitamente fuera. Documento para auditor: cada afirmación es verificable contra el código o un artefacto generable.
 
----
+## Qué es evidencia en ArqUX
 
-## 2. Evidence Lifecycle
+La evidencia es el registro **append-only y tamper-evident** de las acciones del agente. Cada invocación de handler que muta estado produce una entrada: quién hizo qué, cuándo y sobre qué artefacto. Sirve a tres fines:
 
-```
-Agent invokes handler
-  │
-  ▼
-Handler enforces permissions (ctx.check)
-  │
-  ▼
-Handler executes mutation (e.g. blueprint.approve)
-  │
-  ▼
-Handler calls evidence.record (or sync_brain does it implicitly)
-  │
-  ▼
-evidence.record writes PULSE entry to brain.cortex
-  │ - event_id: E-NNNN (sequential)
-  │ - agent: ctx.agent_id
-  │ - handler: e.g. "blueprint.approve"
-  │ - task_id, cycle, blueprint (if applicable)
-  │ - payload: string representation of inputs
-  ▼
-Auto-signing (P1-P): NOT applied on write — integrity verified on demand via `arqux cortex-verify` (BLP-014 reconciliation)
-  │
-  ▼
-sync_brain updates meta-brain.cortex $2/DOM:arqux metrics
-  │
-  ▼
-evidence.list / evidence.read for retrieval
-```
+1. **Auditabilidad** — cualquier parte puede revisar qué pasó y por qué.
+2. **Integridad verificable** — sello SHA-256 por archivo `.cortex`; alterar un byte rompe la verificación.
+3. **Aprendizaje** — el motor de aprendizaje mina la evidencia para elevar patrones a lecciones.
 
----
+## Catálogo de artefactos de evidencia
 
-## 3. Evidence Handlers
+### 1. Timelog — `.arqux/timelog/SES<NNN>_<timestamp>.cortex`
 
-### 3.1 `evidence.record`
+Registro nativo de trabajo por sesión. Secciones reales:
 
-Records a new evidence entry in the brain's PULSE section.
+| Sección | Sigilo | Campos reales |
+|---|---|---|
+| `$1 IDENTITY` | `TLG:identity` | `project`, `ses`, `opened` (ISO-8601 UTC), `version`, `revision` |
+| `$2 ACTIVITIES` | `ACT:<nombre>` | `start`, `end`, `state` (open/closed), `last_activity`, `revision` |
+| `$3 RECEIPTS` | `RCV:<nombre>` | Recibo de proyección externa |
+| `$4 PROJECTIONS` | `PRJ:<nombre>` | Marca de proyección por proveedor |
 
-**Input schema:**
-```json
-{
-  "agent_id": "string (default: from ctx)",
-  "handler": "string (canonical name)",
-  "task_id": "string (optional)",
-  "cycle": "string (optional)",
-  "blueprint": "string (optional)",
-  "payload": "string (inputs/outputs summary)"
-}
-```
+Todo intervalo lleva timestamps ISO-8601 UTC y un contador `revision` que se incrementa en cada escritura.
 
-**Output:** `OUT-WORK evidence.record ok event_id=E-NNNN`
+### 2. Sello de ciclo — `seal.cortex`
 
-**Permissions:** HMAC_REQUIRED — agent must be verified (in strict mode)
+`seal_sha256:"<hex>"` — hash SHA-256 del artefacto. **Verificación**: `arqux cortex-verify <archivo>` recomputa cada hash declarado y falla sobre cualquier divergencia.
 
-### 3.2 `evidence.list`
+### 3. Bundle de evidencia — `arqux evidence export`
 
-Lists evidence entries from the brain's PULSE section.
+Genera un `.cortex` consolidado con sigilo raíz `EVD` y eventos por tipo:
 
-**Filters:** `agent`, `handler`, `cycle`, `task_id`, `since` (timestamp)
+| Sigilo | Contenido |
+|---|---|
+| `ARQX` | Metadatos del artefacto |
+| `SPN` | Span de ejecución (intervalo de sesión) |
+| `AUD` | Evento de auditoría |
+| `DEC` | Evento de decisión |
+| `ERR` | Evento de error |
+| `LOOP` | Evento de loop |
 
-**Output:** `OUT-WORK events=N` with list of matching entries
+**Privacidad obligatoria**: el export escanea los timelogs por campos marcados `private`. Si encuentra alguno, **bloquea** con `PermissionError` salvo que se pase `--redact-private` (los elimina del bundle) o `--allow-raw` (los incluye, decisión explícita). No hay modo silencioso.
 
-**Permissions:** Read-only — allowed for all roles
+### 4. Firmas Ed25519 — REQ-12
 
-### 3.3 `evidence.read`
+Firma real (no opcional): `arqux policy sign <doc> <key>` añade una entrada `SIG:signature` al documento `.cortex`; `arqux policy verify <doc>` la valida. La firma cubre los bytes canónicos del documento **excluyendo** sus propias líneas `SIG:` — alterar cualquier otro atributo produce `ERR_INVALID_SIGNATURE`. `generate_keypair` genera el par de claves.
 
-Reads a single evidence entry by `event_id`.
+### 5. Journal — `journal.cortex` (REQ-13)
 
-**Input:** `event_id` (e.g. `E-0001`)
+Registro autoritativo de sincronización multi-workspace: `JRN:journal{version, deltas, rules, updated}`. **Optimistic locking**: un push declara su `base_version`; si no iguala la versión actual del journal, el push es rechazado — la divergencia queda visible, nunca sobreescrita en silencio. `$3 POLICY` publica las reglas autoritativas (`pull_policy`).
 
-**Output:** Full entry detail
+## Cadena de custodia
 
-**Permissions:** Read-only — allowed for all roles
+| Artefacto | Escribe | Verifica |
+|---|---|---|
+| Timelog | Handlers de lifecycle por sesión | `arqux cortex-verify` + lectura de secciones |
+| Sello | Handler al sellar ciclo | `arqux cortex-verify` (recomputa SHA-256) |
+| Bundle | `arqux evidence export` | Diff campos↔timelogs + gate de privacidad |
+| Firma | `arqux policy sign` (Ed25519) | `arqux policy verify` |
+| Journal | `push_delta` con `base_version` | Rechazo de base obsoleta + `journal_version` |
 
----
+## Qué NO es evidencia en ArqUX
 
-## 4. PULSE Entry Format
+Declarado explícitamente para que el auditor no infiera de más:
 
-Each evidence entry is stored as a `SES` (session) sigil in the brain's `$8` PULSE section:
+- **El brain no es evidencia**: `brain.cortex` es estado mutable de trabajo (focus, lecciones, sesiones). La evidencia vive en timelogs y el PULSE append-only.
+- **Los BLPs no son evidencia**: son planes. La evidencia de su ejecución está en el PULSE y los artifacts.
+- **Screenshots y logs de terminal no son evidencia**: lo es el evento `AUD`/`DEC`/`ERR` persistido en `.cortex`.
+- **El bundle sin sello ni firma es exportación, no prueba**: adquiere valor probatorio al verificarse contra los timelogs y el sello.
+- **Marcas `private` no salen en el bundle por defecto**: la evidencia exportable es, por diseño, un subconjunto de la evidencia interna.
 
-```
-$8: PULSE
+## Madurez declarada
 
-SES:E-0001{agent:"alfred", handler:"blueprint.approve", cycle:"CYCLE-01", blueprint:"BLP-005", payload:"approved after AC verification", ts:"2026-07-12T10:30:00Z"}
-SES:E-0002{agent:"jarvis", handler:"task.complete", cycle:"CYCLE-01", task_id:"T-003", payload:"all tests pass", ts:"2026-07-12T10:35:00Z"}
-```
+| Pieza | Estado 1.0.0 |
+|---|---|
+| Timelog con timestamps y revisiones | Implementado |
+| Sello SHA-256 verificable | Implementado |
+| Export de bundle con gate de privacidad | Implementado (REQ-11) |
+| Firma Ed25519 sign/verify | Implementado (REQ-12) |
+| Journal con optimistic locking | Implementado (REQ-13) |
+| HMAC-SHA256 en autenticación de identidad de agente | Implementado (`security.py` — firma de mensajes agente↔workspace) |
 
-### Fields
-
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `agent` | string | yes | Agent ID (from `ctx.agent_id`) |
-| `handler` | string | yes | Canonical handler name |
-| `task_id` | string | no | Task ID if handler operates on a task |
-| `cycle` | string | no | Cycle ID if applicable |
-| `blueprint` | string | no | Blueprint ID if applicable |
-| `payload` | string | yes | Inputs/outputs summary (NOT the full payload) |
-| `ts` | ISO 8601 | yes | Timestamp (UTC) |
-
-### Limitations (current version)
-
-- **`role` NOT recorded** — the agent's role is not persisted in the entry (planned for v0.5.0)
-- **`ts` is implicit** — the event_id `E-NNNN` is sequential, not temporal; the `ts` field is planned for v0.5.0
-- **No payload hash** — the `payload` field is a string summary, not a SHA-256 hash of the actual payload (planned for v0.5.0)
-
----
-
-## 5. Integrity Verification
-
-### 5.1 File-level integrity (current)
-
-Every `.cortex` file (including `brain.cortex` with its PULSE section) is signed with a `$INTEGRITY` header:
-
-```
-# $INTEGRITY: sha256:abc123...
-$0
-# glossary...
-$8: PULSE
-SES:E-0001{...}
-```
-
-`arqux cortex-verify <path>` recomputes the SHA-256 of the content (excluding the header) and compares. Mismatch → `TamperError`.
-
-### 5.2 Entry-level integrity (planned for v0.5.0)
-
-Each PULSE entry will include a per-entry hash:
-
-```
-SES:E-0001{agent:"alfred", handler:"blueprint.approve", ..., hash:"sha256:..."}
-```
-
-The hash covers all other fields in the entry. This prevents an attacker from modifying a single entry without detection (current file-level hash detects any modification, but cannot pinpoint which entry was altered).
-
-### 5.3 Non-repudiation (Ed25519, optional)
-
-For high-assurance scenarios, `.cortex` files can be Ed25519-signed:
-
-```
-# $INTEGRITY: sha256:abc123...
-# $SIGNATURE: ed25519:def456...
-# $SIGNER: alfred
-$0
-...
-```
-
-`sign_cortex()` requires a private key (`private_key_pem` arg) and a signer name. `verify_cortex_signature()` requires the corresponding public key.
-
----
-
-## 6. Audit Workflow
-
-### 6.1 Daily audit
-
-```bash
-# List all evidence entries from today
-arqux call evidence.list since=2026-07-12
-
-# Verify brain integrity
-arqux cortex-verify .arqux/brain.cortex
-arqux cortex-verify .arqux/meta-brain.cortex
-
-# Check for unexpected agents
-arqux call evidence.list | grep -v "agent=alfred\|agent=jarvis\|agent=heimdall"
-```
-
-### 6.2 Weekly audit
-
-```bash
-# List all evidence from the past week
-for day in Mon Tue Wed Thu Fri Sat Sun; do
-  arqux call evidence.list since=2026-07-0$((RANDOM%9+1))
-done
-
-# Verify all .cortex files
-find .arqux -name "*.cortex" -exec arqux cortex-verify {} \;
-```
-
-### 6.3 Incident investigation
-
-If an incident is suspected:
-
-1. **Freeze state** — stop all agents, do NOT modify `.arqux/`
-2. **Verify integrity** — `find .arqux -name "*.cortex" -exec arqux cortex-verify {} \;`
-3. **Export evidence** — `arqux call evidence.list > evidence-export.json`
-4. **Identify timeline** — sort evidence by `ts` (or `event_id` order)
-5. **Identify actor** — group by `agent`
-6. **Cross-reference** — match evidence entries with handler outputs
-7. **Restore** — `arqux restore <backup-before-incident>`
-
----
-
-## 7. Limitations (current version)
-
-| Limitation | Impact | Mitigation | Planned Fix |
-|------------|--------|------------|-------------|
-| `role` not recorded | Cannot audit which role an agent acted as | Cross-reference with `agents.cortex` | v0.5.0 |
-| `ts` not explicitly recorded | Cannot sort chronologically (only by event_id) | Use event_id order (sequential) | v0.5.0 |
-| No payload hash | Cannot verify payload integrity after the fact | Trust file-level hash | v0.5.0 |
-| No entry-level hash | Cannot pinpoint which entry was tampered | File-level hash detects any change | v0.5.0 |
-| Sequential event_id | Not globally unique across workspaces | Workspace-scoped is sufficient for pilot | v0.6.0 (UUID option) |
-| No evidence export CLI | Must use `evidence.list` and pipe | Use `arqux call evidence.list > export.json` | v0.5.0 |
-
----
-
-## 8. References
-
-- [SECURITY.md](SECURITY.md) — security policy
-- [THREAT_MODEL.md](THREAT_MODEL.md) — threat model
-- [architecture/diagrams/learning-pipeline.puml](docs/architecture/diagrams/learning-pipeline.puml) — learning pipeline
-- [PILOT_MODE.md](PILOT_MODE.md) — pilot deployment guide
+<!-- DOC-FOOT -->
+<hr>
+<p align="center"><sub>ArqUX 1.0.0 · verificado 2026-11-15 · <a href="./docs/es/README.md">índice de documentación</a></sub></p>
+<!-- /DOC-FOOT -->

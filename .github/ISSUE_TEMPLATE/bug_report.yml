@@ -1,0 +1,55 @@
+name: Reporte de bug
+description: Algo en ArqUX no funciona como debería
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Gracias por reportar. Si esto es una **vulnerabilidad de seguridad**, no abras
+        un issue público — usa el canal privado descrito en
+        [SECURITY.md](../../SECURITY.md) (GitHub Security Advisories).
+  - type: input
+    id: version
+    attributes:
+      label: Versión de arqux
+      description: "Salida de `arqux --version` o versión en pyproject.toml"
+      placeholder: "1.0.0"
+    validations:
+      required: true
+  - type: input
+    id: os
+    attributes:
+      label: Sistema operativo
+      placeholder: "Ubuntu 24.04 / macOS 15 / Windows 11"
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Pasos para reproducir
+      description: Comandos exactos ejecutados, desde un estado inicial conocido
+      placeholder: |
+        1. `arqux init`
+        2. `arqux call ...`
+        3. Error
+    validations:
+      required: true
+  - type: textarea
+    id: expected_actual
+    attributes:
+      label: Comportamiento esperado vs real
+      description: Qué esperabas que ocurriera y qué ocurrió en realidad
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Log / evidencia
+      description: Salida de terminal, traza de error o contenido relevante (pega texto, no capturas)
+      render: shell
+  - type: textarea
+    id: context
+    attributes:
+      label: Contexto adicional
+      description: Config MCP, variables ARQUX_* relevantes, harness usado

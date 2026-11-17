@@ -1,0 +1,35 @@
+name: Propuesta de feature
+description: Una capacidad que ArqUX debería tener
+title: "[Feature]: "
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problema que resuelve
+      description: Qué no puedes hacer hoy o qué fricción elimina
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Solución propuesta
+      description: Cómo imaginas que funciona (handler, comando, comportamiento)
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternativas consideradas
+      description: Workarounds actuales o enfoques descartados
+  - type: dropdown
+    id: area
+    attributes:
+      label: Área afectada
+      options:
+        - CLI
+        - Handlers MCP
+        - Permisos / política
+        - Estado / codec CORTEX
+        - Documentación
+        - Otro

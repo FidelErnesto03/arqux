@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Vulnerabilidad de seguridad
+    url: https://github.com/FidelErnesto03/arqux/security/advisories/new
+    about: NUNCA un issue público — reporta por el canal privado (ver SECURITY.md)
+  - name: Documentación
+    url: https://github.com/FidelErnesto03/arqux/tree/master/docs/es
+    about: Guías, referencia y tutoriales en español
+  - name: Discussions / preguntas
+    url: https://github.com/FidelErnesto03/arqux/discussions
+    about: Preguntas de uso y discusión general — no bugs
