@@ -99,6 +99,39 @@ def check_meta_brain_integrity(arqux_dir: Path) -> CheckResult:
         )
 
 
+def check_codec_version_drift(arqux_dir: Path) -> CheckResult:
+    """Detect .cortex files declaring a codec version older than implemented.
+
+    BLP-005: drift means ``$0:format{...cortex:"X"...}`` where X differs from
+    the version ARQUX implements. Detection only — migration requires an
+    explicit Architect order (never auto-fix).
+    """
+    from .migrate import IMPLEMENTED_CODEC_VERSION, scan_codec_drift
+
+    drift = scan_codec_drift(arqux_dir)
+    if drift:
+        detail = "; ".join(
+            f"{r.path.relative_to(arqux_dir)} (cortex:{r.declared} → {IMPLEMENTED_CODEC_VERSION})"
+            for r in drift[:10]
+        )
+        if len(drift) > 10:
+            detail += f"; … +{len(drift) - 10} more"
+        return CheckResult(
+            name="codec-version-drift",
+            status="fail",
+            message=f"{len(drift)} .cortex file(s) declare a codec version older than {IMPLEMENTED_CODEC_VERSION}",
+            detail=detail,
+            fixable=False,
+            context="both",
+        )
+    return CheckResult(
+        name="codec-version-drift",
+        status="pass",
+        message=f"All .cortex files declare codec {IMPLEMENTED_CODEC_VERSION} or are unversioned",
+        context="both",
+    )
+
+
 def check_metadata_section(arqux_dir: Path) -> CheckResult:
     """Verify .cortex files do not use the deprecated ``$0.1`` marker.
 
@@ -631,6 +664,7 @@ def run_all(path: str | None = None, fix: bool = False) -> CortexOUT:
     checks.append(check_gitignore(arqux_dir))
     fixes["fix_gitignore"] = fix_gitignore
     checks.append(check_metadata_section(arqux_dir))
+    checks.append(check_codec_version_drift(arqux_dir))
 
     if ctx == "workspace":
         checks.append(check_meta_brain_integrity(arqux_dir))

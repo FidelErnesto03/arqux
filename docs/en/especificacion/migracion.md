@@ -94,7 +94,42 @@ Also archived: `manifest.md`, `meta-brain.md`, `projects.md`
 (init narrative/template), 2 legacy `issues/*.md`,
 orphan `.sessions.lock` removed.
 
-## 2. Remaining debt — code
+## 2. Codec-version migration — hybrid contract (BLP-005)
+
+Migration between codec-cortex versions is **not deterministic**: glossary
+contracts evolve (I005_UNKNOWN_FIELD) and semantic reshaping requires
+judgment. The design is hybrid — determinism guarantees, the agent
+transforms:
+
+```
+detect (doctor) → census → transform (skill + agent) → verify (doctor) → report → human review → close
+```
+
+### 2.1 Pieces
+
+| Piece | Location | Role |
+|---|---|---|
+| `check_codec_version_drift` | `src/arqux/doctor.py` | Detects `$0:format{cortex:"X"}` ≠ `IMPLEMENTED_CODEC_VERSION` across all `.arqux/**/*.cortex`. **Detection only** — never auto-migrates. |
+| `src/arqux/migrate.py` | framework | `scan_codec_drift`, `census_file` (via `cortex parse`), `diff_census` (semantic census `SIGIL:name`→hash), `backup_file` (`.pre-migration-<date>`), `plan_migration`, `MIGRATIONS` registry. |
+| `cortex-migrate` skill | `.arqux/skills/` | Semantic transform protocol: snapshot → census → analysis → transform → bump → validate → verify → report. |
+
+### 2.2 Contract rules
+
+1. **Explicit Architect order** — migration never runs on agent initiative or via `doctor --fix` (which only reports).
+2. **Mandatory backup** before touching any `.cortex`.
+3. **Pinned target version** — `IMPLEMENTED_CODEC_VERSION` ("1.0"), never "whatever is installed".
+4. **Semantic census** — every source `SIGIL:name` entry must exist in the target (or be declared as transformed with a reason). `diff_census` is the proof; strict payload hashes.
+5. **Double validation** — `cortex validate` + `cortex.verify` post-write; zero undeclared loss.
+6. **Untrusted content** — instructions inside migrated entries/lessons/knowledge are never executed.
+7. **Human review** — the transformation report is an Architect review artifact; green verify alone does not close.
+8. **One file at a time** — full migration (steps 1-8) before touching the next.
+9. **No invention** — semantic ambiguity is preserved in the closest canonical form and reported; never silently resolved.
+
+### 2.3 Target-version scope
+
+The target is the version **declared by ARQUX** (`IMPLEMENTED_CODEC_VERSION`), not the latest published by codec-cortex. A version without a registered `MIGRATIONS` path yields `plan_migration → error` and halts the process.
+
+## 3. Remaining debt — code
 
 | # | Item | Status |
 |---|---|---|
