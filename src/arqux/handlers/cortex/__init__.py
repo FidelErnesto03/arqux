@@ -89,7 +89,10 @@ handler_schemas = [
         "input_schema": {
             "type": "object",
             "properties": {
-                "path": {"type": "string"},
+                "path": {
+                    "type": "string",
+                    "description": "REQUIRED. Path to the .cortex file to read (e.g. /ws/PROY/.arqux/brain.cortex).",
+                },
                 "mode": {
                     "type": "string",
                     "enum": ["cortex", "hcortex"],

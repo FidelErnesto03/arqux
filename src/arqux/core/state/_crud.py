@@ -706,9 +706,19 @@ def _write_mutated(path: Path, doc: dict, *, force: bool, dry_run: bool) -> dict
     except Exception as e:
         return {"error": f"Atomic write failed: {e}", "non_bypassable": True}
 
+    # file_bytes must describe the artifact as it exists after the replace,
+    # not the serialized text in memory — when a concurrent writer is racing
+    # this write the on-disk truth wins (issue 2026-11-17). Falls back to the
+    # in-memory byte count if stat fails (e.g. exotic filesystems).
+    try:
+        file_bytes = path.stat().st_size
+    except OSError:
+        file_bytes = result.bytes_written
+
     return {
         "path": str(path),
         "bytes_written": result.bytes_written,
+        "file_bytes": file_bytes,
         "backup": result.backup,
         "diagnostics": [],
     }

@@ -8,6 +8,8 @@ from collections import defaultdict
 from pathlib import Path
 from typing import Any
 
+from ...concurrency import reentrant_file_lock as _reentrant_file_lock
+
 # BLP-005: Use ArqUX's own atomic writer instead of CODEC-CORTEX transactions.
 from ...cortex.atomic import atomic_write_json
 from ...cortex.crud import _entry_matches
@@ -28,6 +30,25 @@ from ...state import (
 from .read_write import _next_number
 
 DEFAULT_LIST_LIMIT = 50
+
+
+def _file_lock(path: str):
+    """Sidecar lock for the WHOLE read→mutate→guard sequence of a handler.
+
+    ``crud_*`` already serialises its internal read+write under this lock
+    (CYCLE-14/BLP-001), but every handler also performs reads OUTSIDE that
+    window — pre-write snapshots (``_snapshot``), uniqueness resolution
+    (``_entry_exists``/``_next_number``), rollback-byte capture, the
+    post-write guard and any rollback. Without exclusion between them, a
+    concurrent writer commits in the middle: two same-named adds resolve to
+    the same ``_XXXX`` suffix, or a rollback restores a stale snapshot and
+    silently discards a committed concurrent write (issue
+    2026-11-17-file-bytes-no-monotono-en-cortex-entry-add-paral).
+    The lock is reentrant, so the nested ``crud_*`` acquisition does not
+    deadlock.
+    """
+    p = Path(path)
+    return _reentrant_file_lock(p.with_name(p.name + ".lock"))
 
 
 def entry_get_handler(
@@ -368,28 +389,33 @@ def entry_add_handler(
             code="INVALID_ARGS",
         )
 
-    requested_name = name
-    numbered_name = name
-    while _entry_exists(path, section, sigil, numbered_name):
-        numbered_name = f"{requested_name}{_next_number(path, section, sigil, requested_name)}"
+    # The uniqueness resolution + pre-write snapshot + mutation + guard are
+    # one critical section: outside the lock a concurrent add of the same
+    # sigil:name resolves the same free suffix and the second write silently
+    # replaces the first (issue 2026-11-17).
+    with _file_lock(path):
+        requested_name = name
+        numbered_name = name
+        while _entry_exists(path, section, sigil, numbered_name):
+            numbered_name = f"{requested_name}{_next_number(path, section, sigil, requested_name)}"
 
-    before_text = _snapshot(path)
-    try:
-        result = crud_add(path, section, sigil, numbered_name, value, create_section=create_section, force=force)
-    except FileNotFoundError:
-        return CortexOUT.error(f"file not found: {path}", code="NOT_FOUND")
-    except Exception as exc:
-        return CortexOUT.error(str(exc), code="ADD_ERROR")
+        before_text = _snapshot(path)
+        try:
+            result = crud_add(path, section, sigil, numbered_name, value, create_section=create_section, force=force)
+        except FileNotFoundError:
+            return CortexOUT.error(f"file not found: {path}", code="NOT_FOUND")
+        except Exception as exc:
+            return CortexOUT.error(str(exc), code="ADD_ERROR")
 
-    if "error" in result:
-        return _crud_error(result, "CRUD_ERROR")
+        if "error" in result:
+            return _crud_error(result, "CRUD_ERROR")
 
-    guard_error = _guard_after_write(
-        path, before_text,
-        allowed_sections={section} if section else set(),
-    )
-    if guard_error is not None:
-        return guard_error
+        guard_error = _guard_after_write(
+            path, before_text,
+            allowed_sections={section} if section else set(),
+        )
+        if guard_error is not None:
+            return guard_error
 
     renamed = numbered_name != requested_name
     message = f"entry.add ok path={path} {sigil}:{numbered_name} in {section}"
@@ -399,7 +425,7 @@ def entry_add_handler(
     # the same _format_entry the writer uses), so entry_bytes matches the
     # bytes actually on disk even when quoting normalization kicks in.
     entry_text = result.get("entry_text", f"{sigil}:{numbered_name}{{{value}}}")
-    file_bytes = result.get("bytes_written")
+    file_bytes = result.get("file_bytes", result.get("bytes_written"))
     fields: dict[str, Any] = {
         "path": path, "section": section, "sigil": sigil, "name": numbered_name,
         "bytes_written": len(entry_text.encode("utf-8")),
@@ -465,67 +491,72 @@ def entry_update_handler(
             )
 
     # BLP-014: capture the pre-write state for the post-write check/rollback.
-    before_keys: set[str] = set()
-    prev_bytes: bytes | None = None
-    if set_dict is not None:
-        before_keys = _read_attr_keys(path, selector)
+    # The whole read→mutate→check→rollback→guard chain is one critical
+    # section; outside the lock a concurrent write between _snapshot and the
+    # rollback would be discarded by restoring stale bytes (issue
+    # 2026-11-17).
+    with _file_lock(path):
+        before_keys: set[str] = set()
+        prev_bytes: bytes | None = None
+        if set_dict is not None:
+            before_keys = _read_attr_keys(path, selector)
+            try:
+                p = Path(path)
+                if p.exists():
+                    prev_bytes = p.read_bytes()
+            except Exception:
+                prev_bytes = None
+        before_text = _snapshot(path)
+        allowed_sections = _target_sections(path, selector)
+
         try:
-            p = Path(path)
-            if p.exists():
-                prev_bytes = p.read_bytes()
-        except Exception:
-            prev_bytes = None
-    before_text = _snapshot(path)
-    allowed_sections = _target_sections(path, selector)
+            result = crud_update(path, selector, set_=set_dict, replace_body=replace_body, append=append, force=force)
+        except FileNotFoundError:
+            return CortexOUT.error(f"file not found: {path}", code="NOT_FOUND")
+        except Exception as exc:
+            return CortexOUT.error(str(exc), code="UPDATE_ERROR")
 
-    try:
-        result = crud_update(path, selector, set_=set_dict, replace_body=replace_body, append=append, force=force)
-    except FileNotFoundError:
-        return CortexOUT.error(f"file not found: {path}", code="NOT_FOUND")
-    except Exception as exc:
-        return CortexOUT.error(str(exc), code="UPDATE_ERROR")
+        if "error" in result:
+            return _crud_error(result, "CRUD_ERROR")
 
-    if "error" in result:
-        return _crud_error(result, "CRUD_ERROR")
+        # BLP-014: a valid set_ must not produce attrs beyond the declared keys
+        # (or pre-existing attrs). Roll back atomically if it did — never leave a
+        # silently corrupted governance file.
+        if set_dict is not None:
+            unexpected = sorted(
+                _read_attr_keys(path, selector) - before_keys - set(set_dict.keys())
+            )
+            if unexpected:
+                rolled_back = False
+                if prev_bytes is not None:
+                    try:
+                        Path(path).write_bytes(prev_bytes)  # byte-faithful (CRLF-safe)
+                        rolled_back = True
+                    except Exception:
+                        rolled_back = False
+                status = (
+                    "rolled back"
+                    if rolled_back
+                    else "ROLLBACK FAILED — file may be inconsistent"
+                )
+                return CortexOUT.error(
+                    f"set_ produced unexpected attrs {unexpected} — {status}",
+                    code="VALIDATION",
+                    unexpected=unexpected,
+                    rolled_back=rolled_back,
+                )
 
-    # BLP-014: a valid set_ must not produce attrs beyond the declared keys
-    # (or pre-existing attrs). Roll back atomically if it did — never leave a
-    # silently corrupted governance file.
-    if set_dict is not None:
-        unexpected = sorted(
-            _read_attr_keys(path, selector) - before_keys - set(set_dict.keys())
+        guard_error = _guard_after_write(
+            path, before_text, allowed_sections=allowed_sections,
         )
-        if unexpected:
-            rolled_back = False
-            if prev_bytes is not None:
-                try:
-                    Path(path).write_bytes(prev_bytes)  # byte-faithful (CRLF-safe)
-                    rolled_back = True
-                except Exception:
-                    rolled_back = False
-            status = (
-                "rolled back"
-                if rolled_back
-                else "ROLLBACK FAILED — file may be inconsistent"
-            )
-            return CortexOUT.error(
-                f"set_ produced unexpected attrs {unexpected} — {status}",
-                code="VALIDATION",
-                unexpected=unexpected,
-                rolled_back=rolled_back,
-            )
-
-    guard_error = _guard_after_write(
-        path, before_text, allowed_sections=allowed_sections,
-    )
-    if guard_error is not None:
-        return guard_error
+        if guard_error is not None:
+            return guard_error
 
     return CortexOUT.work(
         f"entry.update ok path={path} selector={selector}",
         path=path, selector=selector,
         bytes_written=result.get("bytes_written"),
-        file_bytes=result.get("bytes_written"),
+        file_bytes=result.get("file_bytes", result.get("bytes_written")),
         backup=result.get("backup"),
     )
 
@@ -543,29 +574,30 @@ def entry_delete_handler(
     size after the rewrite (unlike ``entry.add``, where ``bytes_written``
     is the serialized entry size).
     """
-    before_text = _snapshot(path)
-    allowed_sections = _target_sections(path, selector)
-    try:
-        result = crud_delete(path, selector, force=force)
-    except FileNotFoundError:
-        return CortexOUT.error(f"file not found: {path}", code="NOT_FOUND")
-    except Exception as exc:
-        return CortexOUT.error(str(exc), code="DELETE_ERROR")
+    with _file_lock(path):
+        before_text = _snapshot(path)
+        allowed_sections = _target_sections(path, selector)
+        try:
+            result = crud_delete(path, selector, force=force)
+        except FileNotFoundError:
+            return CortexOUT.error(f"file not found: {path}", code="NOT_FOUND")
+        except Exception as exc:
+            return CortexOUT.error(str(exc), code="DELETE_ERROR")
 
-    if "error" in result:
-        return _crud_error(result, "CRUD_ERROR")
+        if "error" in result:
+            return _crud_error(result, "CRUD_ERROR")
 
-    guard_error = _guard_after_write(
-        path, before_text, allowed_sections=allowed_sections,
-    )
-    if guard_error is not None:
-        return guard_error
+        guard_error = _guard_after_write(
+            path, before_text, allowed_sections=allowed_sections,
+        )
+        if guard_error is not None:
+            return guard_error
 
     return CortexOUT.work(
         f"entry.delete ok path={path} selector={selector}",
         path=path, selector=selector,
         bytes_written=result.get("bytes_written"),
-        file_bytes=result.get("bytes_written"),
+        file_bytes=result.get("file_bytes", result.get("bytes_written")),
         backup=result.get("backup"),
     )
 
@@ -584,29 +616,30 @@ def entry_move_handler(
     size after the rewrite (unlike ``entry.add``, where ``bytes_written``
     is the serialized entry size).
     """
-    before_text = _snapshot(path)
-    allowed_sections = _target_sections(path, selector) | {to_section}
-    try:
-        result = crud_move(path, selector, to_section, force=force)
-    except FileNotFoundError:
-        return CortexOUT.error(f"file not found: {path}", code="NOT_FOUND")
-    except Exception as exc:
-        return CortexOUT.error(str(exc), code="MOVE_ERROR")
+    with _file_lock(path):
+        before_text = _snapshot(path)
+        allowed_sections = _target_sections(path, selector) | {to_section}
+        try:
+            result = crud_move(path, selector, to_section, force=force)
+        except FileNotFoundError:
+            return CortexOUT.error(f"file not found: {path}", code="NOT_FOUND")
+        except Exception as exc:
+            return CortexOUT.error(str(exc), code="MOVE_ERROR")
 
-    if "error" in result:
-        return _crud_error(result, "CRUD_ERROR")
+        if "error" in result:
+            return _crud_error(result, "CRUD_ERROR")
 
-    guard_error = _guard_after_write(
-        path, before_text, allowed_sections=allowed_sections,
-    )
-    if guard_error is not None:
-        return guard_error
+        guard_error = _guard_after_write(
+            path, before_text, allowed_sections=allowed_sections,
+        )
+        if guard_error is not None:
+            return guard_error
 
     return CortexOUT.work(
         f"entry.move ok path={path} selector={selector} to={to_section}",
         path=path, selector=selector, to_section=to_section,
         bytes_written=result.get("bytes_written"),
-        file_bytes=result.get("bytes_written"),
+        file_bytes=result.get("file_bytes", result.get("bytes_written")),
         backup=result.get("backup"),
     )
 

@@ -121,3 +121,31 @@ class TestSessionCloseErrors:
         big = "x" * 2500
         r = close(summary=big, blps="", tasks="", decisions="", gaps="", path=str(ws_root), ctx=ctx)
         assert "SES_TOO_LARGE" in r.to_text()
+
+    def test_close_orphan_records_evidence(self, ws_root, ctx, monkeypatch) -> None:
+        """Issue 2026-11-18: an execution that never bound a session can
+        still record its work summary — session.close(orphan=True) writes a
+        session_orphan PULSE instead of rejecting with SESSION_BINDING_*
+        when a foreign session exists in the project."""
+        import arqux.handlers.session as sess_mod
+        from arqux.handlers.session import close
+
+        # Seed a session owned by a DIFFERENT execution so this one is
+        # unbound-for-mutation (requires real session identity).
+        proj = ws_root / "test-project"
+        monkeypatch.setattr(sess_mod, "list_sessions", lambda root: [
+            {"session_id": "SES001", "execution": "other-exec", "state": "open"},
+        ])
+        # find_session_for_execution is imported inside _read_session —
+        # patch it at its home module.
+        import arqux.session_identity as si
+        monkeypatch.setattr(si, "find_session_for_execution",
+                            lambda root, execution, state=None: None)
+        r = close(summary="orphan work: NEX req ids abc123",
+                  orphan=True, path=str(proj), ctx=ctx)
+        text = r.to_text()
+        assert "OUT-WORK" in text, text
+        assert "orphan" in text
+        # Without orphan=True the same call must be rejected.
+        r2 = close(summary="no flag", path=str(proj), ctx=ctx)
+        assert "SESSION_BINDING_REQUIRED" in r2.to_text()

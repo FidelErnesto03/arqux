@@ -223,6 +223,7 @@ from ._parse import (
 from ._project import (
     WorkspaceRoot,
     find_project_root,
+    find_project_root_with_source,
     find_workspace_root,
     find_write_project_root,
     parse_cortex_file,

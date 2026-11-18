@@ -34,7 +34,11 @@ from ..session_identity import (
     open_session,
     timelog_path,
 )
-from ..state import find_project_root, find_workspace_root
+from ..state import (
+    find_project_root,
+    find_project_root_with_source,
+    find_workspace_root,
+)
 
 
 def close(
@@ -44,6 +48,7 @@ def close(
     decisions: str | None = None,
     gaps: str | None = None,
     session_ref: str | None = None,
+    orphan: bool = False,
     path: str | None = None,
     ctx: PermissionContext | None = None,
 ) -> CortexOUT:
@@ -53,6 +58,13 @@ def close(
     explicit ``session_ref``); the global pointer and the newest event of the
     project are never used to pick someone else's session.
 
+    ``orphan=True`` covers the unbound-execution case (issue
+    2026-11-18-session-context-set-resuelven-el-proyecto-equivocado): when
+    this execution never bound a session, the summary is recorded as a
+    ``session_orphan`` PULSE event instead of being rejected — the work is
+    real and deserves a trace even without a session to close. External
+    evidence belongs in *summary* (e.g. NEX request_ids).
+
     Args:
         summary: Short human-readable summary of what was accomplished.
         blps: Comma-separated list of active blueprint IDs (e.g. "BLP-006,BLP-007").
@@ -60,6 +72,8 @@ def close(
         decisions: Comma-separated list of key decisions made.
         gaps: Comma-separated list of detected gaps or pending items.
         session_ref: Explicit ``SESxxx`` to close. Defaults to this execution's.
+        orphan: Record the summary as evidence without closing a session
+            (requires SESSION_BINDING_REQUIRED, i.e. no session bound).
         path: Path to project root. Defaults to cwd.
     """
     root = find_project_root(start=path)
@@ -91,6 +105,25 @@ def close(
 
     session, error = _read_session(root, session_ref, execution, for_mutation=True)
     if error:
+        # Orphan close: the execution never bound a session but the work is
+        # real — record the summary as a session_orphan PULSE event so it is
+        # not lost (issue 2026-11-18). Only for SESSION_BINDING_REQUIRED —
+        # an explicit but missing session_ref keeps its hard error.
+        if orphan and error.get("code") == "SESSION_BINDING_REQUIRED":
+            event_id = record_pulse(
+                root,
+                task_id="-",
+                kind="session_orphan",
+                agent=agent,
+                payload=f"[session.close orphan] {ses_payload}",
+            )
+            return CortexOUT.work(
+                f"session.close ok orphan (no bound session — summary recorded "
+                f"as {event_id})",
+                orphan=True,
+                event_id=event_id,
+                agent=agent,
+            )
         return CortexOUT.error(error["message"], code=error["code"],
                                **{k: v for k, v in error.items() if k not in ("code", "message")})
 
@@ -441,19 +474,32 @@ def status(
     ctx: PermissionContext | None = None,
 ) -> CortexOUT:
     """Read session metadata without restoring full context. Read-only."""
-    root = find_project_root(start=path)
+    root, resolution = find_project_root_with_source(start=path)
     if root is None:
         return CortexOUT.error("no project initialized", code="NOT_FOUND")
+
+    # Issue 2026-11-18 (session resuelta contra el proyecto equivocado): a
+    # project resolved through the SHARED workspace pointer may belong to a
+    # different execution entirely — surface it instead of answering as if
+    # the binding were certain.
+    shared_pointer_warning = (
+        "project resolved from the shared workspace pointer (WRK:current), "
+        "not from this execution — the answer may describe another execution's "
+        "project; bind your own via session.context_set(project, scope)"
+    )
 
     execution = (ctx.execution_key if ctx else None) or authoritative_execution_key()
     session, error = _read_session(root, session_ref, execution)
     if error:
         return CortexOUT.error(error["message"], code=error["code"],
+                               project_resolution=resolution,
                                **{k: v for k, v in error.items() if k not in ("code", "message")})
 
     if session is not None:
         return CortexOUT.work(
             "session.status ok",
+            project_resolution=resolution,
+            warnings=[shared_pointer_warning] if resolution == "shared_pointer" else [],
             selected_by=_selected_by(session_ref, execution, session),
             session_ref=session["session_id"],
             state=session.get("state", ""),
@@ -485,6 +531,8 @@ def status(
 
     return CortexOUT.work(
         "session.status ok",
+        project_resolution=resolution,
+        warnings=[shared_pointer_warning] if resolution == "shared_pointer" else [],
         event_id=last_ses.get("id", "?"),
         ts=last_ses.get("ts", ""),
         agent=last_ses.get("agent", ""),
@@ -1704,7 +1752,7 @@ def handoff(
 
 
 handler_schemas = [
-    {"name": "session.close", "fn": close, "description": "Close the session bound to this execution (or the explicit session_ref) and write its portable summary to brain SESSIONS. Never closes the newest session of the project when it belongs to another execution.", "input_schema": {"type": "object", "properties": {"summary": {"type": "string", "description": "Short human-readable summary of what was accomplished."}, "blps": {"type": "string", "description": "Comma-separated active blueprint IDs (e.g. BLP-006,BLP-007)."}, "tasks": {"type": "string", "description": "Comma-separated pending task IDs."}, "decisions": {"type": "string", "description": "Comma-separated key decisions made."}, "gaps": {"type": "string", "description": "Comma-separated detected gaps or pending items."}, "session_ref": {"type": "string", "description": "Explicit SESxxx to close. Defaults to this execution's session."}, "path": {"type": "string", "description": "Path to project root. Defaults to cwd."}}, "required": ["summary"]}},
+    {"name": "session.close", "fn": close, "description": "Close the session bound to this execution (or the explicit session_ref) and write its portable summary to brain SESSIONS. Never closes the newest session of the project when it belongs to another execution.", "input_schema": {"type": "object", "properties": {"summary": {"type": "string", "description": "Short human-readable summary of what was accomplished."}, "blps": {"type": "string", "description": "Comma-separated active blueprint IDs (e.g. BLP-006,BLP-007)."}, "tasks": {"type": "string", "description": "Comma-separated pending task IDs."}, "decisions": {"type": "string", "description": "Comma-separated key decisions made."}, "gaps": {"type": "string", "description": "Comma-separated detected gaps or pending items."}, "session_ref": {"type": "string", "description": "Explicit SESxxx to close. Defaults to this execution's session."}, "orphan": {"type": "boolean", "default": False, "description": "Record summary as a session_orphan PULSE event when this execution never bound a session (work evidence without a session to close)."}, "path": {"type": "string", "description": "Path to project root. Defaults to cwd."}}, "required": ["summary"]}},
     {"name": "session.resume", "fn": resume, "description": "Restore the context of a session. Read-only: selects by explicit session_ref, else the session bound to this execution, else rejects an ambiguous choice instead of taking the newest session. Brains without real session identity keep the legacy PULSE selection.", "input_schema": {"type": "object", "properties": {"session_ref": {"type": "string", "description": "Explicit SESxxx reference."}, "path": {"type": "string", "description": "Path to project root. Defaults to cwd."}}}},
     {"name": "session.status", "fn": status, "description": "Read session metadata without restoring full context. Read-only, same selection rules as session.resume.", "input_schema": {"type": "object", "properties": {"session_ref": {"type": "string", "description": "Explicit SESxxx reference."}, "path": {"type": "string", "description": "Path to project root. Defaults to cwd."}}}},
     {"name": "session.context.set", "fn": context_set, "description": "Set the current session context pointer (project + scope + optional BLP) and open or re-attach the real session bound to this execution. Validates project exists and returns the formatted header.", "input_schema": {"type": "object", "properties": {"project": {"type": "string", "description": "Project name (e.g. ARQUX)"}, "scope": {"type": "string", "description": "Scope within project (e.g. CYCLE-01)"}, "blp": {"type": "string", "description": "Optional active BLP ID (e.g. BLP-014)"}, "intent": {"type": "string", "enum": ["new", "resumed"], "default": "new", "description": "'new' opens or recovers this execution's session; 'resumed' re-attaches session_ref without changing its id or original start."}, "session_ref": {"type": "string", "description": "Explicit SESxxx reference; required when intent='resumed'."}, "path": {"type": "string", "description": "Path to workspace root. Defaults to cwd."}}, "required": ["project", "scope"]}},

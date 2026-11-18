@@ -158,29 +158,52 @@ def find_project_root(start: Path | str | None = None) -> Path | None:
     falls back to resolving the project from the workspace context file
     (``.arqux/context.cortex``), which is written by ``session.context.set``.
     """
+    root, _ = find_project_root_with_source(start)
+    return root
+
+
+def find_project_root_with_source(
+    start: Path | str | None = None,
+) -> tuple[Path | None, str | None]:
+    """``find_project_root`` plus *how* the root was resolved.
+
+    Returns ``(root, source)`` where source is one of:
+
+    - ``"path"`` — walked up from an explicit *start*;
+    - ``"cwd"`` — walked up from the process working directory;
+    - ``"execution_pointer"`` — this execution's own context file
+      (``.arqux/contexts/<exec>.cortex``);
+    - ``"shared_pointer"`` — the workspace-wide ``WRK:current`` /
+      ``context.cortex`` slot written by whichever execution last ran
+      ``session.context_set``. A project resolved from here may belong
+      to ANOTHER execution entirely (issue
+      2026-11-18-session-context-set-resuelven-el-proyecto-equivocado):
+      consumers that surface an answer to the operator SHOULD warn.
+    - ``None`` — no root found.
+    """
     cursor = Path(start or os.getcwd()).resolve()
     target_dir = ARQUX_DIR
 
     # BC-6 fix: if start path itself ends with /.arqux, we are already inside
     # the .arqux/ directory — return it directly (no double nesting).
     if cursor.name == target_dir and (cursor / BRAIN_CORTEX).exists():
-        return cursor
+        return cursor, "path" if start is not None else "cwd"
 
     while True:
         candidate = cursor / target_dir / BRAIN_CORTEX
         if candidate.exists():
-            return cursor / target_dir
+            return cursor / target_dir, "path" if start is not None else "cwd"
         if cursor.parent == cursor:
             break
         cursor = cursor.parent
 
     # Fallback: try to resolve from workspace context.cortex
     if start is not None:
-        return None
+        return None, None
 
     ws_root = find_workspace_root()
     if ws_root is None:
-        return None
+        return None, None
 
     # The per-execution pointer wins over the global one. ``context.cortex`` is
     # a single slot that any execution can overwrite: another client setting a
@@ -195,8 +218,13 @@ def find_project_root(start: Path | str | None = None) -> Path | None:
             continue
         candidate = Path(m.group(1))
         if candidate.exists() and (candidate / ARQUX_DIR / BRAIN_CORTEX).exists():
-            return candidate / ARQUX_DIR
-    return None
+            source = (
+                "execution_pointer"
+                if ctx_path.parent.name == CONTEXTS_DIR
+                else "shared_pointer"
+            )
+            return candidate / ARQUX_DIR, source
+    return None, None
 
 
 def find_write_project_root(start: Path | str | None = None) -> Path | None:
