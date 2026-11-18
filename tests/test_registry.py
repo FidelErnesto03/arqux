@@ -14,11 +14,12 @@ from __future__ import annotations
 from arqux.handlers import REGISTRY, handler_count, list_handlers
 
 
-def test_handler_count_is_115() -> None:
-    """Total handler count is 115 (BLP-023 added loop.*, 9 handlers;
+def test_handler_count_is_116() -> None:
+    """Total handler count is 116 (BLP-023 added loop.*, 9 handlers;
     BLP-006 added cortex.corpus.*, 2 handlers; T1 added pulse.gc;
-    identity.elevate added for brain→identity lesson elevation)."""
-    assert handler_count() == 115
+    identity.elevate added for brain→identity lesson elevation;
+    backup protocol added cortex.restore_backup)."""
+    assert handler_count() == 116
 
 
 def test_handler_list_accepts_mcp_context() -> None:
@@ -77,7 +78,7 @@ def test_module_handler_counts() -> None:
     expected = {
         "blueprint": 16,  # +1: blueprint.frontmatter.update (BLP-003)
         "context": 2,
-        "cortex": 23,  # +2: cortex.corpus.* (BLP-006 gap 2.6)
+        "cortex": 24,  # +2: cortex.corpus.* (BLP-006 gap 2.6); +1 restore_backup (backup protocol)
         "cycle": 6,  # +1: cycle.reopen (BLP-006)
         "evidence": 3,
         "identity": 4,  # +2: identity.get, identity.switch (BLP-011); +1: identity.elevate

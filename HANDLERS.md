@@ -2,7 +2,7 @@
 doc_type: reference
 status: informative
 version: 1.0.0
-verified: 2026-11-16
+verified: 2026-11-17
 ---
 
 <!-- DOC-BRAND -->
@@ -17,7 +17,7 @@ verified: 2026-11-16
 
 # Referencia de handlers MCP
 
-Total: **115** handlers en 18 dominios.
+Total: **116** handlers en 18 dominios.
 
 Generado del registro real. No editar a mano: regenerar con `python scripts/generate_handlers_md.py`.
 
@@ -26,7 +26,7 @@ Generado del registro real. No editar a mano: regenerar con `python scripts/gene
 - [Blueprints](#blueprints) — 16 handlers
 - [Ciclos](#ciclos) — 6 handlers
 - [Contexto](#contexto) — 2 handlers
-- [Cortex / memoria](#cortex--memoria) — 23 handlers
+- [Cortex / memoria](#cortex--memoria) — 24 handlers
 - [Evidencia](#evidencia) — 3 handlers
 - [Identidades](#identidades) — 4 handlers
 - [Issue](#issue) — 4 handlers
@@ -876,6 +876,25 @@ Validate all PUML blocks in a file. Returns D1-D5 checklist.
 **Errores posibles**: `NOT_FOUND`
 
 **Permiso mínimo**: lectura — cualquier rol, incluido auditor
+
+---
+
+### `cortex.restore_backup`
+
+Restore a .cortex file from its .bak (generation=0, default) or .bak.1 (generation=1) backup — the ONLY sanctioned restore path (manual copy/rename is forbidden, AXM:no_direct_edit). Validates the backup first; dry_run=True (default) previews without mutating; applying requires dry_run=False and force=True. The pre-restore state is rotated into the backup chain, never lost. Backups are a safety net for the last write, not history — for history use PULSE/timelog or arqux backup tarballs.
+
+| Parámetro | Tipo | Requerido | Default | Descripción |
+|---|---|---|---|---|
+| `dry_run` | `boolean` | no | True | Preview without mutating (default true). |
+| `force` | `boolean` | no | False | Required (with dry_run=False) to apply the restore. |
+| `generation` | `integer` | no | 0 | 0 = .bak (most recent), 1 = .bak.1. |
+| `path` | `string` | **sí** | — | Path to the .cortex file (or to its .bak/.bak.1). |
+
+**Retorna**: `CortexOUT` → `OUT-WORK` / `OUT-ERROR`
+
+**Errores posibles**: `INVALID_ARGS`, `NOT_FOUND`
+
+**Permiso mínimo**: mutante solo con `--force`; lectura permite auditor
 
 ---
 
@@ -2179,5 +2198,6 @@ Este documento deriva 100% del registro: `scripts/generate_handlers_md.py` lee `
 
 <!-- DOC-FOOT -->
 <hr>
-<p align="center"><sub>ArqUX 1.0.0 · verificado 2026-11-16 · <a href="./docs/es/README.md">índice de documentación</a></sub></p>
+<p align="center"><sub>ArqUX 1.0.0 · verificado 2026-11-17 · <a href="./docs/es/README.md">índice de documentación</a></sub></p>
 <!-- /DOC-FOOT -->
+

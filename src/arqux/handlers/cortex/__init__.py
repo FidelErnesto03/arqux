@@ -46,6 +46,7 @@ from .read_write import (
     write_handler,
 )
 from .ref import ref_handler
+from .restore import restore_backup_handler
 
 __all__ = [
     "_next_number",
@@ -72,6 +73,7 @@ __all__ = [
     "gc_handler",
     "patch_handler",
     "migrate_handler",
+    "restore_backup_handler",
     "handler_schemas",
 ]
 
@@ -170,6 +172,46 @@ handler_schemas = [
             "type": "object",
             "properties": {
                 "path": {"type": "string"},
+            },
+            "required": ["path"],
+        },
+    },
+    {
+        "name": "cortex.restore_backup",
+        "fn": restore_backup_handler,
+        "description": (
+            "Restore a .cortex file from its .bak (generation=0, default) or "
+            ".bak.1 (generation=1) backup — the ONLY sanctioned restore path "
+            "(manual copy/rename is forbidden, AXM:no_direct_edit). Validates "
+            "the backup first; dry_run=True (default) previews without "
+            "mutating; applying requires dry_run=False and force=True. The "
+            "pre-restore state is rotated into the backup chain, never lost. "
+            "Backups are a safety net for the last write, not history — for "
+            "history use PULSE/timelog or arqux backup tarballs."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "path": {
+                    "type": "string",
+                    "description": "Path to the .cortex file (or to its .bak/.bak.1).",
+                },
+                "generation": {
+                    "type": "integer",
+                    "enum": [0, 1],
+                    "default": 0,
+                    "description": "0 = .bak (most recent), 1 = .bak.1.",
+                },
+                "dry_run": {
+                    "type": "boolean",
+                    "default": True,
+                    "description": "Preview without mutating (default true).",
+                },
+                "force": {
+                    "type": "boolean",
+                    "default": False,
+                    "description": "Required (with dry_run=False) to apply the restore.",
+                },
             },
             "required": ["path"],
         },

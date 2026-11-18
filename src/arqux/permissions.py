@@ -276,6 +276,10 @@ CONDITIONAL_MUTATING: dict[str, tuple[str, ...]] = {
     # dry_run defaults False — writes the target file by default;
     # dry_run=True is a preview.
     "cortex.migrate": (),
+    # dry_run defaults True (pure preview); mutates iff force=True AND
+    # dry_run=False — same gate as cortex.gc, the restore is a deliberate
+    # recovery op the auditor may preview but never apply.
+    "cortex.restore_backup": ("force",),
     # dry_run defaults False — sweeps PULSE AUDs into the rolling archive
     # by default; dry_run=True is a preview.
     "session.pulse.gc": (),

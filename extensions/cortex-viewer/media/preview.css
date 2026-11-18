@@ -119,17 +119,7 @@ th {
 tbody td { cursor: cell; }
 tbody td:hover { outline: 1px dashed var(--vscode-focusBorder); }
 td.editing {
-  padding: 0;
   outline: 2px solid var(--vscode-focusBorder);
-}
-td.editing input {
-  width: 100%;
-  box-sizing: border-box;
-  border: none;
-  padding: 4px 10px;
-  font: inherit;
-  color: inherit;
-  background: var(--vscode-input-background);
 }
 
 blockquote {

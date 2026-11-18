@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.4.3 — edición de celdas legible
+
+- **Cell editor es ahora `<textarea>` auto-expansible** (antes `<input>`
+  de una línea): el ancho crece según la longitud del valor (~7px/char,
+  cap 1400px) y el alto según las líneas — valores largos (summaries,
+  content) se leen completos mientras se editan.
+- **Wrap soft + monoespaciado**: el texto largo fluye en varias líneas
+  dentro del cuadro en vez de truncarse.
+- **Atajos**: `Enter` inserta salto de línea, `Ctrl/Cmd+Enter` confirma,
+  `Escape` cancela restaurando el valor original, `blur` confirma.
+- **Sanitización al confirmar**: `|` → `\|` y saltos de línea → `\n`
+  literal — la fila markdown no puede corromperse por edición.
+
 ## 0.4.2 — diagramas en el preview
 
 - **Diagram rendering**: `body:"..."` (y cualquier string attr) cuyo

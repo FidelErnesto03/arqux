@@ -175,26 +175,100 @@
     if (td.classList.contains('editing')) { return; }
     const original = td.textContent;
     td.classList.add('editing');
-    td.textContent = '';
-    const input = document.createElement('input');
-    input.value = original;
-    td.appendChild(input);
-    input.focus();
-    input.select();
+    // Hide the cell text without collapsing the row: transparent color
+    // keeps the text's box model so the table layout never shifts.
+    td.style.color = 'transparent';
+    // Textarea (not input): cortex values run to hundreds of chars — a
+    // single-line box truncates them unreadably. The editor is a FIXED
+    // OVERLAY on document.body, not a cell child: an in-flow editor widens
+    // its column and pushes the whole table past the card boundary.
+    // It FOLLOWS the cell on scroll so the edit anchor never detaches.
+    const reposition = () => {
+      const r = td.getBoundingClientRect();
+      area.style.left = r.left + 'px';
+      area.style.top = r.top + 'px';
+    };
+    const area = document.createElement('textarea');
+    area.value = original;
+    area.wrap = 'soft';
+    area.spellcheck = false;
+    area.setAttribute('aria-label', 'cell editor');
 
-    const commit = () => {
+    const card = td.closest('.hc-card');
+    const avail = card
+      ? card.clientWidth - 36 // borders + padding
+      : document.documentElement.clientWidth - 48;
+    const maxW = Math.max(160, Math.min(1400, avail));
+
+    const autoSize = () => {
+      const wantW = Math.min(maxW, Math.max(160, area.value.length * 7 + 48));
+      area.style.width = wantW + 'px';
+      area.style.height = 'auto';
+      area.style.height = area.scrollHeight + 'px';
+    };
+
+    area.style.position = 'fixed';
+    area.style.zIndex = '100';
+    area.style.boxSizing = 'border-box';
+    area.style.padding = '4px 10px';
+    area.style.font = 'inherit';
+    area.style.fontFamily = 'var(--vscode-editor-font-family, monospace)';
+    area.style.color = 'var(--vscode-foreground)';
+    area.style.background = 'var(--vscode-input-background)';
+    area.style.border = '2px solid var(--vscode-focusBorder)';
+    area.style.borderRadius = '4px';
+    area.style.resize = 'none';
+    area.style.overflow = 'hidden';
+    area.style.whiteSpace = 'pre-wrap';
+    area.style.overflowWrap = 'break-word';
+    area.style.lineHeight = '1.4';
+    area.style.boxShadow = '0 4px 16px rgba(0,0,0,0.35)';
+    document.body.appendChild(area);
+
+    reposition();
+    autoSize();
+    // Follow the cell through scroll/resize — capture phase catches
+    // scrolls on any inner container, not just window.
+    window.addEventListener('scroll', reposition, true);
+    window.addEventListener('resize', reposition);
+    area.addEventListener('input', autoSize);
+    area.focus();
+    area.setSelectionRange(area.value.length, area.value.length);
+
+    let done = false;
+    const finish = (commitEdit) => {
+      if (done) { return; }
+      done = true;
+      window.removeEventListener('scroll', reposition, true);
+      window.removeEventListener('resize', reposition);
       td.classList.remove('editing');
-      const value = input.value;
-      td.textContent = value;
-      if (value !== original) {
-        emitTableEdit(tableIdx, dataRow, colIdx, value);
+      td.style.color = '';
+      area.remove();
+      const raw = area.value;
+      if (commitEdit) {
+        const value = raw;
+        td.textContent = value;
+        if (value !== original) {
+          emitTableEdit(tableIdx, dataRow, colIdx, sanitizeCellValue(value));
+        }
+      } else {
+        td.textContent = original;
       }
     };
-    input.addEventListener('blur', commit);
-    input.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') { input.blur(); }
-      if (e.key === 'Escape') { input.value = original; input.blur(); }
+    area.addEventListener('blur', () => finish(true));
+    area.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') { e.preventDefault(); finish(false); }
+      if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); finish(true); }
     });
+  }
+
+  /**
+   * Markdown table cells are single-line `|`-delimited. A pasted/typed
+   * newline or pipe would corrupt the row structure — escape both so the
+   * rebuilt HCORTEX stays parseable (the extension validates downstream).
+   */
+  function sanitizeCellValue(v) {
+    return v.replace(/\|/g, '\\|').replace(/\r?\n/g, '\\n');
   }
 
   /**
