@@ -113,3 +113,13 @@ WRK:phase_3_govern{
 $6: DOGFOODING
 
 AXM:dogfood{ This framework governs its own development. Every feature is a governed task. Bug = handler missing. Permission blocks = bug. Iterate. }
+
+
+$7: REPORTING ISSUES (upstream)
+
+AXM:issue_reporting{
+  Issues about YOUR project governance go to the local queue (.arqux/issues/) via issue.create — the default.
+  Issues about ArqUX ITSELF (a handler bug, a broken template, a doc error — anything a PyPI user should tell upstream) go to the ArqUX repository via issue.create(channel:"github", repo:"upstream"): files a GitHub issue on the package repo (resolved from PyPI metadata) + a gh-* local mirror. channel:"both" files locally AND on GitHub.
+  Without an authenticated gh CLI the call returns file_url — a prefilled github.com/issues/new link. Present it to the user; the report must never die silently.
+  To retarget your own project's github channel permanently, register IDN:github_issues{repo:"owner/name"} in the project brain ($1).
+}

@@ -46,8 +46,13 @@ def _install_fake_gh(monkeypatch):
         return True, "", ""
 
     monkeypatch.setattr(issue_mod, "_gh_available", lambda: (True, ""))
-    monkeypatch.setattr(issue_mod, "_gh_repo",
-                        lambda root, override=None: (override or "o/n", ""))
+
+    def fake_repo(root, override=None):
+        if override == "upstream":
+            return issue_mod._upstream_repo(), ""
+        return override or "o/n", ""
+
+    monkeypatch.setattr(issue_mod, "_gh_repo", fake_repo)
     monkeypatch.setattr(issue_mod, "_gh", fake_gh)
     return calls
 
@@ -99,6 +104,62 @@ def test_create_github_repo_unresolved(arqux_env, monkeypatch) -> None:
     assert out.profile == "OUT-ERROR"
     assert out.fields["code"] == "GITHUB_REPO_UNRESOLVED"
     assert not list((arqux_env.proj_root / ".arqux" / "issues").glob("*.md"))
+
+
+def test_repo_upstream_keyword_resolves_package_repo(arqux_env, monkeypatch) -> None:
+    """repo="upstream" pins the PyPI-metadata repo — the PyPI-install path."""
+    _install_fake_gh(monkeypatch)
+    monkeypatch.setattr(issue_mod, "_upstream_repo",
+                        lambda: "upstream-owner/arqux")
+    out = create_issue(
+        "low", "bug from a pip install", channel="github", repo="upstream",
+        path=str(arqux_env.proj_root), ctx=GOV,
+    )
+    assert out.profile == "OUT-WORK"
+    assert out.fields["github_repo"] == "upstream-owner/arqux"
+
+
+def test_gh_repo_falls_back_to_upstream(arqux_env, monkeypatch) -> None:
+    """No checkout remote + no brain entry → package upstream still wins
+    (real _gh_repo: subprocess repo-view fails, upstream rescues)."""
+    class _Fail:
+        returncode = 1
+        stdout = ""
+        stderr = "not a git repository"
+    monkeypatch.setattr(issue_mod.subprocess, "run",
+                        lambda *a, **k: _Fail())
+    monkeypatch.setattr(issue_mod, "_upstream_repo",
+                        lambda: "upstream-owner/arqux")
+    monkeypatch.setattr(issue_mod, "_gh_available", lambda: (True, ""))
+    monkeypatch.setattr(
+        issue_mod, "_gh",
+        lambda args, *, timeout=30:
+            (True, "https://github.com/upstream-owner/arqux/issues/9\n", ""),
+    )
+    out = create_issue(
+        "low", "bug from a bare install", channel="github",
+        path=str(arqux_env.proj_root), ctx=GOV,
+    )
+    assert out.profile == "OUT-WORK"
+    assert out.fields["github_repo"] == "upstream-owner/arqux"
+    assert "upstream" in out.fields["repo_resolution"]
+
+
+def test_gh_unavailable_returns_file_url(arqux_env, monkeypatch) -> None:
+    """No gh CLI/auth → the report still gets a prefilled issues/new URL."""
+    monkeypatch.setattr(issue_mod, "_gh_available",
+                        lambda: (False, "gh CLI not installed"))
+    monkeypatch.setattr(issue_mod, "_gh_repo",
+                        lambda root, override=None: ("o/n", ""))
+    out = create_issue(
+        "high", "broken install", title="Install broken",
+        channel="github", path=str(arqux_env.proj_root), ctx=GOV,
+    )
+    assert out.profile == "OUT-ERROR"
+    assert out.fields["code"] == "GITHUB_UNAVAILABLE"
+    url = out.fields["file_url"]
+    assert url.startswith("https://github.com/o/n/issues/new?title=")
+    assert "Install+broken" in url or "Install%20broken" in url
 
 
 def test_create_invalid_channel_rejected(arqux_env) -> None:

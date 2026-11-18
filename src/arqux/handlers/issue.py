@@ -164,17 +164,50 @@ def _gh_available() -> tuple[bool, str]:
     return True, ""
 
 
+#: Last-resort upstream: the ArqUX repo itself (PyPI installs where no
+#: checkout remote, brain entry or repo= exists — external bug reports
+#: must still land somewhere real). Overridden by package metadata.
+_DEFAULT_UPSTREAM = "FidelErnesto03/arqux"
+
+
+def _upstream_repo() -> str:
+    """The ArqUX upstream repo (``owner/name``) from PyPI metadata.
+
+    ``[project.urls].Issues`` is canonical — whoever republishes the
+    package under a new remote never edits this file.
+    """
+    try:
+        import importlib.metadata as _md
+
+        for url in (_md.metadata("arqux").get_all("Project-URL") or []):
+            m = re.search(
+                r"github\.com[:/]\s*([\w.-]+/[\w.-]+?)(?:/issues)?/?\s*$",
+                str(url).split(",", 1)[-1].strip(),
+            )
+            if m:
+                return m.group(1).removesuffix(".git")
+    except Exception:
+        pass
+    return _DEFAULT_UPSTREAM
+
+
 def _gh_repo(root: Path, override: str | None = None) -> tuple[str | None, str]:
     """Resolve the target GitHub repo as owner/name.
 
     Precedence: explicit *override* > ``IDN:github_issues{repo:...}`` entry in
     the project brain > ``gh repo view`` of the checkout containing *root*
-    (its origin remote). Returns (repo, error_message).
+    (its origin remote) > **package upstream** (PyPI metadata ``Issues`` URL —
+    external users on a plain pip install must still reach the ArqUX repo).
+
+    ``override == "upstream"`` pins the package upstream explicitly.
+    Returns (repo, error_message) — error only when everything failed.
     """
     if override and override.strip():
-        return override.strip(), ""
+        value = override.strip()
+        return (_upstream_repo() if value == "upstream" else value), ""
 
     # Brain-declared repo: IDN:github_issues{repo:"owner/name"} in $1.
+    # ("upstream" is also legal here — resolves to the package upstream.)
     try:
         from ..core.state._crud import crud_read
 
@@ -184,11 +217,16 @@ def _gh_repo(root: Path, override: str | None = None) -> tuple[str | None, str]:
             for e in ents:
                 val = e.get("value")
                 if isinstance(val, dict) and val.get("repo"):
-                    return str(val["repo"]).strip(), ""
+                    repo = str(val["repo"]).strip()
+                    return (
+                        _upstream_repo() if repo == "upstream" else repo
+                    ), ""
     except Exception:
         pass
 
-    # Fallback: the git remote of the project checkout itself.
+    # Fallback 1: the git remote of the project checkout itself (subprocess
+    # directly — _gh does not support cwd).
+    err = ""
     try:
         proc = subprocess.run(
             ["gh", "repo", "view", "--json", "nameWithOwner", "-q", ".nameWithOwner"],
@@ -199,7 +237,22 @@ def _gh_repo(root: Path, override: str | None = None) -> tuple[str | None, str]:
         err = (proc.stderr or proc.stdout).strip()
     except (OSError, subprocess.TimeoutExpired) as exc:
         err = str(exc)
-    return None, f"could not resolve GitHub repo (set repo= or IDN:github_issues in brain): {err}"
+
+    # Fallback 2: package upstream — guaranteed non-empty, so external
+    # reports always have a destination even off any checkout.
+    return _upstream_repo(), f"(fell back to upstream; checkout resolution failed: {err})"
+
+
+def _gh_file_url(repo: str, title: str, body: str) -> str:
+    """Prefilled `issues/new` URL — the zero-dependency path for external
+    reporters when the gh CLI is absent or unauthenticated."""
+    from urllib.parse import quote
+
+    return (
+        f"https://github.com/{repo}/issues/new"
+        f"?title={quote(_truncate_title(title))}"
+        f"&body={quote(body[:4000])}"
+    )
 
 
 def _gh(args: list[str], *, timeout: int = 30) -> tuple[bool, str, str]:
@@ -324,10 +377,14 @@ def create_issue(
     - ``both`` — the local file stays canonical AND a linked GitHub issue is
       created (channel both). For reports that live in both queues.
 
-    The target repo resolves: explicit *repo* (owner/name) >
-    ``IDN:github_issues{repo:...}`` in the project brain > the checkout's
-    ``gh repo view``. External-user reports land via ``github``/``both``;
-    internal work keeps ``local``.
+    The target repo resolves: explicit *repo* (``owner/name`` or the
+    ``"upstream"`` keyword) > ``IDN:github_issues{repo:...}`` in the project
+    brain > the checkout's ``gh repo view`` > **package upstream** (PyPI
+    metadata Issues URL — external users always land on the ArqUX repo).
+    Without an authenticated ``gh`` CLI the call fails closed and returns a
+    ``file_url`` — a prefilled github.com/issues/new link so the report can
+    still be filed manually. External-user reports land via
+    ``github``/``both``; internal work keeps ``local``.
     """
     if severity not in VALID_SEVERITIES:
         return CortexOUT.error(
@@ -356,13 +413,21 @@ def create_issue(
     gh_url = ""
     gh_number = ""
     if channel in ("github", "both"):
-        gh_repo, repo_err = _gh_repo(root, repo)
+        gh_repo, repo_note = _gh_repo(root, repo)
         if gh_repo is None:
-            return CortexOUT.error(repo_err, code="GITHUB_REPO_UNRESOLVED")
+            return CortexOUT.error(repo_note, code="GITHUB_REPO_UNRESOLVED")
         try:
             gh = _gh_create_issue(gh_repo, header_title, body, severity)
         except RuntimeError as exc:
-            return CortexOUT.error(str(exc), code="GITHUB_UNAVAILABLE")
+            # Zero-dependency egress: even without gh/auth the reporter gets
+            # a ready-to-submit URL — the report never dies silently.
+            return CortexOUT.error(
+                f"{exc} — file manually: {_gh_file_url(gh_repo, header_title, body)}"
+                + (f" {repo_note}" if repo_note else ""),
+                code="GITHUB_UNAVAILABLE",
+                file_url=_gh_file_url(gh_repo, header_title, body),
+                github_repo=gh_repo,
+            )
         gh_url = gh["url"]
         gh_number = gh["number"]
 
@@ -427,6 +492,8 @@ def create_issue(
         fields["github_url"] = gh_url
         fields["github_number"] = gh_number
         fields["github_repo"] = gh_repo
+    if channel in ("github", "both") and repo_note:
+        fields["repo_resolution"] = repo_note
     if title is None and len(" ".join(body.split())) > TITLE_MAX:
         # The caller handed a long paragraph and no title: the header carries a
         # truncated first line while the body keeps the whole text. Say so
@@ -773,9 +840,12 @@ handler_schemas = [
                 "repo": {
                     "type": "string",
                     "description": (
-                        "Target GitHub repo as owner/name for github/both. "
-                        "Defaults: IDN:github_issues{repo:...} in brain, else the "
-                        "checkout's gh repo view."
+                        "Target GitHub repo for github/both: owner/name, or "
+                        "'upstream' for the ArqUX package repo (PyPI installs: "
+                        "the default when nothing else resolves — external bug "
+                        "reports always reach the project). Precedence: repo= > "
+                        "IDN:github_issues{repo:...} in brain > checkout remote "
+                        "> package upstream."
                     ),
                 },
                 "path": {"type": "string", "description": "Path to project root. Defaults to cwd."},
